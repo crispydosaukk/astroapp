@@ -1,0 +1,196 @@
+/**
+ * Modal primitives replacing Flutter's showModalBottomSheet, showDialog and ScaffoldMessenger SnackBar.
+ */
+import React, { useEffect, useState } from 'react';
+import { Dimensions, KeyboardAvoidingView, Modal, Platform, Pressable, StyleProp, View, ViewStyle } from 'react-native';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { create } from 'zustand';
+import { AppColors } from '@/theme/colors';
+import { AppIcon } from './AppIcon';
+import { Text } from './Text';
+
+const SCREEN_H = Dimensions.get('window').height;
+
+/* ------------------------------------------------------------------ BottomSheet */
+/**
+ * showModalBottomSheet equivalent. Slides up over 250 ms (Material default), barrier tap dismisses.
+ * `maxHeightRatio` mirrors isScrollControlled + constraints used in the source.
+ */
+export function BottomSheet({
+  visible, onClose, children, style, maxHeightRatio = 0.9, backgroundColor = 'transparent', testID,
+}: {
+  visible: boolean; onClose: () => void; children: React.ReactNode; style?: StyleProp<ViewStyle>;
+  maxHeightRatio?: number; backgroundColor?: string; testID?: string;
+}) {
+  const [mounted, setMounted] = useState(visible);
+  const y = useSharedValue(SCREEN_H);
+  const barrier = useSharedValue(0);
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      y.value = withTiming(0, { duration: 250, easing: Easing.out(Easing.cubic) });
+      barrier.value = withTiming(1, { duration: 250 });
+    } else if (mounted) {
+      barrier.value = withTiming(0, { duration: 200 });
+      y.value = withTiming(SCREEN_H, { duration: 200, easing: Easing.in(Easing.cubic) }, (f) => {
+        if (f) runOnJS(setMounted)(false);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
+  const barrierStyle = useAnimatedStyle(() => ({ opacity: barrier.value }));
+
+  if (!mounted) return null;
+  return (
+    <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.54)' }, barrierStyle]}>
+          <Pressable style={{ flex: 1 }} onPress={onClose} testID={testID ? `${testID}.barrier` : undefined} />
+        </Animated.View>
+        <Animated.View
+          testID={testID}
+          style={[{ position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: SCREEN_H * maxHeightRatio, backgroundColor }, sheetStyle, style]}
+        >
+          {children}
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+/** Standard sheet container used by most source sheets: surfaceDark, top radius 28, gold drag handle. */
+export function SheetContainer({ children, style, handle = true, radius = 28 }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; handle?: boolean; radius?: number }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      style={[
+        {
+          backgroundColor: AppColors.surfaceDark, borderTopLeftRadius: radius, borderTopRightRadius: radius,
+          borderWidth: 1, borderBottomWidth: 0, borderColor: AppColors.cardBorder, paddingBottom: insets.bottom,
+        },
+        style,
+      ]}
+    >
+      {handle ? (
+        <View style={{ alignItems: 'center', paddingTop: 12 }}>
+          <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: AppColors.outline }} />
+        </View>
+      ) : null}
+      {children}
+    </View>
+  );
+}
+
+/* ----------------------------------------------------------------------- Dialog */
+/** showDialog equivalent — fades + scales in, barrier dismissible by default. */
+export function Dialog({
+  visible, onClose, children, barrierDismissible = true, style, testID,
+}: { visible: boolean; onClose: () => void; children: React.ReactNode; barrierDismissible?: boolean; style?: StyleProp<ViewStyle>; testID?: string }) {
+  return (
+    <Modal transparent visible={visible} animationType="fade" statusBarTranslucent onRequestClose={barrierDismissible ? onClose : () => {}}>
+      <Pressable
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.54)', justifyContent: 'center', padding: 24 }}
+        onPress={barrierDismissible ? onClose : undefined}
+      >
+        <Pressable
+          testID={testID}
+          onPress={() => {}}
+          style={[{ backgroundColor: AppColors.surfaceDark, borderRadius: 24, padding: 24, borderWidth: 1, borderColor: AppColors.cardBorder }, style]}
+        >
+          {children}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+/* --------------------------------------------------------------------- Snackbar */
+type SnackState = { message: string | null; bg: string; key: number; show: (m: string, bg?: string) => void; hide: () => void };
+export const useSnackbar = create<SnackState>((set) => ({
+  message: null,
+  bg: AppColors.surfaceVariantDark,
+  key: 0,
+  show: (message, bg = AppColors.surfaceVariantDark) => set((s) => ({ message, bg, key: s.key + 1 })),
+  hide: () => set({ message: null }),
+}));
+export const showSnackBar = (m: string, bg?: string) => useSnackbar.getState().show(m, bg);
+
+/** Mount once at the root. Floating SnackBar, 4 s (Flutter default). */
+export function SnackbarHost() {
+  const { message, bg, key, hide } = useSnackbar();
+  const insets = useSafeAreaInsets();
+  const o = useSharedValue(0);
+  useEffect(() => {
+    if (!message) return;
+    o.value = withTiming(1, { duration: 200 });
+    const t = setTimeout(() => {
+      o.value = withTiming(0, { duration: 200 }, (f) => { if (f) runOnJS(hide)(); });
+    }, 4000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const st = useAnimatedStyle(() => ({ opacity: o.value, transform: [{ translateY: (1 - o.value) * 20 }] }));
+  if (!message) return null;
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 100, backgroundColor: bg, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, elevation: 6 }, st]}
+    >
+      <Text style={{ color: AppColors.textPrimary, fontSize: 14, fontWeight: '500' }}>{message}</Text>
+    </Animated.View>
+  );
+}
+
+/** Sheet payload state that survives the close animation (payload kept until next open). */
+export function useSheet<T>() {
+  const [state, setState] = useState<{ visible: boolean; value: T | null }>({ visible: false, value: null });
+  return {
+    visible: state.visible,
+    value: state.value,
+    open: (value: T) => setState({ visible: true, value }),
+    close: () => setState((s) => ({ ...s, visible: false })),
+  };
+}
+
+/* -------------------------------------------------------------------- PopupMenu */
+/** PopupMenuButton equivalent: icon button that opens an anchored menu (Material 3 surface, radius 14). */
+export function PopupMenu<T extends string>({
+  items, onSelected, icon = 'more_vert_rounded', iconColor = AppColors.textMuted, iconSize = 20, testID, menuColor = AppColors.surfaceVariantDark,
+}: {
+  items: Array<{ value: T; label: string; color?: string }>; onSelected: (v: T) => void; icon?: string; iconColor?: string;
+  iconSize?: number; testID?: string; menuColor?: string;
+}) {
+  const ref = React.useRef<View>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const open = () => ref.current?.measureInWindow((x, y, w, h) => setPos({ x: x + w, y: y + h }));
+  const screenW = Dimensions.get('window').width;
+  return (
+    <>
+      <Pressable ref={ref} testID={testID} onPress={open} style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}>
+        <AppIcon name={icon} color={iconColor} size={iconSize} />
+      </Pressable>
+      <Modal transparent visible={!!pos} animationType="fade" onRequestClose={() => setPos(null)}>
+        <Pressable style={{ flex: 1 }} onPress={() => setPos(null)}>
+          {pos ? (
+            <View style={{ position: 'absolute', top: pos.y - 40, right: Math.max(8, screenW - pos.x), minWidth: 160, paddingVertical: 8, borderRadius: 14, backgroundColor: menuColor, elevation: 8, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10 }}>
+              {items.map((it) => (
+                <Pressable
+                  key={it.value}
+                  testID={testID ? `${testID}.${it.value}` : undefined}
+                  onPress={() => { setPos(null); onSelected(it.value); }}
+                  style={{ paddingHorizontal: 16, height: 48, justifyContent: 'center' }}
+                >
+                  <Text style={{ color: it.color ?? AppColors.textPrimary, fontSize: 14 }}>{it.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+        </Pressable>
+      </Modal>
+    </>
+  );
+}

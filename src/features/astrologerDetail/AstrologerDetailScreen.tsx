@@ -1,0 +1,361 @@
+/**
+ * Port of lib/presentation/astrologer_detail_screen/astrologer_detail_screen.dart
+ * - astrologerData from route extra (falls back to the source _defaultData)
+ * - collapsing 280 px image header (SliverAppBar expandedHeight + pinned) → Animated scroll header
+ * - bookmark toggle (local), share = SOURCE_INERT (plain Container in source, not tappable)
+ * - TabBar/TabBarView (About / Reviews / Availability, fixed 500 px)
+ * - sticky glass CTAs → consultation sheet → push(/consultation-screen, {type, astrologer})
+ *   (source: Chat→voice, Call→voice, Book→video — preserved exactly)
+ */
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState } from 'react';
+import { Platform, Pressable, ScrollView, View } from 'react-native';
+import Animated, { interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppIcon } from '@/components/AppIcon';
+import { AppImage } from '@/components/AppImage';
+import { LinearProgress } from '@/components/common';
+import { BottomSheet, useSheet } from '@/components/overlays';
+import { TabBar, TabPager } from '@/components/Tabs';
+import { lh, Text } from '@/components/Text';
+import { AstrologerData, LIVE_ASTROLOGERS } from '@/data/astrologers';
+import { AppRoutes, pop, push, useExtra } from '@/navigation/routes';
+import { argb } from '@/theme/colors';
+
+const DEFAULT_DATA: AstrologerData = LIVE_ASTROLOGERS[0];
+const HEADER_H = 280;
+
+const REVIEWS = [
+  { name: 'Priya Sharma', rating: 5, date: '2 days ago', avatar: '🙏', text: "Swamiji's reading was extraordinarily accurate. He described my current Dasha period with such precision — it felt like he was reading my life story. His remedies have already started showing results." },
+  { name: 'Rajesh Kumar', rating: 5, date: '1 week ago', avatar: '⭐', text: 'I was sceptical at first, but the consultation completely changed my perspective. His analysis of my career challenges was spot-on and the guidance he provided has been transformative.' },
+  { name: 'Ananya Patel', rating: 5, date: '2 weeks ago', avatar: '💫', text: 'The Kundli Milan reading for my marriage was incredibly detailed. He explained every aspect of compatibility with such clarity and compassion. Highly recommend for anyone seeking genuine Vedic guidance.' },
+  { name: 'Vikram Singh', rating: 4, date: '3 weeks ago', avatar: '🌟', text: 'Very knowledgeable and patient. Took time to explain complex astrological concepts in simple terms. The session ran a bit long but every minute was worth it.' },
+];
+const EXPERTISE = [
+  'Parashara Jyotisha & Classical Vedic Astrology', 'Vimshottari Dasha & Antardasha Analysis', 'Kundli Milan & Compatibility Assessment',
+  'Kaal Sarp, Manglik & Sade Sati Remedies', 'Career, Finance & Life Path Guidance', 'Spiritual Growth & Karmic Resolution',
+];
+
+const glass = { backgroundColor: argb('0FFFFFFF'), borderWidth: 1, borderColor: argb('1AC9A84C') } as const;
+
+function SectionCard({ title, emoji, children }: { title: string; emoji: string; children: React.ReactNode }) {
+  return (
+    <View style={{ padding: 16, borderRadius: 16, ...glass }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+        <Text style={{ fontSize: 16 }}>{emoji}</Text>
+        <Text style={{ marginLeft: 8, color: '#C9A84C', fontSize: 14, fontWeight: '700' }}>{title}</Text>
+      </View>
+      {children}
+    </View>
+  );
+}
+function InfoChip({ label, icon, isGreen }: { label: string; icon: string; isGreen?: boolean }) {
+  return (
+    <View style={{ marginRight: 8, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 100, backgroundColor: isGreen ? argb('1A2D9E6B') : argb('0FFFFFFF'), borderWidth: 1, borderColor: isGreen ? argb('332D9E6B') : argb('1AC9A84C') }}>
+      <Text style={{ fontSize: 11 }}>{icon}</Text>
+      <Text style={{ marginLeft: 4, color: isGreen ? '#2D9E6B' : '#A0A8C0', fontSize: 11, fontWeight: '500' }}>{label}</Text>
+    </View>
+  );
+}
+function StatItem({ value, label, icon, color }: { value: string; label: string; icon: string; color: string }) {
+  return (
+    <View style={{ flex: 1, alignItems: 'center' }}>
+      <Text style={{ fontSize: 16 }}>{icon}</Text>
+      <Text style={{ marginTop: 4, color, fontSize: 13, fontWeight: '800' }}>{value}</Text>
+      <Text style={{ color: '#6B7A99', fontSize: 10 }}>{label}</Text>
+    </View>
+  );
+}
+const StatDivider = () => <View style={{ width: 1, height: 40, marginHorizontal: 8, backgroundColor: argb('1AC9A84C') }} />;
+
+function Row2({ left, right, leftColor = '#A0A8C0' }: { left: string; right: string; leftColor?: string }) {
+  return (
+    <View style={{ marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between' }}>
+      <Text style={{ color: leftColor, fontSize: 12 }}>{left}</Text>
+      <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '600' }}>{right}</Text>
+    </View>
+  );
+}
+
+export default function AstrologerDetailScreen() {
+  const extra = useExtra<AstrologerData>();
+  const data = extra ?? DEFAULT_DATA;
+  const insets = useSafeAreaInsets();
+  const [bookmarked, setBookmarked] = useState(false);
+  const [tab, setTab] = useState(0);
+  const sheet = useSheet<'Chat' | 'Call' | 'Book'>();
+  const price = Number(data.price);
+  const isOnline = !!data.isOnline;
+
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => { scrollY.value = e.contentOffset.y; });
+  const toolbarH = insets.top + 56;
+  const toolbarBg = useAnimatedStyle(() => ({ opacity: interpolate(scrollY.value, [HEADER_H - toolbarH - 40, HEADER_H - toolbarH], [0, 1], 'clamp') }));
+  const imgStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: interpolate(scrollY.value, [-HEADER_H, 0, HEADER_H], [-HEADER_H / 2, 0, HEADER_H * 0.25]) }, { scale: interpolate(scrollY.value, [-HEADER_H, 0], [2, 1], 'clamp') }],
+  }));
+
+  const proceed = (type: 'Chat' | 'Call' | 'Book') => {
+    sheet.close();
+    push(AppRoutes.consultationScreen, { type: type === 'Book' ? 'video' : 'voice', astrologer: data });
+  };
+
+  const consultTypes = [
+    { icon: '💬', type: 'Chat', duration: '30 min', price: `₹${price * 30}` },
+    { icon: '📞', type: 'Voice Call', duration: '30 min', price: `₹${price * 30}` },
+    { icon: '📹', type: 'Video Call', duration: '30 min', price: `₹${Math.round(price * 30 * 1.2)}` },
+    { icon: '📋', type: 'Detailed Report', duration: '48 hrs', price: '₹1,499' },
+  ];
+
+  const glassBtn = { margin: 8, borderRadius: 12, backgroundColor: argb('99080D1A'), borderWidth: 1, borderColor: argb('1AC9A84C'), alignItems: 'center' as const, justifyContent: 'center' as const };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#080D1A' }} testID="astrologerDetail.screen">
+      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16}>
+        <View style={{ height: HEADER_H, overflow: 'hidden' }}>
+          <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_H }, imgStyle]}>
+            <AppImage
+              uri={data.imageUrl}
+              width="100%"
+              height={HEADER_H}
+              fit="cover"
+              semanticLabel={data.semanticLabel}
+              errorWidget={<View style={{ flex: 1, backgroundColor: '#0D1B2A', alignItems: 'center', justifyContent: 'center' }}><AppIcon name="person" color="#6B7A99" size={80} /></View>}
+            />
+          </Animated.View>
+          <LinearGradient colors={[argb('00080D1A'), argb('66080D1A'), '#080D1A']} locations={[0.4, 0.75, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+          <View style={{ position: 'absolute', bottom: 16, left: 20, flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ width: 10, height: 10, borderRadius: 5, borderWidth: 2, borderColor: '#080D1A', backgroundColor: isOnline ? '#3DCB7A' : '#6B7A99' }} />
+            <Text style={{ marginLeft: 6, color: isOnline ? '#3DCB7A' : '#6B7A99', fontSize: 12, fontWeight: '600' }}>{isOnline ? 'Online Now' : 'Offline'}</Text>
+          </View>
+          {data.isFeatured ? (
+            <View style={{ position: 'absolute', bottom: 16, right: 20, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 100, backgroundColor: '#C9A84C' }}>
+              <Text style={{ color: '#080D1A', fontSize: 10, fontWeight: '800' }}>⭐ TOP RATED</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* profile info */}
+        <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ flex: 1, color: '#F0EAD6', fontSize: 20, fontWeight: '700' }}>{data.name}</Text>
+            <AppIcon name="verified_rounded" color="#C9A84C" size={20} />
+          </View>
+          <Text style={{ marginTop: 4, color: '#6B7A99', ...lh(12, 1.4) }}>{data.title ?? ''}</Text>
+          <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
+            <AppIcon name="language_rounded" color="#6B7A99" size={14} />
+            <Text style={{ marginLeft: 6, color: '#A0A8C0', fontSize: 12 }}>{data.languages}</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+            <InfoChip label={data.experience} icon="⏳" />
+            {data.category ? <InfoChip label={data.category} icon="🔮" /> : null}
+            {data.discount ? <InfoChip label={data.discount} icon="🎁" isGreen /> : null}
+          </ScrollView>
+        </View>
+
+        {/* stats */}
+        <View style={{ marginHorizontal: 20, marginTop: 16, padding: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', ...glass }}>
+          <StatItem value={String(data.rating)} label="Rating" icon="⭐" color="#C9A84C" />
+          <StatDivider />
+          <StatItem value={data.reviews} label="Reviews" icon="💬" color="#4FC3F7" />
+          <StatDivider />
+          <StatItem value={data.consultations ?? ''} label="Sessions" icon="🎯" color="#2D9E6B" />
+          <StatDivider />
+          <StatItem value={`₹${price}/min`} label="Rate" icon="💎" color="#FFB347" />
+        </View>
+
+        {/* specialisations */}
+        <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+          <Text style={{ color: '#F0EAD6', fontSize: 15, fontWeight: '700' }}>Specialisations</Text>
+          <View style={{ marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {data.specialty.split(', ').map((s) => (
+              <View key={s} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 100, backgroundColor: argb('1A8B1A1A'), borderWidth: 1, borderColor: argb('338B1A1A') }}>
+                <Text style={{ color: '#E07070', fontSize: 12, fontWeight: '500' }}>{s}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* tabs */}
+        <View style={{ marginTop: 20, marginHorizontal: 20, borderRadius: 12, ...glass }}>
+          <TabBar testIDPrefix="astrologerDetail.tab" tabs={['About', 'Reviews', 'Availability']} index={tab} onChange={setTab} indicatorColor="#8B1A1A" labelColor="#F0EAD6" unselectedLabelColor="#6B7A99" />
+        </View>
+        <View style={{ height: 16 }} />
+        <TabPager index={tab} onChange={setTab} height={500}>
+          {[
+            <View key="about" style={{ paddingHorizontal: 20, gap: 12 }}>
+              <SectionCard title="About" emoji="📖">
+                <Text style={{ color: '#A0A8C0', ...lh(13, 1.6) }}>
+                  {`A revered Himalayan sage with over three decades of deep immersion in Parashara Jyotisha, ${data.name} has guided thousands of seekers through life's most pivotal transitions. Trained in the ancient gurukul tradition, he brings unparalleled depth to Dasha analysis, Kundli interpretation, and karmic chart reading. His consultations blend classical Vedic wisdom with compassionate, practical guidance.`}
+                </Text>
+              </SectionCard>
+              <SectionCard title="Expertise" emoji="🎓">
+                {EXPERTISE.map((e) => (
+                  <View key={e} style={{ marginBottom: 8, flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{ color: '#C9A84C', fontSize: 10 }}>✦</Text>
+                    <Text style={{ marginLeft: 10, flex: 1, color: '#A0A8C0', fontSize: 13 }}>{e}</Text>
+                  </View>
+                ))}
+              </SectionCard>
+              <SectionCard title="Education & Credentials" emoji="🏛️">
+                {[
+                  ['Jyotisha Acharya', 'Kashi Sanskrit Vishwavidyalaya'],
+                  ['Vedic Astrology Gold Medalist', 'All India Jyotish Parishad, 1998'],
+                  ['Gurukul Training', '12 years under Swami Brahmananda Saraswati'],
+                ].map(([t, s]) => (
+                  <View key={t} style={{ marginBottom: 10, flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#C9A84C' }} />
+                    <View style={{ marginLeft: 10, flex: 1 }}>
+                      <Text style={{ color: '#F0EAD6', fontSize: 13, fontWeight: '600' }}>{t}</Text>
+                      <Text style={{ color: '#6B7A99', fontSize: 11 }}>{s}</Text>
+                    </View>
+                  </View>
+                ))}
+              </SectionCard>
+            </View>,
+            <View key="reviews" style={{ paddingHorizontal: 20 }}>
+              <View style={{ padding: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', ...glass }}>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ color: '#C9A84C', fontSize: 40, fontWeight: '800' }}>{String(data.rating)}</Text>
+                  <View style={{ flexDirection: 'row' }}>{[0, 1, 2, 3, 4].map((i) => <AppIcon key={i} name="star_rounded" color="#C9A84C" size={14} />)}</View>
+                  <Text style={{ marginTop: 4, color: '#6B7A99', fontSize: 11 }}>{`${data.reviews} reviews`}</Text>
+                </View>
+                <View style={{ flex: 1, marginLeft: 20 }}>
+                  {([[5, 0.92], [4, 0.06], [3, 0.01], [2, 0.005], [1, 0.005]] as const).map(([s, p]) => (
+                    <View key={s} style={{ marginBottom: 4, flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ color: '#6B7A99', fontSize: 10 }}>{String(s)}</Text>
+                      <AppIcon name="star_rounded" color="#C9A84C" size={10} style={{ marginLeft: 4 }} />
+                      <View style={{ flex: 1, marginHorizontal: 6 }}><LinearProgress value={p} height={5} radius={4} color="#C9A84C" backgroundColor={argb('1AFFFFFF')} /></View>
+                      <Text style={{ color: '#6B7A99', fontSize: 10 }}>{`${Math.round(p * 100)}%`}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+              <View style={{ height: 12 }} />
+              {REVIEWS.map((r) => (
+                <View key={r.name} style={{ marginBottom: 10, padding: 14, borderRadius: 14, ...glass }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: argb('1AC9A84C'), borderWidth: 1, borderColor: argb('33C9A84C'), alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 16 }}>{r.avatar}</Text>
+                    </View>
+                    <View style={{ marginLeft: 10, flex: 1 }}>
+                      <Text style={{ color: '#F0EAD6', fontSize: 13, fontWeight: '600' }}>{r.name}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        {Array.from({ length: r.rating }).map((_, i) => <AppIcon key={i} name="star_rounded" color="#C9A84C" size={12} />)}
+                        <Text style={{ marginLeft: 6, color: '#6B7A99', fontSize: 10 }}>{r.date}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Text style={{ marginTop: 10, color: '#A0A8C0', ...lh(12, 1.5) }}>{r.text}</Text>
+                </View>
+              ))}
+            </View>,
+            <View key="availability" style={{ paddingHorizontal: 20, gap: 12 }}>
+              <SectionCard title="Today's Available Slots" emoji="📅">
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {['10:00 AM', '11:30 AM', '2:00 PM', '3:30 PM', '5:00 PM', '7:00 PM'].map((s, i) => {
+                    const avail = i % 3 !== 1;
+                    return (
+                      <View key={s} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: avail ? argb('1A2D9E6B') : argb('0FFFFFFF'), borderWidth: 1, borderColor: avail ? argb('332D9E6B') : argb('1AFFFFFF') }}>
+                        <Text style={{ color: avail ? '#2D9E6B' : '#6B7A99', fontSize: 12, fontWeight: '600' }}>{s}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </SectionCard>
+              <SectionCard title="Consultation Types" emoji="💬">
+                {consultTypes.map((c) => (
+                  <View key={c.type} style={{ marginBottom: 10, flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 18 }}>{c.icon}</Text>
+                    <View style={{ marginLeft: 12, flex: 1 }}>
+                      <Text style={{ color: '#F0EAD6', fontSize: 13, fontWeight: '600' }}>{c.type}</Text>
+                      <Text style={{ color: '#6B7A99', fontSize: 11 }}>{c.duration}</Text>
+                    </View>
+                    <Text style={{ color: '#C9A84C', fontSize: 13, fontWeight: '700' }}>{c.price}</Text>
+                  </View>
+                ))}
+              </SectionCard>
+              <SectionCard title="Working Hours" emoji="⏰">
+                <Row2 left="Monday – Friday" right="9:00 AM – 9:00 PM" />
+                <Row2 left="Saturday" right="10:00 AM – 7:00 PM" />
+                <Row2 left="Sunday" right="11:00 AM – 5:00 PM" />
+              </SectionCard>
+            </View>,
+          ]}
+        </TabPager>
+        <View style={{ height: 120 + 80 }} />
+      </Animated.ScrollView>
+
+      {/* pinned toolbar */}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: toolbarH, paddingTop: insets.top, flexDirection: 'row' }} pointerEvents="box-none">
+        <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#080D1A' }, toolbarBg]} />
+        <Pressable testID="astrologerDetail.back" onPress={pop} style={[{ width: 40, height: 40 }, glassBtn]}>
+          <AppIcon name="arrow_back_ios_new_rounded" color="#F0EAD6" size={18} />
+        </Pressable>
+        <View style={{ flex: 1 }} />
+        <Pressable testID="astrologerDetail.bookmark" onPress={() => setBookmarked((b) => !b)} style={[{ padding: 8 }, glassBtn]}>
+          <AppIcon name={bookmarked ? 'bookmark_rounded' : 'bookmark_border_rounded'} color={bookmarked ? '#C9A84C' : '#F0EAD6'} size={20} />
+        </Pressable>
+        {/* Share is a plain Container in source (no gesture) — display only. */}
+        <View testID="astrologerDetail.share" style={[{ padding: 8, marginLeft: 0 }, glassBtn]}>
+          <AppIcon name="share_rounded" color="#F0EAD6" size={20} />
+        </View>
+      </View>
+
+      {/* sticky CTAs */}
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, overflow: 'hidden', borderTopWidth: 1, borderTopColor: argb('1AC9A84C') }}>
+        <BlurView intensity={60} tint="dark" experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+        <View style={{ backgroundColor: argb('CC080D1A'), paddingHorizontal: 20, paddingTop: 12, paddingBottom: 28 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#C9A84C', fontSize: 18, fontWeight: '800' }}>{`₹${price}/min`}</Text>
+              <Text style={{ color: isOnline ? '#3DCB7A' : '#6B7A99', fontSize: 11 }}>{isOnline ? '🟢 Available now' : '🔴 Currently offline'}</Text>
+            </View>
+            {([['Chat', 'Chat Now', 'chat_bubble_outline_rounded', true], ['Call', 'Call Now', 'call_rounded', false]] as const).map(([t, label, icon, primary], i) => (
+              <Pressable
+                key={t}
+                testID={`astrologerDetail.${t.toLowerCase()}`}
+                onPress={() => sheet.open(t)}
+                style={{ marginLeft: i ? 8 : 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, backgroundColor: primary ? '#8B1A1A' : argb('0FFFFFFF'), borderWidth: 1, borderColor: primary ? '#8B1A1A' : argb('33C9A84C') }}
+              >
+                <AppIcon name={icon} color={primary ? '#F0EAD6' : '#C9A84C'} size={16} />
+                <Text style={{ marginLeft: 6, color: primary ? '#F0EAD6' : '#C9A84C', fontSize: 13, fontWeight: '700' }}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Pressable testID="astrologerDetail.book" onPress={() => sheet.open('Book')} style={{ marginTop: 10, borderRadius: 14, overflow: 'hidden' }}>
+            <LinearGradient colors={['#C9A84C', '#E2C26A']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ paddingVertical: 14, alignItems: 'center' }}>
+              <Text style={{ color: '#080D1A', fontSize: 15, fontWeight: '800' }}>📅  Book Consultation</Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      </View>
+
+      <BottomSheet visible={sheet.visible} onClose={sheet.close} testID="astrologerDetail.sheet">
+        {sheet.value ? (
+          <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40, backgroundColor: '#0D1B2A', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderTopColor: argb('1AC9A84C'), alignItems: 'center' }}>
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#2A3550' }} />
+            <Text style={{ marginTop: 20, color: '#F0EAD6', fontSize: 18, fontWeight: '700' }}>
+              {sheet.value === 'Book' ? '📅 Book Consultation' : sheet.value === 'Chat' ? '💬 Start Chat' : '📞 Start Call'}
+            </Text>
+            <Text style={{ marginTop: 8, color: '#6B7A99', fontSize: 13 }}>{`with ${data.name}`}</Text>
+            <View style={{ marginTop: 20, alignSelf: 'stretch', padding: 16, borderRadius: 14, flexDirection: 'row', justifyContent: 'space-around', ...glass }}>
+              {[['Rate', `₹${price}/min`], ['Min Balance', `₹${price * 5}`], ['Wait Time', '< 2 min']].map(([l, v]) => (
+                <View key={l} style={{ alignItems: 'center' }}>
+                  <Text style={{ color: '#C9A84C', fontSize: 14, fontWeight: '700' }}>{v}</Text>
+                  <Text style={{ color: '#6B7A99', fontSize: 11 }}>{l}</Text>
+                </View>
+              ))}
+            </View>
+            <Pressable testID="astrologerDetail.sheet.proceed" onPress={() => proceed(sheet.value!)} style={{ marginTop: 20, alignSelf: 'stretch', borderRadius: 14, overflow: 'hidden' }}>
+              <LinearGradient colors={['#8B1A1A', '#AB2424']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ paddingVertical: 16, alignItems: 'center' }}>
+                <Text style={{ color: '#F0EAD6', fontSize: 15, fontWeight: '700' }}>{sheet.value === 'Book' ? 'Confirm Booking' : `Proceed to ${sheet.value}`}</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        ) : null}
+      </BottomSheet>
+    </View>
+  );
+}

@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "AstroParihar",
+    "slug": "astroparihar",
+    "scheme": "astroparihar",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#080D1A",
+    "icon": "./assets/images/app_logo_emblem.png",
+    "newArchEnabled": true,
+    "ios": { "supportsTablet": false, "bundleIdentifier": "com.example.astroparihar", "icon": "./assets/images/app_logo_emblem.png" },
+    "android": {
+      "package": "com.example.astroparihar",
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/app_logo_emblem.png",
+        "backgroundColor": "#080D1A"
+      }
+    },
+    "web": { "bundler": "metro", "output": "single" },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      ["expo-splash-screen", { "backgroundColor": "#F8F4EE" }],
+      "@react-native-community/datetimepicker"
+    ],
+    "experiments": { "typedRoutes": false }
+  }
+}
