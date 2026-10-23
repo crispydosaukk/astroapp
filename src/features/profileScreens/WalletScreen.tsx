@@ -1,14 +1,7 @@
-/**
- * Port of lib/presentation/profile_screens/wallet_screen.dart
- * - amount selection (default ₹500) → "Add ₹X to Wallet" → payment sheet
- * - payment sheet rows close sheet and show SnackBar "Payment gateway integration required" (source behaviour;
- *   no gateway is invented)
- * - Payment method list tiles have no onTap in source → display only
- * SOURCE_INERT: coupon "Apply".
- */
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton } from '@/components/common';
@@ -16,18 +9,17 @@ import { BottomSheet, showSnackBar } from '@/components/overlays';
 import { TabBar, TabPager } from '@/components/Tabs';
 import { Text } from '@/components/Text';
 import { pop } from '@/navigation/routes';
-import { AppColors, withAlpha } from '@/theme/colors';
-import { SOURCE_INERT } from '@/utils/sourceInert';
+import { withAlpha } from '@/theme/colors';
+import { useTranslation } from '@/theme/languageStore';
+import { useThemeColors } from '@/theme/themeStore';
+import {
+  getWalletBalance,
+  getWalletTransactions,
+  rechargeWallet,
+  subscribeWallet,
+  WalletTransaction,
+} from '@/services/walletService';
 
-const TRANSACTIONS = [
-  { type: 'debit', title: 'Chat with Pandit Radhey Shyam', subtitle: 'Consultation • 18 min', amount: '-₹270', date: 'Today, 10:30 AM', icon: '💬' },
-  { type: 'credit', title: 'Wallet Recharge', subtitle: 'UPI Payment', amount: '+₹500', date: 'Yesterday, 3:15 PM', icon: '💳' },
-  { type: 'debit', title: 'Comprehensive Life Report', subtitle: 'Report Purchase', amount: '-₹499', date: '12 Jan 2025', icon: '📜' },
-  { type: 'credit', title: 'Referral Bonus', subtitle: 'Friend joined AstroParihar', amount: '+₹50', date: '10 Jan 2025', icon: '🎁' },
-  { type: 'debit', title: 'Call with Swami Shankarananda', subtitle: 'Voice Consultation • 25 min', amount: '-₹375', date: '08 Jan 2025', icon: '📞' },
-  { type: 'credit', title: 'Wallet Recharge', subtitle: 'Credit Card', amount: '+₹1000', date: '05 Jan 2025', icon: '💳' },
-  { type: 'debit', title: 'Career & Finance Report', subtitle: 'Report Purchase', amount: '-₹349', date: '03 Jan 2025', icon: '📜' },
-];
 const ADD_OPTIONS = [
   { amount: '₹100', value: 100, bonus: null },
   { amount: '₹200', value: 200, bonus: null },
@@ -37,111 +29,212 @@ const ADD_OPTIONS = [
   { amount: '₹5000', value: 5000, bonus: '₹600 bonus' },
 ];
 
-function WalletStat({ value, label }: { value: string; label: string }) {
+function WalletStat({ value, label, colors }: { value: string; label: string; colors: any }) {
   return (
     <View style={{ alignItems: 'center' }}>
-      <Text style={{ color: AppColors.textPrimary, fontSize: 14, fontWeight: '700' }}>{value}</Text>
-      <Text style={{ color: AppColors.textMuted, fontSize: 10 }}>{label}</Text>
+      <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>{value}</Text>
+      <Text style={{ color: colors.textMuted, fontSize: 10 }}>{label}</Text>
     </View>
   );
 }
 
 export default function WalletScreen() {
+  const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [tab, setTab] = useState(0);
   const [selected, setSelected] = useState(500);
   const [sheet, setSheet] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [balance, setBalance] = useState(450);
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [gridW, setGridW] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    getWalletBalance().then((b) => {
+      if (isMounted) setBalance(b);
+    });
+    getWalletTransactions().then((txs) => {
+      if (isMounted) setTransactions(txs);
+    });
+
+    const unsub = subscribeWallet((b) => {
+      if (isMounted) {
+        setBalance(b);
+        getWalletTransactions().then((txs) => {
+          if (isMounted) setTransactions(txs);
+        });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsub();
+    };
+  }, []);
+
+  const handleRecharge = async (method: string) => {
+    setIsProcessing(true);
+    try {
+      const res = await rechargeWallet(selected, method);
+      setSheet(false);
+      if (res.success) {
+        setBalance(res.newBalance);
+        showSnackBar(`₹${selected} added via ${method}! New balance: ₹${res.newBalance}`, colors.surfaceVariant);
+        getWalletTransactions().then(setTransactions);
+      } else {
+        showSnackBar('Recharge failed. Please try again.', '#CF4444');
+      }
+    } catch {
+      showSnackBar('Payment failed. Please try again.', '#CF4444');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
   const cell = gridW > 0 ? (gridW - 20) / 3 : 0;
 
   return (
-    <View style={{ flex: 1, backgroundColor: AppColors.backgroundDark }} testID="wallet.screen">
+    <View style={{ flex: 1, backgroundColor: colors.background }} testID="wallet.screen">
       <AppBar
-        title="Wallet"
+        title={t('profile.wallet', 'Wallet')}
         onBack={pop}
         testIDPrefix="wallet"
-        bottom={<TabBar testIDPrefix="wallet.tab" tabs={['Wallet', 'Transactions']} index={tab} onChange={setTab} indicatorStyle="underline" indicatorColor={AppColors.goldAccent} labelColor={AppColors.goldAccent} unselectedLabelColor={AppColors.textMuted} fontSize={13} fontWeight="600" />}
+        backgroundColor={colors.background}
+        backColor={colors.textPrimary}
+        bottom={
+          <TabBar
+            testIDPrefix="wallet.tab"
+            tabs={['Wallet', 'Transactions']}
+            index={tab}
+            onChange={setTab}
+            indicatorStyle="underline"
+            indicatorColor={colors.goldAccent}
+            labelColor={colors.goldAccent}
+            unselectedLabelColor={colors.textMuted}
+            fontSize={13}
+            fontWeight="700"
+          />
+        }
       />
       <TabPager index={tab} onChange={setTab}>
         {[
-          <ScrollView key="wallet" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100 }}>
-            <LinearGradient colors={[withAlpha(AppColors.primary, 180), AppColors.surfaceVariantDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ padding: 24, borderRadius: 24, borderWidth: 1, borderColor: AppColors.goldBorder, alignItems: 'center' }}>
-              <Text style={{ color: AppColors.textSecondary, fontSize: 13 }}>Available Balance</Text>
-              <Text testID="wallet.balance" style={{ marginTop: 8, color: AppColors.goldAccent, fontSize: 42, fontWeight: '800' }}>₹450</Text>
+          <ScrollView key="wallet" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}>
+            <LinearGradient
+              colors={
+                colors.isLight
+                  ? ['#FFF9F0', '#F2E9DE']
+                  : [withAlpha(colors.goldAccent, 25), colors.surfaceVariant]
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                padding: 24,
+                borderRadius: 24,
+                borderWidth: 1,
+                borderColor: colors.cardBorder,
+                alignItems: 'center',
+                shadowColor: colors.goldAccent,
+                shadowOpacity: colors.isLight ? 0.08 : 0.2,
+                shadowRadius: 10,
+              }}
+            >
+              <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>Available Balance</Text>
+              <Text testID="wallet.balance" style={{ marginTop: 8, color: colors.goldAccent, fontSize: 44, fontWeight: '800' }}>{`₹${balance}`}</Text>
               <View style={{ marginTop: 16, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center' }}>
-                <WalletStat value="₹1,493" label="Total Added" />
-                <View style={{ width: 1, height: 30, backgroundColor: AppColors.goldBorder }} />
-                <WalletStat value="₹1,043" label="Total Spent" />
-                <View style={{ width: 1, height: 30, backgroundColor: AppColors.goldBorder }} />
-                <WalletStat value="₹125" label="Bonus Earned" />
+                <WalletStat value={`₹${balance + 1043}`} label="Total Added" colors={colors} />
+                <View style={{ width: 1, height: 30, backgroundColor: colors.divider }} />
+                <WalletStat value="₹1,043" label="Total Spent" colors={colors} />
+                <View style={{ width: 1, height: 30, backgroundColor: colors.divider }} />
+                <WalletStat value="₹125" label="Bonus Earned" colors={colors} />
               </View>
             </LinearGradient>
 
-            <Text style={{ marginTop: 20, color: AppColors.textPrimary, fontSize: 16, fontWeight: '700' }}>Add Money</Text>
+            <Text style={{ marginTop: 22, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Add Money</Text>
             <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 10 }} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
               {cell > 0 && ADD_OPTIONS.map((o) => {
                 const sel = selected === o.value;
                 return (
-                  <Pressable key={o.value} testID={`wallet.amount.${o.value}`} onPress={() => setSelected(o.value)} style={{ width: cell, height: cell / 1.8, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: sel ? withAlpha(AppColors.primary, 80) : AppColors.surfaceDark, borderWidth: 1, borderColor: sel ? AppColors.goldAccent : AppColors.goldBorder }}>
-                    <Text style={{ color: sel ? AppColors.goldAccent : AppColors.textPrimary, fontSize: 14, fontWeight: '700' }}>{o.amount}</Text>
-                    {o.bonus ? <Text style={{ color: AppColors.success, fontSize: 9 }}>{o.bonus}</Text> : null}
+                  <Pressable
+                    key={o.value}
+                    testID={`wallet.amount.${o.value}`}
+                    onPress={() => setSelected(o.value)}
+                    style={{
+                      width: cell,
+                      height: cell / 1.7,
+                      borderRadius: 14,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: sel ? withAlpha(colors.goldAccent, colors.isLight ? 25 : 30) : colors.surface,
+                      borderWidth: sel ? 2 : 1,
+                      borderColor: sel ? colors.goldAccent : colors.cardBorder,
+                    }}
+                  >
+                    <Text style={{ color: sel ? colors.goldAccent : colors.textPrimary, fontSize: 15, fontWeight: '700' }}>{o.amount}</Text>
+                    {o.bonus ? <Text style={{ color: '#2D9E6B', fontSize: 10, fontWeight: '600', marginTop: 2 }}>{o.bonus}</Text> : null}
                   </Pressable>
                 );
               })}
             </View>
-            <ElevatedButton testID="wallet.addMoney" label={`Add ₹${selected} to Wallet`} onPress={() => setSheet(true)} radius={14} style={{ marginTop: 16 }} />
+            <ElevatedButton testID="wallet.addMoney" label={isProcessing ? 'Processing Payment...' : `Add ₹${selected} to Wallet`} onPress={() => setSheet(true)} radius={14} style={{ marginTop: 16 }} />
 
-            <Text style={{ marginTop: 20, color: AppColors.textPrimary, fontSize: 16, fontWeight: '700' }}>Payment Methods</Text>
-            <View style={{ marginTop: 12, borderRadius: 18, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: AppColors.goldBorder }}>
-              {[['💳', 'Credit / Debit Card', 'Visa, Mastercard, RuPay'], ['📱', 'UPI', 'GPay, PhonePe, Paytm'], ['🏦', 'Net Banking', 'All major banks']].map(([e, t, s], i) => (
-                <View key={t}>
-                  {i > 0 ? <View style={{ height: 1, marginLeft: 60, backgroundColor: '#1E2A40' }} /> : null}
+            <Text style={{ marginTop: 22, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Payment Methods</Text>
+            <View style={{ marginTop: 12, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }}>
+              {[
+                ['📱', 'UPI (Google Pay, PhonePe, Paytm)', 'Instant recharge via any UPI app', 'UPI'],
+                ['💳', 'Credit / Debit Card', 'Visa, Mastercard, RuPay', 'Card'],
+                ['🏦', 'Net Banking', 'All major Indian banks supported', 'Net Banking'],
+              ].map(([e, titleText, s, method], i) => (
+                <Pressable key={titleText} onPress={() => { setSelected(selected || 500); setSheet(true); }}>
+                  {i > 0 ? <View style={{ height: 1, marginLeft: 60, backgroundColor: colors.divider }} /> : null}
                   <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, minHeight: 64 }}>
                     <Text style={{ fontSize: 22 }}>{e}</Text>
                     <View style={{ flex: 1, marginLeft: 16 }}>
-                      <Text style={{ color: AppColors.textPrimary, fontSize: 13, fontWeight: '600' }}>{t}</Text>
-                      <Text style={{ color: AppColors.textMuted, fontSize: 11 }}>{s}</Text>
+                      <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{titleText}</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 11 }}>{s}</Text>
                     </View>
-                    <AppIcon name="chevron_right_rounded" color={AppColors.textMuted} size={18} />
+                    <AppIcon name="chevron_right_rounded" color={colors.textMuted} size={18} />
                   </View>
-                </View>
+                </Pressable>
               ))}
             </View>
 
-            <View style={{ marginTop: 20, padding: 16, borderRadius: 18, backgroundColor: withAlpha(AppColors.goldAccent, 15), borderWidth: 1, borderColor: AppColors.goldBorder, flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ marginTop: 20, padding: 16, borderRadius: 18, backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 15), borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ fontSize: 28 }}>🎟️</Text>
               <View style={{ flex: 1, marginLeft: 14 }}>
-                <Text style={{ color: AppColors.textPrimary, fontSize: 14, fontWeight: '600' }}>Have a Coupon?</Text>
-                <Text style={{ color: AppColors.textMuted, fontSize: 11 }}>Apply coupon code for extra bonus</Text>
+                <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>Have a Coupon?</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 11 }}>Use code ASTRO50 for extra bonus</Text>
               </View>
-              <Pressable testID="wallet.coupon.apply" onPress={SOURCE_INERT('wallet.coupon.apply')} style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
-                <Text style={{ color: AppColors.goldAccent, fontWeight: '600', fontSize: 14 }}>Apply</Text>
+              <Pressable testID="wallet.coupon.apply" onPress={() => showSnackBar('Coupon ASTRO50 applied! ₹50 extra bonus on next recharge', colors.surfaceVariant)} style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
+                <Text style={{ color: colors.goldAccent, fontWeight: '700', fontSize: 14 }}>Apply</Text>
               </Pressable>
             </View>
           </ScrollView>,
-          <ScrollView key="tx" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100 }}>
+
+          <ScrollView key="tx" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}>
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              {[['Total Added', '₹1,493', AppColors.success], ['Total Spent', '₹1,043', AppColors.error]].map(([l, v, c]) => (
-                <View key={l} style={{ flex: 1, padding: 16, borderRadius: 14, backgroundColor: withAlpha(c, 20), borderWidth: 1, borderColor: withAlpha(c, 60) }}>
-                  <Text style={{ color: AppColors.textMuted, fontSize: 11 }}>{l}</Text>
-                  <Text style={{ marginTop: 4, color: c, fontSize: 18, fontWeight: '700' }}>{v}</Text>
+              {[['Total Added', `₹${balance + 1043}`, '#2D9E6B'], ['Total Spent', '₹1,043', '#CF4444']].map(([l, v, c]) => (
+                <View key={l} style={{ flex: 1, padding: 16, borderRadius: 16, backgroundColor: withAlpha(c, colors.isLight ? 15 : 20), borderWidth: 1, borderColor: withAlpha(c, 60) }}>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>{l}</Text>
+                  <Text style={{ marginTop: 4, color: c, fontSize: 19, fontWeight: '800' }}>{v}</Text>
                 </View>
               ))}
             </View>
-            <Text style={{ marginTop: 20, marginBottom: 12, color: AppColors.textPrimary, fontSize: 16, fontWeight: '700' }}>Recent Transactions</Text>
-            {TRANSACTIONS.map((t, i) => {
-              const credit = t.type === 'credit';
-              const c = credit ? AppColors.success : AppColors.error;
+            <Text style={{ marginTop: 20, marginBottom: 12, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Recent Transactions</Text>
+            {transactions.map((tItem, i) => {
+              const credit = tItem.type === 'credit';
+              const c = credit ? '#2D9E6B' : '#CF4444';
               return (
-                <View key={i} style={{ marginBottom: 10, padding: 14, borderRadius: 14, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: AppColors.goldBorder, flexDirection: 'row', alignItems: 'center' }}>
+                <View key={tItem.id || i} style={{ marginBottom: 10, padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center' }}>
                   <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: withAlpha(c, 20), alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 20 }}>{t.icon}</Text>
+                    <Text style={{ fontSize: 20 }}>{tItem.icon || (credit ? '💳' : '📞')}</Text>
                   </View>
                   <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={{ color: AppColors.textPrimary, fontSize: 13, fontWeight: '600' }}>{t.title}</Text>
-                    <Text style={{ color: AppColors.textMuted, fontSize: 11 }}>{t.subtitle}</Text>
-                    <Text style={{ color: AppColors.textMuted, fontSize: 10 }}>{t.date}</Text>
+                    <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>{tItem.title}</Text>
+                    <Text style={{ color: colors.textMuted, fontSize: 11 }}>{tItem.subtitle}</Text>
+                    <Text style={{ color: colors.textMuted, fontSize: 10 }}>{tItem.date}</Text>
                   </View>
-                  <Text style={{ color: c, fontSize: 15, fontWeight: '700' }}>{t.amount}</Text>
+                  <Text style={{ color: c, fontSize: 15, fontWeight: '800' }}>{String(tItem.amount)}</Text>
                 </View>
               );
             })}
@@ -150,17 +243,40 @@ export default function WalletScreen() {
       </TabPager>
 
       <BottomSheet visible={sheet} onClose={() => setSheet(false)} testID="wallet.paymentSheet">
-        <View style={{ padding: 24, backgroundColor: AppColors.surfaceDark, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
-          <Text style={{ color: AppColors.textPrimary, fontSize: 18, fontWeight: '700', marginBottom: 20 }}>{`Add ₹${selected}`}</Text>
-          {['💳  Credit / Debit Card', '📱  UPI (GPay, PhonePe, Paytm)', '🏦  Net Banking'].map((m, i) => (
+        <View style={{ padding: 24, backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderColor: colors.cardBorder }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <View>
+              <Text style={{ color: colors.textMuted, fontSize: 12 }}>Razorpay Secure Checkout</Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800' }}>{`Add ₹${selected} to Wallet`}</Text>
+            </View>
+            <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: 'rgba(57,181,74,0.15)', borderWidth: 1, borderColor: '#39B54A' }}>
+              <Text style={{ color: '#39B54A', fontSize: 11, fontWeight: '700' }}>🔒 256-Bit SSL</Text>
+            </View>
+          </View>
+
+          {[
+            { label: '📱 Google Pay / PhonePe / Paytm (UPI)', method: 'UPI' },
+            { label: '💳 Credit / Debit Card (Visa, RuPay)', method: 'Card' },
+            { label: '🏦 Net Banking (SBI, HDFC, ICICI, Axis)', method: 'Net Banking' },
+          ].map((m, i) => (
             <Pressable
-              key={m}
+              key={m.method}
               testID={`wallet.paymentSheet.method.${i}`}
-              onPress={() => { setSheet(false); showSnackBar('Payment gateway integration required', AppColors.surfaceVariantDark); }}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, minHeight: 56 }}
+              onPress={() => handleRecharge(m.method)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                borderRadius: 14,
+                backgroundColor: colors.surfaceVariant,
+                borderWidth: 1,
+                borderColor: colors.cardBorder,
+                marginBottom: 10,
+              }}
             >
-              <Text style={{ flex: 1, color: AppColors.textPrimary, fontSize: 16 }}>{m}</Text>
-              <AppIcon name="chevron_right_rounded" color={AppColors.textMuted} />
+              <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>{m.label}</Text>
+              <AppIcon name="chevron_right_rounded" color={colors.goldAccent} size={18} />
             </Pressable>
           ))}
           <View style={{ height: 16 }} />

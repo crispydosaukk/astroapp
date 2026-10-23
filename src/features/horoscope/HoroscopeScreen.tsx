@@ -8,13 +8,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedPressable, AnimatedText } from '@/components/AnimatedBox';
 import { AppIcon } from '@/components/AppIcon';
 import { LinearProgress, RadialGlow } from '@/components/common';
 import { lh, Text } from '@/components/Text';
 import { AppRoutes, pop, push } from '@/navigation/routes';
 import { argb, withAlpha } from '@/theme/colors';
+import { fetchLiveHoroscopes } from '@/services/astrologyService';
 
 export const ZODIACS = [
   { sign: 'Aries', symbol: '♈', emoji: '🐏', dates: 'Mar 21 – Apr 19', element: 'Fire' },
@@ -110,10 +111,22 @@ function LuckyItem({ label, value, emoji }: { label: string; value: string; emoj
 }
 
 export default function HoroscopeScreen() {
+  const insets = useSafeAreaInsets();
   const [dateOffset, setDateOffset] = useState(0);
   const [zodiac, setZodiac] = useState('Aries');
+  const [liveData, setLiveData] = useState<Record<string, HoroscopeData>>({});
   const fade = useSharedValue(0);
   const pending = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchLiveHoroscopes().then((res) => {
+      if (res && Object.keys(res).length > 0 && isMounted) {
+        setLiveData(res as Record<string, HoroscopeData>);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
 
   useEffect(() => { fade.value = withTiming(1, { duration: 350, easing: Easing.out(Easing.quad) }); }, [fade]);
   const fadeStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
@@ -134,7 +147,7 @@ export default function HoroscopeScreen() {
   const changeZodiac = (sign: string) => transition(() => setZodiac(sign));
 
   const info = ZODIACS.find((z) => z.sign === zodiac)!;
-  const data = DATA[zodiac] ?? DATA.Aries;
+  const data = liveData[zodiac] ?? DATA[zodiac] ?? DATA.Aries;
   const d = new Date();
   d.setDate(d.getDate() + dateOffset);
   const formattedDate = `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
@@ -156,7 +169,7 @@ export default function HoroscopeScreen() {
       </View>
 
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: Math.max(160, insets.bottom + 110) }}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height: 80 }} contentContainerStyle={{ gap: 10 }}>
             {ZODIACS.map((z) => {
               const sel = zodiac === z.sign;
@@ -241,7 +254,16 @@ export default function HoroscopeScreen() {
             <Text style={{ color: '#F0EAD6', fontSize: 15, fontWeight: '700' }}>🔮 Want deeper insights?</Text>
             <Text style={{ marginTop: 6, textAlign: 'center', color: '#6B7A99', ...lh(12, 1.5) }}>Ask AstroParihar AI for personalised guidance based on your birth chart</Text>
             <View style={{ marginTop: 14, flexDirection: 'row', alignSelf: 'stretch' }}>
-              <Pressable testID="horoscope.askAi" onPress={() => push(AppRoutes.aiChatScreen)} style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#8B1A1A', alignItems: 'center' }}>
+              <Pressable
+                testID="horoscope.askAi"
+                onPress={() => {
+                  push(AppRoutes.aiChatScreen, {
+                    astrologerId: 'vedika',
+                    initialPrompt: `Namaste Vedika, according to today's Vedic horoscope for ${zodiac} (${formattedDate}), my overall score is ${data.overall}%. What cosmic remedies or advice do you have for my love life, career, and spiritual progress today?`
+                  });
+                }}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#8B1A1A', alignItems: 'center' }}
+              >
                 <Text style={{ color: '#F0EAD6', fontSize: 13, fontWeight: '700' }}>✨ Ask AI Astrologer</Text>
               </Pressable>
               <View style={{ width: 10 }} />

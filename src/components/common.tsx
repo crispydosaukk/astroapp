@@ -203,10 +203,10 @@ export function LinearProgress({ value, height = 4, color, backgroundColor, radi
 
 /* ------------------------------------------------------------- OutlinedButton */
 export function OutlinedButton({
-  label, onPress, color = AppColors.textPrimary, borderColor = AppColors.goldBorder, radius = 14, paddingV = 14,
+  label, onPress, color = AppColors.textPrimary, borderColor = AppColors.goldBorder, radius = 14, paddingV = 14, paddingH = 16,
   fontSize = 14, fontWeight = '600', icon, testID, style, borderWidth = 1,
 }: {
-  label: string; onPress?: () => void; color?: string; borderColor?: string; radius?: number; paddingV?: number;
+  label: string; onPress?: () => void; color?: string; borderColor?: string; radius?: number; paddingV?: number; paddingH?: number;
   fontSize?: number; fontWeight?: '500' | '600' | '700'; icon?: string; testID?: string; style?: StyleProp<ViewStyle>; borderWidth?: number;
 }) {
   return (
@@ -214,7 +214,7 @@ export function OutlinedButton({
       testID={testID}
       onPress={onPress}
       android_ripple={{ color: withAlpha(color.startsWith('#') ? color : '#FFFFFF', 30) }}
-      style={[{ borderWidth, borderColor, borderRadius: radius, paddingVertical: paddingV, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, style]}
+      style={[{ borderWidth, borderColor, borderRadius: radius, paddingVertical: paddingV, paddingHorizontal: paddingH, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, style]}
     >
       {icon ? <AppIcon name={icon} size={fontSize + 4} color={color} style={{ marginRight: 8 }} /> : null}
       <Text style={{ color, fontSize, fontWeight }}>{label}</Text>

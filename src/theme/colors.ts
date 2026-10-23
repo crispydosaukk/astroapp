@@ -19,7 +19,7 @@ export const AppColors = {
   warning: '#D4821A',
   error: '#CF4444',
   online: '#3DCB7A',
-  backgroundLight: '#F8F4EE',
+  backgroundLight: '#FAF9F6',
   surfaceLight: '#FFFFFF',
   outline: '#2A3550',
   outlineVariant: '#1E2A40',

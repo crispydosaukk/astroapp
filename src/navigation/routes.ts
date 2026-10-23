@@ -8,6 +8,7 @@ import { useMemo } from 'react';
 export const AppRoutes = {
   initial: '/',
   splashScreen: '/splash-screen',
+  signInScreen: '/sign-in-screen',
   onboardingScreen: '/onboarding-screen',
   birthProfileSetupScreen: '/birth-profile-setup-screen',
   homeDashboardScreen: '/home-dashboard-screen',

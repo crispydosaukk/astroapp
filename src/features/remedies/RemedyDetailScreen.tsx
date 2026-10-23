@@ -7,13 +7,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar, BoxBackButton } from '@/components/AppBar';
 import { ElevatedButton, EmptyState, OutlinedButton } from '@/components/common';
 import { lh, Text } from '@/components/Text';
 import {
   CHARITIES, DEITIES, GEMS, getRemedyData, HOMAS, MANTRAS, MUKHIS, Remedy, VASTU_DIRECTIONS, YANTRAS,
 } from '@/data/remedies';
-import { useExtra } from '@/navigation/routes';
+import { AppRoutes, push, useExtra } from '@/navigation/routes';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { SOURCE_INERT } from '@/utils/sourceInert';
 
@@ -188,6 +189,7 @@ function SpecificContent({ name, color }: { name: string; color: string }) {
 }
 
 export default function RemedyDetailScreen() {
+  const insets = useSafeAreaInsets();
   const remedy = useExtra<Remedy>();
   if (!remedy) {
     return (
@@ -231,14 +233,39 @@ export default function RemedyDetailScreen() {
         </View>
 
         <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
-          <ElevatedButton testID="remedyDetail.report" label="Get My Personalised Report" onPress={SOURCE_INERT('remedyDetail.report')} radius={14} paddingV={14} fontSize={14} fontWeight="700" />
+          <ElevatedButton
+            testID="remedyDetail.report"
+            label="Get My Personalised Report"
+            onPress={() => push(AppRoutes.kundliReportsScreen)}
+            radius={14}
+            paddingV={14}
+            fontSize={14}
+            fontWeight="700"
+          />
           <View style={{ marginTop: 10, flexDirection: 'row' }}>
-            <OutlinedButton testID="remedyDetail.askAi" label="🤖 Ask AI" onPress={SOURCE_INERT('remedyDetail.askAi')} paddingV={12} fontSize={13} style={{ flex: 1 }} />
+            <OutlinedButton
+              testID="remedyDetail.askAi"
+              label="🤖 Ask AI"
+              onPress={() => push(AppRoutes.aiChatScreen, {
+                astrologerId: 'vedika',
+                initialPrompt: `Namaste Vedika, please guide me on how to perform the Vedic remedy '${name}' (${remedy.sanskrit}) for my planetary benefits.`
+              })}
+              paddingV={12}
+              fontSize={13}
+              style={{ flex: 1 }}
+            />
             <View style={{ width: 10 }} />
-            <OutlinedButton testID="remedyDetail.astrologer" label="👨‍🔮 Astrologer" onPress={SOURCE_INERT('remedyDetail.astrologer')} paddingV={12} fontSize={13} style={{ flex: 1 }} />
+            <OutlinedButton
+              testID="remedyDetail.astrologer"
+              label="👨‍🔮 Astrologer"
+              onPress={() => push(AppRoutes.liveAstrologersScreen)}
+              paddingV={12}
+              fontSize={13}
+              style={{ flex: 1 }}
+            />
           </View>
         </View>
-        <View style={{ height: 100 }} />
+        <View style={{ height: Math.max(140, insets.bottom + 80) }} />
       </ScrollView>
     </View>
   );

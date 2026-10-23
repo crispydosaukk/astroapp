@@ -10,7 +10,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Line } from 'react-native-svg';
 import { AppBar, BoxBackButton } from '@/components/AppBar';
@@ -21,21 +23,50 @@ import { REMEDIES, Remedy } from '@/data/remedies';
 import { AppRoutes, push } from '@/navigation/routes';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { SOURCE_INERT } from '@/utils/sourceInert';
+import { fetchLiveRemedies } from '@/services/astrologyService';
 
 /** Navigator.push(MaterialPageRoute(RemedyDetailScreen(remedy))) equivalent. */
 export const openRemedy = (r: Remedy) => push(AppRoutes.remedyDetailScreen, r);
 
 export default function RemediesScreen() {
+  const insets = useSafeAreaInsets();
   const pulse = useSharedValue(0.95);
   const wheel = useSharedValue(0);
-  const [w, setW] = useState(0);
+  const [w, setW] = useState(Dimensions.get('window').width - 40);
+  const [liveRemedies, setLiveRemedies] = useState<any[]>([]);
+
   useEffect(() => {
     pulse.value = withRepeat(withTiming(1.05, { duration: 1500, easing: Easing.inOut(Easing.ease) }), -1, true);
     wheel.value = withRepeat(withTiming(1, { duration: 20000, easing: Easing.linear }), -1, false);
+
+    fetchLiveRemedies().then((res) => {
+      if (res.ashtaDirections?.length) {
+        setLiveRemedies(res.ashtaDirections);
+      }
+    }).catch(() => {});
   }, [pulse, wheel]);
+
+  const onDiscoverRemedies = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('astroparihar_user_birth_details');
+      const profile = stored ? JSON.parse(stored) : null;
+      const name = profile?.name || 'Devotee';
+      const dob = profile?.dob || '1995-10-15';
+      push(AppRoutes.aiChatScreen, {
+        astrologerId: 'vedika',
+        initialPrompt: `Namaste Vedika, please analyze my birth chart (${name}, DOB: ${dob}) and prescribe sacred Vedic remedies according to the Ashta-Digbandhana (8 sacred directions), including my Ishta Devata, planetary mantras, and homam rituals.`
+      });
+    } catch {
+      push(AppRoutes.aiChatScreen, {
+        astrologerId: 'vedika',
+        initialPrompt: `Namaste Vedika, please prescribe sacred Vedic remedies for my planetary chart according to ancient Vedic traditions.`
+      });
+    }
+  };
+
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
   const wheelStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${wheel.value * 360 * 0.05}deg` }] }));
-  const cellW = w > 0 ? (w - 12) / 2 : 0;
+  const cellW = Math.max(140, (w - 12) / 2);
 
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.backgroundDark }} testID="remedies.screen">
@@ -45,7 +76,7 @@ export default function RemediesScreen() {
           <Animated.Text style={[{ fontSize: 48 }, pulseStyle]}>🕉️</Animated.Text>
           <Text style={{ marginTop: 16, color: AppColors.textPrimary, fontSize: 22, fontWeight: '800', textAlign: 'center' }}>Sacred Vedic Remedies</Text>
           <Text style={{ marginTop: 8, color: AppColors.textSecondary, textAlign: 'center', ...lh(13, 1.5) }}>Personalised remedies aligned with your birth chart and planetary influences. Ancient wisdom for modern transformation.</Text>
-          <ElevatedButton testID="remedies.discover" label="Discover Your Remedies ✨" onPress={SOURCE_INERT('remedies.discover')} bg={AppColors.goldAccent} fg={AppColors.backgroundDark} radius={14} paddingV={14} fontSize={14} fontWeight="700" style={{ marginTop: 20, alignSelf: 'stretch' }} />
+          <ElevatedButton testID="remedies.discover" label="Discover Your Remedies ✨" onPress={onDiscoverRemedies} bg={AppColors.goldAccent} fg={AppColors.backgroundDark} radius={14} paddingV={14} fontSize={14} fontWeight="700" style={{ marginTop: 20, alignSelf: 'stretch' }} />
         </LinearGradient>
 
         <View style={{ marginHorizontal: 20, marginVertical: 8 }}>
@@ -87,12 +118,12 @@ export default function RemediesScreen() {
         <View style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 8 }}>
           <Text style={{ color: AppColors.textPrimary, fontSize: 16, fontWeight: '700' }}>All Remedies</Text>
           <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 12 }} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
-            {cellW > 0 && REMEDIES.map((r) => (
+            {REMEDIES.map((r) => (
               <Pressable
                 key={r.name}
                 testID={`remedies.card.${r.name.replace(/[^A-Za-z]/g, '')}`}
                 onPress={() => openRemedy(r)}
-                style={{ width: cellW, height: cellW / 1.2, padding: 16, borderRadius: 18, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(r.color, 80), justifyContent: 'space-between' }}
+                style={{ width: cellW, minHeight: 140, padding: 16, borderRadius: 18, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(r.color, 80), justifyContent: 'space-between' }}
               >
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ fontSize: 24 }}>{r.emoji}</Text>
@@ -107,7 +138,7 @@ export default function RemediesScreen() {
             ))}
           </View>
         </View>
-        <View style={{ height: 100 }} />
+        <View style={{ height: Math.max(140, insets.bottom + 80) }} />
       </ScrollView>
     </View>
   );

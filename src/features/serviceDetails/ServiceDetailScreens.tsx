@@ -96,12 +96,13 @@ function AstrologerRow({ items, accent }: { items: Mini[]; accent: string }) {
   );
 }
 function ServiceLayout({ title, testID, children }: { title: string; testID: string; children: React.ReactNode }) {
+  const insets = useSafeAreaInsets();
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.backgroundDark }} testID={`${testID}.screen`}>
       <AppBar title={title} onBack={pop} testIDPrefix={testID} backSize={24} />
       <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
         {children}
-        <View style={{ height: 100 }} />
+        <View style={{ height: Math.max(140, insets.bottom + 85) }} />
       </ScrollView>
       <ConsultCTABar testIDPrefix={testID} />
     </View>

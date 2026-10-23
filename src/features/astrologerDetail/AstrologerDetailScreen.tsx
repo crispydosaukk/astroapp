@@ -9,8 +9,8 @@
  */
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
-import { Platform, Pressable, ScrollView, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import Animated, { interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '@/components/AppIcon';
@@ -19,8 +19,10 @@ import { LinearProgress } from '@/components/common';
 import { BottomSheet, useSheet } from '@/components/overlays';
 import { TabBar, TabPager } from '@/components/Tabs';
 import { lh, Text } from '@/components/Text';
-import { AstrologerData, LIVE_ASTROLOGERS } from '@/data/astrologers';
 import { AppRoutes, pop, push, useExtra } from '@/navigation/routes';
+import { AstrologerData, LIVE_ASTROLOGERS } from '@/data/astrologers';
+import { getAstrologerReviews } from '@/services/reviewService';
+import { getWalletBalance, rechargeWallet, subscribeWallet } from '@/services/walletService';
 import { argb } from '@/theme/colors';
 
 const DEFAULT_DATA: AstrologerData = LIVE_ASTROLOGERS[0];
@@ -96,7 +98,62 @@ export default function AstrologerDetailScreen() {
     transform: [{ translateY: interpolate(scrollY.value, [-HEADER_H, 0, HEADER_H], [-HEADER_H / 2, 0, HEADER_H * 0.25]) }, { scale: interpolate(scrollY.value, [-HEADER_H, 0], [2, 1], 'clamp') }],
   }));
 
+  const [walletBalance, setWalletBalance] = useState(450);
+  const [isRecharging, setIsRecharging] = useState(false);
+  const [rechargeMsg, setRechargeMsg] = useState('');
+  const [reviewsList, setReviewsList] = useState(REVIEWS);
+
+  useEffect(() => {
+    let isMounted = true;
+    getWalletBalance().then((b) => {
+      if (isMounted) setWalletBalance(b);
+    });
+    const unsub = subscribeWallet((b) => {
+      if (isMounted) setWalletBalance(b);
+    });
+    getAstrologerReviews(String(data.id || data.name)).then((live) => {
+      if (isMounted && live && live.length > 0) {
+        const mapped = live.map((r) => ({
+          name: r.customerName,
+          rating: r.rating,
+          date: r.date,
+          avatar: r.rating === 5 ? '🙏' : '⭐',
+          text: r.reviewText,
+          tags: r.tags,
+        }));
+        setReviewsList(mapped);
+      }
+    });
+    return () => {
+      isMounted = false;
+      unsub();
+    };
+  }, [data.id, data.name]);
+
+  const minBalance = price * 5;
+  const isSufficient = walletBalance >= minBalance;
+
+  const handleQuickRecharge = async (amt: number) => {
+    setIsRecharging(true);
+    setRechargeMsg('');
+    try {
+      const res = await rechargeWallet(amt, 'UPI (Razorpay)');
+      if (res.success) {
+        setWalletBalance(res.newBalance);
+        setRechargeMsg(`₹${amt} added successfully! Balance: ₹${res.newBalance}`);
+      }
+    } catch {
+      setRechargeMsg('Payment failed. Please try again.');
+    } finally {
+      setIsRecharging(false);
+    }
+  };
+
   const proceed = (type: 'Chat' | 'Call' | 'Book') => {
+    if (!isSufficient) {
+      setRechargeMsg(`Minimum ₹${minBalance} (5 mins) required. Please top up your wallet.`);
+      return;
+    }
     sheet.close();
     push(AppRoutes.consultationScreen, { type: type === 'Book' ? 'video' : 'voice', astrologer: data });
   };
@@ -110,9 +167,12 @@ export default function AstrologerDetailScreen() {
 
   const glassBtn = { margin: 8, borderRadius: 12, backgroundColor: argb('99080D1A'), borderWidth: 1, borderColor: argb('1AC9A84C'), alignItems: 'center' as const, justifyContent: 'center' as const };
 
+  const { height: screenH } = useWindowDimensions();
+  const tabPagerHeight = tab === 0 ? 800 : tab === 1 ? Math.max(840, reviewsList.length * 170 + 220) : 660;
+
   return (
     <View style={{ flex: 1, backgroundColor: '#080D1A' }} testID="astrologerDetail.screen">
-      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16}>
+      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false}>
         <View style={{ height: HEADER_H, overflow: 'hidden' }}>
           <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_H }, imgStyle]}>
             <AppImage
@@ -169,7 +229,7 @@ export default function AstrologerDetailScreen() {
         <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
           <Text style={{ color: '#F0EAD6', fontSize: 15, fontWeight: '700' }}>Specialisations</Text>
           <View style={{ marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {data.specialty.split(', ').map((s) => (
+            {(data.specialty || '').split(', ').map((s: string) => (
               <View key={s} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 100, backgroundColor: argb('1A8B1A1A'), borderWidth: 1, borderColor: argb('338B1A1A') }}>
                 <Text style={{ color: '#E07070', fontSize: 12, fontWeight: '500' }}>{s}</Text>
               </View>
@@ -182,7 +242,7 @@ export default function AstrologerDetailScreen() {
           <TabBar testIDPrefix="astrologerDetail.tab" tabs={['About', 'Reviews', 'Availability']} index={tab} onChange={setTab} indicatorColor="#8B1A1A" labelColor="#F0EAD6" unselectedLabelColor="#6B7A99" />
         </View>
         <View style={{ height: 16 }} />
-        <TabPager index={tab} onChange={setTab} height={500}>
+        <TabPager index={tab} onChange={setTab} height={tabPagerHeight}>
           {[
             <View key="about" style={{ paddingHorizontal: 20, gap: 12 }}>
               <SectionCard title="About" emoji="📖">
@@ -233,11 +293,11 @@ export default function AstrologerDetailScreen() {
                 </View>
               </View>
               <View style={{ height: 12 }} />
-              {REVIEWS.map((r) => (
-                <View key={r.name} style={{ marginBottom: 10, padding: 14, borderRadius: 14, ...glass }}>
+              {reviewsList.map((r, idx) => (
+                <View key={`${r.name}_${idx}`} style={{ marginBottom: 10, padding: 14, borderRadius: 14, ...glass }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: argb('1AC9A84C'), borderWidth: 1, borderColor: argb('33C9A84C'), alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 16 }}>{r.avatar}</Text>
+                      <Text style={{ fontSize: 16 }}>{r.avatar || '🙏'}</Text>
                     </View>
                     <View style={{ marginLeft: 10, flex: 1 }}>
                       <Text style={{ color: '#F0EAD6', fontSize: 13, fontWeight: '600' }}>{r.name}</Text>
@@ -248,6 +308,15 @@ export default function AstrologerDetailScreen() {
                     </View>
                   </View>
                   <Text style={{ marginTop: 10, color: '#A0A8C0', ...lh(12, 1.5) }}>{r.text}</Text>
+                  {(r as any).tags && (r as any).tags.length > 0 ? (
+                    <View style={{ marginTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                      {(r as any).tags.map((t: string, tIdx: number) => (
+                        <View key={tIdx} style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: argb('1AC9A84C'), borderWidth: 1, borderColor: argb('33C9A84C') }}>
+                          <Text style={{ color: '#C9A84C', fontSize: 10, fontWeight: '600' }}>{t}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
                 </View>
               ))}
             </View>,
@@ -284,7 +353,7 @@ export default function AstrologerDetailScreen() {
             </View>,
           ]}
         </TabPager>
-        <View style={{ height: 120 + 80 }} />
+        <View style={{ height: 180 + insets.bottom }} />
       </Animated.ScrollView>
 
       {/* pinned toolbar */}
@@ -306,7 +375,7 @@ export default function AstrologerDetailScreen() {
       {/* sticky CTAs */}
       <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, overflow: 'hidden', borderTopWidth: 1, borderTopColor: argb('1AC9A84C') }}>
         <BlurView intensity={60} tint="dark" experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
-        <View style={{ backgroundColor: argb('CC080D1A'), paddingHorizontal: 20, paddingTop: 12, paddingBottom: 28 }}>
+        <View style={{ backgroundColor: argb('CC080D1A'), paddingHorizontal: 20, paddingTop: 12, paddingBottom: Math.max(28, insets.bottom + 12) }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
               <Text style={{ color: '#C9A84C', fontSize: 18, fontWeight: '800' }}>{`₹${price}/min`}</Text>
@@ -334,27 +403,114 @@ export default function AstrologerDetailScreen() {
 
       <BottomSheet visible={sheet.visible} onClose={sheet.close} testID="astrologerDetail.sheet">
         {sheet.value ? (
-          <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40, backgroundColor: '#0D1B2A', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderTopColor: argb('1AC9A84C'), alignItems: 'center' }}>
-            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#2A3550' }} />
-            <Text style={{ marginTop: 20, color: '#F0EAD6', fontSize: 18, fontWeight: '700' }}>
-              {sheet.value === 'Book' ? '📅 Book Consultation' : sheet.value === 'Chat' ? '💬 Start Chat' : '📞 Start Call'}
-            </Text>
-            <Text style={{ marginTop: 8, color: '#6B7A99', fontSize: 13 }}>{`with ${data.name}`}</Text>
-            <View style={{ marginTop: 20, alignSelf: 'stretch', padding: 16, borderRadius: 14, flexDirection: 'row', justifyContent: 'space-around', ...glass }}>
-              {[['Rate', `₹${price}/min`], ['Min Balance', `₹${price * 5}`], ['Wait Time', '< 2 min']].map(([l, v]) => (
-                <View key={l} style={{ alignItems: 'center' }}>
-                  <Text style={{ color: '#C9A84C', fontSize: 14, fontWeight: '700' }}>{v}</Text>
-                  <Text style={{ color: '#6B7A99', fontSize: 11 }}>{l}</Text>
-                </View>
-              ))}
+          <View style={{ backgroundColor: '#0D1B2A', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderTopColor: argb('1AC9A84C'), maxHeight: screenH * 0.85, overflow: 'hidden' }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(36, insets.bottom + 24), alignItems: 'center' }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#2A3550' }} />
+              <Text style={{ marginTop: 16, color: '#F0EAD6', fontSize: 18, fontWeight: '700' }}>
+                {sheet.value === 'Book' ? '📅 Book Consultation' : sheet.value === 'Chat' ? '💬 Start Chat' : '📞 Start Call'}
+              </Text>
+              <Text style={{ marginTop: 6, color: '#6B7A99', fontSize: 13 }}>{`with ${data.name}`}</Text>
+
+            {/* Rates & Balance Summary */}
+            <View style={{ marginTop: 16, alignSelf: 'stretch', padding: 14, borderRadius: 14, flexDirection: 'row', justifyContent: 'space-around', ...glass }}>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: '#C9A84C', fontSize: 14, fontWeight: '700' }}>{`₹${price}/min`}</Text>
+                <Text style={{ color: '#6B7A99', fontSize: 11 }}>Rate</Text>
+              </View>
+              <View style={{ width: 1, height: 28, backgroundColor: argb('1AC9A84C') }} />
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: '#FFB347', fontSize: 14, fontWeight: '700' }}>{`₹${minBalance}`}</Text>
+                <Text style={{ color: '#6B7A99', fontSize: 11 }}>Min 5 min</Text>
+              </View>
+              <View style={{ width: 1, height: 28, backgroundColor: argb('1AC9A84C') }} />
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: isSufficient ? '#3DCB7A' : '#CF4444', fontSize: 14, fontWeight: '700' }}>{`₹${walletBalance}`}</Text>
+                <Text style={{ color: '#6B7A99', fontSize: 11 }}>Your Wallet</Text>
+              </View>
             </View>
-            <Pressable testID="astrologerDetail.sheet.proceed" onPress={() => proceed(sheet.value!)} style={{ marginTop: 20, alignSelf: 'stretch', borderRadius: 14, overflow: 'hidden' }}>
-              <LinearGradient colors={['#8B1A1A', '#AB2424']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ paddingVertical: 16, alignItems: 'center' }}>
-                <Text style={{ color: '#F0EAD6', fontSize: 15, fontWeight: '700' }}>{sheet.value === 'Book' ? 'Confirm Booking' : `Proceed to ${sheet.value}`}</Text>
-              </LinearGradient>
-            </Pressable>
-          </View>
-        ) : null}
+
+            {/* Status & Feedback message */}
+            {rechargeMsg ? (
+              <View style={{ marginTop: 12, alignSelf: 'stretch', padding: 10, borderRadius: 10, backgroundColor: argb('26C9A84C'), borderWidth: 1, borderColor: '#C9A84C' }}>
+                <Text style={{ color: '#F0EAD6', fontSize: 12, textAlign: 'center' }}>{rechargeMsg}</Text>
+              </View>
+            ) : null}
+
+            {isSufficient ? (
+              <View style={{ marginTop: 14, alignSelf: 'stretch', padding: 10, borderRadius: 10, backgroundColor: argb('1A2D9E6B'), borderWidth: 1, borderColor: argb('332D9E6B'), flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#3DCB7A', fontSize: 12, fontWeight: '600' }}>
+                  {`✓ Sufficient balance for ~${Math.floor(walletBalance / price)} minutes of consultation.`}
+                </Text>
+              </View>
+            ) : (
+              <View style={{ marginTop: 14, alignSelf: 'stretch', padding: 12, borderRadius: 12, backgroundColor: argb('1ACF4444'), borderWidth: 1, borderColor: argb('33CF4444') }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 14 }}>⚠️</Text>
+                  <Text style={{ marginLeft: 6, color: '#CF4444', fontSize: 12, fontWeight: '700' }}>Low Wallet Balance</Text>
+                </View>
+                <Text style={{ marginTop: 4, color: '#A0A8C0', fontSize: 11 }}>
+                  {`Minimum 5-minute balance (₹${minBalance}) required to connect. Please add ₹${minBalance - walletBalance} or more.`}
+                </Text>
+
+                {/* Quick Add Buttons */}
+                <View style={{ marginTop: 10, flexDirection: 'row', gap: 8 }}>
+                  {[100, 250, 500].map((amt) => (
+                    <Pressable
+                      key={amt}
+                      onPress={() => handleQuickRecharge(amt)}
+                      disabled={isRecharging}
+                      style={{ flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: argb('26C9A84C'), borderWidth: 1, borderColor: argb('4DC9A84C'), alignItems: 'center' }}
+                    >
+                      <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '700' }}>{`+₹${amt}`}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {/* Instant Recharge Action */}
+                <Pressable
+                  onPress={() => handleQuickRecharge(Math.max(100, Math.ceil(minBalance - walletBalance)))}
+                  disabled={isRecharging}
+                  style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden' }}
+                >
+                  <LinearGradient colors={['#C9A84C', '#E2C26A']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ paddingVertical: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}>
+                    {isRecharging ? (
+                      <ActivityIndicator size="small" color="#080D1A" style={{ marginRight: 8 }} />
+                    ) : null}
+                    <Text style={{ color: '#080D1A', fontSize: 13, fontWeight: '800' }}>
+                      {isRecharging ? 'Processing Recharge...' : `⚡ Quick Recharge ₹${Math.max(100, Math.ceil(minBalance - walletBalance))} (UPI/Cards)`}
+                    </Text>
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            )}
+
+            {/* Main Action Buttons */}
+            <View style={{ marginTop: 16, alignSelf: 'stretch', gap: 10 }}>
+              {isSufficient ? (
+                <Pressable testID="astrologerDetail.sheet.proceed" onPress={() => proceed(sheet.value!)} style={{ borderRadius: 14, overflow: 'hidden' }}>
+                  <LinearGradient colors={['#8B1A1A', '#AB2424']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ paddingVertical: 16, alignItems: 'center' }}>
+                    <Text style={{ color: '#F0EAD6', fontSize: 15, fontWeight: '700' }}>
+                      {sheet.value === 'Book' ? 'Confirm Booking' : `Proceed to ${sheet.value}`}
+                    </Text>
+                  </LinearGradient>
+                </Pressable>
+              ) : null}
+
+              <Pressable
+                onPress={() => {
+                  sheet.close();
+                  push(AppRoutes.walletScreen);
+                }}
+                style={{ paddingVertical: 10, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#A0A8C0', fontSize: 12, textDecorationLine: 'underline' }}>
+                  Go to Wallet & Transaction History →
+                </Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </View>
+      ) : null}
       </BottomSheet>
     </View>
   );

@@ -62,6 +62,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#080D1A' }, ...PUSH }}>
             <Stack.Screen name="index" options={{ animation: 'fade', animationDuration: 280, contentStyle: { backgroundColor: '#F8F4EE' } }} />
             <Stack.Screen name="splash-screen" options={{ animation: 'fade', animationDuration: 280, contentStyle: { backgroundColor: '#F8F4EE' } }} />
+            <Stack.Screen name="sign-in-screen" options={{ animation: 'fade', animationDuration: 280 }} />
             <Stack.Screen name="onboarding-screen" options={{ animation: 'fade', animationDuration: 320 }} />
             <Stack.Screen name="birth-profile-setup-screen" options={{ animation: 'fade', animationDuration: 320 }} />
             <Stack.Screen name="(tabs)" options={{ animation: 'fade', contentStyle: { backgroundColor: colors.background } }} />

@@ -5,6 +5,7 @@
  * - field state lives in the parent so it survives step changes (same as Flutter controllers)
  * - Back on step 0 → go(onboarding); Skip / Complete Setup → go(home)
  */
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -14,6 +15,7 @@ import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton } from '@/components/common';
 import { formatTimeOfDay, pickDate, pickTime } from '@/components/pickers';
 import { lh, Text, TextInput } from '@/components/Text';
+import { API_ENDPOINTS } from '@/config/api';
 import { AppRoutes, go } from '@/navigation/routes';
 import { argb } from '@/theme/colors';
 
@@ -76,6 +78,12 @@ function ProfileTypeSelector({ selectedType, onTypeSelected }: { selectedType: s
 }
 
 /* ---------------------------------------------------------------- step 1 */
+const GENDER_OPTIONS = [
+  { label: 'Male', icon: 'male' },
+  { label: 'Female', icon: 'female' },
+  { label: 'Other', icon: 'transgender' },
+] as const;
+
 function GlassField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <View style={{ paddingHorizontal: 18, paddingVertical: 14, borderRadius: 16, backgroundColor: argb('0FFFFFFF'), borderWidth: 1, borderColor: argb('1AC9A84C') }}>
@@ -103,24 +111,96 @@ function BirthDetailsForm(p: {
         />
       </GlassField>
       <View style={{ height: 16 }} />
-      <GlassField label="Gender">
-        <View style={{ flexDirection: 'row' }}>
-          {['Male', 'Female', 'Other'].map((g) => {
-            const sel = p.gender === g;
+      <View
+        style={{
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          borderRadius: 16,
+          backgroundColor: argb('0FFFFFFF'),
+          borderWidth: 1,
+          borderColor: argb('1AC9A84C'),
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <Text style={{ color: '#6B7A99', fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase' }}>
+            Gender
+          </Text>
+          {p.gender ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#C9A84C', marginRight: 5 }} />
+              <Text style={{ color: '#C9A84C', fontSize: 11, fontWeight: '600' }}>
+                {p.gender}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {GENDER_OPTIONS.map((opt) => {
+            const sel = p.gender === opt.label;
             return (
               <AnimatedPressable
-                key={g}
-                testID={`birthProfile.gender.${g.toLowerCase()}`}
-                onPress={() => p.setGender(g)}
-                duration={180}
-                style={{ flex: 1, marginHorizontal: 3, paddingVertical: 10, borderRadius: 100, borderWidth: 1, backgroundColor: sel ? '#8B1A1A' : 'transparent', borderColor: sel ? '#8B1A1A' : argb('1AC9A84C') }}
+                key={opt.label}
+                testID={`birthProfile.gender.${opt.label.toLowerCase()}`}
+                onPress={() => p.setGender(opt.label)}
+                duration={200}
+                curve="easeOutCubic"
+                style={{
+                  flex: 1,
+                  height: 48,
+                  borderRadius: 14,
+                  borderWidth: sel ? 1.5 : 1,
+                  borderColor: sel ? '#C9A84C' : argb('1AC9A84C'),
+                  backgroundColor: sel ? argb('268B1A1A') : argb('08FFFFFF'),
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 6,
+                  overflow: 'hidden',
+                }}
               >
-                <Text style={{ textAlign: 'center', color: sel ? '#F0EAD6' : '#6B7A99', fontSize: 13, fontWeight: '600' }}>{g}</Text>
+                {sel && (
+                  <LinearGradient
+                    colors={['#8B1A1A', '#520D0D']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                  />
+                )}
+
+                <View
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 13,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: sel ? argb('33C9A84C') : argb('0FFFFFFF'),
+                    marginRight: 6,
+                  }}
+                >
+                  <AppIcon
+                    name={opt.icon}
+                    size={16}
+                    color={sel ? '#C9A84C' : '#8F9CAE'}
+                  />
+                </View>
+
+                <Text
+                  style={{
+                    color: sel ? '#F0EAD6' : '#8F9CAE',
+                    fontSize: 13,
+                    fontWeight: sel ? '700' : '500',
+                    letterSpacing: 0.2,
+                  }}
+                >
+                  {opt.label}
+                </Text>
               </AnimatedPressable>
             );
           })}
         </View>
-      </GlassField>
+      </View>
       <View style={{ height: 16 }} />
       <Pressable
         testID="birthProfile.date"
@@ -231,6 +311,9 @@ function BirthPlace({ value, onChange }: { value: string; onChange: (s: string) 
   );
 }
 
+import { showSnackBar } from '@/components/overlays';
+import { useAuthStore } from '@/features/auth/authStore';
+
 /* ---------------------------------------------------------------- screen */
 export default function BirthProfileSetupScreen() {
   const { width } = useWindowDimensions();
@@ -242,6 +325,10 @@ export default function BirthProfileSetupScreen() {
   const [date, setDate] = useState<Date | null>(null);
   const [time, setTime] = useState<Date | null>(null);
   const [birthPlace, setBirthPlace] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const pendingAuth = useAuthStore((s) => s.pendingAuth);
+  const setUser = useAuthStore((s) => s.setUser);
 
   const progress = useSharedValue(1 / 3);
   useEffect(() => {
@@ -249,8 +336,62 @@ export default function BirthProfileSetupScreen() {
   }, [currentStep, progress]);
   const barStyle = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` }));
 
-  const nextStep = () => (currentStep < 2 ? setCurrentStep(currentStep + 1) : go(AppRoutes.homeDashboardScreen));
-  const prevStep = () => (currentStep > 0 ? setCurrentStep(currentStep - 1) : go(AppRoutes.onboardingScreen));
+  const handleCompleteSetup = async () => {
+    setSaving(true);
+    const uid = pendingAuth?.uid || `phone_${Date.now()}`;
+    const phone = pendingAuth?.phone || '';
+    const formattedDob = date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : '';
+    const formattedTob = time ? formatTimeOfDay(time) : '';
+
+    const profileData = {
+      uid,
+      phone,
+      name: name.trim() || 'Seeker',
+      gender,
+      dob: formattedDob,
+      tob: formattedTob,
+      pob: birthPlace.trim(),
+      profileType,
+    };
+
+    try {
+      // Connect and persist to same shared Firestore database via API
+      await fetch(API_ENDPOINTS.saveProfile, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      });
+    } catch (e: any) {
+      console.warn('Could not reach backend save-profile API, saving locally:', e.message);
+    }
+
+    await setUser(profileData);
+    showSnackBar('Cosmic Profile successfully registered!');
+    go(AppRoutes.homeDashboardScreen);
+    setSaving(false);
+  };
+
+  const nextStep = () => {
+    if (currentStep < 2) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      handleCompleteSetup();
+    }
+  };
+
+  const prevStep = () => (currentStep > 0 ? setCurrentStep(currentStep - 1) : go(AppRoutes.signInScreen));
+
+  const handleSkip = async () => {
+    const uid = pendingAuth?.uid || `phone_${Date.now()}`;
+    const phone = pendingAuth?.phone || '';
+    await setUser({
+      uid,
+      phone,
+      name: 'Seeker',
+      profileType: 'Myself',
+    });
+    go(AppRoutes.homeDashboardScreen);
+  };
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: '#080D1A' }} testID="birthProfile.screen">
@@ -266,7 +407,7 @@ export default function BirthProfileSetupScreen() {
           <Text style={{ color: '#F0EAD6', fontSize: 20, fontWeight: '700' }}>Birth Profile</Text>
           <Text style={{ color: '#6B7A99', fontSize: 12 }}>{`Step ${currentStep + 1} of 3`}</Text>
         </View>
-        <Pressable testID="birthProfile.skip" onPress={() => go(AppRoutes.homeDashboardScreen)} style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
+        <Pressable testID="birthProfile.skip" onPress={handleSkip} style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
           <Text style={{ color: '#6B7A99', fontSize: 14 }}>Skip</Text>
         </Pressable>
       </View>
@@ -301,8 +442,9 @@ export default function BirthProfileSetupScreen() {
         ) : null}
         <ElevatedButton
           testID="birthProfile.next"
-          label={currentStep < 2 ? 'Continue' : 'Complete Setup'}
+          label={saving ? 'Saving...' : currentStep < 2 ? 'Continue' : 'Complete Setup'}
           onPress={nextStep}
+          disabled={saving}
           style={{ flex: 2 }}
           paddingV={18}
           paddingH={0}

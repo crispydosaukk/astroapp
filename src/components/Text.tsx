@@ -2,6 +2,7 @@
  * Text / TextInput wrappers.
  *  - Maps fontWeight → Raleway family (custom fonts ignore fontWeight on Android).
  *  - allowFontScaling=false (Flutter forced TextScaler.linear(1.0) in MaterialApp.builder).
+ *  - Automatically maps theme colors for Dark Cosmic and Light Vedic so all text is crystal clear!
  */
 import React from 'react';
 import {
@@ -9,6 +10,7 @@ import {
 } from 'react-native';
 import { AppColors } from '@/theme/colors';
 import { ralewayFamily } from '@/theme/fonts';
+import { useThemeColors } from '@/theme/themeStore';
 
 function resolve(style: TextProps['style']): TextStyle {
   const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
@@ -17,19 +19,34 @@ function resolve(style: TextProps['style']): TextStyle {
 }
 
 export function Text({ style, ...props }: TextProps) {
-  return <RNText allowFontScaling={false} {...props} style={[{ color: AppColors.textPrimary }, resolve(style)]} />;
+  const { textPrimary, textSecondary, textMuted } = useThemeColors();
+  const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
+
+  let resolvedColor = flat.color;
+  if (!resolvedColor || resolvedColor === AppColors.textPrimary || resolvedColor === '#F0EAD6') {
+    resolvedColor = textPrimary;
+  } else if (resolvedColor === AppColors.textSecondary || resolvedColor === '#A0A8C0') {
+    resolvedColor = textSecondary;
+  } else if (resolvedColor === AppColors.textMuted || resolvedColor === '#6B7A99') {
+    resolvedColor = textMuted;
+  }
+
+  return <RNText allowFontScaling={false} {...props} style={[resolve(style), { color: resolvedColor }]} />;
 }
 
-export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(function TextInput({ style, ...props }, ref) {
+export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(function TextInput({ style, placeholderTextColor, ...props }, ref) {
+  const { textPrimary, textMuted, accent } = useThemeColors();
+  const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
+  const resolvedColor = (!flat.color || flat.color === AppColors.textPrimary || flat.color === '#F0EAD6') ? textPrimary : flat.color;
   return (
     <RNTextInput
       ref={ref}
       allowFontScaling={false}
-      placeholderTextColor={AppColors.textMuted}
-      selectionColor={AppColors.goldAccent}
-      cursorColor={AppColors.goldAccent}
+      placeholderTextColor={placeholderTextColor ?? textMuted}
+      selectionColor={accent}
+      cursorColor={accent}
       {...props}
-      style={[{ color: AppColors.textPrimary, padding: 0 }, resolve(style)]}
+      style={[resolve(style), { color: resolvedColor, padding: 0 }]}
     />
   );
 });

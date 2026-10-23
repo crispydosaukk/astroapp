@@ -23,7 +23,13 @@
       "expo-router",
       "expo-font",
       ["expo-splash-screen", { "backgroundColor": "#F8F4EE" }],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow AstroParihar to use your location for accurate Vedic planetary calculations and astrologer discovery."
+        }
+      ]
     ],
     "experiments": { "typedRoutes": false }
   }

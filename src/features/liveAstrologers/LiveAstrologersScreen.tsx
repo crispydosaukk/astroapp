@@ -18,13 +18,16 @@ import { ElevatedButton, Switch } from '@/components/common';
 import { BottomSheet } from '@/components/overlays';
 import { lh, Text, TextInput } from '@/components/Text';
 import { AstrologerData, LIVE_ASTROLOGERS } from '@/data/astrologers';
+import { getLiveHomeAstrologers } from '@/services/homeDataService';
 import { AppRoutes, push } from '@/navigation/routes';
 import { argb, withAlpha } from '@/theme/colors';
+import { useThemeColors } from '@/theme/themeStore';
 
 /* ----------------------------------------------------- search header widget */
 function SearchHeader({ onlineCount, onSearchChanged, onFilterTap }: { onlineCount: number; onSearchChanged: (q: string) => void; onFilterTap: () => void }) {
+  const colors = useThemeColors();
   return (
-    <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: withAlpha('#0D1B2A', 204), borderBottomWidth: 1, borderBottomColor: argb('1AC9A84C') }}>
+    <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.cardBorder }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Text style={{ flex: 1, color: '#F0EAD6', fontSize: 20, fontWeight: '800' }}>Find Your Astrologer</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 100, backgroundColor: argb('1A3DCB7A'), borderWidth: 1, borderColor: argb('333DCB7A') }}>
@@ -101,62 +104,297 @@ function ActionButton({ label, icon, isPrimary, onTap, testID }: { label: string
   );
 }
 
+export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
+  {
+    id: 'acharya-devavrat',
+    name: 'Acharya Devavrat (AI)',
+    specialty: 'Parashara Vedic Astrology, Dasha Analysis & Remedies',
+    title: 'Autonomous Vedic Ephemeris Grandmaster',
+    experience: '1,20,000+ charts',
+    rating: 4.99,
+    reviews: '38,420',
+    consultations: '38k+',
+    price: 10,
+    isOnline: true,
+    languages: 'English, Hindi, Telugu, Tamil, Kannada',
+    imageUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&fit=crop',
+    semanticLabel: 'Revered Vedic Acharya with sacred saffron robes',
+    category: 'Vedic',
+    isAi: true,
+    isFeatured: true,
+    discount: 'Free 3 min trial',
+  },
+  {
+    id: 'vedika',
+    name: 'Vedika AI Engine',
+    specialty: 'Sub-Second Planetary Math, Gochara & KP Astrology',
+    title: 'Precision Astronomical Vedic Engine',
+    experience: '2,50,000+ calculations',
+    rating: 4.98,
+    reviews: '42,100',
+    consultations: '42k+',
+    price: 5,
+    isOnline: true,
+    languages: 'English, Hindi, Telugu, Tamil',
+    imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&fit=crop',
+    semanticLabel: 'Celestial luminous AI seer with planetary rings',
+    category: 'KP',
+    isAi: true,
+    isFeatured: true,
+    discount: 'Instant <1s reply',
+  },
+  {
+    id: 'swami-ji',
+    name: 'Swami Shankarananda AI',
+    specialty: 'Himalayan Dasha Analysis & Sade Sati Resolution',
+    title: 'Himalayan Parashari Sage & Spiritual Guide',
+    experience: '95,000+ charts',
+    rating: 4.99,
+    reviews: '29,800',
+    consultations: '29k+',
+    price: 15,
+    isOnline: true,
+    languages: 'Hindi, English, Sanskrit',
+    imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&fit=crop',
+    semanticLabel: 'Himalayan Vedic monk with rudraksha beads',
+    category: 'Spirituality',
+    isAi: true,
+    isFeatured: false,
+    discount: 'Top Spiritual Seer',
+  },
+  {
+    id: 'astro-ananya',
+    name: 'Astro Ananya (AI)',
+    specialty: 'Love, Marriage Compatibility & Nadi Dosha Parihars',
+    title: 'Nadi & Kundli Seer • Relationship Expert',
+    experience: '80,000+ matchings',
+    rating: 4.97,
+    reviews: '24,600',
+    consultations: '24k+',
+    price: 10,
+    isOnline: true,
+    languages: 'English, Hindi, Telugu, Tamil',
+    imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&fit=crop',
+    semanticLabel: 'Warm compassionate female Vedic astrologer',
+    category: 'Marriage',
+    isAi: true,
+    isFeatured: false,
+    discount: '98% Compatibility Accuracy',
+  },
+  {
+    id: 'arjun-pandit',
+    name: 'Arjun Pandit (AI)',
+    specialty: 'Career Growth, Business Timing & Wealth Astrology',
+    title: 'Vedic Kundli Prodigy & Financial Strategist',
+    experience: '65,000+ career charts',
+    rating: 4.96,
+    reviews: '18,900',
+    consultations: '18k+',
+    price: 12,
+    isOnline: true,
+    languages: 'English, Hindi, Gujarati, Marathi',
+    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&fit=crop',
+    semanticLabel: 'Sharp modern Vedic astrologer in traditional attire',
+    category: 'Career',
+    isAi: true,
+    isFeatured: false,
+    discount: 'Promotion & Job Timing',
+  },
+  {
+    id: 'pandit-raghav',
+    name: 'Pandit Raghavendra (AI)',
+    specialty: 'Lal Kitab Upaay, Gemstones, Rudraksha & Homa Parihar',
+    title: 'Lal Kitab Master & Vedic Remedies Authority',
+    experience: '75,000+ remedies prescribed',
+    rating: 4.98,
+    reviews: '22,300',
+    consultations: '22k+',
+    price: 10,
+    isOnline: true,
+    languages: 'Hindi, Telugu, Kannada, English',
+    imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&fit=crop',
+    semanticLabel: 'Elderly priest with sacred tilak and yellow scarf',
+    category: 'Remedies',
+    isAi: true,
+    isFeatured: false,
+    discount: 'Custom 48-day Upaay',
+  },
+];
+
 export function AstrologerCard({ data, index }: { data: AstrologerData; index: number }) {
-  const { width } = useWindowDimensions();
   const p = useSharedValue(0);
   useEffect(() => {
-    p.value = withDelay(Math.min(400, index * 60), withTiming(1, { duration: 400, easing: Easing.linear }));
+    p.value = withDelay(Math.min(300, index * 40), withTiming(1, { duration: 350, easing: Easing.out(Easing.cubic) }));
   }, [index, p]);
   const anim = useAnimatedStyle(() => ({
-    opacity: 1 - (1 - p.value) * (1 - p.value),
-    transform: [{ translateY: (1 - (1 - Math.pow(1 - p.value, 3))) * 0.05 * 180 }],
+    opacity: p.value,
+    transform: [{ translateY: (1 - p.value) * 16 }],
   }));
   const featured = !!data.isFeatured;
-  const open = () => push(AppRoutes.astrologerDetailScreen, data);
+  const isAi = !!data.isAi;
+
+  const open = () => {
+    if (isAi) {
+      push(AppRoutes.aiChatScreen, {
+        astrologerId: data.id as string,
+        astrologerName: data.name,
+        avatarUrl: data.imageUrl,
+      });
+    } else {
+      push(AppRoutes.astrologerDetailScreen, data);
+    }
+  };
+
+  const callAction = () => {
+    if (isAi) {
+      push(AppRoutes.consultationScreen, {
+        type: 'voice',
+        astrologer: data,
+      });
+    } else {
+      push(AppRoutes.astrologerDetailScreen, data);
+    }
+  };
+
   const id = `liveAstrologers.card.${index}`;
+  const colors = useThemeColors();
+
   return (
-    <Animated.View style={[{ marginBottom: 14 }, anim]}>
+    <Animated.View style={[{ marginBottom: 12 }, anim]}>
       <Pressable testID={id} onPress={open}>
-        <View style={{ flexDirection: 'row', borderRadius: 20, overflow: 'hidden', backgroundColor: argb('0FFFFFFF'), borderWidth: featured ? 1.5 : 1, borderColor: featured ? argb('66C9A84C') : argb('1AC9A84C') }}>
-          <View style={{ width: (width - 40) * 0.35 }}>
-            <AppImage uri={data.imageUrl} width="100%" height={180} fit="cover" semanticLabel={data.semanticLabel} />
-            <View style={{ position: 'absolute', top: 10, left: 10, width: 11, height: 11, borderRadius: 5.5, borderWidth: 2, borderColor: '#080D1A', backgroundColor: data.isOnline ? '#3DCB7A' : '#6B7A99' }} />
-            {featured ? (
-              <View style={{ position: 'absolute', bottom: 10, left: 6, right: 6, paddingHorizontal: 6, paddingVertical: 4, borderRadius: 6, backgroundColor: '#C9A84C' }}>
-                <Text style={{ textAlign: 'center', color: '#080D1A', fontSize: 8, fontWeight: '800' }}>⭐ TOP RATED</Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            borderRadius: 18,
+            padding: 12,
+            backgroundColor: colors.surface,
+            borderWidth: featured || isAi ? 1.5 : 1,
+            borderColor: isAi ? '#8B1A1A' : featured ? colors.goldAccent : colors.cardBorder,
+            shadowColor: '#000',
+            shadowOpacity: colors.isLight ? 0.05 : 0.2,
+            shadowRadius: 6,
+            elevation: 2,
+          }}
+        >
+          {/* Left Column: Compact Avatar & Online Indicator */}
+          <View style={{ alignItems: 'center', width: 72, marginRight: 12 }}>
+            <View style={{ width: 68, height: 68, borderRadius: 16, overflow: 'hidden', borderWidth: 1.5, borderColor: colors.goldAccent }}>
+              <AppImage uri={data.imageUrl} width="100%" height="100%" fit="cover" semanticLabel={data.semanticLabel} />
+              {/* Online Indicator */}
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 3,
+                  right: 3,
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                  borderWidth: 1.5,
+                  borderColor: colors.surface,
+                  backgroundColor: data.isOnline ? '#3DCB7A' : '#6B7A99',
+                }}
+              />
+            </View>
+
+            {/* AI or Top Rated Pill Badge */}
+            {isAi ? (
+              <View style={{ marginTop: 5, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: '#8B1A1A', borderWidth: 0.5, borderColor: '#C9A84C' }}>
+                <Text style={{ textAlign: 'center', color: '#F0EAD6', fontSize: 8, fontWeight: '800' }}>🔮 AI GURU</Text>
+              </View>
+            ) : featured ? (
+              <View style={{ marginTop: 5, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: colors.goldAccent }}>
+                <Text style={{ textAlign: 'center', color: '#080D1A', fontSize: 8, fontWeight: '800' }}>⭐ TOP</Text>
               </View>
             ) : null}
           </View>
-          <View style={{ flex: 1, padding: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text numberOfLines={1} style={{ flex: 1, color: '#F0EAD6', fontSize: 14, fontWeight: '700' }}>{data.name}</Text>
-              <AppIcon name="verified_rounded" color="#C9A84C" size={15} />
-            </View>
-            <Text numberOfLines={2} style={{ marginTop: 2, color: '#6B7A99', ...lh(11, 1.4) }}>{data.title}</Text>
-            <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center' }}>
-              <AppIcon name="star_rounded" color="#C9A84C" size={13} />
-              <Text style={{ marginLeft: 3, color: '#C9A84C', fontSize: 12, fontWeight: '700' }}>{String(data.rating)}</Text>
-              <Text style={{ color: '#6B7A99', fontSize: 11 }}>{` (${data.reviews})`}</Text>
-              <View style={{ flex: 1 }} />
-              <Text style={{ color: '#A0A8C0', fontSize: 11 }}>{data.experience}</Text>
-            </View>
-            <View style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center' }}>
-              <AppIcon name="language_rounded" color="#6B7A99" size={12} />
-              <Text numberOfLines={1} style={{ marginLeft: 4, flex: 1, color: '#6B7A99', fontSize: 11 }}>{data.languages}</Text>
-            </View>
-            {data.discount ? (
-              <View style={{ marginTop: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100, backgroundColor: argb('1A2D9E6B'), borderWidth: 1, borderColor: argb('332D9E6B') }}>
-                <Text style={{ color: '#2D9E6B', fontSize: 10, fontWeight: '600' }}>{data.discount}</Text>
+
+          {/* Right Column: Detailed Info & Compact Actions */}
+          <View style={{ flex: 1, justifyContent: 'space-between' }}>
+            {/* Header: Name & Price */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', marginRight: 6 }}>
+                <Text numberOfLines={1} style={{ color: colors.textPrimary, fontSize: 14.5, fontWeight: '700' }}>
+                  {data.name}
+                </Text>
+                <AppIcon name={isAi ? 'auto_awesome_rounded' : 'verified_rounded'} color={colors.goldAccent} size={14} style={{ marginLeft: 4 }} />
               </View>
-            ) : null}
-            <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: '#F0EAD6', fontSize: 14, fontWeight: '800' }}>{`₹${data.price}/min`}</Text>
-                <Text style={{ color: '#6B7A99', fontSize: 10 }}>{`${data.consultations}+ sessions`}</Text>
+              <Text style={{ color: colors.goldAccent, fontSize: 13.5, fontWeight: '800' }}>
+                {`₹${data.price}/min`}
+              </Text>
+            </View>
+
+            {/* Specialty / Title */}
+            <Text numberOfLines={1} style={{ color: colors.textSecondary, fontSize: 11, marginTop: 2 }}>
+              {data.title || data.specialty}
+            </Text>
+
+            {/* Rating, Reviews & Experience */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+              <AppIcon name="star_rounded" color={colors.goldAccent} size={13} />
+              <Text style={{ marginLeft: 2, color: colors.goldAccent, fontSize: 11.5, fontWeight: '700' }}>
+                {String(data.rating)}
+              </Text>
+              <Text style={{ marginLeft: 3, color: colors.textMuted, fontSize: 10.5 }}>
+                {`(${data.reviews})`}
+              </Text>
+              <Text style={{ marginHorizontal: 4, color: colors.textMuted, fontSize: 10 }}>•</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 10.5, fontWeight: '600' }}>
+                {data.experience}
+              </Text>
+            </View>
+
+            {/* Languages */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+              <AppIcon name="language_rounded" color={colors.textMuted} size={11} />
+              <Text numberOfLines={1} style={{ marginLeft: 3, flex: 1, color: colors.textMuted, fontSize: 10.5 }}>
+                {data.languages}
+              </Text>
+            </View>
+
+            {/* Bottom Row: Sessions Count + Chat & Call CTAs */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+              <Text style={{ color: colors.textMuted, fontSize: 10 }}>
+                {`${data.consultations || '10k'}+ sessions`}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                <Pressable
+                  testID={`${id}.chat`}
+                  onPress={open}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 11,
+                    paddingVertical: 5.5,
+                    borderRadius: 100,
+                    backgroundColor: '#8B1A1A',
+                  }}
+                >
+                  <AppIcon name={isAi ? 'auto_awesome_rounded' : 'chat_bubble_outline_rounded'} color="#F0EAD6" size={11} />
+                  <Text style={{ marginLeft: 3, color: '#F0EAD6', fontSize: 11, fontWeight: '700' }}>
+                    {isAi ? 'Chat' : 'Chat'}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  testID={`${id}.call`}
+                  onPress={callAction}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 11,
+                    paddingVertical: 5.5,
+                    borderRadius: 100,
+                    backgroundColor: colors.isLight ? 'rgba(201,168,76,0.18)' : 'rgba(255,255,255,0.08)',
+                    borderWidth: 1,
+                    borderColor: colors.goldAccent,
+                  }}
+                >
+                  <AppIcon name="call_rounded" color={colors.goldAccent} size={11} />
+                  <Text style={{ marginLeft: 3, color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
+                    Call
+                  </Text>
+                </Pressable>
               </View>
-              <ActionButton testID={`${id}.chat`} label="Chat" icon="chat_bubble_outline_rounded" isPrimary onTap={open} />
-              <View style={{ width: 6 }} />
-              <ActionButton testID={`${id}.call`} label="Call" icon="call_rounded" isPrimary={false} onTap={open} />
             </View>
           </View>
         </View>
@@ -238,32 +476,134 @@ function FilterSheet({ onlineOnly, onOnlineChanged, onClose }: { onlineOnly: boo
 
 /* ------------------------------------------------------------------ screen */
 export default function LiveAstrologersScreen() {
+  const [astrologerType, setAstrologerType] = useState<'real' | 'ai'>('real');
+  const [astrologersList, setAstrologersList] = useState<AstrologerData[]>(LIVE_ASTROLOGERS);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [onlineOnly, setOnlineOnly] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const fetchAstrologers = async () => {
+    try {
+      const list = await getLiveHomeAstrologers();
+      if (list && list.length > 0) {
+        const mapped: AstrologerData[] = list.map((a) => ({
+          id: a.id,
+          name: a.name,
+          specialty: a.specialty,
+          title: `${a.specialty} • ${a.experience}`,
+          experience: a.experience,
+          rating: a.rating,
+          reviews: a.reviews,
+          consultations: `${a.reviews}+`,
+          price: a.price,
+          isOnline: a.isOnline,
+          languages: a.languages,
+          imageUrl: a.imageUrl,
+          semanticLabel: a.semanticLabel || a.name,
+          category: 'Vedic',
+          isAi: a.isAi,
+        }));
+        setAstrologersList(mapped);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchAstrologers();
+  }, []);
+
+  const realList = useMemo(() => astrologersList.filter((a) => !a.isAi), [astrologersList]);
+  const activePool = astrologerType === 'ai' ? AI_ASTROLOGERS_DATA : realList;
+
   const filtered = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    return LIVE_ASTROLOGERS.filter((a) => {
-      const matchesSearch = q.length === 0 || a.name.toLowerCase().includes(q) || a.specialty.toLowerCase().includes(q);
+    return activePool.filter((a) => {
+      const matchesSearch =
+        q.length === 0 ||
+        a.name.toLowerCase().includes(q) ||
+        a.specialty.toLowerCase().includes(q) ||
+        (a.title && a.title.toLowerCase().includes(q)) ||
+        (a.languages && a.languages.toLowerCase().includes(q));
       const matchesCategory = selectedCategory === 'All' || a.category === selectedCategory;
       const matchesOnline = !onlineOnly || a.isOnline;
       return matchesSearch && matchesCategory && matchesOnline;
     });
-  }, [searchQuery, selectedCategory, onlineOnly]);
-  const onlineCount = LIVE_ASTROLOGERS.filter((a) => a.isOnline).length;
+  }, [activePool, searchQuery, selectedCategory, onlineOnly]);
+
+  const onlineCount = activePool.filter((a) => a.isOnline).length;
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await new Promise((r) => setTimeout(r, 600));
+    await Promise.all([fetchAstrologers(), new Promise((r) => setTimeout(r, 600))]);
     setRefreshing(false);
   };
 
+  const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: '#080D1A' }} testID="liveAstrologers.screen">
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }} testID="liveAstrologers.screen">
       <SearchHeader onlineCount={onlineCount} onSearchChanged={setSearchQuery} onFilterTap={() => setSheetOpen(true)} />
+
+      {/* Two Prominent Top Tabs: Real Astrologers vs AI Astrologers */}
+      <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 4 }}>
+        <View style={{ flexDirection: 'row', padding: 4, borderRadius: 16, backgroundColor: argb('14FFFFFF'), borderWidth: 1, borderColor: argb('26C9A84C') }}>
+          <Pressable
+            testID="liveAstrologers.tab.real"
+            onPress={() => setAstrologerType('real')}
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingVertical: 10,
+              borderRadius: 12,
+              backgroundColor: astrologerType === 'real' ? '#8B1A1A' : 'transparent',
+              borderWidth: astrologerType === 'real' ? 1 : 0,
+              borderColor: '#C9A84C',
+            }}
+          >
+            <Text style={{ fontSize: 14 }}>🕉️</Text>
+            <Text style={{ marginLeft: 6, color: astrologerType === 'real' ? '#F0EAD6' : '#A0A8C0', fontSize: 13, fontWeight: '700' }}>
+              Real Astrologers
+            </Text>
+            <View style={{ marginLeft: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, backgroundColor: astrologerType === 'real' ? '#C9A84C' : argb('26A0A8C0') }}>
+              <Text style={{ color: astrologerType === 'real' ? '#080D1A' : '#A0A8C0', fontSize: 10, fontWeight: '800' }}>
+                {realList.length}
+              </Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            testID="liveAstrologers.tab.ai"
+            onPress={() => setAstrologerType('ai')}
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingVertical: 10,
+              borderRadius: 12,
+              backgroundColor: astrologerType === 'ai' ? '#8B1A1A' : 'transparent',
+              borderWidth: astrologerType === 'ai' ? 1 : 0,
+              borderColor: '#C9A84C',
+            }}
+          >
+            <Text style={{ fontSize: 14 }}>🔮</Text>
+            <Text style={{ marginLeft: 6, color: astrologerType === 'ai' ? '#F0EAD6' : '#A0A8C0', fontSize: 13, fontWeight: '700' }}>
+              AI Astrologers
+            </Text>
+            <View style={{ marginLeft: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, backgroundColor: astrologerType === 'ai' ? '#C9A84C' : argb('26A0A8C0') }}>
+              <Text style={{ color: astrologerType === 'ai' ? '#080D1A' : '#A0A8C0', fontSize: 10, fontWeight: '800' }}>
+                {AI_ASTROLOGERS_DATA.length}
+              </Text>
+            </View>
+          </Pressable>
+        </View>
+      </View>
+
       <CategoryChips selected={selectedCategory} onSelect={setSelectedCategory} />
       <View style={{ flex: 1 }}>
         {filtered.length === 0 ? (
@@ -282,8 +622,8 @@ export default function LiveAstrologersScreen() {
         ) : (
           <FlatList
             data={filtered}
-            keyExtractor={(a) => a.name}
-            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 120 }}
+            keyExtractor={(a) => String(a.id || a.name)}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: Math.max(150, insets.bottom + 100) }}
             renderItem={({ item, index }) => <AstrologerCard data={item} index={index} />}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C9A84C" colors={['#C9A84C']} progressBackgroundColor="#0D1B2A" />}
           />

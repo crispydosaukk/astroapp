@@ -1,8 +1,7 @@
-/** Port of lib/core/theme_provider.dart — persisted theme + accent (SharedPreferences → AsyncStorage). */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-export type ThemeName = 'Dark Cosmic' | 'Midnight Blue' | 'Sacred Dark' | 'Light Vedic';
+export type ThemeName = 'Dark Cosmic' | 'Light Vedic';
 export type AccentName =
   | 'Sacred Gold' | 'Cosmic Purple' | 'Divine Red' | 'Celestial Blue' | 'Emerald' | 'Saffron';
 
@@ -25,8 +24,9 @@ export const useThemeStore = create<ThemeState>((set) => ({
   load: async () => {
     try {
       const [t, a] = await Promise.all([AsyncStorage.getItem(THEME_KEY), AsyncStorage.getItem(ACCENT_KEY)]);
+      const validTheme: ThemeName = (t === 'Light Vedic' || t === 'Dark Cosmic') ? t : 'Dark Cosmic';
       set({
-        selectedTheme: (t as ThemeName | null) ?? 'Dark Cosmic',
+        selectedTheme: validTheme,
         selectedAccent: (a as AccentName | null) ?? 'Sacred Gold',
         hydrated: true,
       });
@@ -48,10 +48,14 @@ export interface ThemeColors {
   background: string;
   surface: string;
   surfaceVariant: string;
+  cardBorder: string;
+  cardGlass: string;
   textPrimary: string;
   textSecondary: string;
   textMuted: string;
+  divider: string;
   accent: string;
+  goldAccent: string;
   isLight: boolean;
 }
 
@@ -66,16 +70,18 @@ const ACCENTS: Record<AccentName, string> = {
 
 export function resolveThemeColors(theme: ThemeName, accent: AccentName): ThemeColors {
   const isLight = theme === 'Light Vedic';
-  const pick = (mb: string, sd: string, lv: string, dc: string) =>
-    theme === 'Midnight Blue' ? mb : theme === 'Sacred Dark' ? sd : isLight ? lv : dc;
   return {
-    background: pick('#050A1E', '#120508', '#F8F4EE', '#080D1A'),
-    surface: pick('#0A1230', '#1A0810', '#FFFFFF', '#0D1B2A'),
-    surfaceVariant: pick('#162040', '#2A1020', '#F0EAE0', '#1A2640'),
+    background: isLight ? '#FAF9F6' : '#080D1A',
+    surface: isLight ? '#FFFFFF' : '#0D1B2A',
+    surfaceVariant: isLight ? '#F5F2EB' : '#1A2640',
+    cardBorder: isLight ? 'rgba(201,168,76,0.28)' : 'rgba(201,168,76,0.18)',
+    cardGlass: isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.06)',
     textPrimary: isLight ? '#1A1A2E' : '#F0EAD6',
-    textSecondary: isLight ? '#555577' : '#A0A8C0',
-    textMuted: isLight ? '#888899' : '#6B7A99',
+    textSecondary: isLight ? '#383852' : '#A0A8C0',
+    textMuted: isLight ? '#666680' : '#7E8BA8',
+    divider: isLight ? '#EAE5DB' : '#1E2A40',
     accent: ACCENTS[accent] ?? '#C9A84C',
+    goldAccent: '#C9A84C',
     isLight,
   };
 }

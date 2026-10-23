@@ -5,8 +5,10 @@
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Dimensions, Pressable, ScrollView, Share, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppBar, BoxBackButton } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { OutlinedButton } from '@/components/common';
@@ -14,6 +16,7 @@ import { pickDate } from '@/components/pickers';
 import { Text } from '@/components/Text';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { SOURCE_INERT } from '@/utils/sourceInert';
+import { fetchLivePanchang, PanchangLiveResult } from '@/services/astrologyService';
 
 const PANCHANG = [
   { label: 'Tithi', value: 'Chaturdashi (14th)', sub: 'Krishna Paksha', icon: 'nights_stay_outlined', color: '#9370DB' },
@@ -51,9 +54,36 @@ const SectionTitle = ({ children }: { children: string }) => (
 );
 
 export default function PanchangScreen() {
+  const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [dateOffset, setDateOffset] = useState(0);
-  const [w, setW] = useState(0);
+  const [w, setW] = useState(Dimensions.get('window').width - 40);
+  const [panchangData, setPanchangData] = useState<PanchangLiveResult | null>(null);
+  const [locationName, setLocationName] = useState('New Delhi, India');
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const loc = await AsyncStorage.getItem('astroparihar_user_location');
+        if (loc && isMounted) setLocationName(loc);
+        const yyyy = selectedDate.getFullYear();
+        const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(selectedDate.getDate()).padStart(2, '0');
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+        const data = await fetchLivePanchang(dateStr, loc || 'New Delhi, India');
+        if (isMounted) setPanchangData(data);
+      } catch (err) {
+        console.warn('Failed to load panchang:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    load();
+    return () => { isMounted = false; };
+  }, [selectedDate]);
 
   const dateLabel =
     dateOffset === 0 ? 'Today' : dateOffset === -1 ? 'Yesterday' : dateOffset === 1 ? 'Tomorrow'
@@ -74,7 +104,38 @@ export default function PanchangScreen() {
       setDateOffset(Math.trunc((picked.getTime() - Date.now()) / 86400000)); // Duration.inDays truncates
     }
   };
-  const cellW = w > 0 ? (w - 12) / 2 : 0;
+  const cellW = Math.max(140, (w - 12) / 2);
+
+  const dynamicPanchang = panchangData ? [
+    { label: 'Tithi', value: panchangData.tithi, sub: panchangData.tithiSub || 'Vedic Lunar Day', icon: 'nights_stay_outlined', color: '#9370DB' },
+    { label: 'Nakshatra', value: panchangData.nakshatra, sub: panchangData.nakshatraSub || 'Lunar Mansion', icon: 'star_outline', color: '#FFD700' },
+    { label: 'Yoga', value: panchangData.yoga, sub: panchangData.yogaSub || 'Auspicious Period', icon: 'self_improvement', color: '#81C784' },
+    { label: 'Karana', value: panchangData.karana, sub: panchangData.karanaSub || 'Half-Tithi Cycle', icon: 'schedule', color: '#FF8A65' },
+  ] : PANCHANG;
+
+  const dynamicSunMoon = panchangData ? [
+    { label: 'Sunrise', value: panchangData.sunrise, icon: 'wb_sunny_outlined', color: '#FFB347' },
+    { label: 'Sunset', value: panchangData.sunset, icon: 'wb_twilight', color: '#FF6B6B' },
+    { label: 'Moonrise', value: panchangData.moonrise, icon: 'nights_stay_outlined', color: '#E0E0E0' },
+    { label: 'Moonset', value: panchangData.moonset, icon: 'bedtime_outlined', color: '#9370DB' },
+  ] : SUN_MOON;
+
+  const dynamicTimes = panchangData ? [
+    { label: 'Rahu Kaal', value: panchangData.rahuKaal, icon: 'block', color: '#CF4444' },
+    { label: 'Yamaganda', value: panchangData.yamaganda, icon: 'warning_amber_rounded', color: '#D4821A' },
+    { label: 'Gulika Kaal', value: panchangData.gulikaKaal, icon: 'remove_circle_outline', color: '#FF8A65' },
+    { label: 'Abhijit Muhurat', value: panchangData.abhijitMuhurat, icon: 'star_outline', color: '#81C784' },
+  ] : TIMES;
+
+  const dynamicChoghadiya = (panchangData?.choghadiya && panchangData.choghadiya.length > 0) ? panchangData.choghadiya : CHOGHADIYA;
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `🕉️ Vedic Panchang (${formattedDate}) - ${locationName}\n• Tithi: ${dynamicPanchang[0].value}\n• Nakshatra: ${dynamicPanchang[1].value}\n• Abhijit Muhurat: ${dynamicTimes[3].value}\n• Rahu Kaal: ${dynamicTimes[0].value}\n\nShared via AstroParihar App ✨`,
+      });
+    } catch {}
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.backgroundDark }} testID="panchang.screen">
@@ -82,8 +143,8 @@ export default function PanchangScreen() {
         title="Panchang"
         leading={<BoxBackButton testID="panchang.back" onPress={() => router.back()} />}
         actions={[
-          { icon: 'location_on_outlined', color: AppColors.goldAccent, onPress: SOURCE_INERT('panchang.location'), testID: 'panchang.location' },
-          { icon: 'share_outlined', color: AppColors.goldAccent, onPress: SOURCE_INERT('panchang.shareAppBar'), testID: 'panchang.shareAppBar' },
+          { icon: 'location_on_outlined', color: AppColors.goldAccent, onPress: () => {}, testID: 'panchang.location' },
+          { icon: 'share_outlined', color: AppColors.goldAccent, onPress: handleShare, testID: 'panchang.shareAppBar' },
         ]}
       />
       <ScrollView>
@@ -103,17 +164,17 @@ export default function PanchangScreen() {
         <LinearGradient colors={[withAlpha(AppColors.primary, 60), AppColors.surfaceVariantDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ marginHorizontal: 20, marginVertical: 4, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: AppColors.goldBorder, flexDirection: 'row', alignItems: 'center' }}>
           <Text style={{ fontSize: 28 }}>🕉️</Text>
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={{ color: AppColors.goldAccent, fontSize: 13, fontWeight: '600' }}>Vikram Samvat 2081</Text>
-            <Text style={{ color: AppColors.textPrimary, fontSize: 14, fontWeight: '700' }}>Ashwin Masa • Krishna Paksha</Text>
-            <Text style={{ color: AppColors.textMuted, fontSize: 11 }}>New Delhi, India • IST (UTC+5:30)</Text>
+            <Text style={{ color: AppColors.goldAccent, fontSize: 13, fontWeight: '600' }}>Vikram Samvat 2081 • Vedic Calendar</Text>
+            <Text style={{ color: AppColors.textPrimary, fontSize: 14, fontWeight: '700' }}>{dynamicPanchang[0]?.value || 'Shukla Paksha'}</Text>
+            <Text style={{ color: AppColors.textMuted, fontSize: 11 }}>{locationName} • IST (UTC+5:30)</Text>
           </View>
         </LinearGradient>
 
         <View style={{ marginHorizontal: 20, marginTop: 12, marginBottom: 8 }}>
           <SectionTitle>Panchang Details</SectionTitle>
           <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 12 }} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
-            {cellW > 0 && PANCHANG.map((p) => (
-              <View key={p.label} style={{ width: cellW, height: cellW / 1.6, padding: 14, borderRadius: 16, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(p.color, 60), justifyContent: 'space-between' }}>
+            {dynamicPanchang.map((p) => (
+              <View key={p.label} style={{ width: cellW, minHeight: 110, padding: 14, borderRadius: 16, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(p.color, 60), justifyContent: 'space-between' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <AppIcon name={p.icon} color={p.color} size={16} />
                   <Text style={{ marginLeft: 6, color: p.color, fontSize: 11, fontWeight: '600' }}>{p.label}</Text>
@@ -128,7 +189,7 @@ export default function PanchangScreen() {
         <View style={{ marginHorizontal: 20, marginVertical: 8 }}>
           <SectionTitle>Sun &amp; Moon Timings</SectionTitle>
           <View style={{ marginTop: 12, flexDirection: 'row' }}>
-            {SUN_MOON.map((s) => (
+            {dynamicSunMoon.map((s) => (
               <View key={s.label} style={{ flex: 1, marginRight: 8, padding: 12, borderRadius: 14, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(s.color, 60), alignItems: 'center' }}>
                 <AppIcon name={s.icon} color={s.color} size={22} />
                 <Text style={{ marginTop: 6, color: AppColors.textPrimary, fontSize: 12, fontWeight: '700' }}>{s.value}</Text>
@@ -141,7 +202,7 @@ export default function PanchangScreen() {
         <View style={{ marginHorizontal: 20, marginVertical: 8 }}>
           <SectionTitle>Auspicious &amp; Inauspicious Times</SectionTitle>
           <View style={{ height: 12 }} />
-          {TIMES.map((t) => {
+          {dynamicTimes.map((t) => {
             const isGood = t.label === 'Abhijit Muhurat';
             return (
               <View key={t.label} style={{ marginBottom: 8, padding: 14, borderRadius: 14, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(t.color, 60), flexDirection: 'row', alignItems: 'center' }}>
@@ -164,7 +225,7 @@ export default function PanchangScreen() {
           <SectionTitle>Today&apos;s Choghadiya</SectionTitle>
           <Text style={{ marginTop: 4, color: AppColors.textMuted, fontSize: 12 }}>Day Choghadiya (Sunrise to Sunset)</Text>
           <View style={{ height: 12 }} />
-          {CHOGHADIYA.map((c, i) => {
+          {dynamicChoghadiya.map((c, i) => {
             const color = c.type === 'Very Auspicious' ? AppColors.goldAccent : c.good ? AppColors.success : AppColors.error;
             return (
               <View key={i} style={{ marginBottom: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, backgroundColor: withAlpha(color, 15), borderWidth: 1, borderColor: withAlpha(color, 50), flexDirection: 'row', alignItems: 'center' }}>
@@ -183,9 +244,9 @@ export default function PanchangScreen() {
         </View>
 
         <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
-          <OutlinedButton testID="panchang.share" label="Share Today's Panchang" icon="share_outlined" color={AppColors.goldAccent} onPress={SOURCE_INERT('panchang.share')} />
+          <OutlinedButton testID="panchang.share" label="Share Today's Panchang" icon="share_outlined" color={AppColors.goldAccent} onPress={handleShare} />
         </View>
-        <View style={{ height: 100 }} />
+        <View style={{ height: Math.max(140, insets.bottom + 80) }} />
       </ScrollView>
     </View>
   );

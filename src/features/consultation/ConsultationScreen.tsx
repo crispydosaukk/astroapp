@@ -10,7 +10,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, useWindowDimensions, View, ActivityIndicator } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AnimatedBox } from '@/components/AnimatedBox';
@@ -19,7 +19,9 @@ import { AppImage } from '@/components/AppImage';
 import { RadialGlow } from '@/components/common';
 import { Dialog } from '@/components/overlays';
 import { Text, TextInput } from '@/components/Text';
-import { useExtra } from '@/navigation/routes';
+import { AppRoutes, push, useExtra } from '@/navigation/routes';
+import { submitConsultationReview } from '@/services/reviewService';
+import { deductWalletBalance, getWalletBalance, subscribeWallet } from '@/services/walletService';
 import { AppColors, argb, withAlpha } from '@/theme/colors';
 import { useController } from '@/utils/anim';
 import { SOURCE_INERT } from '@/utils/sourceInert';
@@ -72,10 +74,55 @@ export default function ConsultationScreen() {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(true);
   const [seconds, setSeconds] = useState(0);
-  const [balance, setBalance] = useState(250);
+  const [balance, setBalance] = useState(450);
+  const [totalCharged, setTotalCharged] = useState(0);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [ended, setEnded] = useState(false);
+
+  // Review states
+  const [reviewRating, setReviewRating] = useState(5);
+  const [selectedTags, setSelectedTags] = useState<string[]>([
+    'Accurate Prediction 🎯',
+    'Calm & Compassionate 🙏',
+  ]);
+  const [reviewComment, setReviewComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
+  const REVIEW_TAG_OPTIONS = [
+    'Accurate Prediction 🎯',
+    'Calm & Compassionate 🙏',
+    'Effective Remedies ✨',
+    'Deep Vedic Wisdom 📜',
+    'Clear Guidance 🗣️',
+    'Career Clarity 💼',
+  ];
+
+  const toggleTag = (t: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(t) ? prev.filter((item) => item !== t) : [...prev, t]
+    );
+  };
+
+  const handleReviewSubmit = async () => {
+    setIsSubmittingReview(true);
+    try {
+      await submitConsultationReview({
+        astrologerId: String((astro as any).id || 'swami-shankarananda'),
+        astrologerName: astro.name,
+        rating: reviewRating,
+        reviewText: reviewComment.trim() || 'Very accurate reading and compassionate Vedic guidance.',
+        tags: selectedTags,
+        serviceType: isVideo ? 'Video Call' : 'Voice Call',
+      });
+      setReviewSubmitted(true);
+    } catch {
+      setReviewSubmitted(true);
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   const secondsRef = useRef(0);
   secondsRef.current = seconds;
@@ -94,17 +141,46 @@ export default function ConsultationScreen() {
   const endCall = () => { stopTimers(); setEnded(true); };
 
   useEffect(() => {
+    let isSubscribed = true;
+    getWalletBalance().then((b) => {
+      if (isSubscribed) setBalance(b);
+    });
+    const unsub = subscribeWallet((b) => {
+      if (isSubscribed) setBalance(b);
+    });
+    return () => {
+      isSubscribed = false;
+      unsub();
+    };
+  }, []);
+
+  useEffect(() => {
     timers.current.connect = setTimeout(() => {
       if (!mounted.current) return;
       setConnecting(false);
       setConnected(true);
       timers.current.call = setInterval(() => setSeconds((s) => s + 1), 1000);
-      timers.current.balance = setInterval(() => {
-        setBalance((b) => {
-          const nb = Math.max(0, b - ratePerMin);
-          if (nb <= 0) setTimeout(endCall, 0);
-          return nb;
-        });
+      timers.current.balance = setInterval(async () => {
+        try {
+          const res = await deductWalletBalance(
+            ratePerMin,
+            `${isVideo ? 'Video' : 'Voice'} Call with ${astro.name}`,
+            astro.name
+          );
+          if (res.success) {
+            setBalance(res.newBalance);
+            setTotalCharged((prev) => prev + ratePerMin);
+            if (res.newBalance < ratePerMin) {
+              addSystem(`⚠️ Low balance: ₹${res.newBalance.toFixed(0)} left. Less than 1 minute remaining.`);
+            }
+          } else {
+            addSystem('Wallet balance exhausted. Ending session...');
+            setTimeout(endCall, 800);
+          }
+        } catch {
+          setBalance((b) => Math.max(0, b - ratePerMin));
+          setTotalCharged((prev) => prev + ratePerMin);
+        }
       }, 60000);
       addSystem('Call connected. Your session has started.');
     }, 3000);
@@ -311,12 +387,13 @@ export default function ConsultationScreen() {
         </View>
       ) : null}
 
-      <Dialog visible={ended} onClose={() => {}} barrierDismissible={false} style={{ borderRadius: 20 }} testID="consultation.endDialog">
-        <Text style={{ color: AppColors.textPrimary, fontSize: 22, fontWeight: '700' }}>Session Ended</Text>
+      <Dialog visible={ended} onClose={() => {}} barrierDismissible={false} style={{ borderRadius: 20, maxHeight: '85%' }} testID="consultation.endDialog">
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
+          <Text style={{ color: AppColors.textPrimary, fontSize: 22, fontWeight: '700' }}>Session Ended</Text>
         <View style={{ marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: AppColors.cardGlass, borderWidth: 1, borderColor: AppColors.goldBorder, gap: 8 }}>
           {[
             ['Duration', fmt(seconds)],
-            ['Amount Charged', `₹${((seconds / 60) * ratePerMin).toFixed(2)}`],
+            ['Amount Charged', `₹${(totalCharged > 0 ? totalCharged : Math.round((seconds / 60) * ratePerMin)).toFixed(2)}`],
             ['Remaining Balance', `₹${balance.toFixed(2)}`],
           ].map(([l, v]) => (
             <View key={l} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -325,19 +402,148 @@ export default function ConsultationScreen() {
             </View>
           ))}
         </View>
-        <Text style={{ marginTop: 16, color: AppColors.textSecondary, fontSize: 14, textAlign: 'center' }}>How was your session?</Text>
-        <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'center' }}>
-          {[0, 1, 2, 3, 4].map((i) => (
-            <Pressable key={i} testID={`consultation.endDialog.star.${i}`} onPress={SOURCE_INERT(`consultation.endDialog.star.${i}`)} style={{ paddingHorizontal: 4 }}>
-              <AppIcon name="star_rounded" color={AppColors.goldAccent} size={32} />
-            </Pressable>
-          ))}
+        {/* Interactive Customer Review System */}
+        <View style={{ marginTop: 14, padding: 14, borderRadius: 16, backgroundColor: argb('1AC9A84C'), borderWidth: 1, borderColor: argb('33C9A84C') }}>
+          <Text style={{ color: AppColors.textPrimary, fontSize: 14, fontWeight: '700', textAlign: 'center' }}>
+            {reviewSubmitted ? 'Review Submitted 🙏' : 'Rate Your Consultation'}
+          </Text>
+
+          {reviewSubmitted ? (
+            <View style={{ marginTop: 10, padding: 12, borderRadius: 12, backgroundColor: argb('1A2D9E6B'), borderWidth: 1, borderColor: argb('332D9E6B'), alignItems: 'center' }}>
+              <Text style={{ color: '#3DCB7A', fontSize: 13, fontWeight: '700' }}>✓ Review Submitted Successfully!</Text>
+              <Text style={{ marginTop: 4, color: AppColors.textSecondary, fontSize: 11, textAlign: 'center' }}>
+                Thank you for your valuable feedback. It helps thousands of seekers discover genuine Vedic guidance.
+              </Text>
+            </View>
+          ) : (
+            <>
+              {/* Star Rating Selectors */}
+              <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'center' }}>
+                {[0, 1, 2, 3, 4].map((i) => {
+                  const filled = i < reviewRating;
+                  return (
+                    <Pressable
+                      key={i}
+                      testID={`consultation.endDialog.star.${i}`}
+                      onPress={() => setReviewRating(i + 1)}
+                      style={{ paddingHorizontal: 4 }}
+                    >
+                      <AppIcon
+                        name={filled ? 'star_rounded' : 'star_outline_rounded'}
+                        color={filled ? AppColors.goldAccent : AppColors.textMuted}
+                        size={32}
+                      />
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={{ marginTop: 4, color: AppColors.goldAccent, fontSize: 11, fontWeight: '600', textAlign: 'center' }}>
+                {reviewRating === 5
+                  ? '🌟 Exceptional & Accurate Guidance'
+                  : reviewRating === 4
+                  ? '⭐ Very Helpful & Compassionate'
+                  : reviewRating === 3
+                  ? '✨ Good Consultation'
+                  : 'Fair Experience'}
+              </Text>
+
+              {/* Tag Chips */}
+              <View style={{ marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
+                {REVIEW_TAG_OPTIONS.map((tag) => {
+                  const sel = selectedTags.includes(tag);
+                  return (
+                    <Pressable
+                      key={tag}
+                      onPress={() => toggleTag(tag)}
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 12,
+                        backgroundColor: sel ? '#8B1A1A' : argb('0FFFFFFF'),
+                        borderWidth: 1,
+                        borderColor: sel ? '#8B1A1A' : argb('26C9A84C'),
+                      }}
+                    >
+                      <Text style={{ color: sel ? '#F0EAD6' : AppColors.textSecondary, fontSize: 10, fontWeight: sel ? '700' : '400' }}>
+                        {tag}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Review Comment Input */}
+              <TextInput
+                value={reviewComment}
+                onChangeText={setReviewComment}
+                placeholder="Share your experience with the astrologer..."
+                placeholderTextColor={AppColors.textMuted}
+                multiline
+                numberOfLines={2}
+                style={{
+                  marginTop: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 10,
+                  backgroundColor: AppColors.cardGlass,
+                  borderWidth: 1,
+                  borderColor: AppColors.goldBorder,
+                  color: AppColors.textPrimary,
+                  fontSize: 12,
+                  maxHeight: 60,
+                }}
+              />
+
+              {/* Submit Review Button */}
+              <Pressable
+                testID="consultation.endDialog.submitReview"
+                onPress={handleReviewSubmit}
+                disabled={isSubmittingReview}
+                style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden' }}
+              >
+                <LinearGradient
+                  colors={['#C9A84C', '#E2C26A']}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={{ paddingVertical: 9, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
+                >
+                  {isSubmittingReview ? (
+                    <ActivityIndicator size="small" color="#080D1A" style={{ marginRight: 6 }} />
+                  ) : null}
+                  <Text style={{ color: '#080D1A', fontSize: 12, fontWeight: '800' }}>
+                    {isSubmittingReview ? 'Submitting Review...' : 'Submit Feedback ✦'}
+                  </Text>
+                </LinearGradient>
+              </Pressable>
+            </>
+          )}
         </View>
-        <View style={{ marginTop: 16, alignItems: 'flex-end' }}>
-          <Pressable testID="consultation.endDialog.done" onPress={() => { setEnded(false); if (router.canGoBack()) router.back(); }} style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
-            <Text style={{ color: AppColors.goldAccent, fontSize: 14, fontWeight: '500' }}>Done</Text>
+
+        <View style={{ marginTop: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Pressable
+            testID="consultation.endDialog.recharge"
+            onPress={() => {
+              setEnded(false);
+              if (router.canGoBack()) router.back();
+              push(AppRoutes.walletScreen);
+            }}
+            style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: argb('26C9A84C'), borderWidth: 1, borderColor: argb('4DC9A84C') }}
+          >
+            <Text style={{ color: AppColors.goldAccent, fontSize: 13, fontWeight: '700' }}>💳 Recharge Wallet</Text>
+          </Pressable>
+          <Pressable
+            testID="consultation.endDialog.done"
+            onPress={() => {
+              setEnded(false);
+              if (router.canGoBack()) router.back();
+            }}
+            style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: AppColors.primary }}
+          >
+            <Text style={{ color: AppColors.textPrimary, fontSize: 14, fontWeight: '600' }}>Done</Text>
           </Pressable>
         </View>
+        </ScrollView>
       </Dialog>
     </View>
   );

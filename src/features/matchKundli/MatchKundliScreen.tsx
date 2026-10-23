@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { AppBar, BoxBackButton } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
@@ -18,6 +19,8 @@ import { lh, Text } from '@/components/Text';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { Curves, useController } from '@/utils/anim';
 import { SOURCE_INERT } from '@/utils/sourceInert';
+import { calculateLiveKundliMatch, KundliMatchResult } from '@/services/astrologyService';
+import { AppRoutes, push } from '@/navigation/routes';
 
 const GUNA_MILAN = [
   { name: 'Varna', score: 1, max: 1, status: 'Compatible', desc: 'Spiritual compatibility and ego levels are well matched.' },
@@ -89,18 +92,29 @@ function RotatingStar() {
 }
 
 export default function MatchKundliScreen() {
+  const insets = useSafeAreaInsets();
   const [showResults, setShowResults] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [matchResult, setMatchResult] = useState<KundliMatchResult | null>(null);
   const [p1, setP1] = useState('Priya Sharma');
   const [p2, setP2] = useState('Arjun Mehta');
   const scoreCtl = useController({ duration: 1500 });
 
   const calculate = async () => {
     setIsCalculating(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setIsCalculating(false);
-    setShowResults(true);
-    scoreCtl.forward();
+    try {
+      const res = await calculateLiveKundliMatch(
+        { name: p2, dob: '1994-05-12', tob: '10:30 AM', pob: 'New Delhi, India' },
+        { name: p1, dob: '1996-08-20', tob: '09:15 AM', pob: 'New Delhi, India' }
+      );
+      setMatchResult(res);
+    } catch {
+      // astrologyService has built-in fallback
+    } finally {
+      setIsCalculating(false);
+      setShowResults(true);
+      scoreCtl.forward();
+    }
   };
 
   const onBack = () => {
@@ -108,9 +122,14 @@ export default function MatchKundliScreen() {
     else router.back();
   };
 
-  const scoreValue = TOTAL * Curves.easeOutCubic(scoreCtl.value);
+  const targetScore = matchResult?.totalScore ?? TOTAL;
+  const scoreValue = targetScore * Curves.easeOutCubic(scoreCtl.value);
   const score = Math.round(scoreValue);
   const ringColor = score >= 28 ? AppColors.success : score >= 18 ? AppColors.goldAccent : AppColors.warning;
+  const verdictTitle = score >= 28 ? 'Excellent Match ✨' : score >= 18 ? 'Good Match 👍' : 'Requires Remedies ⚠️';
+  const verdictDesc = matchResult?.verdict || 'A score above 28 indicates an excellent match. This couple shares strong spiritual, emotional, and practical compatibility.';
+  const gunas = matchResult?.ashtakoot && matchResult.ashtakoot.length > 0 ? matchResult.ashtakoot : GUNA_MILAN;
+  const areas = matchResult?.areas && matchResult.areas.length > 0 ? matchResult.areas : AREAS;
 
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.backgroundDark }} testID="matchKundli.screen">
@@ -158,16 +177,16 @@ export default function MatchKundliScreen() {
                   <Text style={{ color: AppColors.textMuted, fontSize: 16 }}>/ 36</Text>
                 </ProgressRing>
               </View>
-              <View style={{ marginTop: 16, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: withAlpha(AppColors.success, 30), borderWidth: 1, borderColor: withAlpha(AppColors.success, 80) }}>
-                <Text style={{ color: AppColors.success, fontSize: 14, fontWeight: '700' }}>Excellent Match ✨</Text>
+              <View style={{ marginTop: 16, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: withAlpha(ringColor, 30), borderWidth: 1, borderColor: withAlpha(ringColor, 80) }}>
+                <Text style={{ color: ringColor, fontSize: 14, fontWeight: '700' }}>{verdictTitle}</Text>
               </View>
-              <Text style={{ marginTop: 12, color: AppColors.textSecondary, textAlign: 'center', ...lh(13, 1.5) }}>A score above 28 indicates an excellent match. This couple shares strong spiritual, emotional, and practical compatibility.</Text>
+              <Text style={{ marginTop: 12, color: AppColors.textSecondary, textAlign: 'center', ...lh(13, 1.5) }}>{verdictDesc}</Text>
             </LinearGradient>
 
             <View style={{ marginHorizontal: 20, marginVertical: 8 }}>
               <Text style={{ color: AppColors.textPrimary, fontSize: 16, fontWeight: '700', marginBottom: 12 }}>Guna Milan (36 Points)</Text>
-              {GUNA_MILAN.map((g) => {
-                const ratio = g.score / g.max;
+              {gunas.map((g) => {
+                const ratio = g.max > 0 ? g.score / g.max : 1;
                 const sc = ratio >= 0.8 ? AppColors.success : ratio >= 0.6 ? AppColors.goldAccent : AppColors.warning;
                 return (
                   <View key={g.name} style={{ marginBottom: 8, padding: 14, borderRadius: 14, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: AppColors.goldBorder }}>
@@ -190,7 +209,7 @@ export default function MatchKundliScreen() {
             <View style={{ marginHorizontal: 20, marginVertical: 8 }}>
               <Text style={{ color: AppColors.textPrimary, fontSize: 16, fontWeight: '700', marginBottom: 12 }}>Compatibility Areas</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 }}>
-                {AREAS.map((a) => (
+                {areas.map((a) => (
                   <View key={a.title} style={{ width: '48%', aspectRatio: 1.4, padding: 14, borderRadius: 16, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(a.color, 60), justifyContent: 'space-between' }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                       <AppIcon name={a.icon} color={a.color} size={20} />
@@ -204,12 +223,38 @@ export default function MatchKundliScreen() {
             </View>
 
             <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
-              <ElevatedButton testID="matchKundli.detailedReport" label="Get Detailed Compatibility Report — ₹399" onPress={SOURCE_INERT('matchKundli.detailedReport')} bg={AppColors.goldAccent} fg={AppColors.backgroundDark} radius={14} paddingV={14} paddingH={12} fontSize={14} fontWeight="700" />
-              <OutlinedButton testID="matchKundli.askAi" label="🤖 Ask AI About This Match" onPress={SOURCE_INERT('matchKundli.askAi')} style={{ marginTop: 12 }} />
+              <ElevatedButton
+                testID="matchKundli.detailedReport"
+                label="Get Detailed Compatibility Report — ₹399"
+                onPress={() => {
+                  push(AppRoutes.aiChatScreen, {
+                    astrologerId: 'vedika',
+                    initialPrompt: `Namaste Vedika, I need the full detailed marriage compatibility report for ${p1} and ${p2} (Score: ${score}/36). Please analyze all 8 Kutas, dosha cancellations, and remedies.`
+                  });
+                }}
+                bg={AppColors.goldAccent}
+                fg={AppColors.backgroundDark}
+                radius={14}
+                paddingV={14}
+                paddingH={12}
+                fontSize={14}
+                fontWeight="700"
+              />
+              <OutlinedButton
+                testID="matchKundli.askAi"
+                label="🤖 Ask AI About This Match"
+                onPress={() => {
+                  push(AppRoutes.aiChatScreen, {
+                    astrologerId: 'vedika',
+                    initialPrompt: `Namaste Vedika, we just matched ${p1} and ${p2} with a Guna Milan score of ${score}/36 (${verdictTitle}). What does this mean for our future harmony, careers, and family life?`
+                  });
+                }}
+                style={{ marginTop: 12 }}
+              />
             </View>
           </>
         )}
-        <View style={{ height: 100 }} />
+        <View style={{ height: Math.max(140, insets.bottom + 80) }} />
       </ScrollView>
     </View>
   );
