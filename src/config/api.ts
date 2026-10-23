@@ -15,6 +15,7 @@ export const API_ENDPOINTS = {
   appDynamic: `${BASE_URL}/api/app-dynamic`,
   onboarding: `${BASE_URL}/api/app-dynamic/onboarding`,
   cosmicInsights: `${BASE_URL}/api/app-dynamic/cosmic-insights`,
+  banners: `${BASE_URL}/api/app-dynamic/banners`,
   astrologers: `${BASE_URL}/api/app-dynamic/astrologers`,
   kundliCalculate: `${BASE_URL}/api/app-dynamic/kundli-calculate`,
   matchKundli: `${BASE_URL}/api/app-dynamic/match-kundli`,

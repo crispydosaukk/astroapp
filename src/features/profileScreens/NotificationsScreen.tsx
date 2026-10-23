@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar } from '@/components/AppBar';
+import { AppIcon } from '@/components/AppIcon';
 import { Switch } from '@/components/common';
 import { TabBar, TabPager } from '@/components/Tabs';
 import { Text } from '@/components/Text';
@@ -15,14 +16,17 @@ import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
 
-const INITIAL = [
-  { emoji: '🌟', title: 'Your Daily Horoscope is Ready', body: 'Today brings positive energy for career decisions with auspicious planetary aspects.', time: '8:00 AM', type: 'Daily', read: false, color: '#9370DB' },
-  { emoji: '💬', title: 'Pandit Radhey Shyam replied', body: 'Your consultation summary is now available. Tap to view the detailed notes.', time: 'Yesterday', type: 'Consultation', read: false, color: '#4FC3F7' },
-  { emoji: '📜', title: 'Your Kundli Report is Ready', body: 'Your Comprehensive Life Report has been generated. Download it now.', time: '2 days ago', type: 'Report', read: true, color: '#FFD700' },
-  { emoji: '🪐', title: 'Saturn Transit Alert', body: 'Saturn transit creates favorable alignments for 10th and 11th houses.', time: '3 days ago', type: 'Planetary', read: true, color: '#FF6B6B' },
-  { emoji: '🎁', title: 'Special Offer: 30% Off Reports', body: 'Get 30% off on all Kundli reports this week. Use code ASTRO30.', time: '5 days ago', type: 'Offer', read: true, color: '#81C784' },
-  { emoji: '🔮', title: 'New Remedy Recommendation', body: 'Based on your current Dasha, we recommend a specific Rudraksha.', time: '1 week ago', type: 'Remedy', read: true, color: '#FFB347' },
-];
+export type NotificationItem = {
+  emoji: string;
+  title: string;
+  body: string;
+  time: string;
+  type: string;
+  read: boolean;
+  color: string;
+};
+
+const INITIAL: NotificationItem[] = [];
 
 const SETTINGS: Record<string, boolean> = {
   'Daily Horoscope': true, 'Planetary Alerts': true, 'Consultation Reminders': true, 'Report Ready': true, 'Astrologer Messages': true,
@@ -103,11 +107,15 @@ export default function NotificationsScreen() {
         testIDPrefix="notifications"
         backgroundColor={colors.background}
         backColor={colors.textPrimary}
-        actions={[
-          <Pressable key="all" testID="notifications.markAllRead" onPress={markAllRead} style={{ paddingHorizontal: 12, height: 40, justifyContent: 'center' }}>
-            <Text style={{ color: colors.goldAccent, fontSize: 12, fontWeight: '700' }}>Mark all read</Text>
-          </Pressable>,
-        ]}
+        actions={
+          unreadCount > 0
+            ? [
+                <Pressable key="all" testID="notifications.markAllRead" onPress={markAllRead} style={{ paddingHorizontal: 12, height: 40, justifyContent: 'center' }}>
+                  <Text style={{ color: colors.goldAccent, fontSize: 12, fontWeight: '700' }}>Mark all read</Text>
+                </Pressable>,
+              ]
+            : []
+        }
         bottom={
           <TabBar
             testIDPrefix="notifications.tab"
@@ -146,47 +154,73 @@ export default function NotificationsScreen() {
               </View>
             ) : null}
 
-            {items.map((it, i) => (
-              <Pressable
-                key={i}
-                onPress={() => setItems((all) => all.map((x, idx) => (idx === i ? { ...x, read: true } : x)))}
-                style={{
-                  marginBottom: 12,
-                  padding: 16,
-                  borderRadius: 18,
-                  backgroundColor: it.read ? colors.surface : withAlpha(colors.goldAccent, colors.isLight ? 12 : 20),
-                  borderWidth: 1,
-                  borderColor: it.read ? colors.cardBorder : colors.goldAccent,
-                  flexDirection: 'row',
-                  alignItems: 'flex-start',
-                }}
-              >
+            {items.length === 0 ? (
+              <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 80, paddingHorizontal: 24 }}>
                 <View
                   style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    backgroundColor: withAlpha(it.color, colors.isLight ? 20 : 25),
+                    width: 72,
+                    height: 72,
+                    borderRadius: 36,
+                    backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 15 : 20),
+                    borderWidth: 1,
+                    borderColor: colors.cardBorder,
                     alignItems: 'center',
                     justifyContent: 'center',
+                    marginBottom: 16,
                   }}
                 >
-                  <Text style={{ fontSize: 20 }}>{it.emoji}</Text>
+                  <AppIcon name="notifications_off_outlined" color={colors.goldAccent} size={32} />
                 </View>
-                <View style={{ flex: 1, marginLeft: 14 }}>
-                  <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: it.read ? '600' : '700' }}>
-                    {it.title}
-                  </Text>
-                  <Text style={{ marginTop: 3, color: colors.textMuted, fontSize: 12, lineHeight: 16 }}>
-                    {it.body}
-                  </Text>
-                  <Text style={{ marginTop: 6, color: colors.textMuted, fontSize: 10 }}>{it.time}</Text>
-                </View>
-                {!it.read ? (
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.goldAccent, marginTop: 4 }} />
-                ) : null}
-              </Pressable>
-            ))}
+                <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '700', textAlign: 'center' }}>
+                  No Notifications
+                </Text>
+                <Text style={{ color: colors.textMuted, fontSize: 13, textAlign: 'center', marginTop: 6, lineHeight: 18 }}>
+                  You have no new notifications right now. Alerts and astrological updates will appear here.
+                </Text>
+              </View>
+            ) : (
+              items.map((it, i) => (
+                <Pressable
+                  key={i}
+                  onPress={() => setItems((all) => all.map((x, idx) => (idx === i ? { ...x, read: true } : x)))}
+                  style={{
+                    marginBottom: 12,
+                    padding: 16,
+                    borderRadius: 18,
+                    backgroundColor: it.read ? colors.surface : withAlpha(colors.goldAccent, colors.isLight ? 12 : 20),
+                    borderWidth: 1,
+                    borderColor: it.read ? colors.cardBorder : colors.goldAccent,
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 22,
+                      backgroundColor: withAlpha(it.color, colors.isLight ? 20 : 25),
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: 20 }}>{it.emoji}</Text>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 14 }}>
+                    <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: it.read ? '600' : '700' }}>
+                      {it.title}
+                    </Text>
+                    <Text style={{ marginTop: 3, color: colors.textMuted, fontSize: 12, lineHeight: 16 }}>
+                      {it.body}
+                    </Text>
+                    <Text style={{ marginTop: 6, color: colors.textMuted, fontSize: 10 }}>{it.time}</Text>
+                  </View>
+                  {!it.read ? (
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.goldAccent, marginTop: 4 }} />
+                  ) : null}
+                </Pressable>
+              ))
+            )}
           </ScrollView>,
           <NotificationSettingsContent key="settings" />,
         ]}

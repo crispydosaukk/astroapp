@@ -18,9 +18,9 @@ import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
 
 const REPORTS = [
-  { person1: 'Priya Sharma', person2: 'Rahul Sharma', score: 32, status: 'Excellent', date: '15 Jan 2026', emoji1: '🔮', emoji2: '💫', color: '#2D9E6B' },
-  { person1: 'Priya Sharma', person2: 'Arjun Mehta', score: 24, status: 'Good', date: '10 Dec 2025', emoji1: '🔮', emoji2: '⭐', color: '#D4821A' },
-  { person1: 'Priya Sharma', person2: 'Vikram Singh', score: 18, status: 'Average', date: '05 Nov 2025', emoji1: '🔮', emoji2: '🌟', color: '#FFB347' },
+  { person1: 'Self', person2: 'Partner 1', score: 32, status: 'Excellent', date: '15 Jan 2026', emoji1: '🔮', emoji2: '💫', color: '#2D9E6B' },
+  { person1: 'Self', person2: 'Partner 2', score: 24, status: 'Good', date: '10 Dec 2025', emoji1: '🔮', emoji2: '⭐', color: '#D4821A' },
+  { person1: 'Self', person2: 'Partner 3', score: 18, status: 'Average', date: '05 Nov 2025', emoji1: '🔮', emoji2: '🌟', color: '#FFB347' },
 ];
 
 const GUNA_MILAN_DETAILS = [

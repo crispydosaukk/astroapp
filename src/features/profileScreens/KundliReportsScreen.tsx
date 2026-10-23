@@ -41,10 +41,10 @@ export type KundliReportItem = {
 const STORAGE_REPORTS_KEY = 'astroparihar_kundli_reports';
 
 const INITIAL_REPORTS: KundliReportItem[] = [
-  { id: 'rep_1', title: 'Comprehensive Life Report', subtitle: 'Priya Sharma • 2026 Edition', pages: '48 pages', date: '12 Jan 2026', status: 'Ready', emoji: '📜', color: '#9370DB', size: '2.4 MB', summary: 'Complete life trajectory, 12 bhavas detailed predictions, Mahadasha timeline through 2038, and targeted Vedic pariharam remedies.' },
-  { id: 'rep_2', title: 'Career & Finance Kundli', subtitle: 'Priya Sharma • 2026', pages: '32 pages', date: '05 Mar 2026', status: 'Ready', emoji: '💼', color: '#FFD700', size: '1.8 MB', summary: '10th House Karma analysis, business vs employment suitability, wealth accumulation yogas, and favorable transit windows.' },
-  { id: 'rep_3', title: 'Marriage & Relationship Report', subtitle: 'Priya Sharma • 2026', pages: '28 pages', date: '20 Apr 2026', status: 'Ready', emoji: '❤️', color: '#FF6B6B', size: '1.5 MB', summary: '7th House Venus-Jupiter aspects, spouse personality indicators, manglik pacification remedies, and timing of marital harmony.' },
-  { id: 'rep_4', title: 'Annual Dasha Prediction 2026', subtitle: 'Priya Sharma • 2026', pages: '20 pages', date: '01 May 2026', status: 'Processing', emoji: '🌟', color: '#4FC3F7', size: '—', summary: 'Month-by-month Antardasha planetary shifts and transit alignments for 2026-2027.' },
+  { id: 'rep_1', title: 'Comprehensive Life Report', subtitle: 'Personal Kundli • 2026 Edition', pages: '48 pages', date: '12 Jan 2026', status: 'Ready', emoji: '📜', color: '#9370DB', size: '2.4 MB', summary: 'Complete life trajectory, 12 bhavas detailed predictions, Mahadasha timeline through 2038, and targeted Vedic pariharam remedies.' },
+  { id: 'rep_2', title: 'Career & Finance Kundli', subtitle: 'Personal Kundli • 2026', pages: '32 pages', date: '05 Mar 2026', status: 'Ready', emoji: '💼', color: '#FFD700', size: '1.8 MB', summary: '10th House Karma analysis, business vs employment suitability, wealth accumulation yogas, and favorable transit windows.' },
+  { id: 'rep_3', title: 'Marriage & Relationship Report', subtitle: 'Personal Kundli • 2026', pages: '28 pages', date: '20 Apr 2026', status: 'Ready', emoji: '❤️', color: '#FF6B6B', size: '1.5 MB', summary: '7th House Venus-Jupiter aspects, spouse personality indicators, manglik pacification remedies, and timing of marital harmony.' },
+  { id: 'rep_4', title: 'Annual Dasha Prediction 2026', subtitle: 'Personal Kundli • 2026', pages: '20 pages', date: '01 May 2026', status: 'Processing', emoji: '🌟', color: '#4FC3F7', size: '—', summary: 'Month-by-month Antardasha planetary shifts and transit alignments for 2026-2027.' },
 ];
 
 const CATALOG = [

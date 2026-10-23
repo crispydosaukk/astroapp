@@ -153,7 +153,7 @@ export async function submitConsultationReview(payload: SubmitReviewPayload): Pr
     id: `local_rev_${Date.now()}`,
     astrologerId: payload.astrologerId,
     astrologerName: payload.astrologerName,
-    customerName: payload.customerName || 'Verified Devotee',
+    customerName: payload.customerName || 'Verified Seeker',
     rating: payload.rating,
     reviewText: payload.reviewText,
     tags: payload.tags || ['Accurate Prediction 🎯'],

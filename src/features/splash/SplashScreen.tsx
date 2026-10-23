@@ -69,13 +69,13 @@ export default function SplashScreen() {
     <View
       style={{
         flex: 1,
-        backgroundColor: '#FAF9F6', // Pearl White
+        backgroundColor: '#080D1A', // Deep Cosmic Background (matches SignInScreen)
         alignItems: 'center',
         justifyContent: 'center',
       }}
       testID="splash.screen"
     >
-      <StatusBar style="dark" animated={true} />
+      <StatusBar style="light" animated={true} />
 
       <Animated.View
         style={{
@@ -99,12 +99,12 @@ export default function SplashScreen() {
         <View style={{ marginTop: 24, alignItems: 'center' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
             <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#C9A84C' }} />
-            <Text style={{ color: '#8B1A1A', fontSize: 13, fontWeight: '700', letterSpacing: 2 }}>
+            <Text style={{ color: '#E2C26A', fontSize: 13, fontWeight: '700', letterSpacing: 2 }}>
               ASTROPARIHAR
             </Text>
             <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#C9A84C' }} />
           </View>
-          <Text style={{ color: '#666680', fontSize: 12, fontWeight: '500', letterSpacing: 0.5 }}>
+          <Text style={{ color: '#A0A8C0', fontSize: 12, fontWeight: '500', letterSpacing: 0.5 }}>
             Ancient Vedic Wisdom • Luminous Guidance
           </Text>
         </View>

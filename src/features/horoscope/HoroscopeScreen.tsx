@@ -15,6 +15,7 @@ import { LinearProgress, RadialGlow } from '@/components/common';
 import { lh, Text } from '@/components/Text';
 import { AppRoutes, pop, push } from '@/navigation/routes';
 import { argb, withAlpha } from '@/theme/colors';
+import { useThemeColors } from '@/theme/themeStore';
 import { fetchLiveHoroscopes } from '@/services/astrologyService';
 
 export const ZODIACS = [
@@ -77,23 +78,39 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 function CategoryCard({ emoji, label, score, text, color }: { emoji: string; label: string; score: number; text: string; color: string }) {
   const [expanded, setExpanded] = useState(false);
+  const colors = useThemeColors();
   return (
-    <Pressable testID={`horoscope.category.${label.toLowerCase()}`} onPress={() => setExpanded((e) => !e)} style={{ marginBottom: 10, padding: 16, borderRadius: 16, backgroundColor: argb('0FFFFFFF'), borderWidth: 1, borderColor: argb('1AC9A84C') }}>
+    <Pressable
+      testID={`horoscope.category.${label.toLowerCase()}`}
+      onPress={() => setExpanded((e) => !e)}
+      style={{
+        marginBottom: 10,
+        padding: 16,
+        borderRadius: 16,
+        backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
+        borderWidth: 1.5,
+        borderColor: colors.isLight ? 'rgba(201,168,76,0.35)' : argb('1AC9A84C'),
+        shadowColor: colors.isLight ? '#C9A84C' : '#000',
+        shadowOpacity: colors.isLight ? 0.06 : 0.2,
+        shadowRadius: 6,
+        elevation: 2,
+      }}
+    >
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: withAlpha(color, 25), borderWidth: 1, borderColor: withAlpha(color, 60), alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ fontSize: 18 }}>{emoji}</Text>
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={{ color: '#F0EAD6', fontSize: 14, fontWeight: '700', marginBottom: 4 }}>{label}</Text>
-          <LinearProgress value={score / 100} height={5} radius={4} color={color} backgroundColor={argb('1AFFFFFF')} />
+          <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700', marginBottom: 4 }}>{label}</Text>
+          <LinearProgress value={score / 100} height={5} radius={4} color={color} backgroundColor={colors.isLight ? '#F0EBE0' : argb('1AFFFFFF')} />
         </View>
         <Text style={{ marginLeft: 12, color, fontSize: 16, fontWeight: '800' }}>{`${score}%`}</Text>
-        <AppIcon name={expanded ? 'keyboard_arrow_up_rounded' : 'keyboard_arrow_down_rounded'} color="#6B7A99" size={20} style={{ marginLeft: 8 }} />
+        <AppIcon name={expanded ? 'keyboard_arrow_up_rounded' : 'keyboard_arrow_down_rounded'} color={colors.isLight ? '#8B1A1A' : '#6B7A99'} size={20} style={{ marginLeft: 8 }} />
       </View>
       {expanded ? (
         <>
-          <View style={{ marginVertical: 12, height: 1, backgroundColor: argb('1AC9A84C') }} />
-          <Text style={{ color: '#A0A8C0', ...lh(13, 1.6) }}>{text}</Text>
+          <View style={{ marginVertical: 12, height: 1, backgroundColor: colors.isLight ? '#EAE5DB' : argb('1AC9A84C') }} />
+          <Text style={{ color: colors.isLight ? '#383852' : '#A0A8C0', ...lh(13, 1.6) }}>{text}</Text>
         </>
       ) : null}
     </Pressable>
@@ -101,17 +118,19 @@ function CategoryCard({ emoji, label, score, text, color }: { emoji: string; lab
 }
 
 function LuckyItem({ label, value, emoji }: { label: string; value: string; emoji: string }) {
+  const colors = useThemeColors();
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
       <Text style={{ fontSize: 20 }}>{emoji}</Text>
-      <Text style={{ marginTop: 6, textAlign: 'center', color: '#F0EAD6', fontSize: 12, fontWeight: '700' }}>{value}</Text>
-      <Text style={{ marginTop: 2, color: '#6B7A99', fontSize: 10 }}>{label}</Text>
+      <Text style={{ marginTop: 6, textAlign: 'center', color: colors.textPrimary, fontSize: 12, fontWeight: '700' }}>{value}</Text>
+      <Text style={{ marginTop: 2, color: colors.isLight ? '#5A6A85' : '#6B7A99', fontSize: 10 }}>{label}</Text>
     </View>
   );
 }
 
 export default function HoroscopeScreen() {
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
   const [dateOffset, setDateOffset] = useState(0);
   const [zodiac, setZodiac] = useState('Aries');
   const [liveData, setLiveData] = useState<Record<string, HoroscopeData>>({});
@@ -153,24 +172,37 @@ export default function HoroscopeScreen() {
   const formattedDate = `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: '#080D1A' }} testID="horoscope.screen">
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
-        <Pressable testID="horoscope.back" onPress={pop} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: argb('0FFFFFFF'), borderWidth: 1, borderColor: argb('1AC9A84C'), alignItems: 'center', justifyContent: 'center' }}>
-          <AppIcon name="arrow_back_ios_new_rounded" color="#F0EAD6" size={18} />
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }} testID="horoscope.screen">
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.cardBorder }}>
+        <Pressable
+          testID="horoscope.back"
+          onPress={pop}
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 12,
+            backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
+            borderWidth: 1.5,
+            borderColor: colors.isLight ? 'rgba(201,168,76,0.38)' : argb('1AC9A84C'),
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <AppIcon name="arrow_back_ios_new_rounded" color={colors.textPrimary} size={18} />
         </Pressable>
         <View style={{ flex: 1, marginLeft: 14 }}>
-          <Text style={{ color: '#F0EAD6', fontSize: 20, fontWeight: '700' }}>Daily Horoscope</Text>
-          <Text style={{ color: '#6B7A99', fontSize: 12 }}>Personalised cosmic guidance</Text>
+          <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800' }}>Daily Horoscope</Text>
+          <Text style={{ color: colors.isLight ? '#5A6A85' : '#6B7A99', fontSize: 12 }}>Personalised cosmic guidance</Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 100, backgroundColor: argb('1AC9A84C'), borderWidth: 1, borderColor: argb('33C9A84C') }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 100, backgroundColor: colors.isLight ? '#FFF8EE' : argb('1AC9A84C'), borderWidth: 1, borderColor: colors.goldAccent }}>
           <Text style={{ fontSize: 12 }}>✨</Text>
-          <Text style={{ marginLeft: 4, color: '#C9A84C', fontSize: 11, fontWeight: '600' }}>Vedic</Text>
+          <Text style={{ marginLeft: 4, color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 11, fontWeight: '700' }}>Vedic</Text>
         </View>
       </View>
 
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: Math.max(160, insets.bottom + 110) }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height: 80 }} contentContainerStyle={{ gap: 10 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height: 80, marginTop: 12 }} contentContainerStyle={{ gap: 10 }}>
             {ZODIACS.map((z) => {
               const sel = zodiac === z.sign;
               return (
@@ -179,57 +211,142 @@ export default function HoroscopeScreen() {
                   testID={`horoscope.zodiac.${z.sign.toLowerCase()}`}
                   onPress={() => changeZodiac(z.sign)}
                   duration={200}
-                  style={{ width: 64, height: 80, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: sel ? argb('33C9A84C') : argb('0FFFFFFF'), borderColor: sel ? '#C9A84C' : argb('1AC9A84C'), borderWidth: sel ? 1.5 : 1 }}
+                  style={{
+                    width: 64,
+                    height: 80,
+                    borderRadius: 16,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: sel ? (colors.isLight ? '#8B1A1A' : argb('33C9A84C')) : (colors.isLight ? '#FFFFFF' : argb('0FFFFFFF')),
+                    borderColor: sel ? (colors.isLight ? '#8B1A1A' : '#C9A84C') : (colors.isLight ? 'rgba(201,168,76,0.35)' : argb('1AC9A84C')),
+                    borderWidth: sel ? 1.5 : 1,
+                    shadowColor: colors.isLight ? '#C9A84C' : '#000',
+                    shadowOpacity: colors.isLight ? 0.06 : 0,
+                    shadowRadius: 4,
+                    elevation: 1,
+                  }}
                 >
-                  <Text style={{ fontSize: 22, color: sel ? '#C9A84C' : '#A0A8C0' }}>{z.symbol}</Text>
-                  <Text numberOfLines={1} style={{ marginTop: 4, color: sel ? '#C9A84C' : '#6B7A99', fontSize: 9, fontWeight: '600' }}>{z.sign}</Text>
+                  <Text style={{ fontSize: 22, color: sel ? '#FFFFFF' : (colors.isLight ? '#7C5205' : '#A0A8C0') }}>{z.symbol}</Text>
+                  <Text numberOfLines={1} style={{ marginTop: 4, color: sel ? '#FFFFFF' : (colors.isLight ? '#5A6A85' : '#6B7A99'), fontSize: 9, fontWeight: '700' }}>{z.sign}</Text>
                 </AnimatedPressable>
               );
             })}
           </ScrollView>
 
-          <View style={{ marginTop: 20, padding: 4, borderRadius: 16, backgroundColor: argb('0FFFFFFF'), borderWidth: 1, borderColor: argb('1AC9A84C'), flexDirection: 'row' }}>
+          <View
+            style={{
+              marginTop: 18,
+              padding: 4,
+              borderRadius: 16,
+              backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
+              borderWidth: 1.5,
+              borderColor: colors.isLight ? 'rgba(201,168,76,0.35)' : argb('1AC9A84C'),
+              flexDirection: 'row',
+              shadowColor: colors.isLight ? '#C9A84C' : '#000',
+              shadowOpacity: colors.isLight ? 0.05 : 0,
+              shadowRadius: 4,
+              elevation: 1,
+            }}
+          >
             {[
               { label: 'Yesterday', active: dateOffset === -1, delta: -1 - dateOffset },
               { label: 'Today', active: dateOffset === 0, delta: -dateOffset },
               { label: 'Tomorrow', active: dateOffset === 1, delta: 1 - dateOffset },
             ].map((b) => (
-              <AnimatedPressable key={b.label} testID={`horoscope.date.${b.label.toLowerCase()}`} onPress={() => changeDate(b.delta)} duration={200} style={{ paddingVertical: 10, borderRadius: 12, alignItems: 'center', backgroundColor: b.active ? '#C9A84C' : 'transparent' }}>
-                <AnimatedText style={{ color: b.active ? '#080D1A' : '#6B7A99', fontSize: 13, fontWeight: b.active ? '700' : '500' }}>{b.label}</AnimatedText>
+              <AnimatedPressable
+                key={b.label}
+                testID={`horoscope.date.${b.label.toLowerCase()}`}
+                onPress={() => changeDate(b.delta)}
+                duration={200}
+                style={{
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  backgroundColor: b.active ? '#8B1A1A' : 'transparent',
+                }}
+              >
+                <AnimatedText style={{ color: b.active ? '#FFFFFF' : (colors.isLight ? '#5A6A85' : '#6B7A99'), fontSize: 13, fontWeight: b.active ? '700' : '600' }}>{b.label}</AnimatedText>
               </AnimatedPressable>
             )).map((el, i) => <View key={i} style={{ flex: 1 }}>{el}</View>)}
           </View>
 
-          <LinearGradient colors={[argb('1AC9A84C'), argb('0A8B1A1A')]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ marginTop: 20, padding: 20, borderRadius: 20, borderWidth: 1, borderColor: argb('33C9A84C'), flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ width: 80, height: 80, borderRadius: 40, borderWidth: 1.5, borderColor: argb('66C9A84C'), overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
-              <RadialGlow colors={[argb('33C9A84C'), argb('0AC9A84C')]} />
-              <Text style={{ fontSize: 32, color: '#C9A84C' }}>{info.symbol}</Text>
+          <LinearGradient
+            colors={
+              colors.isLight
+                ? ['#FFFDF9', '#F9F5EC']
+                : [argb('1AC9A84C'), argb('0A8B1A1A')]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              marginTop: 18,
+              padding: 20,
+              borderRadius: 20,
+              borderWidth: 1.5,
+              borderColor: colors.isLight ? 'rgba(201,168,76,0.38)' : argb('33C9A84C'),
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: colors.isLight ? '#FFFFFF' : undefined,
+              shadowColor: colors.isLight ? '#C9A84C' : '#000',
+              shadowOpacity: colors.isLight ? 0.08 : 0.2,
+              shadowRadius: 8,
+              elevation: 3,
+            }}
+          >
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                borderWidth: 1.5,
+                borderColor: colors.isLight ? 'rgba(201,168,76,0.45)' : argb('66C9A84C'),
+                overflow: 'hidden',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.isLight ? '#FFF8EE' : undefined,
+              }}
+            >
+              <RadialGlow colors={colors.isLight ? ['#FFF8EE', '#F5EBE1'] : [argb('33C9A84C'), argb('0AC9A84C')]} />
+              <Text style={{ fontSize: 32, color: colors.isLight ? '#7C5205' : '#C9A84C' }}>{info.symbol}</Text>
             </View>
             <View style={{ flex: 1, marginLeft: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ color: '#F0EAD6', fontSize: 20, fontWeight: '700' }}>{zodiac}</Text>
-                <View style={{ marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100, backgroundColor: argb('1A2D9E6B'), borderWidth: 1, borderColor: argb('332D9E6B') }}>
-                  <Text style={{ color: '#2D9E6B', fontSize: 10, fontWeight: '600' }}>{info.element}</Text>
+                <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800' }}>{zodiac}</Text>
+                <View style={{ marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100, backgroundColor: colors.isLight ? '#DCFCE7' : argb('1A2D9E6B'), borderWidth: 1, borderColor: colors.isLight ? '#86EFAC' : argb('332D9E6B') }}>
+                  <Text style={{ color: colors.isLight ? '#15803D' : '#2D9E6B', fontSize: 10, fontWeight: '700' }}>{info.element}</Text>
                 </View>
               </View>
-              <Text style={{ marginTop: 2, color: '#6B7A99', fontSize: 12 }}>{info.dates}</Text>
+              <Text style={{ marginTop: 2, color: colors.isLight ? '#5A6A85' : '#6B7A99', fontSize: 12 }}>{info.dates}</Text>
               <View style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ color: '#C9A84C', fontSize: 28, fontWeight: '800' }}>{`${data.overall}%`}</Text>
+                <Text style={{ color: colors.isLight ? '#8B1A1A' : '#C9A84C', fontSize: 28, fontWeight: '800' }}>{`${data.overall}%`}</Text>
                 <View style={{ flex: 1, marginLeft: 10 }}>
-                  <Text style={{ color: '#6B7A99', fontSize: 10, marginBottom: 4 }}>Overall Score</Text>
-                  <LinearProgress value={data.overall / 100} height={6} radius={4} color="#C9A84C" backgroundColor={argb('1AC9A84C')} />
+                  <Text style={{ color: colors.isLight ? '#5A6A85' : '#6B7A99', fontSize: 10, marginBottom: 4, fontWeight: '600' }}>Overall Score</Text>
+                  <LinearProgress value={data.overall / 100} height={6} radius={4} color={colors.isLight ? '#8B1A1A' : '#C9A84C'} backgroundColor={colors.isLight ? '#F0EBE0' : argb('1AC9A84C')} />
                 </View>
               </View>
-              <Text style={{ marginTop: 6, color: '#6B7A99', fontSize: 11 }} testID="horoscope.formattedDate">{formattedDate}</Text>
+              <Text style={{ marginTop: 6, color: colors.isLight ? '#5A6A85' : '#6B7A99', fontSize: 11, fontWeight: '600' }} testID="horoscope.formattedDate">{formattedDate}</Text>
             </View>
           </LinearGradient>
 
-          <View style={{ marginTop: 16, padding: 18, borderRadius: 18, backgroundColor: argb('0FFFFFFF'), borderWidth: 1, borderColor: argb('1AC9A84C') }}>
+          <View
+            style={{
+              marginTop: 16,
+              padding: 18,
+              borderRadius: 18,
+              backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
+              borderWidth: 1.5,
+              borderColor: colors.isLight ? 'rgba(201,168,76,0.35)' : argb('1AC9A84C'),
+              shadowColor: colors.isLight ? '#C9A84C' : '#000',
+              shadowOpacity: colors.isLight ? 0.06 : 0.2,
+              shadowRadius: 6,
+              elevation: 2,
+            }}
+          >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ fontSize: 16 }}>🌟</Text>
-              <Text style={{ marginLeft: 8, color: '#C9A84C', fontSize: 14, fontWeight: '700' }}>Daily Guidance</Text>
+              <Text style={{ marginLeft: 8, color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 15, fontWeight: '700' }}>Daily Guidance</Text>
             </View>
-            <Text style={{ marginTop: 10, color: '#F0EAD6', ...lh(13, 1.6) }}>{data.guidance}</Text>
+            <Text style={{ marginTop: 10, color: colors.textPrimary, ...lh(13, 1.6) }}>{data.guidance}</Text>
           </View>
 
           <View style={{ marginTop: 16 }}>
@@ -238,10 +355,23 @@ export default function HoroscopeScreen() {
             ))}
           </View>
 
-          <View style={{ marginTop: 16, padding: 18, borderRadius: 18, backgroundColor: argb('0FFFFFFF'), borderWidth: 1, borderColor: argb('1AC9A84C') }}>
+          <View
+            style={{
+              marginTop: 16,
+              padding: 18,
+              borderRadius: 18,
+              backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
+              borderWidth: 1.5,
+              borderColor: colors.isLight ? 'rgba(201,168,76,0.35)' : argb('1AC9A84C'),
+              shadowColor: colors.isLight ? '#C9A84C' : '#000',
+              shadowOpacity: colors.isLight ? 0.06 : 0.2,
+              shadowRadius: 6,
+              elevation: 2,
+            }}
+          >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ fontSize: 16 }}>🍀</Text>
-              <Text style={{ marginLeft: 8, color: '#C9A84C', fontSize: 14, fontWeight: '700' }}>Lucky Details</Text>
+              <Text style={{ marginLeft: 8, color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 15, fontWeight: '700' }}>Lucky Details</Text>
             </View>
             <View style={{ marginTop: 14, flexDirection: 'row' }}>
               <LuckyItem label="Number" value={data.lucky_number} emoji="🔢" />
@@ -250,9 +380,30 @@ export default function HoroscopeScreen() {
             </View>
           </View>
 
-          <LinearGradient colors={[argb('338B1A1A'), argb('1AC9A84C')]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ marginTop: 16, padding: 18, borderRadius: 18, borderWidth: 1, borderColor: argb('33C9A84C'), alignItems: 'center' }}>
-            <Text style={{ color: '#F0EAD6', fontSize: 15, fontWeight: '700' }}>🔮 Want deeper insights?</Text>
-            <Text style={{ marginTop: 6, textAlign: 'center', color: '#6B7A99', ...lh(12, 1.5) }}>Ask AstroParihar AI for personalised guidance based on your birth chart</Text>
+          <LinearGradient
+            colors={
+              colors.isLight
+                ? ['#FFFDF9', '#F9F5EC']
+                : [argb('338B1A1A'), argb('1AC9A84C')]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              marginTop: 16,
+              padding: 18,
+              borderRadius: 18,
+              borderWidth: 1.5,
+              borderColor: colors.isLight ? 'rgba(201,168,76,0.38)' : argb('33C9A84C'),
+              alignItems: 'center',
+              backgroundColor: colors.isLight ? '#FFFFFF' : undefined,
+              shadowColor: colors.isLight ? '#C9A84C' : '#000',
+              shadowOpacity: colors.isLight ? 0.08 : 0.2,
+              shadowRadius: 6,
+              elevation: 2,
+            }}
+          >
+            <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '800' }}>🔮 Want deeper insights?</Text>
+            <Text style={{ marginTop: 6, textAlign: 'center', color: colors.isLight ? '#5A6A85' : '#6B7A99', ...lh(12, 1.5) }}>Ask AstroParihar AI for personalised guidance based on your birth chart</Text>
             <View style={{ marginTop: 14, flexDirection: 'row', alignSelf: 'stretch' }}>
               <Pressable
                 testID="horoscope.askAi"
@@ -264,11 +415,23 @@ export default function HoroscopeScreen() {
                 }}
                 style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#8B1A1A', alignItems: 'center' }}
               >
-                <Text style={{ color: '#F0EAD6', fontSize: 13, fontWeight: '700' }}>✨ Ask AI Astrologer</Text>
+                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>✨ Ask AI Astrologer</Text>
               </Pressable>
               <View style={{ width: 10 }} />
-              <Pressable testID="horoscope.talkToAstrologer" onPress={() => push(AppRoutes.liveAstrologersScreen)} style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: argb('0FFFFFFF'), borderWidth: 1, borderColor: argb('33C9A84C'), alignItems: 'center' }}>
-                <Text style={{ color: '#C9A84C', fontSize: 13, fontWeight: '700' }}>📞 Talk to Astrologer</Text>
+              <Pressable
+                testID="horoscope.talkToAstrologer"
+                onPress={() => push(AppRoutes.liveAstrologersScreen)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
+                  borderWidth: 1.5,
+                  borderColor: colors.isLight ? 'rgba(201,168,76,0.45)' : argb('33C9A84C'),
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 13, fontWeight: '700' }}>📞 Talk to Astrologer</Text>
               </Pressable>
             </View>
           </LinearGradient>

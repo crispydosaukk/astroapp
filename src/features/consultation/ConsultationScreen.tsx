@@ -31,7 +31,7 @@ type Msg = { text: string; isSystem: boolean; isUser?: boolean; time: string };
 
 const DEFAULT_ASTRO: Astro = {
   name: 'Swami Shankarananda Giri', title: 'Vedic Astrologer & Dasha Expert',
-  imageUrl: 'https://img.rocket.new/generatedImages/rocket_gen_img_155f972a8-1770809507602.png',
+  imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/swami-ji.png',
   semanticLabel: 'Elderly Indian sage with white beard and traditional orange robes', isOnline: true, price: 45, rating: 4.99,
 };
 const REPLIES = [

@@ -39,7 +39,7 @@ export type BirthProfile = {
 const STORAGE_PROFILES_KEY = 'astroparihar_birth_profiles';
 
 const DEFAULT_PROFILES: BirthProfile[] = [
-  { id: 'bp_1', name: 'Priya Sharma', type: 'Myself', dob: '15 March 1995', time: '12:00 PM', place: 'New Delhi, India', zodiac: '♏', sign: 'Scorpio', nakshatra: 'Pushya', emoji: '🔮', color: '#9370DB', active: true },
+  { id: 'bp_1', name: 'My Profile', type: 'Myself', dob: '15 March 1995', time: '12:00 PM', place: 'New Delhi, India', zodiac: '♏', sign: 'Scorpio', nakshatra: 'Pushya', emoji: '🔮', color: '#9370DB', active: true },
   { id: 'bp_2', name: 'Rahul Sharma', type: 'Partner', dob: '22 July 1992', time: '06:15 AM', place: 'Mumbai, Maharashtra', zodiac: '♋', sign: 'Cancer', nakshatra: 'Ashwini', emoji: '💫', color: '#4FC3F7', active: false },
   { id: 'bp_3', name: 'Aryan Sharma', type: 'Child', dob: '08 November 2020', time: '02:45 PM', place: 'Bengaluru, Karnataka', zodiac: '♌', sign: 'Leo', nakshatra: 'Magha', emoji: '⭐', color: '#FFB347', active: false },
 ];

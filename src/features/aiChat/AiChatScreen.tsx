@@ -18,9 +18,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { AnimatedPressable } from '@/components/AnimatedBox';
 import { AppIcon } from '@/components/AppIcon';
+import { AppImage } from '@/components/AppImage';
 import { lh, Text, TextInput } from '@/components/Text';
 import { AppRoutes, go, push } from '@/navigation/routes';
-import { getWalletBalance, subscribeWallet } from '@/services/walletService';
+import {
+  deductWalletBalance,
+  getWalletBalance,
+  rechargeWallet,
+  subscribeWallet,
+} from '@/services/walletService';
+import { showSnackBar } from '@/components/overlays';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { useController } from '@/utils/anim';
 import {
@@ -347,9 +354,32 @@ export default function AiChatScreen() {
 
   const [selectedLanguage, setSelectedLanguage] = useState<string>('English');
   const [selectedModel, setSelectedModel] = useState<'auto' | 'vedika-ai' | 'openai-gpt4o'>('auto');
-  const [selectedAstrologer, setSelectedAstrologer] = useState(() => {
+  const [selectedAstrologer, setSelectedAstrologer] = useState<{ id: string; name: string; title: string; emoji?: string; color?: string; avatarUrl?: string }>(() => {
+    if (params.astrologerName) {
+      return {
+        id: params.astrologerId || 'ai-custom',
+        name: params.astrologerName,
+        title: 'Vedic Astrologer & AI Jyotish',
+        emoji: '🔮',
+        color: '#C9A84C',
+        avatarUrl: params.avatarUrl,
+      };
+    }
     return ASTROLOGER_PERSONAS.find((a) => a.id === params.astrologerId) || ASTROLOGER_PERSONAS[0];
   });
+
+  useEffect(() => {
+    if (params.astrologerName && params.astrologerName !== selectedAstrologer.name) {
+      setSelectedAstrologer({
+        id: params.astrologerId || 'ai-custom',
+        name: params.astrologerName,
+        title: 'Vedic Astrologer & AI Jyotish',
+        emoji: '🔮',
+        color: '#C9A84C',
+        avatarUrl: params.avatarUrl,
+      });
+    }
+  }, [params.astrologerName, params.astrologerId, params.avatarUrl]);
 
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showModelModal, setShowModelModal] = useState(false);
@@ -382,6 +412,11 @@ export default function AiChatScreen() {
   }, []);
 
   const [walletBalance, setWalletBalance] = useState(450);
+  const [showRechargeModal, setShowRechargeModal] = useState(false);
+  const [rechargeAmount, setRechargeAmount] = useState(500);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('UPI');
+  const [isRecharging, setIsRecharging] = useState(false);
+
   useEffect(() => {
     let isMounted = true;
     getWalletBalance().then((b) => {
@@ -396,9 +431,27 @@ export default function AiChatScreen() {
     };
   }, []);
 
+  const handleExecuteRecharge = async () => {
+    setIsRecharging(true);
+    try {
+      const res = await rechargeWallet(rechargeAmount, selectedPaymentMethod);
+      if (res.success) {
+        setWalletBalance(res.newBalance);
+        setShowRechargeModal(false);
+        showSnackBar(`₹${rechargeAmount} added via ${selectedPaymentMethod}! New balance: ₹${res.newBalance}`, '#075E54');
+      } else {
+        showSnackBar('Recharge failed. Please try again.', '#CF4444');
+      }
+    } catch {
+      showSnackBar('Payment failed. Please try again.', '#CF4444');
+    } finally {
+      setIsRecharging(false);
+    }
+  };
+
   // Set initial welcome message when language or astrologer changes
   useEffect(() => {
-    const welcome = getWelcomeMessage(selectedLanguage, userProfile?.name || 'Devotee', selectedAstrologer.name);
+    const welcome = getWelcomeMessage(selectedLanguage, userProfile?.name || 'Guest', selectedAstrologer.name);
     setMessages([
       {
         isUser: false,
@@ -419,6 +472,13 @@ export default function AiChatScreen() {
 
   const sendMessage = async (text: string) => {
     if (text.trim().length === 0) return;
+
+    // 1. Check wallet balance: Each prompt costs ₹5
+    if (walletBalance < 5) {
+      setShowRechargeModal(true);
+      return;
+    }
+
     const userMsgText = text.trim();
     const newMsg: ChatMessage = { isUser: true, text: userMsgText, time: currentTime() };
 
@@ -426,6 +486,20 @@ export default function AiChatScreen() {
     setIsTyping(true);
     setInput('');
     scrollToBottom();
+
+    // 2. Real-time amount deduction: Deduct ₹5 per prompt
+    try {
+      const deductRes = await deductWalletBalance(
+        5,
+        `AI Astrologer Consultation: ${selectedAstrologer.name}`,
+        selectedAstrologer.name
+      );
+      if (deductRes.success) {
+        setWalletBalance(deductRes.newBalance);
+      }
+    } catch (e) {
+      console.warn('Wallet deduction note:', e);
+    }
 
     try {
       const chatHistory = [...messages, newMsg].map((m) => ({
@@ -513,9 +587,25 @@ export default function AiChatScreen() {
 
             {/* Astrologer Avatar */}
             <Pressable onPress={() => setShowModelModal(true)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: '#C9A84C', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
-                <LinearGradient colors={['#8B1A1A', '#3D0A0A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
-                <Text style={{ fontSize: 20 }}>{selectedAstrologer.emoji}</Text>
+              <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: '#C9A84C', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0D1B2A' }}>
+                {selectedAstrologer.avatarUrl ? (
+                  <AppImage
+                    uri={selectedAstrologer.avatarUrl}
+                    width={40}
+                    height={40}
+                    fit="cover"
+                    errorWidget={
+                      <View style={{ width: 40, height: 40, backgroundColor: '#8B1A1A', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 18 }}>{selectedAstrologer.emoji || '🔮'}</Text>
+                      </View>
+                    }
+                  />
+                ) : (
+                  <>
+                    <LinearGradient colors={['#8B1A1A', '#3D0A0A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+                    <Text style={{ fontSize: 20 }}>{selectedAstrologer.emoji || '🔮'}</Text>
+                  </>
+                )}
               </View>
               <View style={{ marginLeft: 10, flex: 1 }}>
                 <Text numberOfLines={1} style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>
@@ -553,11 +643,89 @@ export default function AiChatScreen() {
             {/* Wallet Balance Pill */}
             <Pressable
               testID="aiChat.walletPill"
-              onPress={() => push(AppRoutes.walletScreen)}
+              onPress={() => setShowRechargeModal(true)}
               style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.28)', borderWidth: 1, borderColor: '#C9A84C', marginLeft: 6 }}
             >
               <Text style={{ fontSize: 11, color: '#FFD700', fontWeight: '800' }}>
                 💳 ₹{walletBalance}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Dynamic Wallet Balance & Pricing Bar (Matching Website AIChatSidebar) */}
+        <View
+          style={{
+            paddingHorizontal: 14,
+            paddingVertical: 7,
+            backgroundColor: '#F8F3EA',
+            borderBottomWidth: 1,
+            borderBottomColor: '#E5D9C8',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Pressable
+            onPress={() => setShowRechargeModal(true)}
+            style={{ flexDirection: 'row', alignItems: 'center' }}
+          >
+            <View
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 7,
+                backgroundColor: withAlpha('#8B1A1A', 15),
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 6,
+              }}
+            >
+              <AppIcon name="account_balance_wallet" size={14} color="#8B1A1A" />
+            </View>
+            <Text style={{ color: '#6B5E55', fontSize: 12, fontWeight: '500' }}>Balance: </Text>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: '800',
+                color: walletBalance < 5 ? '#CF4444' : '#8B1A1A',
+              }}
+            >
+              ₹{walletBalance}
+            </Text>
+          </Pressable>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View
+              style={{
+                paddingHorizontal: 7,
+                paddingVertical: 3,
+                borderRadius: 8,
+                backgroundColor: '#FFFDFC',
+                borderWidth: 1,
+                borderColor: '#E5D9C8',
+                marginRight: 8,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#C9A84C' }}>
+                ⚡ ₹5 / prompt
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setShowRechargeModal(true)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 9,
+                paddingVertical: 4,
+                borderRadius: 12,
+                backgroundColor: withAlpha('#075E54', 15),
+                borderWidth: 1,
+                borderColor: '#075E54',
+              }}
+            >
+              <Text style={{ color: '#075E54', fontSize: 11, fontWeight: '700' }}>
+                + Recharge ↗
               </Text>
             </Pressable>
           </View>
@@ -600,6 +768,49 @@ export default function AiChatScreen() {
           />
         </View>
 
+        {/* Low Balance Warning Banner (Matching Website AIChatSidebar) */}
+        {walletBalance < 5 && (
+          <View
+            style={{
+              marginHorizontal: 10,
+              marginBottom: 8,
+              padding: 10,
+              borderRadius: 12,
+              backgroundColor: '#FFF5F5',
+              borderWidth: 1,
+              borderColor: '#FEB2B2',
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+              <AppIcon name="warning_amber_rounded" size={17} color="#E53E3E" style={{ marginRight: 6, marginTop: 1 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#C53030', fontSize: 12, fontWeight: '700' }}>
+                  Low Wallet Balance (Available: ₹{walletBalance})
+                </Text>
+                <Text style={{ color: '#9B2C2C', fontSize: 11, marginTop: 1 }}>
+                  Each prompt requires ₹5. Please recharge your wallet to continue chatting.
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={() => setShowRechargeModal(true)}
+              style={{
+                marginTop: 7,
+                paddingVertical: 7,
+                borderRadius: 8,
+                backgroundColor: '#075E54',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>
+                ⚡ Recharge Wallet Now
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
         {/* Chat Input Widget - Authentic WhatsApp layout without voice or attachment icons */}
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 10, paddingTop: 8, paddingBottom: isKeyboardVisible ? Math.max(10, insets.bottom + 4) : insets.bottom + 90, backgroundColor: '#EFEAE2', borderTopWidth: 0.5, borderTopColor: 'rgba(0,0,0,0.06)' }}>
           <View style={{ flex: 1, minHeight: 44, borderRadius: 24, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 2, elevation: 1 }}>
@@ -611,14 +822,26 @@ export default function AiChatScreen() {
               numberOfLines={4}
               placeholder={currentPlaceholder}
               placeholderTextColor="#8A8A8A"
-              onSubmitEditing={() => sendMessage(input)}
+              onSubmitEditing={() => {
+                if (walletBalance < 5) {
+                  setShowRechargeModal(true);
+                } else if (input.trim().length > 0) {
+                  sendMessage(input);
+                }
+              }}
               style={{ flex: 1, paddingVertical: 10, color: '#111B21', fontSize: 14, maxHeight: 4 * 22 + 20 }}
             />
           </View>
           <Pressable
             testID="aiChat.send"
-            onPress={input.trim().length > 0 ? () => sendMessage(input) : undefined}
-            disabled={input.trim().length === 0}
+            onPress={() => {
+              if (walletBalance < 5) {
+                setShowRechargeModal(true);
+              } else if (input.trim().length > 0) {
+                sendMessage(input);
+              }
+            }}
+            disabled={input.trim().length === 0 && walletBalance >= 5}
             style={{
               marginLeft: 8,
               width: 44,
@@ -627,7 +850,7 @@ export default function AiChatScreen() {
               backgroundColor: '#075E54',
               alignItems: 'center',
               justifyContent: 'center',
-              opacity: input.trim().length > 0 ? 1 : 0.6,
+              opacity: input.trim().length > 0 || walletBalance < 5 ? 1 : 0.6,
               shadowColor: '#075E54',
               shadowOpacity: 0.3,
               shadowRadius: 4,
@@ -734,6 +957,194 @@ export default function AiChatScreen() {
               })}
             </ScrollView>
           </View>
+        </Pressable>
+      </Modal>
+
+      {/* 3. Recharge Wallet Modal (Matching Website & App Wallet module) */}
+      <Modal
+        visible={showRechargeModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowRechargeModal(false)}
+      >
+        <Pressable
+          onPress={() => setShowRechargeModal(false)}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' }}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#0D1B2A',
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: 20,
+              paddingBottom: Math.max(24, insets.bottom + 12),
+              borderWidth: 1,
+              borderColor: '#C9A84C',
+            }}
+          >
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(201,168,76,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 10, borderWidth: 1, borderColor: '#C9A84C' }}>
+                  <Text style={{ fontSize: 18 }}>⚡</Text>
+                </View>
+                <View>
+                  <Text style={{ color: '#F0EAD6', fontSize: 18, fontWeight: '800' }}>Recharge Wallet</Text>
+                  <Text style={{ color: '#A0A8C0', fontSize: 11 }}>Instant credit for AI & Astrologer Consultations</Text>
+                </View>
+              </View>
+              <Pressable onPress={() => setShowRechargeModal(false)} style={{ padding: 4 }}>
+                <AppIcon name="close" color="#A0A8C0" size={22} />
+              </Pressable>
+            </View>
+
+            {/* Current Balance & Prompt Cost Bar */}
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: 12,
+                borderRadius: 14,
+                backgroundColor: '#16253B',
+                borderWidth: 1,
+                borderColor: 'rgba(201,168,76,0.3)',
+                marginBottom: 16,
+              }}
+            >
+              <View>
+                <Text style={{ color: '#A0A8C0', fontSize: 11 }}>Current Balance</Text>
+                <Text style={{ color: walletBalance < 5 ? '#FF6B6B' : '#FFD700', fontSize: 20, fontWeight: '800', marginTop: 2 }}>
+                  ₹{walletBalance}
+                </Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ color: '#A0A8C0', fontSize: 11 }}>Consultation Rate</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                  <Text style={{ color: '#C9A84C', fontSize: 13, fontWeight: '700' }}>₹5 per prompt</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Select Recharge Amount */}
+            <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+              Select Amount
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {[
+                { amount: 100, label: '₹100', bonus: null },
+                { amount: 200, label: '₹200', bonus: null },
+                { amount: 500, label: '₹500', bonus: '+₹25 Free' },
+                { amount: 1000, label: '₹1000', bonus: '+₹75 Free' },
+                { amount: 2000, label: '₹2000', bonus: '+₹200 Free' },
+              ].map((opt) => {
+                const isSel = rechargeAmount === opt.amount;
+                return (
+                  <Pressable
+                    key={opt.amount}
+                    onPress={() => setRechargeAmount(opt.amount)}
+                    style={{
+                      flex: 1,
+                      minWidth: '28%',
+                      paddingVertical: 10,
+                      paddingHorizontal: 8,
+                      borderRadius: 12,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: isSel ? 'rgba(201,168,76,0.25)' : '#16253B',
+                      borderWidth: isSel ? 2 : 1,
+                      borderColor: isSel ? '#C9A84C' : 'rgba(255,255,255,0.08)',
+                    }}
+                  >
+                    <Text style={{ color: isSel ? '#C9A84C' : '#F0EAD6', fontSize: 15, fontWeight: '800' }}>
+                      {opt.label}
+                    </Text>
+                    {opt.bonus ? (
+                      <Text style={{ color: '#4ADE80', fontSize: 9, fontWeight: '700', marginTop: 2 }}>
+                        {opt.bonus}
+                      </Text>
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Payment Method Selector */}
+            <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+              Select Payment Method
+            </Text>
+            <View style={{ gap: 8, marginBottom: 18 }}>
+              {[
+                { id: 'UPI', label: 'Google Pay / PhonePe / Paytm (UPI)', icon: '📱' },
+                { id: 'Card', label: 'Credit / Debit Card (Visa, RuPay, Master)', icon: '💳' },
+                { id: 'Net Banking', label: 'Net Banking (All Major Indian Banks)', icon: '🏦' },
+              ].map((pm) => {
+                const isSel = selectedPaymentMethod === pm.id;
+                return (
+                  <Pressable
+                    key={pm.id}
+                    onPress={() => setSelectedPaymentMethod(pm.id)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      padding: 12,
+                      borderRadius: 12,
+                      backgroundColor: isSel ? 'rgba(201,168,76,0.18)' : '#16253B',
+                      borderWidth: 1,
+                      borderColor: isSel ? '#C9A84C' : 'rgba(255,255,255,0.06)',
+                    }}
+                  >
+                    <Text style={{ fontSize: 18, marginRight: 10 }}>{pm.icon}</Text>
+                    <Text style={{ flex: 1, color: isSel ? '#C9A84C' : '#F0EAD6', fontSize: 13, fontWeight: isSel ? '700' : '500' }}>
+                      {pm.label}
+                    </Text>
+                    {isSel ? (
+                      <AppIcon name="check_circle" color="#C9A84C" size={18} />
+                    ) : (
+                      <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: '#A0A8C0' }} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Pay Button */}
+            <Pressable
+              onPress={handleExecuteRecharge}
+              disabled={isRecharging}
+              style={{
+                paddingVertical: 14,
+                borderRadius: 14,
+                backgroundColor: '#C9A84C',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+                shadowColor: '#C9A84C',
+                shadowOpacity: 0.35,
+                shadowRadius: 6,
+                elevation: 3,
+                opacity: isRecharging ? 0.7 : 1,
+              }}
+            >
+              <Text style={{ color: '#080D1A', fontSize: 15, fontWeight: '800' }}>
+                {isRecharging ? 'Processing Secure Payment...' : `Pay & Recharge ₹${rechargeAmount}`}
+              </Text>
+            </Pressable>
+
+            {/* Redirect to full wallet screen */}
+            <Pressable
+              onPress={() => {
+                setShowRechargeModal(false);
+                push(AppRoutes.walletScreen);
+              }}
+              style={{ marginTop: 12, alignItems: 'center', paddingVertical: 4 }}
+            >
+              <Text style={{ color: '#A0A8C0', fontSize: 12, textDecorationLine: 'underline' }}>
+                View Full Wallet & Transaction History →
+              </Text>
+            </Pressable>
+          </Pressable>
         </Pressable>
       </Modal>
     </View>

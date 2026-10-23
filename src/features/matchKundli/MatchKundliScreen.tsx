@@ -21,6 +21,7 @@ import { Curves, useController } from '@/utils/anim';
 import { SOURCE_INERT } from '@/utils/sourceInert';
 import { calculateLiveKundliMatch, KundliMatchResult } from '@/services/astrologyService';
 import { AppRoutes, push } from '@/navigation/routes';
+import { useAuthStore } from '@/features/auth/authStore';
 
 const GUNA_MILAN = [
   { name: 'Varna', score: 1, max: 1, status: 'Compatible', desc: 'Spiritual compatibility and ego levels are well matched.' },
@@ -96,8 +97,9 @@ export default function MatchKundliScreen() {
   const [showResults, setShowResults] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [matchResult, setMatchResult] = useState<KundliMatchResult | null>(null);
-  const [p1, setP1] = useState('Priya Sharma');
-  const [p2, setP2] = useState('Arjun Mehta');
+  const authUser = useAuthStore((s) => s.user);
+  const [p1, setP1] = useState(authUser?.name || 'Self');
+  const [p2, setP2] = useState('Partner');
   const scoreCtl = useController({ duration: 1500 });
 
   const calculate = async () => {

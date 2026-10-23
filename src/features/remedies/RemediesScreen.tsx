@@ -50,7 +50,7 @@ export default function RemediesScreen() {
     try {
       const stored = await AsyncStorage.getItem('astroparihar_user_birth_details');
       const profile = stored ? JSON.parse(stored) : null;
-      const name = profile?.name || 'Devotee';
+      const name = profile?.name || 'Guest';
       const dob = profile?.dob || '1995-10-15';
       push(AppRoutes.aiChatScreen, {
         astrologerId: 'vedika',

@@ -167,15 +167,19 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const authUser = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const logout = useAuthStore((s) => s.logout);
+
+  const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
+  const currentUserName = isAuth && authUser?.name?.trim() ? authUser.name.trim() : (isAuth && authUser?.phone ? authUser.phone : 'Guest');
 
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [walletBalance, setWalletBalance] = useState(450);
   const [profileData, setProfileData] = useState({
-    name: 'Priya Sharma',
-    email: 'priya.sharma@astroparihar.com',
-    dob: '1995-10-15',
+    name: currentUserName,
+    email: isAuth ? (authUser?.phone ? `+91 ${authUser.phone}` : authUser?.email || 'Registered User') : 'Sign in to sync your profile',
+    dob: '15 March 1995',
     tob: '12:00 PM',
     pob: 'New Delhi, India',
     zodiac: 'Scorpio',
@@ -195,34 +199,44 @@ export default function ProfileScreen() {
   const loadUserData = async () => {
     try {
       const stored = await AsyncStorage.getItem('astroparihar_user_birth_details');
-      let baseName = authUser?.name || 'Priya Sharma';
-      let baseEmail = authUser?.phone ? `+91 ${authUser.phone}` : 'priya.sharma@astroparihar.com';
+      const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
+      let baseName = isUserLoggedIn ? (authUser?.name?.trim() || authUser?.phone || 'User') : 'Guest';
+      let baseEmail = isUserLoggedIn
+        ? (authUser?.phone ? `+91 ${authUser.phone}` : authUser?.email || 'Registered User')
+        : 'Sign in to sync your profile';
       let baseDob = '15 March 1995';
       let baseTob = '12:00 PM';
       let basePob = 'New Delhi, India';
 
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed.name) baseName = parsed.name;
-        if (parsed.email) baseEmail = parsed.email;
+        if (parsed.name && isUserLoggedIn) baseName = parsed.name;
+        if (parsed.email && isUserLoggedIn) baseEmail = parsed.email;
         if (parsed.dob) baseDob = parsed.dob;
         if (parsed.tob) baseTob = parsed.tob;
         if (parsed.pob) basePob = parsed.pob;
       }
 
       // Fetch dynamic kundli calculations to get real zodiac, rashi, and nakshatra
-      const chart = await fetchCalculatedKundli();
+      let chartName = baseName;
+      try {
+        const chart = await fetchCalculatedKundli();
+        if (isUserLoggedIn && chart?.name && chart.name !== 'Devotee') {
+          chartName = chart.name;
+        }
+      } catch {}
+
       setProfileData({
-        name: chart?.name || baseName,
+        name: chartName,
         email: baseEmail,
-        dob: chart?.dob || baseDob,
-        tob: chart?.tob || baseTob,
-        pob: chart?.pob || basePob,
-        zodiac: chart?.ascendant?.sign || 'Scorpio',
+        dob: baseDob,
+        tob: baseTob,
+        pob: basePob,
+        zodiac: 'Scorpio',
         zodiacSymbol: '♏',
-        moonSign: chart?.moonSign || 'Cancer',
+        moonSign: 'Cancer',
         moonSymbol: '♋',
-        nakshatra: chart?.nakshatra || 'Pushya',
+        nakshatra: 'Pushya',
       });
     } catch {}
   };
@@ -232,7 +246,7 @@ export default function ProfileScreen() {
     getWalletBalance().then(setWalletBalance);
     const unsub = subscribeWallet(setWalletBalance);
     return () => unsub();
-  }, [authUser]);
+  }, [authUser, isAuthenticated]);
 
   const openEditModal = () => {
     setEditName(profileData.name);
@@ -279,24 +293,17 @@ export default function ProfileScreen() {
         backColor={colors.textPrimary}
         actions={[
           {
-            icon: 'edit_note_rounded',
+            icon: isAuth ? 'edit_note_rounded' : 'login_rounded',
             color: colors.goldAccent,
-            onPress: openEditModal,
-            testID: 'profile.settings',
+            onPress: isAuth ? openEditModal : () => go(AppRoutes.signInScreen),
+            testID: isAuth ? 'profile.settings' : 'profile.appBarSignIn',
           },
         ]}
       />
 
       <ScrollView contentContainerStyle={{ paddingBottom: Math.max(160, insets.bottom + 110) }}>
-        {/* User Card */}
-        <LinearGradient
-          colors={
-            colors.isLight
-              ? ['#FFF9F0', '#F2E9DE']
-              : [withAlpha(colors.goldAccent, 25), colors.surfaceVariant]
-          }
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        {/* User Card - Single Solid Background */}
+        <View
           style={{
             marginHorizontal: 20,
             marginTop: 8,
@@ -305,69 +312,95 @@ export default function ProfileScreen() {
             borderRadius: 24,
             borderWidth: 1,
             borderColor: colors.cardBorder,
+            backgroundColor: colors.surface,
             alignItems: 'center',
-            shadowColor: colors.goldAccent,
-            shadowOpacity: colors.isLight ? 0.08 : 0.2,
-            shadowRadius: 12,
-            elevation: 3,
           }}
         >
-          <Pressable onPress={openEditModal} style={{ position: 'relative' }}>
+          <Pressable onPress={isAuth ? openEditModal : () => go(AppRoutes.signInScreen)} style={{ position: 'relative' }}>
             <View
               style={{
                 width: 82,
                 height: 82,
                 borderRadius: 41,
-                borderWidth: 2.5,
+                borderWidth: 2,
                 borderColor: colors.goldAccent,
                 overflow: 'hidden',
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: colors.surface,
+                backgroundColor: colors.surfaceVariant,
               }}
             >
-              <Text style={{ fontSize: 36 }}>🔮</Text>
+              <Text style={{ fontSize: isAuth ? 32 : 36, color: colors.goldAccent, fontWeight: '800' }}>
+                {isAuth ? (profileData.name[0] || 'U').toUpperCase() : '👤'}
+              </Text>
             </View>
-            <View
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                right: 0,
-                width: 28,
-                height: 28,
-                borderRadius: 14,
-                backgroundColor: colors.goldAccent,
-                borderWidth: 2,
-                borderColor: colors.background,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <AppIcon name="edit_rounded" color="#080D1A" size={14} />
-            </View>
+            {isAuth && (
+              <View
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  right: 0,
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: colors.goldAccent,
+                  borderWidth: 2,
+                  borderColor: colors.background,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AppIcon name="edit_rounded" color="#080D1A" size={14} />
+              </View>
+            )}
           </Pressable>
 
-          <Text style={{ marginTop: 12, color: colors.textPrimary, fontSize: 21, fontWeight: '800' }}>
-            {profileData.name}
-          </Text>
-          <Text style={{ marginTop: 2, color: colors.textMuted, fontSize: 13 }}>
-            {profileData.email}
-          </Text>
+          <Pressable onPress={isAuth ? openEditModal : () => go(AppRoutes.signInScreen)}>
+            <Text style={{ marginTop: 12, color: colors.textPrimary, fontSize: 21, fontWeight: '800' }}>
+              {profileData.name}
+            </Text>
+          </Pressable>
+          {isAuth ? (
+            <Text style={{ marginTop: 2, color: colors.textMuted, fontSize: 13 }}>
+              {profileData.email}
+            </Text>
+          ) : (
+            <Pressable
+              onPress={() => go(AppRoutes.signInScreen)}
+              style={{
+                marginTop: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 7,
+                borderRadius: 20,
+                backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 25),
+                borderWidth: 1.5,
+                borderColor: colors.goldAccent,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <AppIcon name="login_rounded" size={15} color={colors.goldAccent} />
+              <Text style={{ marginLeft: 6, color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>
+                Sign In / Register
+              </Text>
+            </Pressable>
+          )}
 
           {/* Quick Stats */}
           <View style={{ marginTop: 18, flexDirection: 'row', alignItems: 'center' }}>
-            <ProfileStat label={t('profile.consultations', 'Consultations')} value="12" colors={colors} />
+            <ProfileStat label={t('profile.consultations', 'Consultations')} value={isAuth ? '2' : '0'} colors={colors} />
             <View style={{ height: 30, width: 1, marginHorizontal: 20, backgroundColor: colors.divider }} />
-            <ProfileStat label={t('profile.reports', 'Reports')} value="4" colors={colors} />
+            <ProfileStat label={t('profile.reports', 'Reports')} value={isAuth ? '1' : '0'} colors={colors} />
             <View style={{ height: 30, width: 1, marginHorizontal: 20, backgroundColor: colors.divider }} />
             <Pressable onPress={() => push(AppRoutes.walletScreen)}>
               <ProfileStat label={t('profile.wallet', 'Wallet')} value={`₹${walletBalance}`} colors={colors} />
             </Pressable>
           </View>
 
-          {/* Premium badge */}
-          <View
+          {/* Account status badge */}
+          <Pressable
             testID="profile.premium"
+            onPress={isAuth ? undefined : () => go(AppRoutes.signInScreen)}
             style={{
               marginTop: 18,
               flexDirection: 'row',
@@ -375,17 +408,17 @@ export default function ProfileScreen() {
               paddingHorizontal: 16,
               paddingVertical: 8,
               borderRadius: 20,
-              backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 25 : 20),
+              backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 25 : 18),
               borderWidth: 1,
               borderColor: colors.cardBorder,
             }}
           >
-            <Text style={{ fontSize: 14 }}>⭐</Text>
+            <Text style={{ fontSize: 14 }}>{isAuth ? '⭐' : '✦'}</Text>
             <Text style={{ marginLeft: 6, color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>
-              {t('profile.premium', 'AstroParihar Premium')}
+              {isAuth ? t('profile.premium', 'AstroParihar Member') : 'Guest Explorer • Tap to Sign In'}
             </Text>
-          </View>
-        </LinearGradient>
+          </Pressable>
+        </View>
 
         {/* Astro Stats Summary */}
         <View
@@ -452,29 +485,54 @@ export default function ProfileScreen() {
           colors={colors}
         />
 
-        {/* Sign Out Button */}
-        <Pressable
-          testID="profile.signOut"
-          onPress={() => setSignOutOpen(true)}
-          style={{
-            marginHorizontal: 20,
-            marginTop: 8,
-            marginBottom: 16,
-            paddingVertical: 14,
-            borderRadius: 16,
-            borderWidth: 1.5,
-            borderColor: '#CF4444',
-            backgroundColor: withAlpha('#CF4444', colors.isLight ? 12 : 20),
-            flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          <AppIcon name="logout_rounded" size={19} color="#CF4444" />
-          <Text style={{ marginLeft: 8, color: '#CF4444', fontSize: 15, fontWeight: '700' }}>
-            {t('profile.signOut', 'Sign Out')}
-          </Text>
-        </Pressable>
+        {/* Sign Out or Sign In Button */}
+        {isAuth ? (
+          <Pressable
+            testID="profile.signOut"
+            onPress={() => setSignOutOpen(true)}
+            style={{
+              marginHorizontal: 20,
+              marginTop: 8,
+              marginBottom: 16,
+              paddingVertical: 14,
+              borderRadius: 16,
+              borderWidth: 1.5,
+              borderColor: '#CF4444',
+              backgroundColor: withAlpha('#CF4444', colors.isLight ? 12 : 20),
+              flexDirection: 'row',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <AppIcon name="logout_rounded" size={19} color="#CF4444" />
+            <Text style={{ marginLeft: 8, color: '#CF4444', fontSize: 15, fontWeight: '700' }}>
+              {t('profile.signOut', 'Sign Out')}
+            </Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            testID="profile.signIn"
+            onPress={() => go(AppRoutes.signInScreen)}
+            style={{
+              marginHorizontal: 20,
+              marginTop: 8,
+              marginBottom: 16,
+              paddingVertical: 14,
+              borderRadius: 16,
+              borderWidth: 1.5,
+              borderColor: colors.goldAccent,
+              backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 16 : 22),
+              flexDirection: 'row',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <AppIcon name="login_rounded" size={19} color={colors.goldAccent} />
+            <Text style={{ marginLeft: 8, color: colors.goldAccent, fontSize: 15, fontWeight: '700' }}>
+              Sign In / Register
+            </Text>
+          </Pressable>
+        )}
       </ScrollView>
 
       {/* Edit Profile Sheet */}

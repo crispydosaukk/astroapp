@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_ENDPOINTS } from '@/config/api';
+import { API_ENDPOINTS, resolveMediaUrl } from '@/config/api';
 
 export interface CosmicInsight {
   id: string;
@@ -86,7 +86,7 @@ export const DEFAULT_HOME_ASTROLOGERS: LiveAstrologer[] = [
     price: 45,
     isOnline: true,
     isAi: false,
-    imageUrl: 'https://img.rocket.new/generatedImages/rocket_gen_img_155f972a8-1770809507602.png',
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/swami-ji.png',
     languages: 'Hindi, Sanskrit',
     semanticLabel: 'Elderly Indian sage with white beard and traditional robes',
   },
@@ -100,7 +100,7 @@ export const DEFAULT_HOME_ASTROLOGERS: LiveAstrologer[] = [
     price: 25,
     isOnline: true,
     isAi: true,
-    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/acharya-devavrat.png',
     languages: 'Hindi, English, Telugu',
     semanticLabel: 'Wise Indian Vedic scholar in saffron kurta with peaceful expression',
   },
@@ -114,7 +114,7 @@ export const DEFAULT_HOME_ASTROLOGERS: LiveAstrologer[] = [
     price: 22,
     isOnline: true,
     isAi: false,
-    imageUrl: 'https://img.rocket.new/generatedImages/rocket_gen_img_15a0ea664-1763296536479.png',
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/love-guru.png',
     languages: 'Hindi, English',
     semanticLabel: 'Indian man in traditional kurta with calm and wise expression',
   },
@@ -128,7 +128,7 @@ export const DEFAULT_HOME_ASTROLOGERS: LiveAstrologer[] = [
     price: 22,
     isOnline: true,
     isAi: true,
-    imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/acharya-joshi.png',
     languages: 'Hindi, English, Marathi',
     semanticLabel: 'Distinguished Vedic scholar with traditional tilak',
   },
@@ -142,11 +142,154 @@ export const DEFAULT_HOME_ASTROLOGERS: LiveAstrologer[] = [
     price: 20,
     isOnline: false,
     isAi: false,
-    imageUrl: 'https://img.rocket.new/generatedImages/rocket_gen_img_167d481e0-1772731661402.png',
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/meera-devi.png',
     languages: 'Tamil, Hindi, English',
     semanticLabel: 'Indian woman in traditional saree with warm smile',
   },
 ];
+
+export interface DynamicPromotion {
+  id: string;
+  badge: string;
+  discount: string;
+  title: string;
+  subtitle: string;
+  code: string;
+  gradientColors: [string, string];
+  borderColor: string;
+  btnBg: string;
+  btnText: string;
+  btnLabel: string;
+  route: string;
+  icon: string;
+  active: boolean;
+  order?: number;
+  imageUrl?: string;
+}
+
+const STORAGE_PROMOTIONS_KEY = 'astroparihar_promotions_cache';
+
+export const DEFAULT_DYNAMIC_PROMOTIONS: DynamicPromotion[] = [
+  {
+    id: 'promo-1',
+    badge: 'FIRST CONSULTATION',
+    discount: '50% OFF',
+    title: '50% OFF Your First Session',
+    subtitle: 'Connect with verified Vedic Astrologers or AI Jyotish. Use coupon at checkout.',
+    code: 'FIRST50',
+    gradientColors: ['#3D0A0A', '#1A0404'],
+    borderColor: '#8B1A1A',
+    btnBg: '#C9A84C',
+    btnText: '#080D1A',
+    btnLabel: 'Claim 50% Off',
+    route: '/live-astrologers-screen',
+    icon: 'local_offer',
+    active: true,
+  },
+  {
+    id: 'promo-2',
+    badge: 'FREE LIFE REPORT',
+    discount: 'WORTH ₹499',
+    title: 'Free Kundli Life Prediction',
+    subtitle: 'Get a 40+ page comprehensive Kundli dossier free with any 10-minute session.',
+    code: 'FREEKUNDLI',
+    gradientColors: ['#0A1D37', '#06101E'],
+    borderColor: '#4FC3F7',
+    btnBg: '#4FC3F7',
+    btnText: '#080D1A',
+    btnLabel: 'Get Free Report',
+    route: '/kundli-reports-screen',
+    icon: 'auto_stories',
+    active: true,
+  },
+  {
+    id: 'promo-3',
+    badge: 'SPECIAL PARIHARA',
+    discount: 'FLAT ₹199',
+    title: '48-Day Navagraha Shanti',
+    subtitle: 'Alleviate active Dasha malefic effects with customized daily Vedic remedies.',
+    code: 'PARIHAR199',
+    gradientColors: ['#2E1805', '#140A00'],
+    borderColor: '#FFB347',
+    btnBg: '#FFB347',
+    btnText: '#080D1A',
+    btnLabel: 'Explore Parihar',
+    route: '/remedies-screen',
+    icon: 'local_fire_department',
+    active: true,
+  },
+];
+
+/**
+ * Fetch dynamic Promotions & Offers with turn off/on support
+ */
+export async function getDynamicPromotions(): Promise<DynamicPromotion[]> {
+  try {
+    // 1. Try local cache first for instant render
+    const cached = await AsyncStorage.getItem(STORAGE_PROMOTIONS_KEY);
+    let parsedCache: DynamicPromotion[] | null = null;
+    if (cached) {
+      try {
+        parsedCache = JSON.parse(cached);
+      } catch {}
+    }
+
+    // 2. Fetch live banners from dashboard API
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(API_ENDPOINTS.banners, { signal: controller.signal });
+      clearTimeout(timer);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.banners)) {
+          // If turned off (active === false), exclude it
+          const activeBanners = data.banners.filter((b: any) => b.active !== false);
+
+          const palettes: Array<{ gradient: [string, string]; border: string; btnBg: string; btnText: string; icon: string }> = [
+            { gradient: ['#3D0A0A', '#1A0404'], border: '#8B1A1A', btnBg: '#C9A84C', btnText: '#080D1A', icon: 'local_offer' },
+            { gradient: ['#0A1D37', '#06101E'], border: '#4FC3F7', btnBg: '#4FC3F7', btnText: '#080D1A', icon: 'auto_stories' },
+            { gradient: ['#2E1805', '#140A00'], border: '#FFB347', btnBg: '#FFB347', btnText: '#080D1A', icon: 'local_fire_department' },
+            { gradient: ['#1B0F2E', '#0D0518'], border: '#9370DB', btnBg: '#9370DB', btnText: '#080D1A', icon: 'stars' },
+          ];
+
+          const mapped: DynamicPromotion[] = activeBanners.map((b: any, idx: number) => {
+            const style = palettes[idx % palettes.length];
+            return {
+              id: b.id || `promo-${idx}`,
+              badge: (b.badge || 'PROMO OFFER').toUpperCase(),
+              discount: b.discount || b.badge || 'SPECIAL',
+              title: b.title || 'Special Vedic Offer',
+              subtitle: b.subtitle || '',
+              code: b.code || 'ASTRO',
+              gradientColors: style.gradient,
+              borderColor: style.border,
+              btnBg: style.btnBg,
+              btnText: style.btnText,
+              btnLabel: b.ctaText || 'Claim Offer',
+              route: b.ctaAction || '/live-astrologers-screen',
+              icon: style.icon,
+              imageUrl: b.imageUrl,
+              active: b.active !== false,
+              order: b.order || idx + 1,
+            };
+          });
+
+          await AsyncStorage.setItem(STORAGE_PROMOTIONS_KEY, JSON.stringify(mapped));
+          return mapped;
+        }
+      }
+    } catch {}
+
+    // Fallback to cache if available
+    if (parsedCache !== null) return parsedCache;
+  } catch (err) {
+    console.warn('Error reading dynamic promotions:', err);
+  }
+
+  return DEFAULT_DYNAMIC_PROMOTIONS;
+}
 
 /**
  * Fetch dynamic Cosmic Insights from API or Firestore, with cache & fallbacks
@@ -165,14 +308,15 @@ export async function getDynamicCosmicInsights(): Promise<CosmicInsight[]> {
     // 2. Try Next.js API endpoint
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 3000);
+      const timer = setTimeout(() => controller.abort(), 3500);
       const res = await fetch(API_ENDPOINTS.cosmicInsights, {
         signal: controller.signal,
       });
       clearTimeout(timer);
       if (res.ok) {
         const data = await res.json();
-        if (data.success && Array.isArray(data.insights) && data.insights.length > 0) {
+        if (data.success && Array.isArray(data.insights)) {
+          // Accurately respect turned off cards (active === false)
           const active = data.insights.filter((c: CosmicInsight) => c.active !== false);
           await AsyncStorage.setItem(STORAGE_INSIGHTS_KEY, JSON.stringify(active));
           return active;
@@ -206,14 +350,14 @@ export async function getDynamicCosmicInsights(): Promise<CosmicInsight[]> {
               planetTags: m.planetTags?.arrayValue?.values?.map((p: any) => p.stringValue) || ['Jupiter', 'Vedic'],
             };
           });
-          const active = list.filter((c: CosmicInsight) => c.active);
+          const active = list.filter((c: CosmicInsight) => c.active !== false);
           await AsyncStorage.setItem(STORAGE_INSIGHTS_KEY, JSON.stringify(active));
           return active;
         }
       }
     } catch {}
 
-    if (parsedCache && parsedCache.length > 0) return parsedCache;
+    if (parsedCache !== null) return parsedCache;
   } catch (err) {
     console.warn('Error reading cosmic insights:', err);
   }
@@ -238,7 +382,7 @@ export async function getLiveHomeAstrologers(): Promise<LiveAstrologer[]> {
     // 2. Try Next.js API endpoint
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 3000);
+      const timer = setTimeout(() => controller.abort(), 3500);
       const res = await fetch(API_ENDPOINTS.astrologers, {
         signal: controller.signal,
       });
@@ -246,8 +390,12 @@ export async function getLiveHomeAstrologers(): Promise<LiveAstrologer[]> {
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.astrologers) && data.astrologers.length > 0) {
-          await AsyncStorage.setItem(STORAGE_ASTROLOGERS_KEY, JSON.stringify(data.astrologers));
-          return data.astrologers;
+          const resolved = data.astrologers.map((a: any) => ({
+            ...a,
+            imageUrl: resolveMediaUrl(a.imageUrl),
+          }));
+          await AsyncStorage.setItem(STORAGE_ASTROLOGERS_KEY, JSON.stringify(resolved));
+          return resolved;
         }
       }
     } catch {}
@@ -272,7 +420,7 @@ export async function getLiveHomeAstrologers(): Promise<LiveAstrologer[]> {
             const nameVal = f.name?.stringValue || 'Acharya Ji';
             const specialtyVal = f.primaryDiscipline?.stringValue || f.tagline?.stringValue || 'Vedic Astrology';
             const expVal = f.experienceYears?.integerValue ? `${f.experienceYears.integerValue}+ Yrs` : '20+ Yrs';
-            const avatarVal = f.avatar?.stringValue || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400';
+            const avatarVal = resolveMediaUrl(f.avatar?.stringValue || 'https://astroparihar.com/assets/images/ai-astrologers/acharya-devavrat.png');
             const isAvail = f.availability?.stringValue === 'online' || f.isActive?.booleanValue !== false;
 
             return {
@@ -301,7 +449,12 @@ export async function getLiveHomeAstrologers(): Promise<LiveAstrologer[]> {
       }
     } catch {}
 
-    if (parsedCache && parsedCache.length > 0) return parsedCache;
+    if (parsedCache && parsedCache.length > 0) {
+      return parsedCache.map((a: any) => ({
+        ...a,
+        imageUrl: resolveMediaUrl(a.imageUrl),
+      }));
+    }
   } catch (err) {
     console.warn('Error reading home astrologers:', err);
   }

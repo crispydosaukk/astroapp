@@ -29,28 +29,29 @@ function SearchHeader({ onlineCount, onSearchChanged, onFilterTap }: { onlineCou
   return (
     <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.cardBorder }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Text style={{ flex: 1, color: '#F0EAD6', fontSize: 20, fontWeight: '800' }}>Find Your Astrologer</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 100, backgroundColor: argb('1A3DCB7A'), borderWidth: 1, borderColor: argb('333DCB7A') }}>
-          <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#3DCB7A' }} />
-          <Text style={{ marginLeft: 5, color: '#3DCB7A', fontSize: 12, fontWeight: '700' }}>{`${onlineCount} Online`}</Text>
+        <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 20, fontWeight: '800' }}>Find Your Astrologer</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 100, backgroundColor: colors.isLight ? '#DCFCE7' : argb('1A3DCB7A'), borderWidth: 1, borderColor: colors.isLight ? '#86EFAC' : argb('333DCB7A') }}>
+          <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.isLight ? '#16A34A' : '#3DCB7A' }} />
+          <Text style={{ marginLeft: 5, color: colors.isLight ? '#15803D' : '#3DCB7A', fontSize: 12, fontWeight: '700' }}>{`${onlineCount} Online`}</Text>
         </View>
       </View>
       <View style={{ flexDirection: 'row', marginTop: 12 }}>
-        <View style={{ flex: 1, height: 46, borderRadius: 100, backgroundColor: argb('0FFFFFFF'), borderWidth: 1, borderColor: argb('1AC9A84C'), flexDirection: 'row', alignItems: 'center' }}>
-          <AppIcon name="search_rounded" color="#6B7A99" size={20} style={{ marginLeft: 14 }} />
+        <View style={{ flex: 1, height: 46, borderRadius: 100, backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'), borderWidth: 1.5, borderColor: colors.isLight ? 'rgba(201,168,76,0.38)' : argb('1AC9A84C'), flexDirection: 'row', alignItems: 'center' }}>
+          <AppIcon name="search_rounded" color={colors.isLight ? '#8E99A8' : '#6B7A99'} size={20} style={{ marginLeft: 14 }} />
           <TextInput
             testID="liveAstrologers.search"
             onChangeText={onSearchChanged}
             placeholder="Search by name, expertise or language"
-            style={{ flex: 1, marginLeft: 10, color: '#F0EAD6', fontSize: 14 }}
+            placeholderTextColor={colors.isLight ? '#8E99A8' : '#6B7A99'}
+            style={{ flex: 1, marginLeft: 10, color: colors.textPrimary, fontSize: 14 }}
           />
         </View>
         <Pressable
           testID="liveAstrologers.filter"
           onPress={onFilterTap}
-          style={{ marginLeft: 10, width: 46, height: 46, borderRadius: 14, backgroundColor: argb('0FFFFFFF'), borderWidth: 1, borderColor: argb('1AC9A84C'), alignItems: 'center', justifyContent: 'center' }}
+          style={{ marginLeft: 10, width: 46, height: 46, borderRadius: 14, backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'), borderWidth: 1.5, borderColor: colors.isLight ? 'rgba(201,168,76,0.38)' : argb('1AC9A84C'), alignItems: 'center', justifyContent: 'center' }}
         >
-          <AppIcon name="tune_rounded" color="#C9A84C" size={22} />
+          <AppIcon name="tune_rounded" color={colors.goldAccent} size={22} />
         </Pressable>
       </View>
     </View>
@@ -66,6 +67,7 @@ const CATEGORIES = [
   { label: 'Gemstones', emoji: '💎' }, { label: 'Rudraksha', emoji: '📿' }, { label: 'Dāna & Seva', emoji: '🤲' },
 ];
 function CategoryChips({ selected, onSelect }: { selected: string; onSelect: (c: string) => void }) {
+  const colors = useThemeColors();
   return (
     <View style={{ height: 48 }}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 6, alignItems: 'center' }}>
@@ -77,10 +79,20 @@ function CategoryChips({ selected, onSelect }: { selected: string; onSelect: (c:
               testID={`liveAstrologers.category.${c.label}`}
               onPress={() => onSelect(c.label)}
               duration={200}
-              style={{ marginRight: 8, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 100, borderWidth: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: sel ? '#8B1A1A' : argb('0FFFFFFF'), borderColor: sel ? '#8B1A1A' : argb('1AC9A84C') }}
+              style={{
+                marginRight: 8,
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+                borderRadius: 100,
+                borderWidth: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: sel ? '#8B1A1A' : (colors.isLight ? '#FFFFFF' : argb('0FFFFFFF')),
+                borderColor: sel ? '#8B1A1A' : (colors.isLight ? 'rgba(201,168,76,0.38)' : argb('1AC9A84C')),
+              }}
             >
               <Text style={{ fontSize: 12 }}>{c.emoji}</Text>
-              <Text style={{ marginLeft: 5, color: sel ? '#F0EAD6' : '#6B7A99', fontSize: 12, fontWeight: sel ? '700' : '400' }}>{c.label}</Text>
+              <Text style={{ marginLeft: 5, color: sel ? '#FFFFFF' : (colors.isLight ? '#4A5568' : '#7E8BA8'), fontSize: 12, fontWeight: sel ? '700' : '600' }}>{c.label}</Text>
             </AnimatedPressable>
           );
         })}
@@ -279,7 +291,20 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
           {/* Left Column: Compact Avatar & Online Indicator */}
           <View style={{ alignItems: 'center', width: 72, marginRight: 12 }}>
             <View style={{ width: 68, height: 68, borderRadius: 16, overflow: 'hidden', borderWidth: 1.5, borderColor: colors.goldAccent }}>
-              <AppImage uri={data.imageUrl} width="100%" height="100%" fit="cover" semanticLabel={data.semanticLabel} />
+              <AppImage
+                uri={data.imageUrl}
+                width="100%"
+                height="100%"
+                fit="cover"
+                semanticLabel={data.semanticLabel}
+                errorWidget={
+                  <View style={{ width: '100%', height: '100%', backgroundColor: '#1A2A3D', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: '#C9A84C', fontSize: 20, fontWeight: '800' }}>
+                      {(data.name || 'A').replace(/^(Acharya|Swami|Pt\.|Pandit|Guru|Dr\.)\s+/i, '')[0] || 'A'}
+                    </Text>
+                  </View>
+                }
+              />
               {/* Online Indicator */}
               <View
                 style={{
@@ -474,10 +499,81 @@ function FilterSheet({ onlineOnly, onOnlineChanged, onClose }: { onlineOnly: boo
   );
 }
 
+/* ------------------------------------------------------------------ helpers */
+function getCategoryForAstrologer(specialty: string = '', fallbackCat: string = 'Vedic'): string {
+  const s = specialty.toLowerCase();
+  if (s.includes('love')) return 'Love';
+  if (s.includes('marriage') || s.includes('milan')) return 'Marriage';
+  if (s.includes('career') || s.includes('business') || s.includes('job')) return 'Career';
+  if (s.includes('finance') || s.includes('wealth') || s.includes('money')) return 'Finance';
+  if (s.includes('tarot') || s.includes('oracle')) return 'Tarot';
+  if (s.includes('numerology') || s.includes('ank')) return 'Numerology';
+  if (s.includes('vastu')) return 'Vastu';
+  if (s.includes('kp')) return 'KP';
+  if (s.includes('nadi')) return 'Nadi';
+  if (s.includes('remed') || s.includes('lal kitab') || s.includes('gemstone') || s.includes('rudraksha') || s.includes('parihar')) return 'Remedies';
+  if (s.includes('spiritual') || s.includes('sadhana') || s.includes('karmic')) return 'Spirituality';
+  if (s.includes('homa') || s.includes('puja') || s.includes('yantra')) return 'Homa';
+  return fallbackCat || 'Vedic';
+}
+
+function matchesCategoryFilter(a: AstrologerData, selectedCategory: string): boolean {
+  if (selectedCategory === 'All') return true;
+  const cat = selectedCategory.toLowerCase();
+  const aCat = (a.category || '').toLowerCase();
+  const aSpec = (a.specialty || '').toLowerCase();
+  const aTitle = (a.title || '').toLowerCase();
+
+  if (aCat === cat) return true;
+  if (aSpec.includes(cat) || aTitle.includes(cat)) return true;
+
+  if (cat === 'love') {
+    return aSpec.includes('love') || aSpec.includes('relationship') || aSpec.includes('harmony') || aCat === 'love';
+  }
+  if (cat === 'marriage') {
+    return aSpec.includes('marriage') || aSpec.includes('milan') || aSpec.includes('vivah') || aSpec.includes('marital') || aCat === 'marriage';
+  }
+  if (cat === 'career') {
+    return aSpec.includes('career') || aSpec.includes('business') || aSpec.includes('job') || aSpec.includes('work') || aCat === 'career';
+  }
+  if (cat === 'finance') {
+    return aSpec.includes('finance') || aSpec.includes('wealth') || aSpec.includes('dhana') || aSpec.includes('money') || aCat === 'finance';
+  }
+  if (cat === 'vedic') {
+    return aSpec.includes('vedic') || aSpec.includes('jyotish') || aSpec.includes('parashara') || aSpec.includes('dasha') || aCat === 'vedic';
+  }
+  if (cat === 'spirituality') {
+    return aSpec.includes('spirit') || aSpec.includes('sadhana') || aSpec.includes('karmic') || aCat === 'spirituality';
+  }
+  if (cat === 'tarot') {
+    return aSpec.includes('tarot') || aSpec.includes('oracle') || aCat === 'tarot';
+  }
+  if (cat === 'numerology') {
+    return aSpec.includes('numerol') || aSpec.includes('ank') || aCat === 'numerology';
+  }
+  if (cat === 'vastu') {
+    return aSpec.includes('vastu') || aCat === 'vastu';
+  }
+  if (cat === 'kp') {
+    return aSpec.includes('kp') || aCat === 'kp';
+  }
+  if (cat === 'nadi') {
+    return aSpec.includes('nadi') || aCat === 'nadi';
+  }
+  if (cat === 'remedies' || cat === 'gemstones' || cat === 'rudraksha' || cat === 'yantra' || cat === 'homa' || cat === 'mantra') {
+    return aSpec.includes(cat) || aTitle.includes(cat) || aSpec.includes('remed') || aSpec.includes('lal kitab') || aSpec.includes('parihar');
+  }
+
+  return false;
+}
+
 /* ------------------------------------------------------------------ screen */
 export default function LiveAstrologersScreen() {
   const [astrologerType, setAstrologerType] = useState<'real' | 'ai'>('real');
-  const [astrologersList, setAstrologersList] = useState<AstrologerData[]>(LIVE_ASTROLOGERS);
+  const [astrologersList, setAstrologersList] = useState<AstrologerData[]>(() => [
+    ...LIVE_ASTROLOGERS.map((a) => ({ ...a, isAi: false, category: getCategoryForAstrologer(a.specialty, a.category) })),
+    ...AI_ASTROLOGERS_DATA.map((a) => ({ ...a, isAi: true, category: getCategoryForAstrologer(a.specialty, a.category) })),
+  ]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [onlineOnly, setOnlineOnly] = useState(false);
@@ -488,11 +584,11 @@ export default function LiveAstrologersScreen() {
     try {
       const list = await getLiveHomeAstrologers();
       if (list && list.length > 0) {
-        const mapped: AstrologerData[] = list.map((a) => ({
+        const liveMapped: AstrologerData[] = list.map((a) => ({
           id: a.id,
           name: a.name,
           specialty: a.specialty,
-          title: `${a.specialty} • ${a.experience}`,
+          title: a.semanticLabel || `${a.specialty} • ${a.experience}`,
           experience: a.experience,
           rating: a.rating,
           reviews: a.reviews,
@@ -502,12 +598,41 @@ export default function LiveAstrologersScreen() {
           languages: a.languages,
           imageUrl: a.imageUrl,
           semanticLabel: a.semanticLabel || a.name,
-          category: 'Vedic',
-          isAi: a.isAi,
+          category: getCategoryForAstrologer(a.specialty),
+          isAi: !!a.isAi,
         }));
-        setAstrologersList(mapped);
+
+        // Combine Real Astrologers: Live real from backend + verified master astrologers
+        const liveReal = liveMapped.filter((a) => !a.isAi);
+        const masterReal = LIVE_ASTROLOGERS.map((a) => ({ ...a, isAi: false, category: getCategoryForAstrologer(a.specialty, a.category) }));
+        const seenReal = new Set<string>();
+        const combinedReal: AstrologerData[] = [];
+        for (const item of [...liveReal, ...masterReal]) {
+          const key = (item.id || item.name).toLowerCase();
+          if (!seenReal.has(key)) {
+            seenReal.add(key);
+            combinedReal.push(item);
+          }
+        }
+
+        // Combine AI Astrologers: 85+ live AI astrologers from backend + initial AI personas
+        const liveAi = liveMapped.filter((a) => a.isAi);
+        const fallbackAi = AI_ASTROLOGERS_DATA.map((a) => ({ ...a, isAi: true, category: getCategoryForAstrologer(a.specialty, a.category) }));
+        const seenAi = new Set<string>();
+        const combinedAi: AstrologerData[] = [];
+        for (const item of [...liveAi, ...fallbackAi]) {
+          const key = (item.id || item.name).toLowerCase();
+          if (!seenAi.has(key)) {
+            seenAi.add(key);
+            combinedAi.push(item);
+          }
+        }
+
+        setAstrologersList([...combinedReal, ...combinedAi]);
       }
-    } catch {}
+    } catch (err) {
+      console.warn('Failed to fetch live astrologers list:', err);
+    }
   };
 
   useEffect(() => {
@@ -515,10 +640,11 @@ export default function LiveAstrologersScreen() {
   }, []);
 
   const realList = useMemo(() => astrologersList.filter((a) => !a.isAi), [astrologersList]);
-  const activePool = astrologerType === 'ai' ? AI_ASTROLOGERS_DATA : realList;
+  const aiList = useMemo(() => astrologersList.filter((a) => a.isAi), [astrologersList]);
+  const activePool = astrologerType === 'ai' ? aiList : realList;
 
   const filtered = useMemo(() => {
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
     return activePool.filter((a) => {
       const matchesSearch =
         q.length === 0 ||
@@ -526,7 +652,7 @@ export default function LiveAstrologersScreen() {
         a.specialty.toLowerCase().includes(q) ||
         (a.title && a.title.toLowerCase().includes(q)) ||
         (a.languages && a.languages.toLowerCase().includes(q));
-      const matchesCategory = selectedCategory === 'All' || a.category === selectedCategory;
+      const matchesCategory = matchesCategoryFilter(a, selectedCategory);
       const matchesOnline = !onlineOnly || a.isOnline;
       return matchesSearch && matchesCategory && matchesOnline;
     });
@@ -549,7 +675,20 @@ export default function LiveAstrologersScreen() {
 
       {/* Two Prominent Top Tabs: Real Astrologers vs AI Astrologers */}
       <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 4 }}>
-        <View style={{ flexDirection: 'row', padding: 4, borderRadius: 16, backgroundColor: argb('14FFFFFF'), borderWidth: 1, borderColor: argb('26C9A84C') }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            padding: 4,
+            borderRadius: 16,
+            backgroundColor: colors.isLight ? '#FFFFFF' : argb('14FFFFFF'),
+            borderWidth: 1.5,
+            borderColor: colors.isLight ? 'rgba(201,168,76,0.38)' : argb('26C9A84C'),
+            shadowColor: colors.isLight ? '#C9A84C' : '#000',
+            shadowOpacity: colors.isLight ? 0.08 : 0,
+            shadowRadius: 6,
+            elevation: colors.isLight ? 2 : 0,
+          }}
+        >
           <Pressable
             testID="liveAstrologers.tab.real"
             onPress={() => setAstrologerType('real')}
@@ -566,11 +705,11 @@ export default function LiveAstrologersScreen() {
             }}
           >
             <Text style={{ fontSize: 14 }}>🕉️</Text>
-            <Text style={{ marginLeft: 6, color: astrologerType === 'real' ? '#F0EAD6' : '#A0A8C0', fontSize: 13, fontWeight: '700' }}>
+            <Text style={{ marginLeft: 6, color: astrologerType === 'real' ? '#FFFFFF' : (colors.isLight ? '#5A6A85' : '#A0A8C0'), fontSize: 13, fontWeight: '700' }}>
               Real Astrologers
             </Text>
-            <View style={{ marginLeft: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, backgroundColor: astrologerType === 'real' ? '#C9A84C' : argb('26A0A8C0') }}>
-              <Text style={{ color: astrologerType === 'real' ? '#080D1A' : '#A0A8C0', fontSize: 10, fontWeight: '800' }}>
+            <View style={{ marginLeft: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, backgroundColor: astrologerType === 'real' ? '#C9A84C' : (colors.isLight ? '#F0EBE0' : argb('26A0A8C0')) }}>
+              <Text style={{ color: astrologerType === 'real' ? '#080D1A' : (colors.isLight ? '#5A6A85' : '#A0A8C0'), fontSize: 10, fontWeight: '800' }}>
                 {realList.length}
               </Text>
             </View>
@@ -592,12 +731,12 @@ export default function LiveAstrologersScreen() {
             }}
           >
             <Text style={{ fontSize: 14 }}>🔮</Text>
-            <Text style={{ marginLeft: 6, color: astrologerType === 'ai' ? '#F0EAD6' : '#A0A8C0', fontSize: 13, fontWeight: '700' }}>
+            <Text style={{ marginLeft: 6, color: astrologerType === 'ai' ? '#FFFFFF' : (colors.isLight ? '#5A6A85' : '#A0A8C0'), fontSize: 13, fontWeight: '700' }}>
               AI Astrologers
             </Text>
-            <View style={{ marginLeft: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, backgroundColor: astrologerType === 'ai' ? '#C9A84C' : argb('26A0A8C0') }}>
-              <Text style={{ color: astrologerType === 'ai' ? '#080D1A' : '#A0A8C0', fontSize: 10, fontWeight: '800' }}>
-                {AI_ASTROLOGERS_DATA.length}
+            <View style={{ marginLeft: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, backgroundColor: astrologerType === 'ai' ? '#C9A84C' : (colors.isLight ? '#F0EBE0' : argb('26A0A8C0')) }}>
+              <Text style={{ color: astrologerType === 'ai' ? '#080D1A' : (colors.isLight ? '#5A6A85' : '#A0A8C0'), fontSize: 10, fontWeight: '800' }}>
+                {aiList.length}
               </Text>
             </View>
           </Pressable>
@@ -609,14 +748,14 @@ export default function LiveAstrologersScreen() {
         {filtered.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} testID="liveAstrologers.empty">
             <Text style={{ fontSize: 48 }}>🔍</Text>
-            <Text style={{ marginTop: 16, color: '#F0EAD6', fontSize: 18, fontWeight: '700' }}>No astrologers found</Text>
-            <Text style={{ marginTop: 8, color: '#6B7A99', fontSize: 14 }}>Try adjusting your search or filters</Text>
+            <Text style={{ marginTop: 16, color: colors.textPrimary, fontSize: 18, fontWeight: '700' }}>No astrologers found</Text>
+            <Text style={{ marginTop: 8, color: colors.textMuted, fontSize: 14 }}>Try adjusting your search or filters</Text>
             <Pressable
               testID="liveAstrologers.clearFilters"
               onPress={() => { setSearchQuery(''); setSelectedCategory('All'); setOnlineOnly(false); }}
               style={{ marginTop: 24, paddingHorizontal: 12, paddingVertical: 8 }}
             >
-              <Text style={{ color: '#C9A84C', fontWeight: '600', fontSize: 14 }}>Clear Filters</Text>
+              <Text style={{ color: colors.isLight ? '#8B1A1A' : '#C9A84C', fontWeight: '700', fontSize: 14 }}>Clear Filters</Text>
             </Pressable>
           </View>
         ) : (

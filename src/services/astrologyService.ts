@@ -131,7 +131,7 @@ export async function fetchCalculatedKundli(profile?: {
       dob: effectiveProfile?.dob || '1995-10-15',
       tob: effectiveProfile?.tob || '12:00 PM',
       pob: effectiveProfile?.pob || 'New Delhi, India',
-      name: effectiveProfile?.name || 'Devotee',
+      name: effectiveProfile?.name || 'Guest',
       gender: effectiveProfile?.gender || 'Male',
     };
 
@@ -233,7 +233,7 @@ export async function fetchCalculatedKundli(profile?: {
 
   // Graceful canonical fallback
   return {
-    name: profile?.name || 'Devotee',
+    name: profile?.name || 'Guest',
     gender: profile?.gender || 'Male',
     dob: profile?.dob || '1995-10-15',
     tob: profile?.tob || '12:00 PM',

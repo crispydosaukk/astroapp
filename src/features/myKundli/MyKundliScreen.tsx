@@ -197,7 +197,7 @@ function SectionContent({ index, chart, colors }: { index: number; chart: Kundli
       return (
         <View>
           {[
-            ['Name', chart?.name || 'Devotee'],
+            ['Name', chart?.name || 'Guest'],
             ['Date of Birth', chart?.dob || '15 March 1995'],
             ['Time of Birth', chart?.tob || '12:00 PM'],
             ['Birth Place', chart?.pob || 'New Delhi, India'],
@@ -432,7 +432,7 @@ export default function MyKundliScreen() {
 
   const handleAskAiAboutKundli = () => {
     push(AppRoutes.aiChatScreen, {
-      initialPrompt: `Namaste 🙏 Please analyze my Kundli for ${chartData?.name || 'Devotee'} (Born: ${chartData?.dob || ''} at ${chartData?.tob || ''}, ${chartData?.pob || ''}). My Ascendant is ${chartData?.ascendant.sign || 'Scorpio'}, Moon in ${chartData?.moonSign || 'Cancer'} (${chartData?.nakshatra || 'Punarvasu'}). Active Mahadasha is ${chartData?.dasha.currentMahadasha || 'Jupiter'}. What are my key career & life predictions?`,
+      initialPrompt: `Namaste 🙏 Please analyze my Kundli for ${chartData?.name || 'Guest'} (Born: ${chartData?.dob || ''} at ${chartData?.tob || ''}, ${chartData?.pob || ''}). My Ascendant is ${chartData?.ascendant.sign || 'Scorpio'}, Moon in ${chartData?.moonSign || 'Cancer'} (${chartData?.nakshatra || 'Punarvasu'}). Active Mahadasha is ${chartData?.dasha.currentMahadasha || 'Jupiter'}. What are my key career & life predictions?`,
     });
   };
 
@@ -489,7 +489,7 @@ export default function MyKundliScreen() {
           </View>
           <View style={{ flex: 1, marginLeft: 16 }}>
             <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700', marginBottom: 4 }}>
-              {chartData?.name || 'Devotee'}
+              {chartData?.name || 'Guest'}
             </Text>
             {[
               ['📅', chartData?.dob || '15 March 1995'],

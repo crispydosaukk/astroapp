@@ -4,8 +4,9 @@
  * - local assets (svg/png/jpg) → require()'d module numbers
  */
 import { Image, ImageContentFit } from 'expo-image';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DimensionValue, Pressable, StyleProp, View, ViewStyle } from 'react-native';
+import { resolveMediaUrl } from '@/config/api';
 
 const NO_IMAGE = require('../../assets/images/no-image.jpg');
 
@@ -30,9 +31,19 @@ export function AppImage({
   uri, width, height, fit, radius, tintColor, semanticLabel, errorWidget, onPress, style, contentPosition,
 }: AppImageProps) {
   const [failed, setFailed] = useState(false);
-  if (uri == null) return <View style={[{ width, height }, style]} />;
-  const isNetwork = typeof uri === 'string' && uri.startsWith('http');
-  const contentFit: ImageContentFit = (fit ?? (isNetwork ? 'cover' : 'cover')) as ImageContentFit;
+
+  useEffect(() => {
+    setFailed(false);
+  }, [uri]);
+
+  if (uri == null || uri === '') {
+    if (errorWidget) return <View style={[{ width, height }, style]}>{errorWidget}</View>;
+    return <View style={[{ width, height }, style]} />;
+  }
+
+  const resolvedUri = typeof uri === 'string' ? resolveMediaUrl(uri) : uri;
+  const isNetwork = typeof resolvedUri === 'string' && (resolvedUri.startsWith('http://') || resolvedUri.startsWith('https://'));
+  const contentFit: ImageContentFit = (fit ?? 'cover') as ImageContentFit;
   const box: StyleProp<ViewStyle> = [{ width, height, borderRadius: radius, overflow: 'hidden' }, style];
 
   let body: React.ReactNode;
@@ -43,7 +54,7 @@ export function AppImage({
   } else {
     body = (
       <Image
-        source={isNetwork ? { uri: uri as string } : (uri as number)}
+        source={isNetwork ? { uri: resolvedUri as string } : (resolvedUri as number)}
         style={{ width: '100%', height: '100%' }}
         contentFit={contentFit}
         contentPosition={contentPosition}
