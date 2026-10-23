@@ -24,7 +24,7 @@ const DEFAULT_TRANSACTIONS: WalletTransaction[] = [
 
 const listeners = new Set<(balance: number) => void>();
 
-function notifyBalance(newBalance: number) {
+export function notifyBalance(newBalance: number) {
   listeners.forEach((listener) => {
     try {
       listener(newBalance);
@@ -41,11 +41,20 @@ export function subscribeWallet(listener: (balance: number) => void): () => void
 
 export async function getWalletBalance(): Promise<number> {
   try {
+    // 0. If user is NOT signed in, balance must strictly be 0
+    const storedAuth = await AsyncStorage.getItem('astroparihar_auth_user');
+    if (!storedAuth) {
+      return 0;
+    }
+
     // 1. Try fetching from live backend
     try {
+      const parsedUser = JSON.parse(storedAuth);
+      const uid = parsedUser?.uid || parsedUser?.phone;
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 3500);
-      const res = await fetch(`${API_BASE_URL}/wallet`, { signal: controller.signal });
+      const url = uid ? `${API_BASE_URL}/wallet?uid=${encodeURIComponent(uid)}` : `${API_BASE_URL}/wallet`;
+      const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timer);
       if (res.ok) {
         const data = await res.json();
@@ -56,7 +65,7 @@ export async function getWalletBalance(): Promise<number> {
       }
     } catch {}
 
-    // 2. Read from local storage
+    // 2. Read from local storage for signed in user
     const cached = await AsyncStorage.getItem(STORAGE_KEY_BALANCE);
     if (cached !== null) {
       const num = Number(cached);
@@ -66,18 +75,24 @@ export async function getWalletBalance(): Promise<number> {
     console.warn('Error reading wallet balance:', err);
   }
 
-  // Initial balance for active devotee
-  const initial = 450;
-  await AsyncStorage.setItem(STORAGE_KEY_BALANCE, String(initial));
-  return initial;
+  // Initial balance for signed in user with no previous records is 0
+  return 0;
 }
 
 export async function getWalletTransactions(): Promise<WalletTransaction[]> {
   try {
+    const storedAuth = await AsyncStorage.getItem('astroparihar_auth_user');
+    if (!storedAuth) {
+      return [];
+    }
+
     try {
+      const parsedUser = JSON.parse(storedAuth);
+      const uid = parsedUser?.uid || parsedUser?.phone;
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 3500);
-      const res = await fetch(`${API_BASE_URL}/wallet`, { signal: controller.signal });
+      const url = uid ? `${API_BASE_URL}/wallet?uid=${encodeURIComponent(uid)}` : `${API_BASE_URL}/wallet`;
+      const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timer);
       if (res.ok) {
         const data = await res.json();
@@ -106,8 +121,7 @@ export async function getWalletTransactions(): Promise<WalletTransaction[]> {
     console.warn('Error fetching transactions:', err);
   }
 
-  await AsyncStorage.setItem(STORAGE_KEY_TX, JSON.stringify(DEFAULT_TRANSACTIONS));
-  return DEFAULT_TRANSACTIONS;
+  return [];
 }
 
 export async function createPaymentOrder(amount: number): Promise<{

@@ -59,12 +59,12 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <StatusBar style={colors.isLight ? 'dark' : 'light'} />
         <AppErrorBoundary>
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#080D1A' }, ...PUSH }}>
-            <Stack.Screen name="index" options={{ animation: 'fade', animationDuration: 280, contentStyle: { backgroundColor: '#080D1A' } }} />
-            <Stack.Screen name="splash-screen" options={{ animation: 'fade', animationDuration: 280, contentStyle: { backgroundColor: '#080D1A' } }} />
-            <Stack.Screen name="sign-in-screen" options={{ animation: 'fade', animationDuration: 280, contentStyle: { backgroundColor: '#080D1A' } }} />
-            <Stack.Screen name="onboarding-screen" options={{ animation: 'fade', animationDuration: 320, contentStyle: { backgroundColor: '#080D1A' } }} />
-            <Stack.Screen name="birth-profile-setup-screen" options={{ animation: 'fade', animationDuration: 320, contentStyle: { backgroundColor: '#080D1A' } }} />
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background }, ...PUSH }}>
+            <Stack.Screen name="index" options={{ animation: 'fade', animationDuration: 280, contentStyle: { backgroundColor: colors.background } }} />
+            <Stack.Screen name="splash-screen" options={{ animation: 'fade', animationDuration: 280, contentStyle: { backgroundColor: colors.background } }} />
+            <Stack.Screen name="sign-in-screen" options={{ animation: 'fade', animationDuration: 280, contentStyle: { backgroundColor: colors.background } }} />
+            <Stack.Screen name="onboarding-screen" options={{ animation: 'fade', animationDuration: 320, contentStyle: { backgroundColor: colors.background } }} />
+            <Stack.Screen name="birth-profile-setup-screen" options={{ animation: 'fade', animationDuration: 320, contentStyle: { backgroundColor: colors.background } }} />
             <Stack.Screen name="(tabs)" options={{ animation: 'fade', contentStyle: { backgroundColor: colors.background } }} />
             {PUSH_ROUTES.map((r) => (
               <Stack.Screen key={r} name={r} options={PUSH} />

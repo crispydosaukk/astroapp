@@ -21,6 +21,7 @@ import { AppIcon } from '@/components/AppIcon';
 import { AppImage } from '@/components/AppImage';
 import { lh, Text, TextInput } from '@/components/Text';
 import { AppRoutes, go, push } from '@/navigation/routes';
+import { useAuthStore } from '@/features/auth/authStore';
 import {
   deductWalletBalance,
   getWalletBalance,
@@ -34,6 +35,10 @@ import {
   sendLiveAIChatMessage,
   AIChatResponse,
 } from '@/services/astrologyService';
+import {
+  speakAstrologerText,
+  stopAstrologerSpeech,
+} from '@/services/speechService';
 
 export interface ChatMessage {
   isUser: boolean;
@@ -277,7 +282,19 @@ function StructuredAnalysisCard({ structured }: { structured: ChatMessage['struc
   );
 }
 
-function Bubble({ msg, index, onPromptTap }: { msg: ChatMessage; index: number; onPromptTap: (s: string) => void }) {
+function Bubble({
+  msg,
+  index,
+  onPromptTap,
+  onVoiceTap,
+  isSpeaking,
+}: {
+  msg: ChatMessage;
+  index: number;
+  onPromptTap: (s: string) => void;
+  onVoiceTap?: (text: string, index: number) => void;
+  isSpeaking?: boolean;
+}) {
   const { width } = useWindowDimensions();
   const p = useSharedValue(0);
   useEffect(() => {
@@ -309,11 +326,33 @@ function Bubble({ msg, index, onPromptTap }: { msg: ChatMessage; index: number; 
           }}
         >
           {!msg.isUser ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <Text style={{ color: '#075E54', fontSize: 12, fontWeight: '700' }}>
                 {msg.modelUsed || 'AstroParihar AI'}
               </Text>
-              <Text style={{ color: '#C9A84C', fontSize: 10, fontWeight: '600' }}>Vedic Jyotish</Text>
+              <Pressable
+                testID={`aiChat.voice.${index}`}
+                onPress={() => onVoiceTap?.(msg.text, index)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 12,
+                  backgroundColor: isSpeaking ? 'rgba(201,168,76,0.25)' : 'rgba(7,94,84,0.08)',
+                  borderWidth: 1,
+                  borderColor: isSpeaking ? '#C9A84C' : 'rgba(7,94,84,0.2)',
+                }}
+              >
+                <AppIcon
+                  name={isSpeaking ? 'stop_circle_rounded' : 'volume_up_rounded'}
+                  size={13}
+                  color={isSpeaking ? '#C9A84C' : '#075E54'}
+                />
+                <Text style={{ marginLeft: 3, color: isSpeaking ? '#C9A84C' : '#075E54', fontSize: 10, fontWeight: '700' }}>
+                  {isSpeaking ? 'Stop' : 'Listen'}
+                </Text>
+              </Pressable>
             </View>
           ) : null}
 
@@ -383,6 +422,11 @@ export default function AiChatScreen() {
 
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showModelModal, setShowModelModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authUser = useAuthStore((s) => s.user);
+  const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
 
   const [userProfile, setUserProfile] = useState<any>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -395,8 +439,29 @@ export default function AiChatScreen() {
   const mounted = useRef(true);
   const hasTriggeredInitial = useRef(false);
 
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+
+  const handleToggleVoice = (text: string, idx: number) => {
+    if (speakingIndex === idx) {
+      stopAstrologerSpeech();
+      setSpeakingIndex(null);
+    } else {
+      setSpeakingIndex(idx);
+      speakAstrologerText(text, {
+        language: selectedLanguage,
+        astrologerName: selectedAstrologer.name,
+        onStart: () => setSpeakingIndex(idx),
+        onDone: () => setSpeakingIndex(null),
+        onError: () => setSpeakingIndex(null),
+      });
+    }
+  };
+
   useEffect(() => {
-    return () => { mounted.current = false; };
+    return () => {
+      mounted.current = false;
+      stopAstrologerSpeech();
+    };
   }, []);
 
   // Load saved birth profile
@@ -411,7 +476,7 @@ export default function AiChatScreen() {
     });
   }, []);
 
-  const [walletBalance, setWalletBalance] = useState(450);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [rechargeAmount, setRechargeAmount] = useState(500);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('UPI');
@@ -472,6 +537,12 @@ export default function AiChatScreen() {
 
   const sendMessage = async (text: string) => {
     if (text.trim().length === 0) return;
+
+    // 0. Gate on authentication: Without sign in, AI Astro chat cannot be used
+    if (!isAuth) {
+      setShowAuthModal(true);
+      return;
+    }
 
     // 1. Check wallet balance: Each prompt costs ₹5
     if (walletBalance < 5) {
@@ -764,12 +835,86 @@ export default function AiChatScreen() {
             keyExtractor={(item, i) => (item === 'typing' ? 'typing' : String(i))}
             contentContainerStyle={{ paddingHorizontal: 10, paddingVertical: 12, paddingBottom: 24 }}
             keyboardShouldPersistTaps="handled"
-            renderItem={({ item, index }) => (item === 'typing' ? <TypingIndicator /> : <Bubble msg={item} index={index} onPromptTap={sendMessage} />)}
+            renderItem={({ item, index }) => (
+              item === 'typing' ? (
+                <TypingIndicator />
+              ) : (
+                <Bubble
+                  msg={item}
+                  index={index}
+                  isSpeaking={speakingIndex === index}
+                  onVoiceTap={handleToggleVoice}
+                  onPromptTap={(promptText) => {
+                    if (!isAuth) {
+                      setShowAuthModal(true);
+                    } else {
+                      sendMessage(promptText);
+                    }
+                  }}
+                />
+              )
+            )}
           />
         </View>
 
-        {/* Low Balance Warning Banner (Matching Website AIChatSidebar) */}
-        {walletBalance < 5 && (
+        {/* Guest Auth Banner or Low Balance Warning Banner */}
+        {!isAuth ? (
+          <View
+            style={{
+              marginHorizontal: 10,
+              marginBottom: 8,
+              padding: 12,
+              borderRadius: 14,
+              backgroundColor: '#FFF8E7',
+              borderWidth: 1.5,
+              borderColor: '#C9A84C',
+              shadowColor: '#C9A84C',
+              shadowOpacity: 0.15,
+              shadowRadius: 4,
+              elevation: 2,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 17,
+                  backgroundColor: 'rgba(201,168,76,0.2)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 10,
+                }}
+              >
+                <AppIcon name="lock" size={18} color="#8B1A1A" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#8B1A1A', fontSize: 13, fontWeight: '800' }}>
+                  Sign In Required to Consult
+                </Text>
+                <Text style={{ color: '#5A4A3A', fontSize: 11, marginTop: 2 }}>
+                  Please sign in or register to chat with AI Astrologers. Each prompt costs ₹5.
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={() => go(AppRoutes.signInScreen)}
+              style={{
+                marginTop: 8,
+                paddingVertical: 9,
+                borderRadius: 10,
+                backgroundColor: '#075E54',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
+                🔐 Sign In / Register Now ↗
+              </Text>
+            </Pressable>
+          </View>
+        ) : walletBalance < 5 && (
           <View
             style={{
               marginHorizontal: 10,
@@ -813,17 +958,25 @@ export default function AiChatScreen() {
 
         {/* Chat Input Widget - Authentic WhatsApp layout without voice or attachment icons */}
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 10, paddingTop: 8, paddingBottom: isKeyboardVisible ? Math.max(10, insets.bottom + 4) : insets.bottom + 90, backgroundColor: '#EFEAE2', borderTopWidth: 0.5, borderTopColor: 'rgba(0,0,0,0.06)' }}>
-          <View style={{ flex: 1, minHeight: 44, borderRadius: 24, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 2, elevation: 1 }}>
+          <Pressable
+            onPress={() => {
+              if (!isAuth) setShowAuthModal(true);
+            }}
+            style={{ flex: 1, minHeight: 44, borderRadius: 24, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 2, elevation: 1 }}
+          >
             <TextInput
               testID="aiChat.input"
               value={input}
               onChangeText={setInput}
               multiline
               numberOfLines={4}
-              placeholder={currentPlaceholder}
+              placeholder={!isAuth ? 'Sign in to ask AI Astrologer...' : currentPlaceholder}
               placeholderTextColor="#8A8A8A"
+              editable={isAuth}
               onSubmitEditing={() => {
-                if (walletBalance < 5) {
+                if (!isAuth) {
+                  setShowAuthModal(true);
+                } else if (walletBalance < 5) {
                   setShowRechargeModal(true);
                 } else if (input.trim().length > 0) {
                   sendMessage(input);
@@ -831,17 +984,19 @@ export default function AiChatScreen() {
               }}
               style={{ flex: 1, paddingVertical: 10, color: '#111B21', fontSize: 14, maxHeight: 4 * 22 + 20 }}
             />
-          </View>
+          </Pressable>
           <Pressable
             testID="aiChat.send"
             onPress={() => {
-              if (walletBalance < 5) {
+              if (!isAuth) {
+                setShowAuthModal(true);
+              } else if (walletBalance < 5) {
                 setShowRechargeModal(true);
               } else if (input.trim().length > 0) {
                 sendMessage(input);
               }
             }}
-            disabled={input.trim().length === 0 && walletBalance >= 5}
+            disabled={isAuth && input.trim().length === 0 && walletBalance >= 5}
             style={{
               marginLeft: 8,
               width: 44,
@@ -850,14 +1005,14 @@ export default function AiChatScreen() {
               backgroundColor: '#075E54',
               alignItems: 'center',
               justifyContent: 'center',
-              opacity: input.trim().length > 0 || walletBalance < 5 ? 1 : 0.6,
+              opacity: !isAuth || input.trim().length > 0 || walletBalance < 5 ? 1 : 0.6,
               shadowColor: '#075E54',
               shadowOpacity: 0.3,
               shadowRadius: 4,
               elevation: 2,
             }}
           >
-            <AppIcon name="send_rounded" color="#FFFFFF" size={19} />
+            <AppIcon name={!isAuth ? 'lock' : 'send_rounded'} color="#FFFFFF" size={19} />
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -1142,6 +1297,53 @@ export default function AiChatScreen() {
             >
               <Text style={{ color: '#A0A8C0', fontSize: 12, textDecorationLine: 'underline' }}>
                 View Full Wallet & Transaction History →
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* 4. Auth Required Modal */}
+      <Modal visible={showAuthModal} transparent animationType="fade" onRequestClose={() => setShowAuthModal(false)}>
+        <Pressable onPress={() => setShowAuthModal(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.68)', justifyContent: 'center', padding: 24 }}>
+          <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: '#0D1B2A', borderRadius: 24, padding: 22, borderWidth: 1.5, borderColor: '#C9A84C' }}>
+            <View style={{ alignItems: 'center', marginBottom: 14 }}>
+              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(201,168,76,0.18)', borderWidth: 1.5, borderColor: '#C9A84C', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                <AppIcon name="lock" color="#C9A84C" size={28} />
+              </View>
+              <Text style={{ color: '#F0EAD6', fontSize: 18, fontWeight: '800', textAlign: 'center' }}>
+                Sign In to Consult
+              </Text>
+              <Text style={{ color: '#A0A8C0', fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 19 }}>
+                Please sign in to your AstroParihar account to ask AI Astrologers and unlock Vedic Jyotish insights. Each consultation prompt costs ₹5 from your wallet.
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={() => {
+                setShowAuthModal(false);
+                go(AppRoutes.signInScreen);
+              }}
+              style={{
+                paddingVertical: 14,
+                borderRadius: 14,
+                backgroundColor: '#C9A84C',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginTop: 8,
+              }}
+            >
+              <Text style={{ color: '#080D1A', fontSize: 15, fontWeight: '800' }}>
+                Sign In / Register Now ↗
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setShowAuthModal(false)}
+              style={{ marginTop: 12, alignItems: 'center', paddingVertical: 6 }}
+            >
+              <Text style={{ color: '#7E8BA8', fontSize: 13, fontWeight: '500' }}>
+                Maybe Later
               </Text>
             </Pressable>
           </Pressable>

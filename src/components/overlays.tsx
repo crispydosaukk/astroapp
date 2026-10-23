@@ -2,11 +2,12 @@
  * Modal primitives replacing Flutter's showModalBottomSheet, showDialog and ScaffoldMessenger SnackBar.
  */
 import React, { useEffect, useState } from 'react';
-import { Dimensions, KeyboardAvoidingView, Modal, Platform, Pressable, StyleProp, View, ViewStyle } from 'react-native';
+import { Dimensions, KeyboardAvoidingView, Modal, Platform, Pressable, StyleProp, Text as RNText, View, ViewStyle } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 import { AppColors } from '@/theme/colors';
+import { ralewayFamily } from '@/theme/fonts';
 import { AppIcon } from './AppIcon';
 import { Text } from './Text';
 
@@ -92,55 +93,151 @@ export function Dialog({
 }: { visible: boolean; onClose: () => void; children: React.ReactNode; barrierDismissible?: boolean; style?: StyleProp<ViewStyle>; testID?: string }) {
   return (
     <Modal transparent visible={visible} animationType="fade" statusBarTranslucent onRequestClose={barrierDismissible ? onClose : () => {}}>
-      <Pressable
-        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.54)', justifyContent: 'center', padding: 24 }}
-        onPress={barrierDismissible ? onClose : undefined}
-      >
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
         <Pressable
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          onPress={barrierDismissible ? onClose : undefined}
+        />
+        <View
           testID={testID}
-          onPress={() => {}}
-          style={[{ backgroundColor: AppColors.surfaceDark, borderRadius: 24, padding: 24, borderWidth: 1, borderColor: AppColors.cardBorder }, style]}
+          style={[{ width: '100%', maxWidth: 420, backgroundColor: AppColors.surfaceDark, borderRadius: 24, padding: 24, borderWidth: 1.5, borderColor: AppColors.cardBorder, elevation: 25, zIndex: 10 }, style]}
         >
           {children}
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
 
 /* --------------------------------------------------------------------- Snackbar */
-type SnackState = { message: string | null; bg: string; key: number; show: (m: string, bg?: string) => void; hide: () => void };
+type SnackState = {
+  message: string | null;
+  bg?: string;
+  key: number;
+  show: (m: string, bg?: string) => void;
+  hide: () => void;
+};
+
 export const useSnackbar = create<SnackState>((set) => ({
   message: null,
-  bg: AppColors.surfaceVariantDark,
+  bg: undefined,
   key: 0,
-  show: (message, bg = AppColors.surfaceVariantDark) => set((s) => ({ message, bg, key: s.key + 1 })),
+  show: (message, bg) => set((s) => ({ message, bg, key: s.key + 1 })),
   hide: () => set({ message: null }),
 }));
+
 export const showSnackBar = (m: string, bg?: string) => useSnackbar.getState().show(m, bg);
 
-/** Mount once at the root. Floating SnackBar, 4 s (Flutter default). */
+/** Mount once at the root. Floating high-contrast SnackBar, crystal clear text & premium styling. */
 export function SnackbarHost() {
   const { message, bg, key, hide } = useSnackbar();
   const insets = useSafeAreaInsets();
   const o = useSharedValue(0);
+
   useEffect(() => {
     if (!message) return;
-    o.value = withTiming(1, { duration: 200 });
+    o.value = withTiming(1, { duration: 240, easing: Easing.out(Easing.cubic) });
     const t = setTimeout(() => {
-      o.value = withTiming(0, { duration: 200 }, (f) => { if (f) runOnJS(hide)(); });
+      o.value = withTiming(0, { duration: 220, easing: Easing.in(Easing.cubic) }, (f) => {
+        if (f) runOnJS(hide)();
+      });
     }, 4000);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
-  const st = useAnimatedStyle(() => ({ opacity: o.value, transform: [{ translateY: (1 - o.value) * 20 }] }));
+
+  const st = useAnimatedStyle(() => ({
+    opacity: o.value,
+    transform: [
+      { translateY: (1 - o.value) * 14 },
+      { scale: 0.96 + o.value * 0.04 },
+    ],
+  }));
+
   if (!message) return null;
+
+  // Determine intent (error, success, info/guest)
+  const isError = bg === '#CF4444' || bg === '#8B1A1A' || /error|failed|invalid|declined/i.test(message);
+  const isSuccess = bg === '#075E54' || bg === '#2D9E6B' || /success|purchased|verified|added|saved|completed/i.test(message);
+
+  let containerBg = '#0B132B'; // Deep obsidian midnight with maximum contrast
+  let borderColor = '#C9A84C'; // Sacred Gold border
+  let iconName = 'auto_awesome';
+  let iconColor = '#FFD700';
+  let iconBg = 'rgba(201, 168, 76, 0.22)';
+
+  if (isError) {
+    containerBg = '#22080B';
+    borderColor = '#FF5252';
+    iconName = 'error_outline';
+    iconColor = '#FF6B6B';
+    iconBg = 'rgba(255, 82, 82, 0.22)';
+  } else if (isSuccess) {
+    containerBg = '#052317';
+    borderColor = '#34D399';
+    iconName = 'check_circle';
+    iconColor = '#4ADE80';
+    iconBg = 'rgba(52, 211, 153, 0.22)';
+  } else if (bg && bg !== AppColors.surfaceVariantDark) {
+    containerBg = bg;
+  }
+
   return (
     <Animated.View
       pointerEvents="none"
-      style={[{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 100, backgroundColor: bg, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, elevation: 6 }, st]}
+      style={[
+        {
+          position: 'absolute',
+          left: 16,
+          right: 16,
+          bottom: insets.bottom + 90,
+          backgroundColor: containerBg,
+          borderRadius: 16,
+          borderWidth: 1.5,
+          borderColor: borderColor,
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          flexDirection: 'row',
+          alignItems: 'center',
+          elevation: 25,
+          zIndex: 999999,
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.5,
+          shadowRadius: 12,
+        },
+        st,
+      ]}
     >
-      <Text style={{ color: AppColors.textPrimary, fontSize: 14, fontWeight: '500' }}>{message}</Text>
+      <View
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          backgroundColor: iconBg,
+          borderWidth: 1,
+          borderColor: borderColor,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 12,
+        }}
+      >
+        <AppIcon name={iconName} size={18} color={iconColor} />
+      </View>
+      <RNText
+        allowFontScaling={false}
+        style={{
+          flex: 1,
+          color: '#FFFFFF',
+          fontSize: 14.5,
+          fontFamily: ralewayFamily(700),
+          fontWeight: '700',
+          letterSpacing: 0.25,
+          lineHeight: 20,
+        }}
+      >
+        {message}
+      </RNText>
     </Animated.View>
   );
 }

@@ -475,7 +475,15 @@ function HoroscopeCards() {
   const [selected, setSelected] = useState(0);
   const cat = HOROSCOPE_CATEGORIES[selected];
 
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authUser = useAuthStore((s) => s.user);
+  const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
+
   const handleAskAIAboutHoroscope = () => {
+    if (!isAuth) {
+      push(AppRoutes.signInScreen);
+      return;
+    }
     push(AppRoutes.aiChatScreen, {
       initialPrompt: `Namaste 🙏 Please analyze my ${cat.label} horoscope for today based on my birth chart and current planetary transits. What guidance and parihar do you recommend?`,
     });

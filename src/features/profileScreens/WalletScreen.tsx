@@ -8,10 +8,11 @@ import { ElevatedButton } from '@/components/common';
 import { BottomSheet, showSnackBar } from '@/components/overlays';
 import { TabBar, TabPager } from '@/components/Tabs';
 import { Text } from '@/components/Text';
-import { pop } from '@/navigation/routes';
+import { AppRoutes, go, pop } from '@/navigation/routes';
 import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
+import { useAuthStore } from '@/features/auth/authStore';
 import {
   getWalletBalance,
   getWalletTransactions,
@@ -42,29 +43,40 @@ export default function WalletScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authUser = useAuthStore((s) => s.user);
+  const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
+
   const [tab, setTab] = useState(0);
   const [selected, setSelected] = useState(500);
   const [sheet, setSheet] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [balance, setBalance] = useState(450);
+  const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [gridW, setGridW] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
-    getWalletBalance().then((b) => {
-      if (isMounted) setBalance(b);
-    });
-    getWalletTransactions().then((txs) => {
-      if (isMounted) setTransactions(txs);
-    });
+    if (isAuth) {
+      getWalletBalance().then((b) => {
+        if (isMounted) setBalance(b);
+      });
+      getWalletTransactions().then((txs) => {
+        if (isMounted) setTransactions(txs);
+      });
+    } else {
+      setBalance(0);
+      setTransactions([]);
+    }
 
     const unsub = subscribeWallet((b) => {
       if (isMounted) {
-        setBalance(b);
-        getWalletTransactions().then((txs) => {
-          if (isMounted) setTransactions(txs);
-        });
+        setBalance(isAuth ? b : 0);
+        if (isAuth) {
+          getWalletTransactions().then((txs) => {
+            if (isMounted) setTransactions(txs);
+          });
+        }
       }
     });
 
@@ -72,9 +84,15 @@ export default function WalletScreen() {
       isMounted = false;
       unsub();
     };
-  }, []);
+  }, [isAuth]);
 
   const handleRecharge = async (method: string) => {
+    if (!isAuth) {
+      setSheet(false);
+      showSnackBar('Please sign in to recharge your wallet', '#CF4444');
+      go(AppRoutes.signInScreen);
+      return;
+    }
     setIsProcessing(true);
     try {
       const res = await rechargeWallet(selected, method);
@@ -142,11 +160,11 @@ export default function WalletScreen() {
               <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>Available Balance</Text>
               <Text testID="wallet.balance" style={{ marginTop: 8, color: colors.goldAccent, fontSize: 44, fontWeight: '800' }}>{`₹${balance}`}</Text>
               <View style={{ marginTop: 16, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center' }}>
-                <WalletStat value={`₹${balance + 1043}`} label="Total Added" colors={colors} />
+                <WalletStat value={isAuth ? `₹${balance}` : '₹0'} label="Total Added" colors={colors} />
                 <View style={{ width: 1, height: 30, backgroundColor: colors.divider }} />
-                <WalletStat value="₹1,043" label="Total Spent" colors={colors} />
+                <WalletStat value="₹0" label="Total Spent" colors={colors} />
                 <View style={{ width: 1, height: 30, backgroundColor: colors.divider }} />
-                <WalletStat value="₹125" label="Bonus Earned" colors={colors} />
+                <WalletStat value="₹0" label="Bonus Earned" colors={colors} />
               </View>
             </LinearGradient>
 
@@ -213,7 +231,7 @@ export default function WalletScreen() {
 
           <ScrollView key="tx" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}>
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              {[['Total Added', `₹${balance + 1043}`, '#2D9E6B'], ['Total Spent', '₹1,043', '#CF4444']].map(([l, v, c]) => (
+              {[['Total Added', isAuth ? `₹${balance}` : '₹0', '#2D9E6B'], ['Total Spent', '₹0', '#CF4444']].map(([l, v, c]) => (
                 <View key={l} style={{ flex: 1, padding: 16, borderRadius: 16, backgroundColor: withAlpha(c, colors.isLight ? 15 : 20), borderWidth: 1, borderColor: withAlpha(c, 60) }}>
                   <Text style={{ color: colors.textMuted, fontSize: 11 }}>{l}</Text>
                   <Text style={{ marginTop: 4, color: c, fontSize: 19, fontWeight: '800' }}>{v}</Text>
@@ -221,23 +239,33 @@ export default function WalletScreen() {
               ))}
             </View>
             <Text style={{ marginTop: 20, marginBottom: 12, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Recent Transactions</Text>
-            {transactions.map((tItem, i) => {
-              const credit = tItem.type === 'credit';
-              const c = credit ? '#2D9E6B' : '#CF4444';
-              return (
-                <View key={tItem.id || i} style={{ marginBottom: 10, padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: withAlpha(c, 20), alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 20 }}>{tItem.icon || (credit ? '💳' : '📞')}</Text>
+            {transactions.length === 0 ? (
+              <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 36, paddingHorizontal: 20, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.cardBorder }}>
+                <Text style={{ fontSize: 32, marginBottom: 10 }}>📜</Text>
+                <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700' }}>No Transactions Yet</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
+                  {isAuth ? 'Your recharge and consultation billing records will show here.' : 'Sign in to access your wallet transactions and history.'}
+                </Text>
+              </View>
+            ) : (
+              transactions.map((tItem, i) => {
+                const credit = tItem.type === 'credit';
+                const c = credit ? '#2D9E6B' : '#CF4444';
+                return (
+                  <View key={tItem.id || i} style={{ marginBottom: 10, padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: withAlpha(c, 20), alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 20 }}>{tItem.icon || (credit ? '💳' : '📞')}</Text>
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>{tItem.title}</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 11 }}>{tItem.subtitle}</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 10 }}>{tItem.date}</Text>
+                    </View>
+                    <Text style={{ color: c, fontSize: 15, fontWeight: '800' }}>{String(tItem.amount)}</Text>
                   </View>
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>{tItem.title}</Text>
-                    <Text style={{ color: colors.textMuted, fontSize: 11 }}>{tItem.subtitle}</Text>
-                    <Text style={{ color: colors.textMuted, fontSize: 10 }}>{tItem.date}</Text>
-                  </View>
-                  <Text style={{ color: c, fontSize: 15, fontWeight: '800' }}>{String(tItem.amount)}</Text>
-                </View>
-              );
-            })}
+                );
+              })
+            )}
           </ScrollView>,
         ]}
       </TabPager>

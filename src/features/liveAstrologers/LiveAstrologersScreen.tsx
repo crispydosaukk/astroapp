@@ -18,7 +18,9 @@ import { ElevatedButton, Switch } from '@/components/common';
 import { BottomSheet } from '@/components/overlays';
 import { lh, Text, TextInput } from '@/components/Text';
 import { AstrologerData, LIVE_ASTROLOGERS } from '@/data/astrologers';
+import { useAuthStore } from '@/features/auth/authStore';
 import { getLiveHomeAstrologers } from '@/services/homeDataService';
+import { generateZegoRoomId } from '@/services/zegoService';
 import { AppRoutes, push } from '@/navigation/routes';
 import { argb, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
@@ -245,8 +247,16 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
   const featured = !!data.isFeatured;
   const isAi = !!data.isAi;
 
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authUser = useAuthStore((s) => s.user);
+  const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
+
   const open = () => {
     if (isAi) {
+      if (!isAuth) {
+        push(AppRoutes.signInScreen);
+        return;
+      }
       push(AppRoutes.aiChatScreen, {
         astrologerId: data.id as string,
         astrologerName: data.name,
@@ -258,10 +268,16 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
   };
 
   const callAction = () => {
+    if (!isAuth) {
+      push(AppRoutes.signInScreen);
+      return;
+    }
     if (isAi) {
+      const roomID = generateZegoRoomId('ai_call');
       push(AppRoutes.consultationScreen, {
         type: 'voice',
         astrologer: data,
+        roomID,
       });
     } else {
       push(AppRoutes.astrologerDetailScreen, data);

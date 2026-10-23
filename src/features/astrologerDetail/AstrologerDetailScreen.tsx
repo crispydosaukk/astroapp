@@ -21,8 +21,10 @@ import { TabBar, TabPager } from '@/components/Tabs';
 import { lh, Text } from '@/components/Text';
 import { AppRoutes, pop, push, useExtra } from '@/navigation/routes';
 import { AstrologerData, LIVE_ASTROLOGERS } from '@/data/astrologers';
+import { useAuthStore } from '@/features/auth/authStore';
 import { getAstrologerReviews } from '@/services/reviewService';
 import { getWalletBalance, rechargeWallet, subscribeWallet } from '@/services/walletService';
+import { generateZegoRoomId } from '@/services/zegoService';
 import { argb } from '@/theme/colors';
 
 const DEFAULT_DATA: AstrologerData = LIVE_ASTROLOGERS[0];
@@ -98,7 +100,7 @@ export default function AstrologerDetailScreen() {
     transform: [{ translateY: interpolate(scrollY.value, [-HEADER_H, 0, HEADER_H], [-HEADER_H / 2, 0, HEADER_H * 0.25]) }, { scale: interpolate(scrollY.value, [-HEADER_H, 0], [2, 1], 'clamp') }],
   }));
 
-  const [walletBalance, setWalletBalance] = useState(450);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [isRecharging, setIsRecharging] = useState(false);
   const [rechargeMsg, setRechargeMsg] = useState('');
   const [reviewsList, setReviewsList] = useState(REVIEWS);
@@ -130,6 +132,10 @@ export default function AstrologerDetailScreen() {
     };
   }, [data.id, data.name]);
 
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authUser = useAuthStore((s) => s.user);
+  const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
+
   const minBalance = price * 5;
   const isSufficient = walletBalance >= minBalance;
 
@@ -150,12 +156,22 @@ export default function AstrologerDetailScreen() {
   };
 
   const proceed = (type: 'Chat' | 'Call' | 'Book') => {
+    if (!isAuth) {
+      sheet.close();
+      push(AppRoutes.signInScreen);
+      return;
+    }
     if (!isSufficient) {
       setRechargeMsg(`Minimum ₹${minBalance} (5 mins) required. Please top up your wallet.`);
       return;
     }
     sheet.close();
-    push(AppRoutes.consultationScreen, { type: type === 'Book' ? 'video' : 'voice', astrologer: data });
+    const roomID = generateZegoRoomId();
+    push(AppRoutes.consultationScreen, {
+      type: type === 'Book' ? 'video' : 'voice',
+      astrologer: data,
+      roomID,
+    });
   };
 
   const consultTypes = [
@@ -486,7 +502,22 @@ export default function AstrologerDetailScreen() {
 
             {/* Main Action Buttons */}
             <View style={{ marginTop: 16, alignSelf: 'stretch', gap: 10 }}>
-              {isSufficient ? (
+              {!isAuth ? (
+                <Pressable
+                  testID="astrologerDetail.sheet.signIn"
+                  onPress={() => {
+                    sheet.close();
+                    push(AppRoutes.signInScreen);
+                  }}
+                  style={{ borderRadius: 14, overflow: 'hidden' }}
+                >
+                  <LinearGradient colors={['#C9A84C', '#E2C26A']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ paddingVertical: 16, alignItems: 'center' }}>
+                    <Text style={{ color: '#080D1A', fontSize: 15, fontWeight: '800' }}>
+                      🔐 Sign In to Consult Astrologer ↗
+                    </Text>
+                  </LinearGradient>
+                </Pressable>
+              ) : isSufficient ? (
                 <Pressable testID="astrologerDetail.sheet.proceed" onPress={() => proceed(sheet.value!)} style={{ borderRadius: 14, overflow: 'hidden' }}>
                   <LinearGradient colors={['#8B1A1A', '#AB2424']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ paddingVertical: 16, alignItems: 'center' }}>
                     <Text style={{ color: '#F0EAD6', fontSize: 15, fontWeight: '700' }}>

@@ -111,6 +111,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await AsyncStorage.removeItem(STORAGE_USER_KEY);
       await AsyncStorage.removeItem(STORAGE_TOKEN_KEY);
+      await AsyncStorage.removeItem('astroparihar_wallet_balance');
+      await AsyncStorage.removeItem('astroparihar_wallet_transactions');
     } catch {}
   },
 }));

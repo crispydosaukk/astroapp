@@ -12,10 +12,12 @@ import { AppColors } from '@/theme/colors';
  * AstroParihar branding logo centered and clearly visible.
  */
 import { useAuthStore } from '@/features/auth/authStore';
+import { useThemeColors } from '@/theme/themeStore';
 
 export default function SplashScreen() {
   const { width } = useWindowDimensions();
   const navigated = useRef(false);
+  const colors = useThemeColors();
 
   const loadAuth = useAuthStore((s) => s.load);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -69,13 +71,13 @@ export default function SplashScreen() {
     <View
       style={{
         flex: 1,
-        backgroundColor: '#080D1A', // Deep Cosmic Background (matches SignInScreen)
+        backgroundColor: colors.background, // Exactly matches SignInScreen and app theme
         alignItems: 'center',
         justifyContent: 'center',
       }}
       testID="splash.screen"
     >
-      <StatusBar style="light" animated={true} />
+      <StatusBar style={colors.isLight ? 'dark' : 'light'} animated={true} />
 
       <Animated.View
         style={{
@@ -95,16 +97,16 @@ export default function SplashScreen() {
           />
         </View>
 
-        {/* Refined Vedic Tagline & Sacred Dots */}
+        {/* Refined Vedic Tagline & Sacred Dots matching Login Screen theme */}
         <View style={{ marginTop: 24, alignItems: 'center' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-            <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#C9A84C' }} />
-            <Text style={{ color: '#E2C26A', fontSize: 13, fontWeight: '700', letterSpacing: 2 }}>
+            <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.goldAccent }} />
+            <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '700', letterSpacing: 2 }}>
               ASTROPARIHAR
             </Text>
-            <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#C9A84C' }} />
+            <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.goldAccent }} />
           </View>
-          <Text style={{ color: '#A0A8C0', fontSize: 12, fontWeight: '500', letterSpacing: 0.5 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '500', letterSpacing: 0.5 }}>
             Ancient Vedic Wisdom • Luminous Guidance
           </Text>
         </View>

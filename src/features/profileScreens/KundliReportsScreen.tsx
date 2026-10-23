@@ -18,6 +18,7 @@ import { ElevatedButton, OutlinedButton } from '@/components/common';
 import { BottomSheet, Dialog, showSnackBar } from '@/components/overlays';
 import { TabBar, TabPager } from '@/components/Tabs';
 import { Text } from '@/components/Text';
+import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, pop, push } from '@/navigation/routes';
 import { deductWalletBalance, getWalletBalance } from '@/services/walletService';
 import { withAlpha } from '@/theme/colors';
@@ -112,6 +113,15 @@ export default function KundliReportsScreen() {
   }, []);
 
   const handleBuyReport = async (item: typeof CATALOG[0]) => {
+    const isAuthenticated = useAuthStore.getState().isAuthenticated;
+    const authUser = useAuthStore.getState().user;
+    const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
+    if (!isAuth) {
+      showSnackBar('Please sign in to order Kundli reports', '#8B1A1A');
+      push(AppRoutes.signInScreen);
+      return;
+    }
+
     const balance = await getWalletBalance();
     if (balance < item.price) {
       setBuyTarget(item);

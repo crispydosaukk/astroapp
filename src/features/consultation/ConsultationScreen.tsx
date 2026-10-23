@@ -19,14 +19,17 @@ import { AppImage } from '@/components/AppImage';
 import { RadialGlow } from '@/components/common';
 import { Dialog } from '@/components/overlays';
 import { Text, TextInput } from '@/components/Text';
-import { AppRoutes, push, useExtra } from '@/navigation/routes';
+import { useAuthStore } from '@/features/auth/authStore';
+import { AppRoutes, go, push, useExtra } from '@/navigation/routes';
 import { submitConsultationReview } from '@/services/reviewService';
 import { deductWalletBalance, getWalletBalance, subscribeWallet } from '@/services/walletService';
+import { generateZegoRoomId, openAiCallRoom, openZegoCallRoom, ZEGO_CONFIG } from '@/services/zegoService';
+import { speakAstrologerText, stopAstrologerSpeech } from '@/services/speechService';
 import { AppColors, argb, withAlpha } from '@/theme/colors';
 import { useController } from '@/utils/anim';
 import { SOURCE_INERT } from '@/utils/sourceInert';
 
-type Astro = { name: string; imageUrl: string; semanticLabel?: string; price?: number; [k: string]: unknown };
+type Astro = { id?: string; name: string; title?: string; imageUrl: string; semanticLabel?: string; price?: number; isAi?: boolean; [k: string]: unknown };
 type Msg = { text: string; isSystem: boolean; isUser?: boolean; time: string };
 
 const DEFAULT_ASTRO: Astro = {
@@ -62,10 +65,20 @@ function ControlButton({ icon, label, isActive, activeColor, onTap, testID }: { 
 }
 
 export default function ConsultationScreen() {
-  const extra = useExtra<{ type?: string; astrologer?: Astro }>();
+  const extra = useExtra<{ type?: string; astrologer?: Astro; roomID?: string }>();
   const astro = extra?.astrologer ?? DEFAULT_ASTRO;
   const isVideo = extra?.type !== 'voice';
   const ratePerMin = Number(astro.price ?? 45);
+  const isAi = Boolean((astro as any)?.isAi || astro.name?.includes('(AI)') || (astro.title && astro.title.toLowerCase().includes('ai')));
+
+  // Authentication check: Guests cannot start consultations
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authUser = useAuthStore((s) => s.user);
+  const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
+
+  const [authModalVisible, setAuthModalVisible] = useState(false);
+  const [lowBalanceVisible, setLowBalanceVisible] = useState(false);
+  const roomID = useRef(extra?.roomID || generateZegoRoomId()).current;
 
   const [isMuted, setMuted] = useState(false);
   const [isCameraOff, setCameraOff] = useState(false);
@@ -74,7 +87,7 @@ export default function ConsultationScreen() {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(true);
   const [seconds, setSeconds] = useState(0);
-  const [balance, setBalance] = useState(450);
+  const [balance, setBalance] = useState(0);
   const [totalCharged, setTotalCharged] = useState(0);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
@@ -137,9 +150,11 @@ export default function ConsultationScreen() {
     clearTimeout(timers.current.connect);
     clearInterval(timers.current.call);
     clearInterval(timers.current.balance);
+    stopAstrologerSpeech();
   };
   const endCall = () => { stopTimers(); setEnded(true); };
 
+  // 1. Initial wallet subscription & real-time sync
   useEffect(() => {
     let isSubscribed = true;
     getWalletBalance().then((b) => {
@@ -154,39 +169,89 @@ export default function ConsultationScreen() {
     };
   }, []);
 
+  // 2. Strict Authentication and 5-min minimum wallet balance verification
   useEffect(() => {
-    timers.current.connect = setTimeout(() => {
-      if (!mounted.current) return;
+    if (!isAuth) {
       setConnecting(false);
-      setConnected(true);
-      timers.current.call = setInterval(() => setSeconds((s) => s + 1), 1000);
-      timers.current.balance = setInterval(async () => {
+      setAuthModalVisible(true);
+      return;
+    }
+
+    const minRequired = ratePerMin * 5;
+
+    getWalletBalance().then(async (curBal) => {
+      if (!mounted.current) return;
+      setBalance(curBal);
+
+      if (curBal < minRequired) {
+        setConnecting(false);
+        setLowBalanceVisible(true);
+        return;
+      }
+
+      // Valid: Start connection sequence mirroring website
+      timers.current.connect = setTimeout(async () => {
+        if (!mounted.current) return;
+        setConnecting(false);
+        setConnected(true);
+
+        // Immediate 1st minute deduction upon connect (matching website start-call-billing)
         try {
-          const res = await deductWalletBalance(
+          const firstMinDeduct = await deductWalletBalance(
             ratePerMin,
-            `${isVideo ? 'Video' : 'Voice'} Call with ${astro.name}`,
+            `1st Min: ${isVideo ? 'Video' : 'Voice'} Call with ${astro.name}`,
             astro.name
           );
-          if (res.success) {
-            setBalance(res.newBalance);
-            setTotalCharged((prev) => prev + ratePerMin);
-            if (res.newBalance < ratePerMin) {
-              addSystem(`⚠️ Low balance: ₹${res.newBalance.toFixed(0)} left. Less than 1 minute remaining.`);
-            }
+          if (firstMinDeduct.success) {
+            setBalance(firstMinDeduct.newBalance);
+            setTotalCharged(ratePerMin);
+            addSystem(`Call connected. First minute (₹${ratePerMin}) billed.`);
+            addSystem(`ZegoCloud Room: ${roomID}`);
           } else {
-            addSystem('Wallet balance exhausted. Ending session...');
+            addSystem('Wallet balance insufficient for consultation.');
             setTimeout(endCall, 800);
+            return;
           }
         } catch {
           setBalance((b) => Math.max(0, b - ratePerMin));
-          setTotalCharged((prev) => prev + ratePerMin);
+          setTotalCharged(ratePerMin);
         }
-      }, 60000);
-      addSystem('Call connected. Your session has started.');
-    }, 3000);
-    return () => { mounted.current = false; stopTimers(); };
+
+        // Call duration seconds timer
+        timers.current.call = setInterval(() => setSeconds((s) => s + 1), 1000);
+
+        // Continuous 60s minute deduction engine
+        timers.current.balance = setInterval(async () => {
+          try {
+            const res = await deductWalletBalance(
+              ratePerMin,
+              `${isVideo ? 'Video' : 'Voice'} Call with ${astro.name}`,
+              astro.name
+            );
+            if (res.success) {
+              setBalance(res.newBalance);
+              setTotalCharged((prev) => prev + ratePerMin);
+              if (res.newBalance < ratePerMin) {
+                addSystem(`⚠️ Low balance: ₹${res.newBalance.toFixed(0)} left. Less than 1 minute remaining.`);
+              }
+            } else {
+              addSystem('Wallet balance exhausted. Ending session...');
+              setTimeout(endCall, 800);
+            }
+          } catch {
+            setBalance((b) => Math.max(0, b - ratePerMin));
+            setTotalCharged((prev) => prev + ratePerMin);
+          }
+        }, 60000);
+      }, 2500);
+    });
+
+    return () => {
+      mounted.current = false;
+      stopTimers();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAuth]);
 
   const sendMessage = () => {
     const text = input.trim();
@@ -199,6 +264,11 @@ export default function ConsultationScreen() {
       const reply = REPLIES[Math.floor(Math.random() * REPLIES.length)];
       setMessages((m) => [...m, { text: reply, isSystem: false, isUser: false, time: fmt(secondsRef.current) }]);
       scrollChat();
+      if (isSpeakerOn && !isMuted) {
+        speakAstrologerText(reply, {
+          astrologerName: astro.name,
+        });
+      }
     }, 2000);
   };
 
@@ -268,7 +338,87 @@ export default function ConsultationScreen() {
               <Text testID="consultation.balance" style={{ marginLeft: 4, color: balance < 50 ? AppColors.error : AppColors.goldAccent, fontSize: 13, fontWeight: '700' }}>{`₹${balance.toFixed(0)}`}</Text>
             </View>
           </View>
-          <View style={{ flex: 1 }} />
+
+          {/* Middle Live ZegoCloud Room Launcher & Session Info */}
+          <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 16 }}>
+            {connected && !isChatOpen && (
+              <View
+                style={{
+                  padding: 16,
+                  borderRadius: 22,
+                  backgroundColor: 'rgba(8,13,26,0.85)',
+                  borderWidth: 1.5,
+                  borderColor: AppColors.goldAccent,
+                  shadowColor: AppColors.goldAccent,
+                  shadowOpacity: 0.25,
+                  shadowRadius: 12,
+                  elevation: 6,
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#3DCB7A', marginRight: 8 }} />
+                    <Text style={{ color: '#F0EAD6', fontSize: 13, fontWeight: '700' }}>
+                      {isAi ? '⚡ AI Voice Stream Room' : '🎥 ZegoCloud WebRTC Room'}
+                    </Text>
+                  </View>
+                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(201,168,76,0.18)', borderWidth: 1, borderColor: '#C9A84C' }}>
+                    <Text style={{ color: '#C9A84C', fontSize: 10, fontWeight: '800' }}>
+                      Zego App ID: 1951519898
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={{ color: '#A0A8C0', fontSize: 11, marginBottom: 12, lineHeight: 16 }}>
+                  {isAi
+                    ? 'Connected to autonomous AI Vedic ephemeris stream with real-time speech synthesis.'
+                    : 'Real-time encrypted 1-on-1 audio/video stream powered by ZegoCloud WebRTC.'}
+                </Text>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)' }}>
+                  <Text style={{ color: '#A0A8C0', fontSize: 11 }}>Room ID:</Text>
+                  <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '700' }}>{roomID}</Text>
+                </View>
+
+                <Pressable
+                  testID="consultation.openZegoCloud"
+                  onPress={() => {
+                    if (isAi) {
+                      openAiCallRoom(roomID);
+                    } else {
+                      openZegoCallRoom(roomID);
+                    }
+                  }}
+                  style={{
+                    borderRadius: 14,
+                    overflow: 'hidden',
+                    shadowColor: '#C9A84C',
+                    shadowOpacity: 0.35,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  }}
+                >
+                  <LinearGradient
+                    colors={['#C9A84C', '#8B1A1A']}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={{
+                      paddingVertical: 12,
+                      paddingHorizontal: 16,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <AppIcon name="videocam_rounded" color="#FFFFFF" size={18} style={{ marginRight: 8 }} />
+                    <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
+                      Join Live ZegoCloud Room (Camera & Mic) ↗
+                    </Text>
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            )}
+          </View>
 
           {isChatOpen ? (
             <View testID="consultation.chatPanel" style={{ height: 280, marginHorizontal: 12, borderRadius: 20, backgroundColor: argb('DD080D1A'), borderWidth: 1, borderColor: AppColors.goldBorder }}>
@@ -330,11 +480,11 @@ export default function ConsultationScreen() {
 
           {/* controls */}
           <View style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 20, paddingHorizontal: 20, paddingVertical: 16, borderRadius: 28, backgroundColor: argb('CC080D1A'), borderWidth: 1, borderColor: AppColors.goldBorder, flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'flex-start', shadowColor: '#000', shadowOpacity: 0.47, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 10 }}>
-            <ControlButton testID="consultation.mute" icon={isMuted ? 'mic_off_rounded' : 'mic_rounded'} label={isMuted ? 'Unmute' : 'Mute'} isActive={isMuted} activeColor={AppColors.error} onTap={() => setMuted((v) => !v)} />
+            <ControlButton testID="consultation.mute" icon={isMuted ? 'mic_off_rounded' : 'mic_rounded'} label={isMuted ? 'Unmute' : 'Mute'} isActive={isMuted} activeColor={AppColors.error} onTap={() => setMuted((v) => { if (!v) stopAstrologerSpeech(); return !v; })} />
             {isVideo ? (
               <ControlButton testID="consultation.camera" icon={isCameraOff ? 'videocam_off_rounded' : 'videocam_rounded'} label={isCameraOff ? 'Cam Off' : 'Camera'} isActive={isCameraOff} activeColor={AppColors.error} onTap={() => setCameraOff((v) => !v)} />
             ) : null}
-            <ControlButton testID="consultation.speaker" icon={isSpeakerOn ? 'volume_up_rounded' : 'volume_off_rounded'} label={isSpeakerOn ? 'Speaker' : 'Earpiece'} isActive={!isSpeakerOn} activeColor={AppColors.warning} onTap={() => setSpeakerOn((v) => !v)} />
+            <ControlButton testID="consultation.speaker" icon={isSpeakerOn ? 'volume_up_rounded' : 'volume_off_rounded'} label={isSpeakerOn ? 'Speaker' : 'Earpiece'} isActive={!isSpeakerOn} activeColor={AppColors.warning} onTap={() => setSpeakerOn((v) => { if (v) stopAstrologerSpeech(); return !v; })} />
             <ControlButton testID="consultation.chat" icon="chat_bubble_outline_rounded" label="Chat" isActive={isChatOpen} activeColor={AppColors.goldAccent} onTap={() => setChatOpen((v) => !v)} />
             <Pressable testID="consultation.end" onPress={endCall} style={{ alignItems: 'center' }}>
               <View style={{ width: 56, height: 56, borderRadius: 28, overflow: 'hidden', shadowColor: AppColors.error, shadowOpacity: 0.4, shadowRadius: 12, elevation: 6 }}>
@@ -544,6 +694,86 @@ export default function ConsultationScreen() {
           </Pressable>
         </View>
         </ScrollView>
+      </Dialog>
+
+      {/* 2. Authentication Required Modal */}
+      <Dialog visible={authModalVisible} onClose={() => {}} barrierDismissible={false} style={{ borderRadius: 24, padding: 22, backgroundColor: '#0D1B2A', borderWidth: 1.5, borderColor: AppColors.goldAccent }}>
+        <View style={{ alignItems: 'center' }}>
+          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(201,168,76,0.18)', borderWidth: 1.5, borderColor: AppColors.goldAccent, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <AppIcon name="lock" color={AppColors.goldAccent} size={28} />
+          </View>
+          <Text style={{ color: AppColors.textPrimary, fontSize: 18, fontWeight: '800', textAlign: 'center' }}>
+            Sign In Required to Consult
+          </Text>
+          <Text style={{ color: AppColors.textSecondary, fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 19 }}>
+            Connecting with astrologers requires an authenticated account. Please sign in or register to consult with {astro.name}.
+          </Text>
+
+          <Pressable
+            testID="consultation.authModal.signIn"
+            onPress={() => {
+              setAuthModalVisible(false);
+              if (router.canGoBack()) router.back();
+              go(AppRoutes.signInScreen);
+            }}
+            style={{ marginTop: 20, width: '100%', paddingVertical: 13, borderRadius: 14, backgroundColor: AppColors.goldAccent, alignItems: 'center' }}
+          >
+            <Text style={{ color: '#080D1A', fontSize: 14, fontWeight: '800' }}>
+              Sign In / Register Now ↗
+            </Text>
+          </Pressable>
+
+          <Pressable
+            testID="consultation.authModal.cancel"
+            onPress={() => {
+              setAuthModalVisible(false);
+              if (router.canGoBack()) router.back();
+            }}
+            style={{ marginTop: 12, paddingVertical: 6 }}
+          >
+            <Text style={{ color: AppColors.textMuted, fontSize: 13 }}>Go Back</Text>
+          </Pressable>
+        </View>
+      </Dialog>
+
+      {/* 3. Minimum 5-Min Balance Required Modal */}
+      <Dialog visible={lowBalanceVisible} onClose={() => {}} barrierDismissible={false} style={{ borderRadius: 24, padding: 22, backgroundColor: '#0D1B2A', borderWidth: 1.5, borderColor: AppColors.error }}>
+        <View style={{ alignItems: 'center' }}>
+          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: withAlpha(AppColors.error, 30), borderWidth: 1.5, borderColor: AppColors.error, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <AppIcon name="warning_amber_rounded" color={AppColors.error} size={28} />
+          </View>
+          <Text style={{ color: AppColors.textPrimary, fontSize: 18, fontWeight: '800', textAlign: 'center' }}>
+            Insufficient Wallet Balance
+          </Text>
+          <Text style={{ color: AppColors.textSecondary, fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 19 }}>
+            A minimum balance of ₹{ratePerMin * 5} (5 minutes at ₹{ratePerMin}/min) is required to start a consultation with {astro.name}. Your available balance is ₹{balance.toFixed(0)}.
+          </Text>
+
+          <Pressable
+            testID="consultation.lowBalance.recharge"
+            onPress={() => {
+              setLowBalanceVisible(false);
+              if (router.canGoBack()) router.back();
+              push(AppRoutes.walletScreen);
+            }}
+            style={{ marginTop: 20, width: '100%', paddingVertical: 13, borderRadius: 14, backgroundColor: '#075E54', alignItems: 'center' }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800' }}>
+              💳 Recharge Wallet Now ↗
+            </Text>
+          </Pressable>
+
+          <Pressable
+            testID="consultation.lowBalance.cancel"
+            onPress={() => {
+              setLowBalanceVisible(false);
+              if (router.canGoBack()) router.back();
+            }}
+            style={{ marginTop: 12, paddingVertical: 6 }}
+          >
+            <Text style={{ color: AppColors.textMuted, fontSize: 13 }}>Cancel</Text>
+          </Pressable>
+        </View>
       </Dialog>
     </View>
   );

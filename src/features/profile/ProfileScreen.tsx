@@ -12,7 +12,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
@@ -175,7 +175,7 @@ export default function ProfileScreen() {
 
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(450);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [profileData, setProfileData] = useState({
     name: currentUserName,
     email: isAuth ? (authUser?.phone ? `+91 ${authUser.phone}` : authUser?.email || 'Registered User') : 'Sign in to sync your profile',
@@ -285,6 +285,26 @@ export default function ProfileScreen() {
     go(AppRoutes.initial);
   };
 
+  const handleSignOutPress = () => {
+    Alert.alert(
+      t('profile.signOut', 'Sign Out'),
+      t('profile.signOutConfirm', 'Are you sure you want to sign out? Your astrological charts will remain securely saved.'),
+      [
+        {
+          text: t('profile.cancel', 'Cancel'),
+          style: 'cancel',
+          onPress: () => setSignOutOpen(false),
+        },
+        {
+          text: t('profile.signOut', 'Sign Out'),
+          style: 'destructive',
+          onPress: handleConfirmSignOut,
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="profile.screen">
       <AppBar
@@ -392,8 +412,8 @@ export default function ProfileScreen() {
             <View style={{ height: 30, width: 1, marginHorizontal: 20, backgroundColor: colors.divider }} />
             <ProfileStat label={t('profile.reports', 'Reports')} value={isAuth ? '1' : '0'} colors={colors} />
             <View style={{ height: 30, width: 1, marginHorizontal: 20, backgroundColor: colors.divider }} />
-            <Pressable onPress={() => push(AppRoutes.walletScreen)}>
-              <ProfileStat label={t('profile.wallet', 'Wallet')} value={`₹${walletBalance}`} colors={colors} />
+            <Pressable onPress={() => push(isAuth ? AppRoutes.walletScreen : AppRoutes.signInScreen)}>
+              <ProfileStat label={t('profile.wallet', 'Wallet')} value={isAuth ? `₹${walletBalance}` : '₹0'} colors={colors} />
             </Pressable>
           </View>
 
@@ -489,7 +509,7 @@ export default function ProfileScreen() {
         {isAuth ? (
           <Pressable
             testID="profile.signOut"
-            onPress={() => setSignOutOpen(true)}
+            onPress={handleSignOutPress}
             style={{
               marginHorizontal: 20,
               marginTop: 8,
