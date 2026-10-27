@@ -22,6 +22,7 @@ export const API_ENDPOINTS = {
   panchang: `${BASE_URL}/api/app-dynamic/panchang`,
   aiChat: `${BASE_URL}/api/app-dynamic/ai-chat`,
   reviews: `${BASE_URL}/api/app-dynamic/reviews`,
+  services: `${BASE_URL}/api/app-dynamic/services`,
 } as const;
 
 /**

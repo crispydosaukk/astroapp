@@ -16,6 +16,7 @@ import { API_ENDPOINTS, resolveMediaUrl } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, go } from '@/navigation/routes';
 import { withAlpha } from '@/theme/colors';
+import { useThemeColors } from '@/theme/themeStore';
 
 const STORAGE_KEY = 'dynamic_app_onboarding_slides_cache';
 const DYNAMIC_API_URL = API_ENDPOINTS.onboarding;
@@ -70,6 +71,7 @@ function resolveSlideImage(uri: any) {
 }
 
 function OnboardingSlide({ data, width, height }: { data: Slide; width: number; height: number }) {
+  const colors = useThemeColors();
   const parts = data.title.split(data.titleHighlight);
   const resolvedImage = resolveSlideImage(data.imageUrl);
 
@@ -84,31 +86,33 @@ function OnboardingSlide({ data, width, height }: { data: Slide; width: number; 
         style={{ position: 'absolute', top: 0 }}
       />
       <LinearGradient
-        colors={['rgba(8,13,26,0)', withAlpha('#080D1A', 179), '#080D1A']}
+        colors={['transparent', withAlpha(colors.background, colors.isLight ? 210 : 180), colors.background]}
         style={{ position: 'absolute', top: height * 0.3, left: 0, right: 0, height: height * 0.3 }}
       />
       <View style={{ position: 'absolute', top: height * 0.52, left: 0, right: 0, paddingHorizontal: 28 }}>
         <Text style={lh(30, 1.2)}>
-          {parts.length > 0 ? <Text style={{ color: '#F0EAD6', fontWeight: '800', ...lh(30, 1.2) }}>{parts[0]}</Text> : null}
-          <Text style={{ color: '#C9A84C', fontWeight: '800', ...lh(30, 1.2) }}>{data.titleHighlight}</Text>
-          {parts.length > 1 ? <Text style={{ color: '#F0EAD6', fontWeight: '400', ...lh(30, 1.2) }}>{parts[1]}</Text> : null}
+          {parts.length > 0 ? <Text style={{ color: colors.textPrimary, fontWeight: '800', ...lh(30, 1.2) }}>{parts[0]}</Text> : null}
+          <Text style={{ color: colors.goldAccent, fontWeight: '800', ...lh(30, 1.2) }}>{data.titleHighlight}</Text>
+          {parts.length > 1 ? <Text style={{ color: colors.textPrimary, fontWeight: '400', ...lh(30, 1.2) }}>{parts[1]}</Text> : null}
         </Text>
-        <Text style={{ marginTop: 14, color: '#A0A8C0', fontWeight: '400', ...lh(15, 1.6) }}>{data.subtitle}</Text>
+        <Text style={{ marginTop: 14, color: colors.textSecondary, fontWeight: '400', ...lh(15, 1.6) }}>{data.subtitle}</Text>
       </View>
     </View>
   );
 }
 
 function Dot({ active }: { active: boolean }) {
+  const colors = useThemeColors();
   const w = useSharedValue(active ? 24 : 6);
   useEffect(() => {
     w.value = withTiming(active ? 24 : 6, { duration: 250, easing: Easing.out(Easing.cubic) });
   }, [active, w]);
   const st = useAnimatedStyle(() => ({ width: w.value }));
-  return <Animated.View style={[{ height: 6, marginHorizontal: 4, borderRadius: 100, backgroundColor: active ? '#C9A84C' : '#2A3550' }, st]} />;
+  return <Animated.View style={[{ height: 6, marginHorizontal: 4, borderRadius: 100, backgroundColor: active ? colors.goldAccent : (colors.isLight ? '#CBD5E1' : '#2A3550') }, st]} />;
 }
 
 export default function OnboardingScreen() {
+  const colors = useThemeColors();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<Slide>>(null);
@@ -191,7 +195,7 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#080D1A' }} testID="onboarding.screen">
+    <View style={{ flex: 1, backgroundColor: colors.background }} testID="onboarding.screen">
       <FlatList
         ref={listRef}
         data={slides}
@@ -206,7 +210,7 @@ export default function OnboardingScreen() {
       />
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
         <LinearGradient
-          colors={['rgba(8,13,26,0)', withAlpha('#080D1A', 242), '#080D1A']}
+          colors={['transparent', withAlpha(colors.background, 240), colors.background]}
           style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: insets.bottom + 32 }}
         >
           <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
@@ -229,9 +233,9 @@ export default function OnboardingScreen() {
             onPress={handleSignIn}
             style={{ marginTop: 16, alignItems: 'center' }}
           >
-            <Text style={{ fontSize: 14, color: '#6B7A99' }}>
+            <Text style={{ fontSize: 14, color: colors.textMuted }}>
               Already have an account?{' '}
-              <Text style={{ color: '#C9A84C', fontWeight: '700', textDecorationLine: 'underline', fontSize: 14 }}>
+              <Text style={{ color: colors.goldAccent, fontWeight: '700', textDecorationLine: 'underline', fontSize: 14 }}>
                 Sign In
               </Text>
             </Text>

@@ -1,8 +1,8 @@
 /** Port of lib/theme/app_theme.dart (AppTheme static palette). */
 export const AppColors = {
-  primary: '#8B1A1A',
-  primaryLight: '#AB2424',
-  primaryContainer: '#3D0A0A',
+  primary: '#713B32',
+  primaryLight: '#8E4C41',
+  primaryContainer: '#552B24',
   goldAccent: '#C9A84C',
   goldLight: '#E2C26A',
   goldMuted: 'rgba(201,168,76,0.4)',

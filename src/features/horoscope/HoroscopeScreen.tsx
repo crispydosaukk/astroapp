@@ -105,7 +105,7 @@ function CategoryCard({ emoji, label, score, text, color }: { emoji: string; lab
           <LinearProgress value={score / 100} height={5} radius={4} color={color} backgroundColor={colors.isLight ? '#F0EBE0' : argb('1AFFFFFF')} />
         </View>
         <Text style={{ marginLeft: 12, color, fontSize: 16, fontWeight: '800' }}>{`${score}%`}</Text>
-        <AppIcon name={expanded ? 'keyboard_arrow_up_rounded' : 'keyboard_arrow_down_rounded'} color={colors.isLight ? '#8B1A1A' : '#6B7A99'} size={20} style={{ marginLeft: 8 }} />
+        <AppIcon name={expanded ? 'keyboard_arrow_up_rounded' : 'keyboard_arrow_down_rounded'} color={colors.isLight ? '#713B32' : '#6B7A99'} size={20} style={{ marginLeft: 8 }} />
       </View>
       {expanded ? (
         <>
@@ -217,8 +217,8 @@ export default function HoroscopeScreen() {
                     borderRadius: 16,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: sel ? (colors.isLight ? '#8B1A1A' : argb('33C9A84C')) : (colors.isLight ? '#FFFFFF' : argb('0FFFFFFF')),
-                    borderColor: sel ? (colors.isLight ? '#8B1A1A' : '#C9A84C') : (colors.isLight ? 'rgba(201,168,76,0.35)' : argb('1AC9A84C')),
+                    backgroundColor: sel ? (colors.isLight ? '#713B32' : argb('33C9A84C')) : (colors.isLight ? '#FFFFFF' : argb('0FFFFFFF')),
+                    borderColor: sel ? (colors.isLight ? '#713B32' : '#C9A84C') : (colors.isLight ? 'rgba(201,168,76,0.35)' : argb('1AC9A84C')),
                     borderWidth: sel ? 1.5 : 1,
                     shadowColor: colors.isLight ? '#C9A84C' : '#000',
                     shadowOpacity: colors.isLight ? 0.06 : 0,
@@ -262,7 +262,7 @@ export default function HoroscopeScreen() {
                   paddingVertical: 10,
                   borderRadius: 12,
                   alignItems: 'center',
-                  backgroundColor: b.active ? '#8B1A1A' : 'transparent',
+                  backgroundColor: b.active ? '#713B32' : 'transparent',
                 }}
               >
                 <AnimatedText style={{ color: b.active ? '#FFFFFF' : (colors.isLight ? '#5A6A85' : '#6B7A99'), fontSize: 13, fontWeight: b.active ? '700' : '600' }}>{b.label}</AnimatedText>
@@ -274,7 +274,7 @@ export default function HoroscopeScreen() {
             colors={
               colors.isLight
                 ? ['#FFFDF9', '#F9F5EC']
-                : [argb('1AC9A84C'), argb('0A8B1A1A')]
+                : [argb('1AC9A84C'), argb('0A713B32')]
             }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -318,10 +318,10 @@ export default function HoroscopeScreen() {
               </View>
               <Text style={{ marginTop: 2, color: colors.isLight ? '#5A6A85' : '#6B7A99', fontSize: 12 }}>{info.dates}</Text>
               <View style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ color: colors.isLight ? '#8B1A1A' : '#C9A84C', fontSize: 28, fontWeight: '800' }}>{`${data.overall}%`}</Text>
+                <Text style={{ color: colors.isLight ? '#713B32' : '#C9A84C', fontSize: 28, fontWeight: '800' }}>{`${data.overall}%`}</Text>
                 <View style={{ flex: 1, marginLeft: 10 }}>
                   <Text style={{ color: colors.isLight ? '#5A6A85' : '#6B7A99', fontSize: 10, marginBottom: 4, fontWeight: '600' }}>Overall Score</Text>
-                  <LinearProgress value={data.overall / 100} height={6} radius={4} color={colors.isLight ? '#8B1A1A' : '#C9A84C'} backgroundColor={colors.isLight ? '#F0EBE0' : argb('1AC9A84C')} />
+                  <LinearProgress value={data.overall / 100} height={6} radius={4} color={colors.isLight ? '#713B32' : '#C9A84C'} backgroundColor={colors.isLight ? '#F0EBE0' : argb('1AC9A84C')} />
                 </View>
               </View>
               <Text style={{ marginTop: 6, color: colors.isLight ? '#5A6A85' : '#6B7A99', fontSize: 11, fontWeight: '600' }} testID="horoscope.formattedDate">{formattedDate}</Text>
@@ -384,7 +384,7 @@ export default function HoroscopeScreen() {
             colors={
               colors.isLight
                 ? ['#FFFDF9', '#F9F5EC']
-                : [argb('338B1A1A'), argb('1AC9A84C')]
+                : [argb('33713B32'), argb('1AC9A84C')]
             }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -413,7 +413,7 @@ export default function HoroscopeScreen() {
                     initialPrompt: `Namaste Vedika, according to today's Vedic horoscope for ${zodiac} (${formattedDate}), my overall score is ${data.overall}%. What cosmic remedies or advice do you have for my love life, career, and spiritual progress today?`
                   });
                 }}
-                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#8B1A1A', alignItems: 'center' }}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#713B32', alignItems: 'center' }}
               >
                 <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>✨ Ask AI Astrologer</Text>
               </Pressable>

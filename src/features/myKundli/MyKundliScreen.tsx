@@ -21,6 +21,7 @@ import { BottomSheet, showSnackBar, useSheet } from '@/components/overlays';
 import { lh, Text } from '@/components/Text';
 import { AppRoutes, push } from '@/navigation/routes';
 import { fetchCalculatedKundli, KundliChartData } from '@/services/astrologyService';
+import { useAuthStore } from '@/features/auth/authStore';
 import { withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 
@@ -197,10 +198,10 @@ function SectionContent({ index, chart, colors }: { index: number; chart: Kundli
       return (
         <View>
           {[
-            ['Name', chart?.name || 'Guest'],
-            ['Date of Birth', chart?.dob || '15 March 1995'],
-            ['Time of Birth', chart?.tob || '12:00 PM'],
-            ['Birth Place', chart?.pob || 'New Delhi, India'],
+            ['Name', chart?.name || 'Seeker'],
+            ['Date of Birth', chart?.dob || 'Not specified'],
+            ['Time of Birth', chart?.tob || 'Not specified'],
+            ['Birth Place', chart?.pob || 'Not specified'],
             ['Ascendant (Lagna)', chart?.ascendant.sign || 'Scorpio'],
             ['Moon Sign (Rashi)', chart?.moonSign || 'Cancer'],
             ['Nakshatra', `${chart?.nakshatra || 'Punarvasu'} (Pada ${chart?.nakshatraPada || 1})`],
@@ -405,6 +406,7 @@ function HouseDetailSheet({ house, onClose, colors }: { house: number; onClose: 
 export default function MyKundliScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const authUser = useAuthStore((s) => s.user);
   const [selectedHouse, setSelectedHouse] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set([0, 1, 2]));
   const [chartData, setChartData] = useState<KundliChartData | null>(null);
@@ -415,7 +417,7 @@ export default function MyKundliScreen() {
     fetchCalculatedKundli().then((data) => {
       if (data) setChartData(data);
     });
-  }, []);
+  }, [authUser]);
 
   const chart = useSharedValue(0);
   useEffect(() => { chart.value = withTiming(1, { duration: 1200, easing: Easing.out(Easing.cubic) }); }, [chart]);
@@ -489,12 +491,12 @@ export default function MyKundliScreen() {
           </View>
           <View style={{ flex: 1, marginLeft: 16 }}>
             <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700', marginBottom: 4 }}>
-              {chartData?.name || 'Guest'}
+              {chartData?.name || authUser?.name || 'Guest'}
             </Text>
             {[
-              ['📅', chartData?.dob || '15 March 1995'],
-              ['⏰', chartData?.tob || '12:00 PM'],
-              ['📍', chartData?.pob || 'New Delhi, India'],
+              ['📅', chartData?.dob || authUser?.dob || 'Not specified'],
+              ['⏰', chartData?.tob || authUser?.tob || 'Not specified'],
+              ['📍', chartData?.pob || authUser?.pob || 'Not specified'],
             ].map(([e, tText]) => (
               <View key={tText} style={{ marginTop: 2, flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 11 }}>{e}</Text>
@@ -597,7 +599,7 @@ export default function MyKundliScreen() {
           <Text style={{ fontSize: 32 }}>📜</Text>
           <Text style={{ marginTop: 8, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Get Detailed Kundli Report</Text>
           <Text style={{ marginTop: 4, color: colors.textSecondary, fontSize: 13 }}>40+ pages of personalised Vedic analysis & pariharam</Text>
-          <ElevatedButton testID="myKundli.detailedReport" label="Get Detailed Report — ₹499" onPress={handleGetDetailedReport} bg={colors.goldAccent} fg="#080D1A" radius={12} paddingV={14} fontSize={14} fontWeight="700" style={{ marginTop: 16, alignSelf: 'stretch' }} />
+          <ElevatedButton testID="myKundli.detailedReport" label="Get Detailed Report — ₹499" onPress={handleGetDetailedReport} bg="#713B32" fg="#FFFFFF" radius={100} paddingV={14} fontSize={14} fontWeight="700" style={{ marginTop: 16, alignSelf: 'stretch' }} />
         </LinearGradient>
         <View style={{ height: Math.max(140, insets.bottom + 80) }} />
       </ScrollView>

@@ -177,13 +177,11 @@ export default function ConsultationHistoryScreen() {
                     style={{
                       paddingHorizontal: 12,
                       paddingVertical: 5,
-                      borderRadius: 16,
-                      borderWidth: 1,
-                      borderColor: colors.goldAccent,
-                      backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 15 : 20),
+                      borderRadius: 100,
+                      backgroundColor: '#713B32',
                     }}
                   >
-                    <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>
                       {t('common.bookAgain', 'Book Again')}
                     </Text>
                   </Pressable>

@@ -1,8 +1,9 @@
-/** Data ported verbatim from remedies_screen.dart (_remedies) and remedy_detail_screen.dart (_getRemedyData + per-remedy lists). */
 export interface Remedy {
   name: string;
   sanskrit: string;
   direction: string;
+  directionHindi?: string;
+  mantra?: string;
   emoji: string;
   color: string;
   desc: string;
@@ -11,14 +12,94 @@ export interface Remedy {
 
 const PI = Math.PI;
 export const REMEDIES: Remedy[] = [
-  { name: 'Mantra', sanskrit: 'मंत्र', direction: 'North', emoji: '🕉️', color: '#9370DB', desc: 'Sacred sound vibrations that align planetary energies', angle: -PI / 2 },
-  { name: 'Yantra', sanskrit: 'यंत्र', direction: 'North-East', emoji: '⬡', color: '#FFD700', desc: 'Sacred geometric diagrams that attract cosmic energies', angle: -PI / 4 },
-  { name: 'Homa', sanskrit: 'होम', direction: 'East', emoji: '🔥', color: '#FF6B35', desc: 'Sacred fire rituals to purify and invoke divine blessings', angle: 0 },
-  { name: 'Devata', sanskrit: 'देवता', direction: 'South-East', emoji: '🪔', color: '#FFB347', desc: 'Personal deity worship for spiritual alignment', angle: PI / 4 },
-  { name: 'Gemstones', sanskrit: 'रत्न', direction: 'South', emoji: '💎', color: '#4FC3F7', desc: 'Planetary gemstones to strengthen beneficial influences', angle: PI / 2 },
-  { name: 'Rudraksha', sanskrit: 'रुद्राक्ष', direction: 'South-West', emoji: '📿', color: '#8B4513', desc: 'Sacred seeds of Lord Shiva for protection and healing', angle: (3 * PI) / 4 },
-  { name: 'Vastu', sanskrit: 'वास्तु', direction: 'West', emoji: '🏠', color: '#81C784', desc: 'Sacred architecture for harmonious living spaces', angle: PI },
-  { name: 'Dāna & Seva', sanskrit: 'दान', direction: 'North-West', emoji: '🤲', color: '#FF6B6B', desc: 'Charitable giving and selfless service for karmic balance', angle: (-3 * PI) / 4 },
+  {
+    name: 'Mantra',
+    sanskrit: 'मन्त्र',
+    direction: 'North',
+    directionHindi: 'उत्तर (North)',
+    emoji: '🕉️',
+    color: '#9370DB',
+    desc: 'Sacred sound vibrations that align planetary energies',
+    mantra: 'ॐ ह्रीं श्रीं क्लीं चामुण्डायै विच्चे ॥',
+    angle: -PI / 2,
+  },
+  {
+    name: 'Yantra',
+    sanskrit: 'यन्त्र',
+    direction: 'North-East',
+    directionHindi: 'ईशान (North-East)',
+    emoji: '⬡',
+    color: '#FFD700',
+    desc: 'Sacred geometric diagrams that attract cosmic energies',
+    mantra: 'ॐ श्रीं ह्रीं क्लीं नमः ॥',
+    angle: -PI / 4,
+  },
+  {
+    name: 'Homa',
+    sanskrit: 'होम',
+    direction: 'East',
+    directionHindi: 'पूर्व (East)',
+    emoji: '🔥',
+    color: '#FF6B35',
+    desc: 'Sacred fire rituals to purify and invoke divine blessings',
+    mantra: 'ॐ अग्नये स्वाहा ॥',
+    angle: 0,
+  },
+  {
+    name: 'Devata Upasana',
+    sanskrit: 'देवता उपासना',
+    direction: 'South-East',
+    directionHindi: 'आग्नेय (South-East)',
+    emoji: '🪔',
+    color: '#FFB347',
+    desc: 'Personal deity worship for spiritual alignment',
+    mantra: 'ॐ नमः शिवाय ॥',
+    angle: PI / 4,
+  },
+  {
+    name: 'Ratna / Gemstone',
+    sanskrit: 'रत्न',
+    direction: 'South',
+    directionHindi: 'दक्षिण (South)',
+    emoji: '💎',
+    color: '#4FC3F7',
+    desc: 'Planetary gemstones to strengthen beneficial influences',
+    mantra: 'ॐ ग्रहाय नमः ॥',
+    angle: PI / 2,
+  },
+  {
+    name: 'Rudrākṣa',
+    sanskrit: 'रुद्राक्ष',
+    direction: 'South-West',
+    directionHindi: 'नैऋत्य (South-West)',
+    emoji: '📿',
+    color: '#8B4513',
+    desc: 'Sacred seeds of Lord Shiva for protection and healing',
+    mantra: 'ॐ नमः शिवाय ॥',
+    angle: (3 * PI) / 4,
+  },
+  {
+    name: 'Vāstu',
+    sanskrit: 'वास्तु',
+    direction: 'West',
+    directionHindi: 'पश्चिम (West)',
+    emoji: '🏠',
+    color: '#81C784',
+    desc: 'Sacred architecture for harmonious living spaces',
+    mantra: 'ॐ वास्तुपुरुषाय नमः ॥',
+    angle: PI,
+  },
+  {
+    name: 'Dāna & Seva',
+    sanskrit: 'दान एवं सेवा',
+    direction: 'North-West',
+    directionHindi: 'वायव्य (North-West)',
+    emoji: '🤲',
+    color: '#FF6B6B',
+    desc: 'Charitable giving and selfless service for karmic balance',
+    mantra: 'ॐ परोपकाराय नमः ॥',
+    angle: (-3 * PI) / 4,
+  },
 ];
 
 export interface RemedyInfo { shortDesc: string; whyHelp: string; benefits: string[]; howItWorks: string; suitableFor: string }
@@ -83,13 +164,26 @@ const DATA: Record<string, RemedyInfo> = {
 };
 
 export function getRemedyData(name: string): RemedyInfo {
-  return DATA[name] ?? {
-    shortDesc: 'A powerful Vedic remedy for planetary alignment and spiritual growth.',
-    whyHelp: 'This remedy addresses specific planetary imbalances in your birth chart.',
-    benefits: ['Planetary harmony', 'Spiritual growth', 'Life improvement'],
-    howItWorks: 'Through ancient Vedic principles and practices.',
-    suitableFor: 'Those seeking planetary remedies and spiritual guidance.',
-  };
+  if (DATA[name]) return DATA[name];
+  const lower = (name || '').toLowerCase();
+  if (lower.includes('mantra')) return DATA.Mantra;
+  if (lower.includes('yantra')) return DATA.Yantra;
+  if (lower.includes('homa')) return DATA.Homa;
+  if (lower.includes('devata') || lower.includes('ishta') || lower.includes('upasana')) return DATA.Devata;
+  if (lower.includes('gem') || lower.includes('ratna')) return DATA.Gemstones;
+  if (lower.includes('rudra')) return DATA.Rudraksha;
+  if (lower.includes('vastu') || lower.includes('vāstu')) return DATA.Vastu;
+  if (lower.includes('dāna') || lower.includes('dana') || lower.includes('charity') || lower.includes('seva')) return DATA['Dāna & Seva'];
+
+  return (
+    DATA[name] ?? {
+      shortDesc: 'A powerful Vedic remedy for planetary alignment and spiritual growth.',
+      whyHelp: 'This remedy addresses specific planetary imbalances in your birth chart.',
+      benefits: ['Planetary harmony', 'Spiritual growth', 'Life improvement'],
+      howItWorks: 'Through ancient Vedic principles and practices.',
+      suitableFor: 'Those seeking planetary remedies and spiritual guidance.',
+    }
+  );
 }
 
 export const MANTRAS = [

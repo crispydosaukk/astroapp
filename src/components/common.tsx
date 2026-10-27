@@ -13,6 +13,7 @@ import {
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Circle as SvgCircle, Defs, G as SvgG, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { AppColors, argb, withAlpha } from '@/theme/colors';
+import { useThemeColors } from '@/theme/themeStore';
 import { AppIcon } from './AppIcon';
 import { Text } from './Text';
 
@@ -43,20 +44,25 @@ export function EmptyState({
 
 /* ------------------------------------------------------------- LoadingSkeleton */
 export function LoadingSkeleton({ width, height, borderRadius = 12 }: { width: DimensionValue; height: DimensionValue; borderRadius?: number }) {
-  // Flutter: gradient transform driven by Tween(-1 → 2) over 1400 ms, easeInOutSine, repeat().
+  const colors = useThemeColors();
   const t = useSharedValue(-1);
   const w = useSharedValue(0);
   useEffect(() => {
     t.value = withRepeat(withTiming(2, { duration: 1400, easing: Easing.inOut(Easing.sin) }), -1, false);
   }, [t]);
   const shimmer = useAnimatedStyle(() => ({ transform: [{ translateX: (t.value / 2) * w.value }] }));
+  const baseBg = colors.isLight ? '#E5E7EB' : '#1A2640';
+  const shimmerColors = (colors.isLight
+    ? ['#E5E7EB', '#F3F4F6', '#E5E7EB']
+    : ['#1A2640', '#2A3650', '#1A2640']) as [string, string, ...string[]];
+
   return (
     <View
-      style={{ width, height, borderRadius, overflow: 'hidden', backgroundColor: '#1A2640' }}
+      style={{ width, height, borderRadius, overflow: 'hidden', backgroundColor: baseBg }}
       onLayout={(e) => { w.value = e.nativeEvent.layout.width; }}
     >
       <Animated.View style={[{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '100%' }, shimmer]}>
-        <LinearGradient colors={['#1A2640', '#2A3650', '#1A2640']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ flex: 1 }} />
+        <LinearGradient colors={shimmerColors} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ flex: 1 }} />
       </Animated.View>
     </View>
   );
@@ -69,7 +75,7 @@ const BADGE: Record<BadgeStatus, { label: string; bg: string; border: string; te
   busy: { label: 'Busy', bg: argb('1AD4821A'), border: argb('33D4821A'), text: '#D4821A', dot: '#D4821A' },
   offline: { label: 'Offline', bg: argb('1A6B7A99'), border: argb('226B7A99'), text: '#6B7A99', dot: '#6B7A99' },
   verified: { label: 'Verified', bg: argb('1AC9A84C'), border: argb('33C9A84C'), text: '#C9A84C', dot: '#C9A84C' },
-  premium: { label: 'Premium', bg: argb('1A8B1A1A'), border: argb('338B1A1A'), text: '#AB2424', dot: '#8B1A1A' },
+  premium: { label: 'Premium', bg: argb('1A713B32'), border: argb('33713B32'), text: '#8E4C41', dot: '#713B32' },
   active: { label: 'Active', bg: argb('1A2D9E6B'), border: argb('332D9E6B'), text: '#2D9E6B', dot: '#2D9E6B' },
   pending: { label: 'Pending', bg: argb('1AD4821A'), border: argb('33D4821A'), text: '#D4821A', dot: '#D4821A' },
 };
@@ -92,7 +98,7 @@ export function StatusBadge({ status, customLabel, fontSize = 11 }: { status: Ba
 
 /* -------------------------------------------------------------- ElevatedButton */
 export function ElevatedButton({
-  label, onPress, style, bg = AppColors.primary, fg = AppColors.textPrimary, radius = 100,
+  label, onPress, style, bg = AppColors.primary, fg = '#FFFFFF', radius = 100,
   paddingV = 16, paddingH = 32, fontSize = 15, fontWeight = '600', disabled, loading, icon, testID, letterSpacing,
   disabledBg,
 }: {
@@ -130,16 +136,19 @@ export function ElevatedButton({
 
 /* --------------------------------------------------------------------- Switch */
 export function Switch({
-  value, onValueChange, activeColor = AppColors.goldAccent, testID,
+  value, onValueChange, activeColor, testID,
 }: { value: boolean; onValueChange: (v: boolean) => void; activeColor?: string; testID?: string }) {
+  const colors = useThemeColors();
+  const ac = activeColor ?? colors.goldAccent;
+  const offColor = colors.isLight ? '#D0D5DD' : colors.surfaceVariant;
   return (
     <RNSwitch
       testID={testID}
       value={value}
       onValueChange={onValueChange}
-      thumbColor={Platform.OS === 'android' ? (value ? activeColor : AppColors.textMuted) : undefined}
-      trackColor={{ false: AppColors.surfaceVariantDark, true: withAlpha(activeColor, 100) }}
-      ios_backgroundColor={AppColors.surfaceVariantDark}
+      thumbColor={Platform.OS === 'android' ? (value ? ac : colors.textMuted) : undefined}
+      trackColor={{ false: offColor, true: withAlpha(ac, 100) }}
+      ios_backgroundColor={offColor}
     />
   );
 }

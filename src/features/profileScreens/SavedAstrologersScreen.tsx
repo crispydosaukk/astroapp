@@ -191,9 +191,9 @@ export default function SavedAstrologersScreen() {
                   label="Call"
                   icon="call_outlined"
                   onPress={() => handleStartCall(a)}
-                  bg={colors.goldAccent}
-                  fg="#080D1A"
-                  radius={12}
+                  bg="#713B32"
+                  fg="#FFFFFF"
+                  radius={100}
                   paddingV={9}
                   fontSize={13}
                   fontWeight="700"

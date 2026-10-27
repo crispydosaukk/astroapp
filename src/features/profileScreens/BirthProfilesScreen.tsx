@@ -13,10 +13,11 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
-import { ElevatedButton, OutlinedButton } from '@/components/common';
+import { ElevatedButton } from '@/components/common';
 import { BottomSheet, PopupMenu, showSnackBar } from '@/components/overlays';
 import { Text, TextInput } from '@/components/Text';
 import { AppRoutes, pop, push } from '@/navigation/routes';
+import { useAuthStore } from '@/features/auth/authStore';
 import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
@@ -37,12 +38,6 @@ export type BirthProfile = {
 };
 
 const STORAGE_PROFILES_KEY = 'astroparihar_birth_profiles';
-
-const DEFAULT_PROFILES: BirthProfile[] = [
-  { id: 'bp_1', name: 'My Profile', type: 'Myself', dob: '15 March 1995', time: '12:00 PM', place: 'New Delhi, India', zodiac: '♏', sign: 'Scorpio', nakshatra: 'Pushya', emoji: '🔮', color: '#9370DB', active: true },
-  { id: 'bp_2', name: 'Rahul Sharma', type: 'Partner', dob: '22 July 1992', time: '06:15 AM', place: 'Mumbai, Maharashtra', zodiac: '♋', sign: 'Cancer', nakshatra: 'Ashwini', emoji: '💫', color: '#4FC3F7', active: false },
-  { id: 'bp_3', name: 'Aryan Sharma', type: 'Child', dob: '08 November 2020', time: '02:45 PM', place: 'Bengaluru, Karnataka', zodiac: '♌', sign: 'Leo', nakshatra: 'Magha', emoji: '⭐', color: '#FFB347', active: false },
-];
 
 function DetailRow({ emoji, label, value, colors }: { emoji: string; label: string; value: string; colors: any }) {
   return (
@@ -82,6 +77,13 @@ export default function BirthProfilesScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const authUser = useAuthStore((s) => s.user);
+  const updateUserProfile = useAuthStore((s) => s.updateUserProfile);
+
+  const userStorageKey = authUser?.uid
+    ? `astroparihar_birth_profiles_${authUser.uid}`
+    : (authUser?.phone ? `astroparihar_birth_profiles_${authUser.phone.replace(/\D/g, '')}` : STORAGE_PROFILES_KEY);
+
   const [profiles, setProfiles] = useState<BirthProfile[]>([]);
   const [sheet, setSheet] = useState(false);
 
@@ -94,24 +96,41 @@ export default function BirthProfilesScreen() {
 
   const loadProfiles = async () => {
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_PROFILES_KEY);
+      const stored = await AsyncStorage.getItem(userStorageKey);
       if (stored) {
         setProfiles(JSON.parse(stored));
       } else {
-        await AsyncStorage.setItem(STORAGE_PROFILES_KEY, JSON.stringify(DEFAULT_PROFILES));
-        setProfiles(DEFAULT_PROFILES);
+        const initialProfiles: BirthProfile[] = [
+          {
+            id: `bp_${authUser?.uid || '1'}`,
+            name: authUser?.name?.trim() || 'My Profile',
+            type: authUser?.profileType || 'Myself',
+            dob: authUser?.dob || 'Not specified',
+            time: authUser?.tob || 'Not specified',
+            place: authUser?.pob || 'Not specified',
+            zodiac: '♏',
+            sign: 'Scorpio',
+            nakshatra: 'Pushya',
+            emoji: '🔮',
+            color: '#9370DB',
+            active: true,
+          },
+        ];
+        await AsyncStorage.setItem(userStorageKey, JSON.stringify(initialProfiles));
+        setProfiles(initialProfiles);
       }
     } catch {
-      setProfiles(DEFAULT_PROFILES);
+      setProfiles([]);
     }
   };
 
   useEffect(() => {
     loadProfiles();
-  }, []);
+  }, [authUser]);
 
   const saveProfilesList = async (updated: BirthProfile[]) => {
     setProfiles(updated);
+    await AsyncStorage.setItem(userStorageKey, JSON.stringify(updated));
     await AsyncStorage.setItem(STORAGE_PROFILES_KEY, JSON.stringify(updated));
   };
 
@@ -121,12 +140,12 @@ export default function BirthProfilesScreen() {
       await saveProfilesList(updated);
       const activeP = updated[index];
       if (activeP) {
-        await AsyncStorage.setItem('astroparihar_user_birth_details', JSON.stringify({
+        await updateUserProfile({
           name: activeP.name,
-          dob: activeP.dob,
-          tob: activeP.time,
-          pob: activeP.place,
-        }));
+          dob: activeP.dob !== 'Not specified' ? activeP.dob : '',
+          tob: activeP.time !== 'Not specified' ? activeP.time : '',
+          pob: activeP.place !== 'Not specified' ? activeP.place : '',
+        });
         showSnackBar(`${activeP.name} is now your primary birth profile`, colors.surfaceVariant);
       }
     } else if (val === 'delete') {

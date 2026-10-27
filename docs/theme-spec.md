@@ -5,10 +5,8 @@
 
 | Theme | background | surface | surfaceVariant | text primary/secondary/muted |
 |---|---|---|---|---|
-| Dark Cosmic (default) | #080D1A | #0D1B2A | #1A2640 | #F0EAD6 / #A0A8C0 / #6B7A99 |
-| Midnight Blue | #050A1E | #0A1230 | #162040 | same |
-| Sacred Dark | #120508 | #1A0810 | #2A1020 | same |
-| Light Vedic | #F8F4EE | #FFFFFF | #F0EAE0 | #1A1A2E / #555577 / #888899 |
+| Light Vedic (default) | #FAF9F6 | #FFFFFF | #F5F2EB | #1A1A2E / #383852 / #5D6679 |
+| Dark Cosmic | #080D1A | #0D1B2A | #1A2640 | #F0EAD6 / #A0A8C0 / #7E8BA8 |
 
 Accents: Sacred Gold #C9A84C, Cosmic Purple #9370DB, Divine Red #8B1A1A, Celestial Blue #4FC3F7, Emerald #2D9E6B, Saffron #FFB347.
 

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-export type ThemeName = 'Dark Cosmic' | 'Light Vedic';
+export type ThemeName = 'Light Vedic' | 'Dark Cosmic';
 export type AccentName =
   | 'Sacred Gold' | 'Cosmic Purple' | 'Divine Red' | 'Celestial Blue' | 'Emerald' | 'Saffron';
 
@@ -18,13 +18,13 @@ interface ThemeState {
 }
 
 export const useThemeStore = create<ThemeState>((set) => ({
-  selectedTheme: 'Dark Cosmic',
+  selectedTheme: 'Light Vedic',
   selectedAccent: 'Sacred Gold',
   hydrated: false,
   load: async () => {
     try {
       const [t, a] = await Promise.all([AsyncStorage.getItem(THEME_KEY), AsyncStorage.getItem(ACCENT_KEY)]);
-      const validTheme: ThemeName = (t === 'Light Vedic' || t === 'Dark Cosmic') ? t : 'Dark Cosmic';
+      const validTheme: ThemeName = (t === 'Light Vedic' || t === 'Dark Cosmic') ? t : 'Light Vedic';
       set({
         selectedTheme: validTheme,
         selectedAccent: (a as AccentName | null) ?? 'Sacred Gold',
@@ -62,7 +62,7 @@ export interface ThemeColors {
 const ACCENTS: Record<AccentName, string> = {
   'Sacred Gold': '#C9A84C',
   'Cosmic Purple': '#9370DB',
-  'Divine Red': '#8B1A1A',
+  'Divine Red': '#713B32',
   'Celestial Blue': '#4FC3F7',
   Emerald: '#2D9E6B',
   Saffron: '#FFB347',

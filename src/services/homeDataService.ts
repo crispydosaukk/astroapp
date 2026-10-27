@@ -31,6 +31,8 @@ export interface LiveAstrologer {
 }
 
 const STORAGE_INSIGHTS_KEY = 'astroparihar_cosmic_insights_cache';
+const STORAGE_REAL_ASTROLOGERS_KEY = 'astroparihar_real_astrologers_cache';
+const STORAGE_AI_ASTROLOGERS_KEY = 'astroparihar_ai_astrologers_cache';
 const STORAGE_ASTROLOGERS_KEY = 'astroparihar_home_astrologers_cache';
 
 export const DEFAULT_COSMIC_INSIGHTS: CosmicInsight[] = [
@@ -57,7 +59,7 @@ export const DEFAULT_COSMIC_INSIGHTS: CosmicInsight[] = [
     active: true,
     ctaText: 'Ask AI Astrologer',
     ctaAction: '/ai-chat-screen',
-    badgeColor: '#8B1A1A',
+    badgeColor: '#713B32',
     planetTags: ['♀ Venus', '☿ Mercury', 'Harmony'],
   },
   {
@@ -75,37 +77,37 @@ export const DEFAULT_COSMIC_INSIGHTS: CosmicInsight[] = [
   },
 ];
 
-export const DEFAULT_HOME_ASTROLOGERS: LiveAstrologer[] = [
+export const DEFAULT_REAL_ASTROLOGERS: LiveAstrologer[] = [
   {
-    id: 'astro-1',
+    id: 'astro-swami-shankarananda',
     name: 'Swami Shankarananda Giri',
-    specialty: 'Parashara Dasha Guru',
+    specialty: 'Parashara Dasha Guru & Vedic Astrology',
     experience: '35+ Yrs',
     rating: 4.99,
     reviews: '24.5k',
     price: 45,
     isOnline: true,
     isAi: false,
-    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/swami-ji.png',
-    languages: 'Hindi, Sanskrit',
-    semanticLabel: 'Elderly Indian sage with white beard and traditional robes',
+    imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&fit=crop',
+    languages: 'Hindi, Sanskrit, English',
+    semanticLabel: 'Venerable Himalayan sage with white beard and traditional robes',
   },
   {
-    id: 'ai-acharya-devavrat',
-    name: 'Acharya Devavrat Shastri',
-    specialty: 'Vedic Jyotish & Kundli Milan',
-    experience: '28+ Yrs',
-    rating: 4.98,
-    reviews: '18.9k',
-    price: 25,
+    id: 'astro-swami-rao',
+    name: 'Swami Sadasiva Rao',
+    specialty: 'Dasha Transitions & Milestones',
+    experience: '42+ Yrs',
+    rating: 4.99,
+    reviews: '26.8k',
+    price: 55,
     isOnline: true,
-    isAi: true,
-    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/acharya-devavrat.png',
-    languages: 'Hindi, English, Telugu',
-    semanticLabel: 'Wise Indian Vedic scholar in saffron kurta with peaceful expression',
+    isAi: false,
+    imageUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&fit=crop',
+    languages: 'Telugu, Tamil, Hindi, English',
+    semanticLabel: 'Elderly South Indian Vedic scholar with sacred thread',
   },
   {
-    id: 'astro-2',
+    id: 'astro-raghvendra-shastri',
     name: 'Acharya Raghvendra Shastri',
     specialty: 'Relationship & Soul Harmony',
     experience: '19+ Yrs',
@@ -114,39 +116,114 @@ export const DEFAULT_HOME_ASTROLOGERS: LiveAstrologer[] = [
     price: 22,
     isOnline: true,
     isAi: false,
-    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/love-guru.png',
+    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&fit=crop',
     languages: 'Hindi, English',
-    semanticLabel: 'Indian man in traditional kurta with calm and wise expression',
+    semanticLabel: 'Indian scholar in traditional kurta with calm and wise expression',
   },
   {
-    id: 'ai-acharya-bhuvanesh',
-    name: 'Acharya Bhuvanesh Joshi',
-    specialty: 'Vastu Shastra & Career Remedial',
-    experience: '22+ Yrs',
-    rating: 4.95,
-    reviews: '14.2k',
-    price: 22,
-    isOnline: true,
-    isAi: true,
-    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/acharya-joshi.png',
-    languages: 'Hindi, English, Marathi',
-    semanticLabel: 'Distinguished Vedic scholar with traditional tilak',
-  },
-  {
-    id: 'astro-3',
+    id: 'astro-shreya-devi',
     name: 'Acharya Shreya Devi',
-    specialty: 'Kundli Milan Specialist',
+    specialty: 'Kundli Milan & Navamsha (D9)',
     experience: '16+ Yrs',
     rating: 4.97,
     reviews: '15.2k',
     price: 20,
-    isOnline: false,
+    isOnline: true,
     isAi: false,
-    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/meera-devi.png',
+    imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&fit=crop',
     languages: 'Tamil, Hindi, English',
     semanticLabel: 'Indian woman in traditional saree with warm smile',
   },
+  {
+    id: 'astro-radhey-shyam',
+    name: 'Pandit Radhey Shyam Chaturvedi',
+    specialty: 'Kaal Sarp & Manglik Dosha',
+    experience: '28+ Yrs',
+    rating: 4.96,
+    reviews: '16.4k',
+    price: 35,
+    isOnline: false,
+    isAi: false,
+    imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&fit=crop',
+    languages: 'Hindi, Sanskrit',
+    semanticLabel: 'Middle-aged Indian pandit with sacred tilak',
+  },
+  {
+    id: 'astro-meenakshi-iyer',
+    name: 'Jyotishacharya Meenakshi Iyer',
+    specialty: 'KP Astrology & Career Timing',
+    experience: '14+ Yrs',
+    rating: 4.95,
+    reviews: '11.2k',
+    price: 18,
+    isOnline: true,
+    isAi: false,
+    imageUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&fit=crop',
+    languages: 'Tamil, English, Hindi',
+    semanticLabel: 'South Indian woman with warm smile and professional demeanor',
+  },
 ];
+
+export const DEFAULT_AI_ASTROLOGERS: LiveAstrologer[] = [
+  {
+    id: 'ai-acharya-devavrat',
+    name: 'Acharya Devavrat (AI)',
+    specialty: 'Parashara Vedic Astrology, Dasha Analysis & Remedies',
+    experience: '1,20,000+ charts',
+    rating: 4.99,
+    reviews: '38.4k',
+    price: 10,
+    isOnline: true,
+    isAi: true,
+    imageUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&fit=crop',
+    languages: 'English, Hindi, Telugu, Tamil, Kannada',
+    semanticLabel: 'Autonomous Vedic Ephemeris Grandmaster',
+  },
+  {
+    id: 'ai-vedika',
+    name: 'Vedika AI Engine',
+    specialty: 'Sub-Second Planetary Math & KP Astrology',
+    experience: '2,50,000+ calculations',
+    rating: 4.98,
+    reviews: '42.1k',
+    price: 5,
+    isOnline: true,
+    isAi: true,
+    imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&fit=crop',
+    languages: 'English, Hindi, Telugu, Tamil',
+    semanticLabel: 'Precision Astronomical Vedic Engine',
+  },
+  {
+    id: 'ai-ananya',
+    name: 'Astro Ananya (AI)',
+    specialty: 'Love, Marriage Compatibility & Nadi Dosha',
+    experience: '80,000+ matchings',
+    rating: 4.97,
+    reviews: '24.6k',
+    price: 10,
+    isOnline: true,
+    isAi: true,
+    imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&fit=crop',
+    languages: 'English, Hindi, Telugu, Tamil',
+    semanticLabel: 'Nadi & Kundli Seer, Relationship Expert',
+  },
+  {
+    id: 'ai-arjun',
+    name: 'Arjun Pandit (AI)',
+    specialty: 'Career Growth, Business Timing & Wealth Astrology',
+    experience: '65,000+ career charts',
+    rating: 4.96,
+    reviews: '18.9k',
+    price: 12,
+    isOnline: true,
+    isAi: true,
+    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&fit=crop',
+    languages: 'English, Hindi, Gujarati, Marathi',
+    semanticLabel: 'Vedic Kundli Prodigy & Financial Strategist',
+  },
+];
+
+export const DEFAULT_HOME_ASTROLOGERS: LiveAstrologer[] = DEFAULT_REAL_ASTROLOGERS;
 
 export interface DynamicPromotion {
   id: string;
@@ -177,8 +254,8 @@ export const DEFAULT_DYNAMIC_PROMOTIONS: DynamicPromotion[] = [
     title: '50% OFF Your First Session',
     subtitle: 'Connect with verified Vedic Astrologers or AI Jyotish. Use coupon at checkout.',
     code: 'FIRST50',
-    gradientColors: ['#3D0A0A', '#1A0404'],
-    borderColor: '#8B1A1A',
+    gradientColors: ['#552B24', '#351B17'],
+    borderColor: '#713B32',
     btnBg: '#C9A84C',
     btnText: '#080D1A',
     btnLabel: 'Claim 50% Off',
@@ -248,7 +325,7 @@ export async function getDynamicPromotions(): Promise<DynamicPromotion[]> {
           const activeBanners = data.banners.filter((b: any) => b.active !== false);
 
           const palettes: Array<{ gradient: [string, string]; border: string; btnBg: string; btnText: string; icon: string }> = [
-            { gradient: ['#3D0A0A', '#1A0404'], border: '#8B1A1A', btnBg: '#C9A84C', btnText: '#080D1A', icon: 'local_offer' },
+            { gradient: ['#552B24', '#351B17'], border: '#713B32', btnBg: '#C9A84C', btnText: '#080D1A', icon: 'local_offer' },
             { gradient: ['#0A1D37', '#06101E'], border: '#4FC3F7', btnBg: '#4FC3F7', btnText: '#080D1A', icon: 'auto_stories' },
             { gradient: ['#2E1805', '#140A00'], border: '#FFB347', btnBg: '#FFB347', btnText: '#080D1A', icon: 'local_fire_department' },
             { gradient: ['#1B0F2E', '#0D0518'], border: '#9370DB', btnBg: '#9370DB', btnText: '#080D1A', icon: 'stars' },
@@ -366,12 +443,12 @@ export async function getDynamicCosmicInsights(): Promise<CosmicInsight[]> {
 }
 
 /**
- * Fetch unified list of live Astrologers (both AI and Real Astrologers)
+ * Fetch strictly REAL human astrologers from backend onboarding + verified masters.
+ * Never mixed with AI astrologers!
  */
-export async function getLiveHomeAstrologers(): Promise<LiveAstrologer[]> {
+export async function fetchRealAstrologers(): Promise<LiveAstrologer[]> {
   try {
-    // 1. Try local cache
-    const cached = await AsyncStorage.getItem(STORAGE_ASTROLOGERS_KEY);
+    const cached = await AsyncStorage.getItem(STORAGE_REAL_ASTROLOGERS_KEY);
     let parsedCache: LiveAstrologer[] | null = null;
     if (cached) {
       try {
@@ -379,72 +456,29 @@ export async function getLiveHomeAstrologers(): Promise<LiveAstrologer[]> {
       } catch {}
     }
 
-    // 2. Try Next.js API endpoint
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 3500);
-      const res = await fetch(API_ENDPOINTS.astrologers, {
+      const res = await fetch(`${API_ENDPOINTS.astrologers}?type=real`, {
         signal: controller.signal,
       });
       clearTimeout(timer);
       if (res.ok) {
         const data = await res.json();
-        if (data.success && Array.isArray(data.astrologers) && data.astrologers.length > 0) {
-          const resolved = data.astrologers.map((a: any) => ({
+        const list = Array.isArray(data.realAstrologers) && data.realAstrologers.length > 0
+          ? data.realAstrologers
+          : Array.isArray(data.astrologers)
+          ? data.astrologers.filter((a: any) => !a.isAi)
+          : null;
+
+        if (list && list.length > 0) {
+          const resolved = list.map((a: any) => ({
             ...a,
+            isAi: false,
             imageUrl: resolveMediaUrl(a.imageUrl),
           }));
-          await AsyncStorage.setItem(STORAGE_ASTROLOGERS_KEY, JSON.stringify(resolved));
+          await AsyncStorage.setItem(STORAGE_REAL_ASTROLOGERS_KEY, JSON.stringify(resolved));
           return resolved;
-        }
-      }
-    } catch {}
-
-    // 3. Fallback to direct Firestore REST query for AI Astrologers
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 4000);
-      const fsRes = await fetch(
-        'https://firestore.googleapis.com/v1/projects/astroparihar-85e2d/databases/(default)/documents/ai_astrologers?pageSize=10',
-        { signal: controller.signal }
-      );
-      clearTimeout(timer);
-      if (fsRes.ok) {
-        const fsData = await fsRes.json();
-        if (Array.isArray(fsData.documents) && fsData.documents.length > 0) {
-          const fsAstros: LiveAstrologer[] = fsData.documents.map((doc: any) => {
-            const f = doc.fields || {};
-            const docId = doc.name.split('/').pop();
-            const ratingVal = f.rating?.doubleValue || (f.rating?.integerValue ? parseInt(f.rating.integerValue, 10) : 4.97);
-            const priceVal = f.pricePerMin?.integerValue ? parseInt(f.pricePerMin.integerValue, 10) : (f.pricePerMin?.stringValue ? parseInt(f.pricePerMin.stringValue, 10) : 25);
-            const nameVal = f.name?.stringValue || 'Acharya Ji';
-            const specialtyVal = f.primaryDiscipline?.stringValue || f.tagline?.stringValue || 'Vedic Astrology';
-            const expVal = f.experienceYears?.integerValue ? `${f.experienceYears.integerValue}+ Yrs` : '20+ Yrs';
-            const avatarVal = resolveMediaUrl(f.avatar?.stringValue || 'https://astroparihar.com/assets/images/ai-astrologers/acharya-devavrat.png');
-            const isAvail = f.availability?.stringValue === 'online' || f.isActive?.booleanValue !== false;
-
-            return {
-              id: docId || `astro-${Math.random()}`,
-              name: nameVal,
-              specialty: specialtyVal,
-              experience: expVal,
-              rating: ratingVal,
-              reviews: '18.5k',
-              price: priceVal,
-              isOnline: isAvail,
-              isAi: true,
-              imageUrl: avatarVal,
-              languages: 'Hindi, English',
-              semanticLabel: `${nameVal}, specialist in ${specialtyVal}`,
-            };
-          });
-
-          if (fsAstros.length > 0) {
-            // Combine with default masters for rich diversity
-            const combined = [...DEFAULT_HOME_ASTROLOGERS.filter((a) => !a.isAi), ...fsAstros];
-            await AsyncStorage.setItem(STORAGE_ASTROLOGERS_KEY, JSON.stringify(combined));
-            return combined;
-          }
         }
       }
     } catch {}
@@ -452,12 +486,75 @@ export async function getLiveHomeAstrologers(): Promise<LiveAstrologer[]> {
     if (parsedCache && parsedCache.length > 0) {
       return parsedCache.map((a: any) => ({
         ...a,
+        isAi: false,
         imageUrl: resolveMediaUrl(a.imageUrl),
       }));
     }
   } catch (err) {
-    console.warn('Error reading home astrologers:', err);
+    console.warn('Error fetching real astrologers:', err);
   }
 
-  return DEFAULT_HOME_ASTROLOGERS;
+  return DEFAULT_REAL_ASTROLOGERS;
+}
+
+/**
+ * Fetch strictly AI Astrologers.
+ * Never mixed with real astrologers!
+ */
+export async function fetchAiAstrologers(): Promise<LiveAstrologer[]> {
+  try {
+    const cached = await AsyncStorage.getItem(STORAGE_AI_ASTROLOGERS_KEY);
+    let parsedCache: LiveAstrologer[] | null = null;
+    if (cached) {
+      try {
+        parsedCache = JSON.parse(cached);
+      } catch {}
+    }
+
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(`${API_ENDPOINTS.astrologers}?type=ai`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data.aiAstrologers) && data.aiAstrologers.length > 0
+          ? data.aiAstrologers
+          : Array.isArray(data.astrologers)
+          ? data.astrologers.filter((a: any) => a.isAi)
+          : null;
+
+        if (list && list.length > 0) {
+          const resolved = list.map((a: any) => ({
+            ...a,
+            isAi: true,
+            imageUrl: resolveMediaUrl(a.imageUrl),
+          }));
+          await AsyncStorage.setItem(STORAGE_AI_ASTROLOGERS_KEY, JSON.stringify(resolved));
+          return resolved;
+        }
+      }
+    } catch {}
+
+    if (parsedCache && parsedCache.length > 0) {
+      return parsedCache.map((a: any) => ({
+        ...a,
+        isAi: true,
+        imageUrl: resolveMediaUrl(a.imageUrl),
+      }));
+    }
+  } catch (err) {
+    console.warn('Error fetching AI astrologers:', err);
+  }
+
+  return DEFAULT_AI_ASTROLOGERS;
+}
+
+/**
+ * Default home astrologers query returns strictly Real Astrologers.
+ */
+export async function getLiveHomeAstrologers(): Promise<LiveAstrologer[]> {
+  return fetchRealAstrologers();
 }

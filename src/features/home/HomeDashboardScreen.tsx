@@ -10,24 +10,24 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedPressable, switcherEntering } from '@/components/AnimatedBox';
 import { AppIcon } from '@/components/AppIcon';
 import { AppImage } from '@/components/AppImage';
-import { ElevatedButton, ProgressRing } from '@/components/common';
+import { ProgressRing } from '@/components/common';
 import { lh, Text, TextInput } from '@/components/Text';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, push } from '@/navigation/routes';
 import {
   CosmicInsight,
-  DEFAULT_COSMIC_INSIGHTS,
-  DEFAULT_HOME_ASTROLOGERS,
+  DEFAULT_REAL_ASTROLOGERS,
+  DEFAULT_AI_ASTROLOGERS,
   DynamicPromotion,
+  fetchAiAstrologers,
+  fetchRealAstrologers,
   getDynamicCosmicInsights,
   getDynamicPromotions,
-  getLiveHomeAstrologers,
   LiveAstrologer,
 } from '@/services/homeDataService';
 import { useLocationStore } from '@/services/locationService';
 import { argb, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
-import { SOURCE_INERT } from '@/utils/sourceInert';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -106,12 +106,12 @@ function HomeHeader() {
           }}
         >
           <LinearGradient
-            colors={['#8B1A1A', '#3D0A0A']}
+            colors={['#713B32', '#552B24']}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           />
-          <Text style={{ color: '#F0EAD6', fontSize: 17, fontWeight: '700' }}>{initial}</Text>
+          <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700' }}>{initial}</Text>
         </View>
 
         <View style={{ flex: 1, justifyContent: 'center' }}>
@@ -287,8 +287,8 @@ function CosmicInsightsCarousel({ refreshKey }: { refreshKey?: number }) {
                     borderColor: colors.goldAccent,
                   }}
                 >
-                  <Text style={{ fontSize: 10, color: colors.isLight ? '#8B1A1A' : '#FFD700' }}>✦ </Text>
-                  <Text style={{ color: colors.isLight ? '#8B1A1A' : '#FFD700', fontSize: 11, fontWeight: '800' }}>
+                  <Text style={{ fontSize: 10, color: colors.isLight ? '#713B32' : '#FFD700' }}>✦ </Text>
+                  <Text style={{ color: colors.isLight ? '#713B32' : '#FFD700', fontSize: 11, fontWeight: '800' }}>
                     {card.tag.replace(/^✦\s*/, '')}
                   </Text>
                 </View>
@@ -328,8 +328,8 @@ function CosmicInsightsCarousel({ refreshKey }: { refreshKey?: number }) {
                     paddingHorizontal: 12,
                     paddingVertical: 7,
                     borderRadius: 100,
-                    backgroundColor: '#8B1A1A',
-                    shadowColor: '#8B1A1A',
+                    backgroundColor: '#713B32',
+                    shadowColor: '#713B32',
                     shadowOpacity: 0.25,
                     shadowRadius: 4,
                     elevation: 2,
@@ -374,7 +374,7 @@ function CosmicInsightsCarousel({ refreshKey }: { refreshKey?: number }) {
 
 /* ---------------------------------------------------- QuickActionsGridWidget */
 const QUICK_ACTIONS = [
-  { emoji: '🔮', label: 'AI Astrologer', route: AppRoutes.aiChatScreen, color: '#8B1A1A', id: 'aiAstrologer', badge: 'AI Guru' },
+  { emoji: '🔮', label: 'AI Astrologer', route: AppRoutes.aiChatScreen, color: '#713B32', id: 'aiAstrologer', badge: 'AI Guru' },
   { emoji: '👨‍🔮', label: 'Live Astrologers', route: AppRoutes.liveAstrologersScreen, color: '#1A3D5C', id: 'liveAstrologers', badge: 'Live' },
   { emoji: '📜', label: 'My Kundli', route: AppRoutes.myKundliScreen, color: '#1A3D1A', id: 'myKundli' },
   { emoji: '💫', label: 'Kundli Match', route: AppRoutes.matchKundliScreen, color: '#3D1A2A', id: 'matchKundli' },
@@ -426,7 +426,7 @@ function QuickActionsGrid() {
                       borderRadius: 6,
                       backgroundColor:
                         a.badge === 'AI Guru'
-                          ? colors.isLight ? '#FEE2E2' : '#8B1A1A'
+                          ? colors.isLight ? '#FEE2E2' : '#713B32'
                           : colors.isLight ? '#DCFCE7' : '#1A3D2A',
                       borderWidth: 0.5,
                       borderColor:
@@ -463,7 +463,7 @@ function QuickActionsGrid() {
 
 /* ------------------------------------------------------ HoroscopeCardsWidget */
 const HOROSCOPE_CATEGORIES = [
-  { emoji: '❤️', label: 'Love', score: 82, color: '#8B1A1A', insight: 'Venus favours romantic connections today. Express your feelings openly — the stars support heartfelt conversations.', tip: 'Wear rose quartz for enhanced love energy' },
+  { emoji: '❤️', label: 'Love', score: 82, color: '#713B32', insight: 'Venus favours romantic connections today. Express your feelings openly — the stars support heartfelt conversations.', tip: 'Wear rose quartz for enhanced love energy' },
   { emoji: '💼', label: 'Career', score: 74, color: '#1A3D5C', insight: "Jupiter's transit through your 10th house brings career advancement. A senior may recognise your contributions.", tip: 'Tuesday is auspicious for new proposals' },
   { emoji: '💰', label: 'Money', score: 68, color: '#2A2A1A', insight: 'Avoid major financial decisions today. Saturn casts a cautionary aspect — wait until Thursday for investments.', tip: 'Recite Lakshmi Stotra in the morning' },
   { emoji: '🏥', label: 'Health', score: 88, color: '#1A3D1A', insight: 'Your vitality is strong. The Sun in your 6th house supports physical health. Morning exercise will be especially beneficial.', tip: 'Drink saffron milk at night for better sleep' },
@@ -519,8 +519,8 @@ function HoroscopeCards() {
                 borderWidth: 1,
                 flexDirection: 'row',
                 alignItems: 'center',
-                backgroundColor: sel ? '#8B1A1A' : (colors.isLight ? '#FFFFFF' : argb('0FFFFFFF')),
-                borderColor: sel ? '#8B1A1A' : (colors.isLight ? 'rgba(201,168,76,0.35)' : argb('1AC9A84C')),
+                backgroundColor: sel ? '#713B32' : (colors.isLight ? '#FFFFFF' : argb('0FFFFFFF')),
+                borderColor: sel ? '#713B32' : (colors.isLight ? 'rgba(201,168,76,0.35)' : argb('1AC9A84C')),
               }}
             >
               <Text style={{ fontSize: 13 }}>{item.emoji}</Text>
@@ -580,7 +580,7 @@ function HoroscopeCards() {
                 paddingVertical: 10,
                 paddingHorizontal: 12,
                 borderRadius: 12,
-                backgroundColor: '#8B1A1A',
+                backgroundColor: '#713B32',
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -611,8 +611,8 @@ function HoroscopeCards() {
         }}
       >
         <Text style={{ fontSize: 14 }}>🔮</Text>
-        <Text style={{ marginLeft: 8, color: colors.isLight ? '#8B1A1A' : '#C9A84C', fontSize: 13, fontWeight: '700' }}>View Full 12 Signs Horoscope</Text>
-        <AppIcon name="arrow_forward_ios_rounded" color={colors.isLight ? '#8B1A1A' : '#C9A84C'} size={12} style={{ marginLeft: 6 }} />
+        <Text style={{ marginLeft: 8, color: colors.isLight ? '#713B32' : '#C9A84C', fontSize: 13, fontWeight: '700' }}>View Full 12 Signs Horoscope</Text>
+        <AppIcon name="arrow_forward_ios_rounded" color={colors.isLight ? '#713B32' : '#C9A84C'} size={12} style={{ marginLeft: 6 }} />
       </Pressable>
     </View>
   );
@@ -651,7 +651,7 @@ function AiPromptCard() {
         colors={
           colors.isLight
             ? ['#FFFDF9', '#F9F5EC']
-            : [withAlpha('#8B1A1A', 38), withAlpha('#0D1B2A', 204)]
+            : [withAlpha('#713B32', 38), withAlpha('#0D1B2A', 204)]
         }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -662,9 +662,9 @@ function AiPromptCard() {
             style={{
               padding: 9,
               borderRadius: 14,
-              backgroundColor: colors.isLight ? '#FFF3E0' : argb('1A8B1A1A'),
+              backgroundColor: colors.isLight ? '#FFF3E0' : argb('1A713B32'),
               borderWidth: 1,
-              borderColor: colors.isLight ? 'rgba(201,168,76,0.45)' : argb('338B1A1A'),
+              borderColor: colors.isLight ? 'rgba(201,168,76,0.45)' : argb('33713B32'),
             }}
           >
             <Text style={{ fontSize: 22 }}>🔮</Text>
@@ -680,7 +680,7 @@ function AiPromptCard() {
                   paddingHorizontal: 7,
                   paddingVertical: 2,
                   borderRadius: 100,
-                  backgroundColor: colors.isLight ? '#FEE2E2' : '#8B1A1A',
+                  backgroundColor: colors.isLight ? '#FEE2E2' : '#713B32',
                   borderWidth: 0.5,
                   borderColor: colors.isLight ? '#EF4444' : '#C9A84C',
                 }}
@@ -732,7 +732,7 @@ function AiPromptCard() {
               height: 38,
               marginRight: 4,
               borderRadius: 19,
-              backgroundColor: '#8B1A1A',
+              backgroundColor: '#713B32',
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -774,11 +774,11 @@ function AiPromptCard() {
             marginTop: 14,
             paddingVertical: 12,
             borderRadius: 14,
-            backgroundColor: '#8B1A1A',
+            backgroundColor: '#713B32',
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            shadowColor: '#8B1A1A',
+            shadowColor: '#713B32',
             shadowOpacity: 0.25,
             shadowRadius: 5,
             elevation: 2,
@@ -795,10 +795,16 @@ function AiPromptCard() {
 }
 
 /* --------------------------------------------------- PersonalisedRecsWidget */
-function PersonalisedRecs({ astrologers = [] }: { astrologers?: LiveAstrologer[] }) {
+function PersonalisedRecs({
+  realAstrologers = [],
+  aiAstrologers = [],
+}: {
+  realAstrologers?: LiveAstrologer[];
+  aiAstrologers?: LiveAstrologer[];
+}) {
   const colors = useThemeColors();
-  const topAi = astrologers.find((a) => a.isAi) || DEFAULT_HOME_ASTROLOGERS.find((a) => a.isAi) || DEFAULT_HOME_ASTROLOGERS[1];
-  const topReal = astrologers.find((a) => !a.isAi) || DEFAULT_HOME_ASTROLOGERS.find((a) => !a.isAi) || DEFAULT_HOME_ASTROLOGERS[0];
+  const topAi = aiAstrologers[0] || DEFAULT_AI_ASTROLOGERS[0];
+  const topReal = realAstrologers[0] || DEFAULT_REAL_ASTROLOGERS[0];
 
   const dynamicRecs = [
     {
@@ -918,32 +924,38 @@ function PersonalisedRecs({ astrologers = [] }: { astrologers?: LiveAstrologer[]
               {r.subtitle}
             </Text>
           </View>
-          <AppIcon name="chevron_right_rounded" color={colors.isLight ? '#8B1A1A' : '#C9A84C'} size={20} style={{ marginLeft: 8 }} />
+          <AppIcon name="chevron_right_rounded" color={colors.isLight ? '#713B32' : '#C9A84C'} size={20} style={{ marginLeft: 8 }} />
         </Pressable>
       ))}
     </View>
   );
 }
 
-/* ------------------------------------------------ AstrologersCarouselWidget */
-function AstrologersCarousel({ astrologers = [] }: { astrologers?: LiveAstrologer[] }) {
+/* -------------------------------------------- RealAstrologersCarouselWidget */
+function RealAstrologersCarousel({ realAstrologers = [] }: { realAstrologers?: LiveAstrologer[] }) {
   const colors = useThemeColors();
-  const displayList = astrologers && astrologers.length > 0 ? astrologers : DEFAULT_HOME_ASTROLOGERS;
-  const onlineCount = displayList.filter((a) => a.isOnline).length || 47;
+  const displayList = realAstrologers && realAstrologers.length > 0 ? realAstrologers : DEFAULT_REAL_ASTROLOGERS;
+  const onlineCount = displayList.filter((a) => a.isOnline).length || 28;
 
   return (
     <View>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 }}>
-        <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700' }}>Astrologers Online Now</Text>
-        <View style={{ marginLeft: 8, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100, backgroundColor: colors.isLight ? '#DCFCE7' : argb('1A3DCB7A'), borderWidth: colors.isLight ? 1 : 0, borderColor: '#86EFAC' }}>
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.isLight ? '#16A34A' : '#3DCB7A' }} />
-          <Text style={{ marginLeft: 4, color: colors.isLight ? '#15803D' : '#3DCB7A', fontSize: 11, fontWeight: '700' }}>
-            {`${onlineCount} Online`}
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700' }}>Talk to Verified Astrologers</Text>
+            <View style={{ marginLeft: 8, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100, backgroundColor: colors.isLight ? '#DCFCE7' : argb('1A3DCB7A'), borderWidth: colors.isLight ? 1 : 0, borderColor: '#86EFAC' }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.isLight ? '#16A34A' : '#3DCB7A' }} />
+              <Text style={{ marginLeft: 4, color: colors.isLight ? '#15803D' : '#3DCB7A', fontSize: 11, fontWeight: '700' }}>
+                {`${onlineCount} Online`}
+              </Text>
+            </View>
+          </View>
+          <Text style={{ color: colors.isLight ? '#7C5205' : colors.goldAccent, fontSize: 11, fontWeight: '600', marginTop: 1 }}>
+            Authentic Human Gurus from Backend Onboarding
           </Text>
         </View>
-        <View style={{ flex: 1 }} />
         <Pressable testID="home.astrologers.viewAll" onPress={() => push(AppRoutes.liveAstrologersScreen)}>
-          <Text style={{ color: colors.isLight ? '#8B1A1A' : '#C9A84C', fontSize: 13, fontWeight: '700' }}>View All</Text>
+          <Text style={{ color: colors.isLight ? '#713B32' : '#C9A84C', fontSize: 13, fontWeight: '700' }}>View All</Text>
         </Pressable>
       </View>
 
@@ -956,18 +968,8 @@ function AstrologersCarousel({ astrologers = [] }: { astrologers?: LiveAstrologe
         {displayList.map((a) => (
           <Pressable
             key={a.id || a.name}
-            testID={`home.astrologer.${a.id || a.name}`}
-            onPress={() => {
-              if (a.isAi) {
-                push(AppRoutes.aiChatScreen, {
-                  astrologerId: a.id,
-                  astrologerName: a.name,
-                  avatarUrl: a.imageUrl,
-                });
-              } else {
-                push(AppRoutes.liveAstrologersScreen);
-              }
-            }}
+            testID={`home.realAstrologer.${a.id || a.name}`}
+            onPress={() => push(AppRoutes.liveAstrologersScreen)}
             style={{
               width: 300,
               height: 124,
@@ -1029,7 +1031,7 @@ function AstrologersCarousel({ astrologers = [] }: { astrologers?: LiveAstrologe
                 }}
               />
 
-              {/* Verified or AI badge at bottom of circle */}
+              {/* Verified Real Astrologer badge */}
               <View
                 style={{
                   position: 'absolute',
@@ -1037,16 +1039,16 @@ function AstrologersCarousel({ astrologers = [] }: { astrologers?: LiveAstrologe
                   paddingHorizontal: 6,
                   paddingVertical: 1.5,
                   borderRadius: 100,
-                  backgroundColor: a.isAi ? '#8B1A1A' : (colors.isLight ? '#FFFFFF' : '#0D1B2A'),
+                  backgroundColor: colors.isLight ? '#FEF3C7' : '#0D1B2A',
                   borderWidth: 1,
                   borderColor: colors.goldAccent,
                   flexDirection: 'row',
                   alignItems: 'center',
                 }}
               >
-                <AppIcon name={a.isAi ? 'auto_awesome_rounded' : 'verified_rounded'} color={a.isAi ? '#F0EAD6' : (colors.isLight ? '#7C5205' : '#C9A84C')} size={8} />
-                <Text style={{ marginLeft: 2, color: a.isAi ? '#F0EAD6' : (colors.isLight ? '#7C5205' : '#F0EAD6'), fontSize: 8, fontWeight: '700' }}>
-                  {a.isAi ? 'AI Guru' : 'Verified'}
+                <AppIcon name="verified_rounded" color={colors.isLight ? '#B45309' : '#C9A84C'} size={8} />
+                <Text style={{ marginLeft: 2, color: colors.isLight ? '#B45309' : '#F0EAD6', fontSize: 8, fontWeight: '700' }}>
+                  Verified
                 </Text>
               </View>
             </View>
@@ -1083,14 +1085,189 @@ function AstrologersCarousel({ astrologers = [] }: { astrologers?: LiveAstrologe
                     paddingHorizontal: 12,
                     paddingVertical: 5,
                     borderRadius: 100,
-                    backgroundColor: '#8B1A1A',
+                    backgroundColor: '#713B32',
                     flexDirection: 'row',
                     alignItems: 'center',
                   }}
                 >
-                  <AppIcon name="chat_bubble_outline_rounded" color="#FFFFFF" size={11} />
-                  <Text style={{ marginLeft: 4, color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>
-                    Consult
+                  <AppIcon name="call_rounded" color="#FFFFFF" size={11} />
+                  <Text style={{ marginLeft: 4, color: '#FFFFFF', fontSize: 10, fontWeight: '800', letterSpacing: 0.4 }}>
+                    Consult Now
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+/* ---------------------------------------------- AiAstrologersCarouselWidget */
+function AiAstrologersCarousel({ aiAstrologers = [] }: { aiAstrologers?: LiveAstrologer[] }) {
+  const colors = useThemeColors();
+  const displayList = aiAstrologers && aiAstrologers.length > 0 ? aiAstrologers : DEFAULT_AI_ASTROLOGERS;
+
+  return (
+    <View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 }}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700' }}>✦ 24/7 AI Expert Astrologers</Text>
+            <View style={{ marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100, backgroundColor: '#713B32', borderWidth: 0.5, borderColor: '#C9A84C' }}>
+              <Text style={{ color: '#F0EAD6', fontSize: 10, fontWeight: '800' }}>Instant</Text>
+            </View>
+          </View>
+          <Text style={{ color: colors.isLight ? '#7C5205' : colors.goldAccent, fontSize: 11, fontWeight: '600', marginTop: 1 }}>
+            Sub-Second Vedic Calculations Powered by Vedika AI
+          </Text>
+        </View>
+        <Pressable testID="home.aiAstrologers.viewAll" onPress={() => push(AppRoutes.aiChatScreen)}>
+          <Text style={{ color: colors.isLight ? '#713B32' : '#C9A84C', fontSize: 13, fontWeight: '700' }}>Chat AI</Text>
+        </Pressable>
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ marginTop: 14 }}
+        contentContainerStyle={{ paddingHorizontal: 20 }}
+      >
+        {displayList.map((a) => (
+          <Pressable
+            key={a.id || a.name}
+            testID={`home.aiAstrologer.${a.id || a.name}`}
+            onPress={() => {
+              push(AppRoutes.aiChatScreen, {
+                astrologerId: a.id,
+                astrologerName: a.name,
+                avatarUrl: a.imageUrl,
+              });
+            }}
+            style={{
+              width: 300,
+              height: 124,
+              marginRight: 14,
+              borderRadius: 20,
+              backgroundColor: colors.isLight ? '#FFFDF8' : argb('14713B32'),
+              borderWidth: 1.5,
+              borderColor: '#713B32',
+              padding: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              shadowColor: '#713B32',
+              shadowOpacity: colors.isLight ? 0.08 : 0.25,
+              shadowRadius: 6,
+              elevation: 2,
+            }}
+          >
+            {/* Left Side: Circular Image with AI badge */}
+            <View style={{ width: 66, height: 66, alignItems: 'center', justifyContent: 'center' }}>
+              <View
+                style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: 30,
+                  borderWidth: 2,
+                  borderColor: '#C9A84C',
+                  overflow: 'hidden',
+                  backgroundColor: colors.isLight ? '#FAF5E8' : '#0D1B2A',
+                }}
+              >
+                <AppImage
+                  uri={a.imageUrl}
+                  width={60}
+                  height={60}
+                  fit="cover"
+                  semanticLabel={a.semanticLabel || a.name}
+                  errorWidget={
+                    <View style={{ width: 60, height: 60, backgroundColor: '#713B32', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ color: '#F0EAD6', fontSize: 18, fontWeight: '800' }}>
+                        {(a.name || 'AI')[0]}
+                      </Text>
+                    </View>
+                  }
+                />
+              </View>
+
+              {/* Online indicator */}
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  right: 2,
+                  width: 12,
+                  height: 12,
+                  borderRadius: 6,
+                  borderWidth: 2,
+                  borderColor: colors.isLight ? '#FFFFFF' : '#080D1A',
+                  backgroundColor: '#3DCB7A',
+                }}
+              />
+
+              {/* AI Guru badge at bottom */}
+              <View
+                style={{
+                  position: 'absolute',
+                  bottom: -2,
+                  paddingHorizontal: 6,
+                  paddingVertical: 1.5,
+                  borderRadius: 100,
+                  backgroundColor: '#713B32',
+                  borderWidth: 1,
+                  borderColor: '#C9A84C',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}
+              >
+                <AppIcon name="auto_awesome_rounded" color="#F0EAD6" size={8} />
+                <Text style={{ marginLeft: 2, color: '#F0EAD6', fontSize: 8, fontWeight: '700' }}>
+                  AI Guru
+                </Text>
+              </View>
+            </View>
+
+            {/* Right Side: Related Content */}
+            <View style={{ flex: 1, marginLeft: 12, justifyContent: 'center' }}>
+              <Text numberOfLines={1} style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>
+                {a.name}
+              </Text>
+              <Text numberOfLines={1} style={{ marginTop: 2, color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 11, fontWeight: '600' }}>
+                {a.specialty}
+              </Text>
+
+              <View style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center' }}>
+                <AppIcon name="star_rounded" color={colors.goldAccent} size={12} />
+                <Text style={{ marginLeft: 2, color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
+                  {String(a.rating)}
+                </Text>
+                <Text style={{ marginLeft: 3, color: colors.textMuted, fontSize: 10 }}>
+                  {`(${a.reviews})`}
+                </Text>
+                <Text style={{ marginHorizontal: 4, color: colors.textMuted, fontSize: 10 }}>•</Text>
+                <Text style={{ color: colors.isLight ? '#15803D' : '#3DCB7A', fontSize: 10, fontWeight: '700' }}>
+                  {'<1s reply'}
+                </Text>
+              </View>
+
+              <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '700' }}>
+                  {`₹${a.price}/min`}
+                </Text>
+                <View
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 5,
+                    borderRadius: 100,
+                    backgroundColor: '#713B32',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                  }}
+                >
+                  <AppIcon name="auto_awesome_rounded" color="#FFFFFF" size={11} />
+                  <Text style={{ marginLeft: 4, color: '#FFFFFF', fontSize: 10, fontWeight: '800', letterSpacing: 0.4 }}>
+                    Chat AI
                   </Text>
                 </View>
               </View>
@@ -1188,10 +1365,10 @@ function PromotionsOffersSection({ refreshKey }: { refreshKey?: number }) {
                       paddingHorizontal: 8,
                       paddingVertical: 3,
                       borderRadius: 100,
-                      backgroundColor: '#8B1A1A',
+                      backgroundColor: '#713B32',
                     }}
                   >
-                    <Text style={{ color: '#F0EAD6', fontSize: 10, fontWeight: '800' }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '800' }}>
                       {promo.discount}
                     </Text>
                   </View>
@@ -1294,15 +1471,15 @@ function StickyHomeCTAs() {
             paddingVertical: 12,
             paddingHorizontal: 8,
             borderRadius: 13,
-            backgroundColor: '#8B1A1A',
-            shadowColor: '#8B1A1A',
+            backgroundColor: '#713B32',
+            shadowColor: '#713B32',
             shadowOpacity: 0.3,
             shadowRadius: 4,
             elevation: 2,
           }}
         >
-          <AppIcon name="auto_awesome_rounded" color="#F0EAD6" size={16} />
-          <Text style={{ marginLeft: 6, color: '#F0EAD6', fontSize: 12.5, fontWeight: '800' }}>
+          <AppIcon name="auto_awesome_rounded" color="#FFFFFF" size={16} />
+          <Text style={{ marginLeft: 6, color: '#FFFFFF', fontSize: 12.5, fontWeight: '800' }}>
             Chat with AI Astrologer
           </Text>
         </Pressable>
@@ -1341,13 +1518,18 @@ export default function HomeDashboardScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
-  const [astrologers, setAstrologers] = useState<LiveAstrologer[]>(DEFAULT_HOME_ASTROLOGERS);
+  const [realAstrologers, setRealAstrologers] = useState<LiveAstrologer[]>(DEFAULT_REAL_ASTROLOGERS);
+  const [aiAstrologers, setAiAstrologers] = useState<LiveAstrologer[]>(DEFAULT_AI_ASTROLOGERS);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const loadData = async () => {
     try {
-      const list = await getLiveHomeAstrologers();
-      if (list && list.length > 0) setAstrologers(list);
+      const [realList, aiList] = await Promise.all([
+        fetchRealAstrologers(),
+        fetchAiAstrologers(),
+      ]);
+      if (realList && realList.length > 0) setRealAstrologers(realList);
+      if (aiList && aiList.length > 0) setAiAstrologers(aiList);
     } catch {}
   };
 
@@ -1378,9 +1560,11 @@ export default function HomeDashboardScreen() {
         <View style={{ height: 24 }} />
         <AiPromptCard />
         <View style={{ height: 24 }} />
-        <PersonalisedRecs astrologers={astrologers} />
+        <PersonalisedRecs realAstrologers={realAstrologers} aiAstrologers={aiAstrologers} />
         <View style={{ height: 24 }} />
-        <AstrologersCarousel astrologers={astrologers} />
+        <RealAstrologersCarousel realAstrologers={realAstrologers} />
+        <View style={{ height: 24 }} />
+        <AiAstrologersCarousel aiAstrologers={aiAstrologers} />
         {/* Generous bottom spacing so content never cuts off behind sticky CTAs & floating nav */}
         <View style={{ height: Math.max(220, insets.bottom + 170) }} />
       </ScrollView>

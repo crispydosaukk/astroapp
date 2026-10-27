@@ -7,7 +7,7 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import React, { useState } from 'react';
 import { Modal, Platform, Pressable, View } from 'react-native';
 import { create } from 'zustand';
-import { AppColors } from '@/theme/colors';
+import { useThemeColors } from '@/theme/themeStore';
 import { Text } from './Text';
 
 type Req = { mode: 'date' | 'time'; value: Date; min?: Date; max?: Date; resolve: (d: Date | null) => void };
@@ -31,6 +31,7 @@ export const pickTime = (o: { value: Date }) => open('time', o.value);
 
 /** Mount once at root (iOS/web only renders). */
 export function PickerHost() {
+  const colors = useThemeColors();
   const { req, set } = usePicker();
   const [temp, setTemp] = useState<Date | null>(null);
   if (!req) return null;
@@ -39,23 +40,23 @@ export function PickerHost() {
   return (
     <Modal transparent animationType="fade" visible onRequestClose={() => close(null)}>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.54)', justifyContent: 'center', padding: 24 }} onPress={() => close(null)}>
-        <Pressable onPress={() => {}} style={{ backgroundColor: AppColors.surfaceDark, borderRadius: 24, padding: 16 }}>
+        <Pressable onPress={() => {}} style={{ backgroundColor: colors.surface, borderRadius: 24, padding: 16, borderWidth: 1, borderColor: colors.cardBorder }}>
           <DateTimePicker
             value={current}
             mode={req.mode}
             display={req.mode === 'date' ? 'inline' : 'spinner'}
-            themeVariant="dark"
-            accentColor={AppColors.goldAccent}
+            themeVariant={colors.isLight ? 'light' : 'dark'}
+            accentColor={colors.goldAccent}
             minimumDate={req.min}
             maximumDate={req.max}
             onChange={(_, d) => d && setTemp(d)}
           />
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }}>
             <Pressable onPress={() => close(null)} style={{ padding: 12 }}>
-              <Text style={{ color: AppColors.goldAccent, fontWeight: '600' }}>Cancel</Text>
+              <Text style={{ color: colors.goldAccent, fontWeight: '600' }}>Cancel</Text>
             </Pressable>
             <Pressable onPress={() => close(current)} style={{ padding: 12 }}>
-              <Text style={{ color: AppColors.goldAccent, fontWeight: '600' }}>OK</Text>
+              <Text style={{ color: colors.goldAccent, fontWeight: '600' }}>OK</Text>
             </Pressable>
           </View>
         </Pressable>

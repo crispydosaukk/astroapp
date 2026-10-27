@@ -26,6 +26,7 @@ import { deductWalletBalance, getWalletBalance, subscribeWallet } from '@/servic
 import { generateZegoRoomId, openAiCallRoom, openZegoCallRoom, ZEGO_CONFIG } from '@/services/zegoService';
 import { speakAstrologerText, stopAstrologerSpeech } from '@/services/speechService';
 import { AppColors, argb, withAlpha } from '@/theme/colors';
+import { useThemeColors } from '@/theme/themeStore';
 import { useController } from '@/utils/anim';
 import { SOURCE_INERT } from '@/utils/sourceInert';
 
@@ -65,6 +66,7 @@ function ControlButton({ icon, label, isActive, activeColor, onTap, testID }: { 
 }
 
 export default function ConsultationScreen() {
+  const colors = useThemeColors();
   const extra = useExtra<{ type?: string; astrologer?: Astro; roomID?: string }>();
   const astro = extra?.astrologer ?? DEFAULT_ASTRO;
   const isVideo = extra?.type !== 'voice';
@@ -399,7 +401,7 @@ export default function ConsultationScreen() {
                   }}
                 >
                   <LinearGradient
-                    colors={['#C9A84C', '#8B1A1A']}
+                    colors={['#C9A84C', '#713B32']}
                     start={{ x: 0, y: 0.5 }}
                     end={{ x: 1, y: 0.5 }}
                     style={{
@@ -488,7 +490,7 @@ export default function ConsultationScreen() {
             <ControlButton testID="consultation.chat" icon="chat_bubble_outline_rounded" label="Chat" isActive={isChatOpen} activeColor={AppColors.goldAccent} onTap={() => setChatOpen((v) => !v)} />
             <Pressable testID="consultation.end" onPress={endCall} style={{ alignItems: 'center' }}>
               <View style={{ width: 56, height: 56, borderRadius: 28, overflow: 'hidden', shadowColor: AppColors.error, shadowOpacity: 0.4, shadowRadius: 12, elevation: 6 }}>
-                <LinearGradient colors={['#CF4444', '#8B1A1A']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <LinearGradient colors={['#CF4444', '#713B32']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                   <AppIcon name="call_end_rounded" color="#FFFFFF" size={26} />
                 </LinearGradient>
               </View>
@@ -537,31 +539,31 @@ export default function ConsultationScreen() {
         </View>
       ) : null}
 
-      <Dialog visible={ended} onClose={() => {}} barrierDismissible={false} style={{ borderRadius: 20, maxHeight: '85%' }} testID="consultation.endDialog">
+      <Dialog visible={ended} onClose={() => {}} barrierDismissible={false} style={{ borderRadius: 20, maxHeight: '85%', backgroundColor: colors.surface }} testID="consultation.endDialog">
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
-          <Text style={{ color: AppColors.textPrimary, fontSize: 22, fontWeight: '700' }}>Session Ended</Text>
-        <View style={{ marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: AppColors.cardGlass, borderWidth: 1, borderColor: AppColors.goldBorder, gap: 8 }}>
+          <Text style={{ color: colors.textPrimary, fontSize: 22, fontWeight: '700' }}>Session Ended</Text>
+        <View style={{ marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder, gap: 8 }}>
           {[
             ['Duration', fmt(seconds)],
             ['Amount Charged', `₹${(totalCharged > 0 ? totalCharged : Math.round((seconds / 60) * ratePerMin)).toFixed(2)}`],
             ['Remaining Balance', `₹${balance.toFixed(2)}`],
           ].map(([l, v]) => (
             <View key={l} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ color: AppColors.textSecondary, fontSize: 13 }}>{l}</Text>
-              <Text style={{ color: AppColors.textPrimary, fontSize: 13, fontWeight: '600' }}>{v}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{l}</Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{v}</Text>
             </View>
           ))}
         </View>
         {/* Interactive Customer Review System */}
-        <View style={{ marginTop: 14, padding: 14, borderRadius: 16, backgroundColor: argb('1AC9A84C'), borderWidth: 1, borderColor: argb('33C9A84C') }}>
-          <Text style={{ color: AppColors.textPrimary, fontSize: 14, fontWeight: '700', textAlign: 'center' }}>
+        <View style={{ marginTop: 14, padding: 14, borderRadius: 16, backgroundColor: withAlpha(colors.goldAccent, 20), borderWidth: 1, borderColor: colors.cardBorder }}>
+          <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700', textAlign: 'center' }}>
             {reviewSubmitted ? 'Review Submitted 🙏' : 'Rate Your Consultation'}
           </Text>
 
           {reviewSubmitted ? (
             <View style={{ marginTop: 10, padding: 12, borderRadius: 12, backgroundColor: argb('1A2D9E6B'), borderWidth: 1, borderColor: argb('332D9E6B'), alignItems: 'center' }}>
               <Text style={{ color: '#3DCB7A', fontSize: 13, fontWeight: '700' }}>✓ Review Submitted Successfully!</Text>
-              <Text style={{ marginTop: 4, color: AppColors.textSecondary, fontSize: 11, textAlign: 'center' }}>
+              <Text style={{ marginTop: 4, color: colors.textSecondary, fontSize: 11, textAlign: 'center' }}>
                 Thank you for your valuable feedback. It helps thousands of seekers discover genuine Vedic guidance.
               </Text>
             </View>
@@ -580,7 +582,7 @@ export default function ConsultationScreen() {
                     >
                       <AppIcon
                         name={filled ? 'star_rounded' : 'star_outline_rounded'}
-                        color={filled ? AppColors.goldAccent : AppColors.textMuted}
+                        color={filled ? colors.goldAccent : colors.textMuted}
                         size={32}
                       />
                     </Pressable>
@@ -588,7 +590,7 @@ export default function ConsultationScreen() {
                 })}
               </View>
 
-              <Text style={{ marginTop: 4, color: AppColors.goldAccent, fontSize: 11, fontWeight: '600', textAlign: 'center' }}>
+              <Text style={{ marginTop: 4, color: colors.goldAccent, fontSize: 11, fontWeight: '600', textAlign: 'center' }}>
                 {reviewRating === 5
                   ? '🌟 Exceptional & Accurate Guidance'
                   : reviewRating === 4
@@ -610,12 +612,12 @@ export default function ConsultationScreen() {
                         paddingHorizontal: 8,
                         paddingVertical: 4,
                         borderRadius: 12,
-                        backgroundColor: sel ? '#8B1A1A' : argb('0FFFFFFF'),
+                        backgroundColor: sel ? AppColors.primary : colors.surface,
                         borderWidth: 1,
-                        borderColor: sel ? '#8B1A1A' : argb('26C9A84C'),
+                        borderColor: sel ? AppColors.primary : colors.cardBorder,
                       }}
                     >
-                      <Text style={{ color: sel ? '#F0EAD6' : AppColors.textSecondary, fontSize: 10, fontWeight: sel ? '700' : '400' }}>
+                      <Text style={{ color: sel ? '#FFFFFF' : colors.textSecondary, fontSize: 10, fontWeight: sel ? '700' : '400' }}>
                         {tag}
                       </Text>
                     </Pressable>
@@ -628,7 +630,7 @@ export default function ConsultationScreen() {
                 value={reviewComment}
                 onChangeText={setReviewComment}
                 placeholder="Share your experience with the astrologer..."
-                placeholderTextColor={AppColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={2}
                 style={{
@@ -636,10 +638,10 @@ export default function ConsultationScreen() {
                   paddingHorizontal: 12,
                   paddingVertical: 8,
                   borderRadius: 10,
-                  backgroundColor: AppColors.cardGlass,
+                  backgroundColor: colors.surface,
                   borderWidth: 1,
-                  borderColor: AppColors.goldBorder,
-                  color: AppColors.textPrimary,
+                  borderColor: colors.cardBorder,
+                  color: colors.textPrimary,
                   fontSize: 12,
                   maxHeight: 60,
                 }}
@@ -678,9 +680,9 @@ export default function ConsultationScreen() {
               if (router.canGoBack()) router.back();
               push(AppRoutes.walletScreen);
             }}
-            style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: argb('26C9A84C'), borderWidth: 1, borderColor: argb('4DC9A84C') }}
+            style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: withAlpha(colors.goldAccent, 25), borderWidth: 1, borderColor: colors.cardBorder }}
           >
-            <Text style={{ color: AppColors.goldAccent, fontSize: 13, fontWeight: '700' }}>💳 Recharge Wallet</Text>
+            <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>💳 Recharge Wallet</Text>
           </Pressable>
           <Pressable
             testID="consultation.endDialog.done"
@@ -690,22 +692,22 @@ export default function ConsultationScreen() {
             }}
             style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: AppColors.primary }}
           >
-            <Text style={{ color: AppColors.textPrimary, fontSize: 14, fontWeight: '600' }}>Done</Text>
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>Done</Text>
           </Pressable>
         </View>
         </ScrollView>
       </Dialog>
 
       {/* 2. Authentication Required Modal */}
-      <Dialog visible={authModalVisible} onClose={() => {}} barrierDismissible={false} style={{ borderRadius: 24, padding: 22, backgroundColor: '#0D1B2A', borderWidth: 1.5, borderColor: AppColors.goldAccent }}>
+      <Dialog visible={authModalVisible} onClose={() => {}} barrierDismissible={false} style={{ borderRadius: 24, padding: 22, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.goldAccent }}>
         <View style={{ alignItems: 'center' }}>
-          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(201,168,76,0.18)', borderWidth: 1.5, borderColor: AppColors.goldAccent, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-            <AppIcon name="lock" color={AppColors.goldAccent} size={28} />
+          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: withAlpha(colors.goldAccent, 25), borderWidth: 1.5, borderColor: colors.goldAccent, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <AppIcon name="lock" color={colors.goldAccent} size={28} />
           </View>
-          <Text style={{ color: AppColors.textPrimary, fontSize: 18, fontWeight: '800', textAlign: 'center' }}>
+          <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '800', textAlign: 'center' }}>
             Sign In Required to Consult
           </Text>
-          <Text style={{ color: AppColors.textSecondary, fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 19 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 19 }}>
             Connecting with astrologers requires an authenticated account. Please sign in or register to consult with {astro.name}.
           </Text>
 
@@ -716,7 +718,7 @@ export default function ConsultationScreen() {
               if (router.canGoBack()) router.back();
               go(AppRoutes.signInScreen);
             }}
-            style={{ marginTop: 20, width: '100%', paddingVertical: 13, borderRadius: 14, backgroundColor: AppColors.goldAccent, alignItems: 'center' }}
+            style={{ marginTop: 20, width: '100%', paddingVertical: 13, borderRadius: 14, backgroundColor: colors.goldAccent, alignItems: 'center' }}
           >
             <Text style={{ color: '#080D1A', fontSize: 14, fontWeight: '800' }}>
               Sign In / Register Now ↗
@@ -731,21 +733,21 @@ export default function ConsultationScreen() {
             }}
             style={{ marginTop: 12, paddingVertical: 6 }}
           >
-            <Text style={{ color: AppColors.textMuted, fontSize: 13 }}>Go Back</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 13 }}>Go Back</Text>
           </Pressable>
         </View>
       </Dialog>
 
       {/* 3. Minimum 5-Min Balance Required Modal */}
-      <Dialog visible={lowBalanceVisible} onClose={() => {}} barrierDismissible={false} style={{ borderRadius: 24, padding: 22, backgroundColor: '#0D1B2A', borderWidth: 1.5, borderColor: AppColors.error }}>
+      <Dialog visible={lowBalanceVisible} onClose={() => {}} barrierDismissible={false} style={{ borderRadius: 24, padding: 22, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: AppColors.error }}>
         <View style={{ alignItems: 'center' }}>
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: withAlpha(AppColors.error, 30), borderWidth: 1.5, borderColor: AppColors.error, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
             <AppIcon name="warning_amber_rounded" color={AppColors.error} size={28} />
           </View>
-          <Text style={{ color: AppColors.textPrimary, fontSize: 18, fontWeight: '800', textAlign: 'center' }}>
+          <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '800', textAlign: 'center' }}>
             Insufficient Wallet Balance
           </Text>
-          <Text style={{ color: AppColors.textSecondary, fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 19 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 19 }}>
             A minimum balance of ₹{ratePerMin * 5} (5 minutes at ₹{ratePerMin}/min) is required to start a consultation with {astro.name}. Your available balance is ₹{balance.toFixed(0)}.
           </Text>
 
@@ -771,7 +773,7 @@ export default function ConsultationScreen() {
             }}
             style={{ marginTop: 12, paddingVertical: 6 }}
           >
-            <Text style={{ color: AppColors.textMuted, fontSize: 13 }}>Cancel</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 13 }}>Cancel</Text>
           </Pressable>
         </View>
       </Dialog>

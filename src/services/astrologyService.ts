@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_ENDPOINTS } from '@/config/api';
+import { useAuthStore } from '@/features/auth/authStore';
 
 export const API_BASE_URL = API_ENDPOINTS.appDynamic;
 
@@ -116,14 +117,27 @@ export async function fetchCalculatedKundli(profile?: {
   name?: string;
   gender?: string;
 }): Promise<KundliChartData> {
-  const cacheKey = 'astroparihar_cached_kundli';
+  const authUser = useAuthStore.getState().user;
+  const userUid = authUser?.uid || (authUser?.phone ? authUser.phone.replace(/\D/g, '') : null);
+  const cacheKey = userUid ? `astroparihar_cached_kundli_${userUid}` : 'astroparihar_cached_kundli';
+  let effectiveProfile = profile;
   try {
-    // Check saved user birth profile from AsyncStorage if not explicitly passed
-    let effectiveProfile = profile;
+    // Check saved user birth profile from authUser or user-scoped storage if not explicitly passed
     if (!effectiveProfile?.dob) {
-      const stored = await AsyncStorage.getItem('astroparihar_user_birth_details');
-      if (stored) {
-        effectiveProfile = JSON.parse(stored);
+      if (authUser?.dob) {
+        effectiveProfile = {
+          dob: authUser.dob,
+          tob: authUser.tob || '12:00 PM',
+          pob: authUser.pob || 'New Delhi, India',
+          name: authUser.name || 'Seeker',
+          gender: authUser.gender || 'Male',
+        };
+      } else {
+        const userScopedKey = userUid ? `astroparihar_user_birth_details_${userUid}` : 'astroparihar_user_birth_details';
+        const stored = await AsyncStorage.getItem(userScopedKey);
+        if (stored) {
+          effectiveProfile = JSON.parse(stored);
+        }
       }
     }
 
@@ -131,8 +145,8 @@ export async function fetchCalculatedKundli(profile?: {
       dob: effectiveProfile?.dob || '1995-10-15',
       tob: effectiveProfile?.tob || '12:00 PM',
       pob: effectiveProfile?.pob || 'New Delhi, India',
-      name: effectiveProfile?.name || 'Guest',
-      gender: effectiveProfile?.gender || 'Male',
+      name: effectiveProfile?.name || authUser?.name || 'Guest',
+      gender: effectiveProfile?.gender || authUser?.gender || 'Male',
     };
 
     // Try live API
@@ -233,11 +247,11 @@ export async function fetchCalculatedKundli(profile?: {
 
   // Graceful canonical fallback
   return {
-    name: profile?.name || 'Guest',
-    gender: profile?.gender || 'Male',
-    dob: profile?.dob || '1995-10-15',
-    tob: profile?.tob || '12:00 PM',
-    pob: profile?.pob || 'New Delhi, India',
+    name: effectiveProfile?.name || authUser?.name || 'Guest',
+    gender: effectiveProfile?.gender || authUser?.gender || 'Male',
+    dob: effectiveProfile?.dob || authUser?.dob || '1995-10-15',
+    tob: effectiveProfile?.tob || authUser?.tob || '12:00 PM',
+    pob: effectiveProfile?.pob || authUser?.pob || 'New Delhi, India',
     ascendant: { sign: 'Scorpio', degree: '12°45\'', lord: 'Mars' },
     moonSign: 'Cancer',
     nakshatra: 'Punarvasu',

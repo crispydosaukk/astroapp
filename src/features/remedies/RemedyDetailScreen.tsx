@@ -9,14 +9,14 @@ import React, { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar, BoxBackButton } from '@/components/AppBar';
-import { ElevatedButton, EmptyState, OutlinedButton } from '@/components/common';
+import { ElevatedButton, OutlinedButton } from '@/components/common';
 import { lh, Text } from '@/components/Text';
 import {
-  CHARITIES, DEITIES, GEMS, getRemedyData, HOMAS, MANTRAS, MUKHIS, Remedy, VASTU_DIRECTIONS, YANTRAS,
+  CHARITIES, DEITIES, GEMS, getRemedyData, HOMAS, MANTRAS, MUKHIS, REMEDIES, Remedy, VASTU_DIRECTIONS, YANTRAS,
 } from '@/data/remedies';
 import { AppRoutes, push, useExtra } from '@/navigation/routes';
 import { AppColors, withAlpha } from '@/theme/colors';
-import { SOURCE_INERT } from '@/utils/sourceInert';
+import { useThemeColors } from '@/theme/themeStore';
 
 function Chip({ label, color }: { label: string; color: string }) {
   return (
@@ -25,23 +25,42 @@ function Chip({ label, color }: { label: string; color: string }) {
     </View>
   );
 }
-const Card = ({ children, mb = 8, padding = 12, style }: { children: React.ReactNode; mb?: number; padding?: number; style?: object }) => (
-  <View style={[{ marginBottom: mb, padding, borderRadius: 12, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: AppColors.goldBorder }, style]}>{children}</View>
-);
+const Card = ({ children, mb = 8, padding = 12, style }: { children: React.ReactNode; mb?: number; padding?: number; style?: object }) => {
+  const colors = useThemeColors();
+  return (
+    <View style={[{ marginBottom: mb, padding, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }, style]}>
+      {children}
+    </View>
+  );
+};
 const Heading = ({ text, color }: { text: string; color: string }) => <Text style={{ color, fontSize: 15, fontWeight: '700', marginBottom: 10 }}>{text}</Text>;
 
 function SectionCard({ title, content, color }: { title: string; content: string; color: string }) {
+  const colors = useThemeColors();
   return (
-    <View style={{ padding: 16, borderRadius: 16, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: AppColors.goldBorder }}>
+    <View style={{ padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }}>
       <Text style={{ color, fontSize: 14, fontWeight: '700' }}>{title}</Text>
-      <Text style={{ marginTop: 8, color: AppColors.textSecondary, ...lh(13, 1.6) }}>{content}</Text>
+      <Text style={{ marginTop: 8, color: colors.textSecondary, ...lh(13, 1.6) }}>{content}</Text>
     </View>
   );
 }
 
 function SpecificContent({ name, color }: { name: string; color: string }) {
   const [gridW, setGridW] = useState(0);
-  switch (name) {
+  const colors = useThemeColors();
+
+  const lower = (name || '').toLowerCase();
+  let targetCase = name;
+  if (lower.includes('mantra')) targetCase = 'Mantra';
+  else if (lower.includes('yantra')) targetCase = 'Yantra';
+  else if (lower.includes('homa')) targetCase = 'Homa';
+  else if (lower.includes('devata') || lower.includes('ishta') || lower.includes('upasana')) targetCase = 'Devata';
+  else if (lower.includes('gem') || lower.includes('ratna')) targetCase = 'Gemstones';
+  else if (lower.includes('rudra')) targetCase = 'Rudraksha';
+  else if (lower.includes('vastu') || lower.includes('vāstu')) targetCase = 'Vastu';
+  else if (lower.includes('dāna') || lower.includes('dana') || lower.includes('charity') || lower.includes('seva')) targetCase = 'Dāna & Seva';
+
+  switch (targetCase) {
     case 'Mantra':
       return (
         <View>
@@ -51,12 +70,12 @@ function SpecificContent({ name, color }: { name: string; color: string }) {
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ color, fontSize: 13, fontWeight: '700' }}>{m.planet}</Text>
                 <View style={{ flexDirection: 'row' }}>
-                  <Chip label={`${m.count} times`} color={AppColors.goldAccent} />
+                  <Chip label={`${m.count} times`} color={colors.goldAccent} />
                   <View style={{ width: 6 }} />
-                  <Chip label={m.time} color={AppColors.textMuted} />
+                  <Chip label={m.time} color={colors.textMuted} />
                 </View>
               </View>
-              <Text style={{ marginTop: 6, color: AppColors.textSecondary, fontSize: 12, fontStyle: 'italic' }}>{m.mantra}</Text>
+              <Text style={{ marginTop: 6, color: colors.textSecondary, fontSize: 12, fontStyle: 'italic' }}>{m.mantra}</Text>
             </Card>
           ))}
         </View>
@@ -71,8 +90,8 @@ function SpecificContent({ name, color }: { name: string; color: string }) {
                 <Text style={{ fontSize: 22 }}>⬡</Text>
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ color: AppColors.textPrimary, fontSize: 13, fontWeight: '600' }}>{y.name}</Text>
-                <Text style={{ color: AppColors.textSecondary, fontSize: 12 }}>{y.purpose}</Text>
+                <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{y.name}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{y.purpose}</Text>
               </View>
               <Chip label={y.planet} color={color} />
             </Card>
@@ -87,12 +106,12 @@ function SpecificContent({ name, color }: { name: string; color: string }) {
             <Card key={h.name} padding={14} style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ fontSize: 24 }}>🔥</Text>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ color: AppColors.textPrimary, fontSize: 13, fontWeight: '600' }}>{h.name}</Text>
-                <Text style={{ color: AppColors.textSecondary, fontSize: 12 }}>{h.purpose}</Text>
+                <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{h.name}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{h.purpose}</Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Chip label={h.day} color={color} />
-                <Text style={{ marginTop: 4, color: AppColors.textMuted, fontSize: 10 }}>{h.duration}</Text>
+                <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 10 }}>{h.duration}</Text>
               </View>
             </Card>
           ))}
@@ -105,9 +124,9 @@ function SpecificContent({ name, color }: { name: string; color: string }) {
           <Heading text="Deity Cards" color={color} />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
             {cw > 0 && DEITIES.map((d) => (
-              <View key={d.name} style={{ width: cw, height: cw / 1.3, padding: 12, borderRadius: 14, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(color, 60), alignItems: 'center', justifyContent: 'center' }}>
+              <View key={d.name} style={{ width: cw, height: cw / 1.3, padding: 12, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(color, colors.isLight ? 50 : 60), alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 28 }}>{d.emoji}</Text>
-                <Text style={{ marginTop: 6, color: AppColors.textPrimary, fontSize: 12, fontWeight: '600', textAlign: 'center' }}>{d.name}</Text>
+                <Text style={{ marginTop: 6, color: colors.textPrimary, fontSize: 12, fontWeight: '600', textAlign: 'center' }}>{d.name}</Text>
                 <Text style={{ color, fontSize: 10 }}>{d.quality}</Text>
               </View>
             ))}
@@ -124,8 +143,8 @@ function SpecificContent({ name, color }: { name: string; color: string }) {
             <Card key={g.planet} style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ fontSize: 20 }}>💎</Text>
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={{ color: AppColors.textPrimary, fontSize: 13, fontWeight: '600' }}>{`${g.planet} → ${g.gem}`}</Text>
-                <Text style={{ color: AppColors.textMuted, fontSize: 11 }}>{`${g.metal} • ${g.finger} finger • ${g.day}`}</Text>
+                <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{`${g.planet} → ${g.gem}`}</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 11 }}>{`${g.metal} • ${g.finger} finger • ${g.day}`}</Text>
               </View>
             </Card>
           ))}
@@ -141,10 +160,10 @@ function SpecificContent({ name, color }: { name: string; color: string }) {
                 <Text style={{ color, fontSize: 13, fontWeight: '700' }}>{m.mukhi}</Text>
               </View>
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={{ color: AppColors.textPrimary, fontSize: 13, fontWeight: '600' }}>{`${m.mukhi} Mukhi`}</Text>
-                <Text style={{ color: AppColors.textMuted, fontSize: 11 }}>{m.deity}</Text>
+                <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{`${m.mukhi} Mukhi`}</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 11 }}>{m.deity}</Text>
               </View>
-              <Text style={{ flex: 1, color: AppColors.textSecondary, fontSize: 11, textAlign: 'right' }}>{m.benefit}</Text>
+              <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 11, textAlign: 'right' }}>{m.benefit}</Text>
             </Card>
           ))}
         </View>
@@ -159,9 +178,9 @@ function SpecificContent({ name, color }: { name: string; color: string }) {
                 <Text style={{ color, fontSize: 16, fontWeight: '800' }}>{d.dir.substring(0, 1)}</Text>
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ color: AppColors.textPrimary, fontSize: 13, fontWeight: '600' }}>{d.dir}</Text>
-                <Text style={{ color: AppColors.textSecondary, fontSize: 12 }}>{d.area}</Text>
-                <Text style={{ color: AppColors.textMuted, fontSize: 11 }}>{`${d.element} • ${d.deity}`}</Text>
+                <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{d.dir}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{d.area}</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 11 }}>{`${d.element} • ${d.deity}`}</Text>
               </View>
             </Card>
           ))}
@@ -177,8 +196,8 @@ function SpecificContent({ name, color }: { name: string; color: string }) {
                 <Text style={{ color, fontSize: 13, fontWeight: '700' }}>{c.planet}</Text>
                 <Chip label={c.day} color={color} />
               </View>
-              <Text style={{ marginTop: 4, color: AppColors.textSecondary, fontSize: 12 }}>{`Donate: ${c.donation}`}</Text>
-              <Text style={{ color: AppColors.textMuted, fontSize: 11 }}>{`To: ${c.recipient}`}</Text>
+              <Text style={{ marginTop: 4, color: colors.textSecondary, fontSize: 12 }}>{`Donate: ${c.donation}`}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 11 }}>{`To: ${c.recipient}`}</Text>
             </Card>
           ))}
         </View>
@@ -190,44 +209,79 @@ function SpecificContent({ name, color }: { name: string; color: string }) {
 
 export default function RemedyDetailScreen() {
   const insets = useSafeAreaInsets();
-  const remedy = useExtra<Remedy>();
-  if (!remedy) {
-    return (
-      <View style={{ flex: 1, backgroundColor: AppColors.backgroundDark }}>
-        <AppBar title="Remedy" leading={<BoxBackButton testID="remedyDetail.back" onPress={() => router.back()} />} />
-        <EmptyState iconName="spa_outlined" title="Remedy not found" subtitle="Open a remedy from the Remedies screen." />
-      </View>
-    );
-  }
+  const colors = useThemeColors();
+  const rawRemedy = useExtra<Remedy>();
+  const remedy = rawRemedy || REMEDIES[0];
+
   const { color, name } = remedy;
   const data = getRemedyData(name);
+
   return (
-    <View style={{ flex: 1, backgroundColor: AppColors.backgroundDark }} testID="remedyDetail.screen">
-      <AppBar title={name} leading={<BoxBackButton testID="remedyDetail.back" onPress={() => router.back()} />} />
+    <View style={{ flex: 1, backgroundColor: colors.background }} testID="remedyDetail.screen">
+      <AppBar
+        title={name}
+        backgroundColor={colors.background}
+        backColor={colors.textPrimary}
+        leading={<BoxBackButton testID="remedyDetail.back" onPress={() => router.back()} />}
+      />
       <ScrollView>
-        <LinearGradient colors={[withAlpha(color, 60), AppColors.surfaceVariantDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ marginHorizontal: 20, marginTop: 8, marginBottom: 16, padding: 24, borderRadius: 24, borderWidth: 1, borderColor: withAlpha(color, 100), alignItems: 'center' }}>
+        <LinearGradient
+          colors={
+            colors.isLight
+              ? ['#FFF9F0', colors.surfaceVariant]
+              : [withAlpha(color, 60), colors.surfaceVariant]
+          }
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            marginHorizontal: 20,
+            marginTop: 8,
+            marginBottom: 16,
+            padding: 24,
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor: withAlpha(color, colors.isLight ? 70 : 100),
+            alignItems: 'center',
+          }}
+        >
           <Text style={{ fontSize: 56 }}>{remedy.emoji}</Text>
-          <Text style={{ marginTop: 12, color: AppColors.textPrimary, fontSize: 24, fontWeight: '800' }}>{name}</Text>
-          <Text style={{ color, fontSize: 18 }}>{remedy.sanskrit}</Text>
-          <Text style={{ marginTop: 12, color: AppColors.textSecondary, textAlign: 'center', ...lh(14, 1.5) }}>{data.shortDesc}</Text>
+          <Text style={{ marginTop: 12, color: colors.textPrimary, fontSize: 24, fontWeight: '800' }}>{name}</Text>
+          <Text style={{ color, fontSize: 18, fontWeight: '600' }}>{remedy.sanskrit}</Text>
+          <Text style={{ marginTop: 12, color: colors.textSecondary, textAlign: 'center', ...lh(14, 1.5) }}>{data.shortDesc}</Text>
         </LinearGradient>
 
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
           <SectionCard title="Why This Remedy May Help" content={data.whyHelp} color={color} />
-          <View style={{ padding: 16, borderRadius: 16, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: AppColors.goldBorder }}>
+          <View style={{ padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }}>
             <Text style={{ color, fontSize: 14, fontWeight: '700', marginBottom: 10 }}>Benefits</Text>
             {data.benefits.map((b) => (
               <View key={b} style={{ flexDirection: 'row', marginBottom: 6 }}>
                 <Text style={{ color, fontSize: 12 }}>✦ </Text>
-                <Text style={{ flex: 1, color: AppColors.textSecondary, fontSize: 13 }}>{b}</Text>
+                <Text style={{ flex: 1, color: colors.textSecondary, fontSize: 13 }}>{b}</Text>
               </View>
             ))}
           </View>
           <SectionCard title="How It Works" content={data.howItWorks} color={color} />
           <SectionCard title="Who It Is Suitable For" content={data.suitableFor} color={color} />
-          <LinearGradient colors={[withAlpha(color, 30), AppColors.surfaceVariantDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ padding: 16, borderRadius: 16, borderWidth: 1, borderColor: withAlpha(color, 80) }}>
+          <LinearGradient
+            colors={
+              colors.isLight
+                ? ['#FFFDF9', colors.surfaceVariant]
+                : [withAlpha(color, 30), colors.surfaceVariant]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              padding: 16,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: withAlpha(color, colors.isLight ? 60 : 80),
+            }}
+          >
             <Text style={{ color, fontSize: 14, fontWeight: '700' }}>Personalised Recommendation</Text>
-            <Text style={{ marginTop: 8, color: AppColors.textSecondary, ...lh(13, 1.5) }}>Based on your birth chart analysis, this remedy is particularly recommended for your current Saturn Mahadasha period. The planetary influences in your chart suggest this practice will bring significant positive transformation.</Text>
+            <Text style={{ marginTop: 8, color: colors.textSecondary, ...lh(13, 1.5) }}>
+              Based on your birth chart analysis, this remedy is particularly recommended for your current Saturn Mahadasha period. The planetary influences in your chart suggest this practice will bring significant positive transformation.
+            </Text>
           </LinearGradient>
           <SpecificContent name={name} color={color} />
         </View>
@@ -237,10 +291,12 @@ export default function RemedyDetailScreen() {
             testID="remedyDetail.report"
             label="Get My Personalised Report"
             onPress={() => push(AppRoutes.kundliReportsScreen)}
-            radius={14}
+            radius={100}
             paddingV={14}
             fontSize={14}
             fontWeight="700"
+            bg="#713B32"
+            fg="#FFFFFF"
           />
           <View style={{ marginTop: 10, flexDirection: 'row' }}>
             <OutlinedButton
@@ -252,6 +308,8 @@ export default function RemedyDetailScreen() {
               })}
               paddingV={12}
               fontSize={13}
+              color={colors.textPrimary}
+              borderColor={colors.cardBorder}
               style={{ flex: 1 }}
             />
             <View style={{ width: 10 }} />
@@ -261,6 +319,8 @@ export default function RemedyDetailScreen() {
               onPress={() => push(AppRoutes.liveAstrologersScreen)}
               paddingV={12}
               fontSize={13}
+              color={colors.textPrimary}
+              borderColor={colors.cardBorder}
               style={{ flex: 1 }}
             />
           </View>

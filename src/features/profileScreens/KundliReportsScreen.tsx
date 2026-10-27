@@ -117,7 +117,7 @@ export default function KundliReportsScreen() {
     const authUser = useAuthStore.getState().user;
     const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
     if (!isAuth) {
-      showSnackBar('Please sign in to order Kundli reports', '#8B1A1A');
+      showSnackBar('Please sign in to order Kundli reports', '#713B32');
       push(AppRoutes.signInScreen);
       return;
     }
@@ -319,11 +319,11 @@ export default function KundliReportsScreen() {
                       marginTop: 6,
                       paddingHorizontal: 14,
                       paddingVertical: 7,
-                      borderRadius: 18,
-                      backgroundColor: colors.goldAccent,
+                      borderRadius: 100,
+                      backgroundColor: '#713B32',
                     }}
                   >
-                    <Text style={{ color: '#080D1A', fontSize: 12, fontWeight: '700' }}>Buy</Text>
+                    <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>Buy</Text>
                   </Pressable>
                 </View>
               </View>

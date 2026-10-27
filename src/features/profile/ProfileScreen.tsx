@@ -10,7 +10,6 @@
  * - Functional Sign Out with session cleanup & route reset
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,9 +24,9 @@ import { fetchCalculatedKundli } from '@/services/astrologyService';
 import { getWalletBalance, subscribeWallet } from '@/services/walletService';
 import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
-import { useThemeColors } from '@/theme/themeStore';
+import { useThemeColors, useThemeStore } from '@/theme/themeStore';
 
-type MenuItem = { icon: string; labelKey: string; defaultLabel: string; route: string; color: string; id: string };
+type MenuItem = { icon: string; labelKey: string; defaultLabel: string; route: string; color: string; id: string; value?: string };
 
 const MY_ASTROLOGY: MenuItem[] = [
   { icon: 'auto_stories', labelKey: 'profile.myKundli', defaultLabel: 'My Kundli', route: AppRoutes.myKundliScreen, color: '#9370DB', id: 'myKundli' },
@@ -43,14 +42,6 @@ const MY_ACCOUNT: MenuItem[] = [
   { icon: 'receipt_long_outlined', labelKey: 'profile.transactions', defaultLabel: 'Transactions', route: AppRoutes.walletScreen, color: '#4FC3F7', id: 'transactions' },
   { icon: 'credit_card_outlined', labelKey: 'profile.paymentMethods', defaultLabel: 'Payment Methods', route: AppRoutes.walletScreen, color: '#81C784', id: 'paymentMethods' },
   { icon: 'notifications_outlined', labelKey: 'profile.notifications', defaultLabel: 'Notifications', route: AppRoutes.notificationsScreen, color: '#FF6B6B', id: 'notifications' },
-];
-
-const PREFERENCES: MenuItem[] = [
-  { icon: 'language_outlined', labelKey: 'profile.language', defaultLabel: 'Language', route: AppRoutes.languageScreen, color: '#9370DB', id: 'language' },
-  { icon: 'dark_mode_outlined', labelKey: 'profile.theme', defaultLabel: 'Theme', route: AppRoutes.themeScreen, color: '#4FC3F7', id: 'theme' },
-  { icon: 'tune_outlined', labelKey: 'profile.notificationSettings', defaultLabel: 'Notification Settings', route: AppRoutes.notificationSettingsScreen, color: '#FFB347', id: 'notificationSettings' },
-  { icon: 'lock_outline_rounded', labelKey: 'profile.privacy', defaultLabel: 'Privacy', route: AppRoutes.privacyScreen, color: '#81C784', id: 'privacy' },
-  { icon: 'security_outlined', labelKey: 'profile.security', defaultLabel: 'Security', route: AppRoutes.securityScreen, color: '#FF6B6B', id: 'security' },
 ];
 
 const SUPPORT: MenuItem[] = [
@@ -150,6 +141,18 @@ export function MenuSection({
               >
                 {t(it.labelKey, it.defaultLabel)}
               </Text>
+              {it.value ? (
+                <Text
+                  style={{
+                    marginRight: 8,
+                    color: colors.accent,
+                    fontSize: 12,
+                    fontWeight: '600',
+                  }}
+                >
+                  {it.value}
+                </Text>
+              ) : null}
               <AppIcon name="chevron_right_rounded" color={colors.textMuted} size={20} />
             </Pressable>
             {i < items.length - 1 ? (
@@ -162,13 +165,33 @@ export function MenuSection({
   );
 }
 
+function getZodiacSymbol(signName: string): string {
+  const map: Record<string, string> = {
+    Aries: '♈', Mesha: '♈',
+    Taurus: '♉', Vrishabha: '♉',
+    Gemini: '♊', Mithuna: '♊',
+    Cancer: '♋', Karka: '♋',
+    Leo: '♌', Simha: '♌',
+    Virgo: '♍', Kanya: '♍',
+    Libra: '♎', Tula: '♎',
+    Scorpio: '♏', Vrischika: '♏',
+    Sagittarius: '♐', Dhanu: '♐',
+    Capricorn: '♑', Makara: '♑',
+    Aquarius: '♒', Kumbha: '♒',
+    Pisces: '♓', Meena: '♓',
+  };
+  return map[signName] || '✨';
+}
+
 export default function ProfileScreen() {
   const colors = useThemeColors();
+  const selectedTheme = useThemeStore((s) => s.selectedTheme);
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, selectedLanguage } = useTranslation();
   const authUser = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const logout = useAuthStore((s) => s.logout);
+  const updateUserProfile = useAuthStore((s) => s.updateUserProfile);
 
   const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
   const currentUserName = isAuth && authUser?.name?.trim() ? authUser.name.trim() : (isAuth && authUser?.phone ? authUser.phone : 'Guest');
@@ -178,15 +201,15 @@ export default function ProfileScreen() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [profileData, setProfileData] = useState({
     name: currentUserName,
-    email: isAuth ? (authUser?.phone ? `+91 ${authUser.phone}` : authUser?.email || 'Registered User') : 'Sign in to sync your profile',
-    dob: '15 March 1995',
-    tob: '12:00 PM',
-    pob: 'New Delhi, India',
-    zodiac: 'Scorpio',
-    zodiacSymbol: '♏',
-    moonSign: 'Cancer',
-    moonSymbol: '♋',
-    nakshatra: 'Pushya',
+    email: isAuth ? (authUser?.phone ? `${authUser.phone}` : authUser?.email || 'Registered User') : 'Sign in to sync your profile',
+    dob: authUser?.dob || (isAuth ? 'Not specified' : 'Sign in to view'),
+    tob: authUser?.tob || (isAuth ? 'Not specified' : 'Sign in to view'),
+    pob: authUser?.pob || (isAuth ? 'Not specified' : 'Sign in to view'),
+    zodiac: authUser?.zodiac || 'Scorpio',
+    zodiacSymbol: getZodiacSymbol(authUser?.zodiac || 'Scorpio'),
+    moonSign: authUser?.moonSign || 'Cancer',
+    moonSymbol: getZodiacSymbol(authUser?.moonSign || 'Cancer'),
+    nakshatra: authUser?.nakshatra || 'Pushya',
   });
 
   // Edit form state
@@ -198,45 +221,97 @@ export default function ProfileScreen() {
 
   const loadUserData = async () => {
     try {
-      const stored = await AsyncStorage.getItem('astroparihar_user_birth_details');
       const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
-      let baseName = isUserLoggedIn ? (authUser?.name?.trim() || authUser?.phone || 'User') : 'Guest';
-      let baseEmail = isUserLoggedIn
-        ? (authUser?.phone ? `+91 ${authUser.phone}` : authUser?.email || 'Registered User')
-        : 'Sign in to sync your profile';
-      let baseDob = '15 March 1995';
-      let baseTob = '12:00 PM';
-      let basePob = 'New Delhi, India';
-
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.name && isUserLoggedIn) baseName = parsed.name;
-        if (parsed.email && isUserLoggedIn) baseEmail = parsed.email;
-        if (parsed.dob) baseDob = parsed.dob;
-        if (parsed.tob) baseTob = parsed.tob;
-        if (parsed.pob) basePob = parsed.pob;
+      if (!isUserLoggedIn) {
+        setProfileData({
+          name: 'Guest',
+          email: 'Sign in to sync your profile',
+          dob: 'Sign in to view',
+          tob: 'Sign in to view',
+          pob: 'Sign in to view',
+          zodiac: 'Aries',
+          zodiacSymbol: '♈',
+          moonSign: 'Taurus',
+          moonSymbol: '♉',
+          nakshatra: 'Ashwini',
+        });
+        return;
       }
 
-      // Fetch dynamic kundli calculations to get real zodiac, rashi, and nakshatra
-      let chartName = baseName;
-      try {
-        const chart = await fetchCalculatedKundli();
-        if (isUserLoggedIn && chart?.name && chart.name !== 'Devotee') {
-          chartName = chart.name;
+      // Read user-scoped storage to prevent cross-account profile leakage
+      const cleanPhone = authUser?.phone ? authUser.phone.replace(/\D/g, '') : null;
+      const userKey = authUser?.uid ? `astroparihar_user_birth_details_${authUser.uid}` : null;
+      const phoneKey = cleanPhone ? `astroparihar_user_birth_details_${cleanPhone}` : null;
+      let storedDetails: any = null;
+
+      if (userKey) {
+        const raw = await AsyncStorage.getItem(userKey);
+        if (raw) storedDetails = JSON.parse(raw);
+      }
+      if (!storedDetails && phoneKey) {
+        const raw = await AsyncStorage.getItem(phoneKey);
+        if (raw) storedDetails = JSON.parse(raw);
+      }
+      if (!storedDetails) {
+        const raw = await AsyncStorage.getItem('astroparihar_user_birth_details');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (!parsed.uid || parsed.uid === authUser?.uid || (parsed.phone && parsed.phone === authUser?.phone)) {
+            storedDetails = parsed;
+          }
         }
-      } catch {}
+      }
+
+      const baseName = authUser?.name?.trim() || storedDetails?.name?.trim() || authUser?.phone || 'Seeker';
+      const baseEmail = authUser?.phone || authUser?.email || storedDetails?.email || 'Registered User';
+      const baseDob = authUser?.dob || storedDetails?.dob || '';
+      const baseTob = authUser?.tob || storedDetails?.tob || '';
+      const basePob = authUser?.pob || storedDetails?.pob || '';
+      const baseGender = authUser?.gender || storedDetails?.gender || 'Male';
+
+      let zodiac = authUser?.zodiac || storedDetails?.zodiac || 'Scorpio';
+      let zodiacSymbol = getZodiacSymbol(zodiac);
+      let moonSign = authUser?.moonSign || storedDetails?.moonSign || 'Cancer';
+      let moonSymbol = getZodiacSymbol(moonSign);
+      let nakshatra = authUser?.nakshatra || storedDetails?.nakshatra || 'Pushya';
+
+      // Fetch dynamic kundli calculations to get real zodiac, rashi, and nakshatra if DOB is provided
+      if (baseDob) {
+        try {
+          const chart = await fetchCalculatedKundli({
+            dob: baseDob,
+            tob: baseTob || '12:00 PM',
+            pob: basePob || 'Delhi, India',
+            name: baseName,
+            gender: baseGender,
+          });
+          if (chart) {
+            if (chart.ascendant?.sign) {
+              zodiac = chart.ascendant.sign;
+              zodiacSymbol = getZodiacSymbol(chart.ascendant.sign);
+            }
+            if (chart.moonSign) {
+              moonSign = chart.moonSign;
+              moonSymbol = getZodiacSymbol(chart.moonSign);
+            }
+            if (chart.nakshatra) {
+              nakshatra = chart.nakshatra;
+            }
+          }
+        } catch {}
+      }
 
       setProfileData({
-        name: chartName,
+        name: baseName,
         email: baseEmail,
-        dob: baseDob,
-        tob: baseTob,
-        pob: basePob,
-        zodiac: 'Scorpio',
-        zodiacSymbol: '♏',
-        moonSign: 'Cancer',
-        moonSymbol: '♋',
-        nakshatra: 'Pushya',
+        dob: baseDob || 'Not specified',
+        tob: baseTob || 'Not specified',
+        pob: basePob || 'Not specified',
+        zodiac,
+        zodiacSymbol,
+        moonSign,
+        moonSymbol,
+        nakshatra,
       });
     } catch {}
   };
@@ -249,11 +324,11 @@ export default function ProfileScreen() {
   }, [authUser, isAuthenticated]);
 
   const openEditModal = () => {
-    setEditName(profileData.name);
-    setEditEmail(profileData.email);
-    setEditDob(profileData.dob);
-    setEditTob(profileData.tob);
-    setEditPob(profileData.pob);
+    setEditName(profileData.name !== 'Guest' && profileData.name !== 'Seeker' ? profileData.name : (authUser?.name || ''));
+    setEditEmail(profileData.email !== 'Sign in to sync your profile' ? profileData.email : (authUser?.phone || ''));
+    setEditDob(profileData.dob !== 'Not specified' && profileData.dob !== 'Sign in to view' ? profileData.dob : (authUser?.dob || ''));
+    setEditTob(profileData.tob !== 'Not specified' && profileData.tob !== 'Sign in to view' ? profileData.tob : (authUser?.tob || ''));
+    setEditPob(profileData.pob !== 'Not specified' && profileData.pob !== 'Sign in to view' ? profileData.pob : (authUser?.pob || ''));
     setEditSheetOpen(true);
   };
 
@@ -261,26 +336,38 @@ export default function ProfileScreen() {
     const updated = {
       name: editName.trim() || profileData.name,
       email: editEmail.trim() || profileData.email,
-      dob: editDob.trim() || profileData.dob,
-      tob: editTob.trim() || profileData.tob,
-      pob: editPob.trim() || profileData.pob,
+      dob: editDob.trim() || (profileData.dob !== 'Not specified' ? profileData.dob : ''),
+      tob: editTob.trim() || (profileData.tob !== 'Not specified' ? profileData.tob : ''),
+      pob: editPob.trim() || (profileData.pob !== 'Not specified' ? profileData.pob : ''),
     };
-    await AsyncStorage.setItem('astroparihar_user_birth_details', JSON.stringify(updated));
+
+    // Update in-memory authUser, persistent storage, and user-scoped storage
+    await updateUserProfile(updated);
+
     setProfileData((prev) => ({
       ...prev,
       ...updated,
     }));
     setEditSheetOpen(false);
     showSnackBar('Profile details saved successfully!', colors.surfaceVariant);
+    loadUserData();
   };
 
   const handleConfirmSignOut = async () => {
     setSignOutOpen(false);
     await logout();
-    await AsyncStorage.multiRemove([
-      'astroparihar_auth_user',
-      'astroparihar_auth_token',
-    ]);
+    setProfileData({
+      name: 'Guest',
+      email: 'Sign in to sync your profile',
+      dob: 'Sign in to view',
+      tob: 'Sign in to view',
+      pob: 'Sign in to view',
+      zodiac: 'Aries',
+      zodiacSymbol: '♈',
+      moonSign: 'Taurus',
+      moonSymbol: '♉',
+      nakshatra: 'Ashwini',
+    });
     showSnackBar('Signed out safely', colors.surfaceVariant);
     go(AppRoutes.initial);
   };
@@ -494,7 +581,13 @@ export default function ProfileScreen() {
         />
         <MenuSection
           title={t('profile.preferences', 'PREFERENCES')}
-          items={PREFERENCES}
+          items={[
+            { icon: 'language_outlined', labelKey: 'profile.language', defaultLabel: 'Language', route: AppRoutes.languageScreen, color: '#9370DB', id: 'language', value: selectedLanguage },
+            { icon: 'dark_mode_outlined', labelKey: 'profile.theme', defaultLabel: 'Theme', route: AppRoutes.themeScreen, color: '#4FC3F7', id: 'theme', value: selectedTheme },
+            { icon: 'tune_outlined', labelKey: 'profile.notificationSettings', defaultLabel: 'Notification Settings', route: AppRoutes.notificationSettingsScreen, color: '#FFB347', id: 'notificationSettings' },
+            { icon: 'lock_outline_rounded', labelKey: 'profile.privacy', defaultLabel: 'Privacy', route: AppRoutes.privacyScreen, color: '#81C784', id: 'privacy' },
+            { icon: 'security_outlined', labelKey: 'profile.security', defaultLabel: 'Security', route: AppRoutes.securityScreen, color: '#FF6B6B', id: 'security' },
+          ]}
           idPrefix="profile.menu"
           colors={colors}
         />

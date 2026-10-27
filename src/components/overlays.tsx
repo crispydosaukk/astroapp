@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 import { AppColors } from '@/theme/colors';
 import { ralewayFamily } from '@/theme/fonts';
+import { useThemeColors } from '@/theme/themeStore';
 import { AppIcon } from './AppIcon';
 import { Text } from './Text';
 
@@ -63,22 +64,23 @@ export function BottomSheet({
   );
 }
 
-/** Standard sheet container used by most source sheets: surfaceDark, top radius 28, gold drag handle. */
+/** Standard sheet container used by most source sheets: surface, top radius 28, drag handle. */
 export function SheetContainer({ children, style, handle = true, radius = 28 }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; handle?: boolean; radius?: number }) {
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
   return (
     <View
       style={[
         {
-          backgroundColor: AppColors.surfaceDark, borderTopLeftRadius: radius, borderTopRightRadius: radius,
-          borderWidth: 1, borderBottomWidth: 0, borderColor: AppColors.cardBorder, paddingBottom: insets.bottom,
+          backgroundColor: colors.surface, borderTopLeftRadius: radius, borderTopRightRadius: radius,
+          borderWidth: 1, borderBottomWidth: 0, borderColor: colors.cardBorder, paddingBottom: insets.bottom,
         },
         style,
       ]}
     >
       {handle ? (
         <View style={{ alignItems: 'center', paddingTop: 12 }}>
-          <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: AppColors.outline }} />
+          <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.divider }} />
         </View>
       ) : null}
       {children}
@@ -91,6 +93,7 @@ export function SheetContainer({ children, style, handle = true, radius = 28 }: 
 export function Dialog({
   visible, onClose, children, barrierDismissible = true, style, testID,
 }: { visible: boolean; onClose: () => void; children: React.ReactNode; barrierDismissible?: boolean; style?: StyleProp<ViewStyle>; testID?: string }) {
+  const colors = useThemeColors();
   return (
     <Modal transparent visible={visible} animationType="fade" statusBarTranslucent onRequestClose={barrierDismissible ? onClose : () => {}}>
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
@@ -100,7 +103,7 @@ export function Dialog({
         />
         <View
           testID={testID}
-          style={[{ width: '100%', maxWidth: 420, backgroundColor: AppColors.surfaceDark, borderRadius: 24, padding: 24, borderWidth: 1.5, borderColor: AppColors.cardBorder, elevation: 25, zIndex: 10 }, style]}
+          style={[{ width: '100%', maxWidth: 420, backgroundColor: colors.surface, borderRadius: 24, padding: 24, borderWidth: 1.5, borderColor: colors.cardBorder, elevation: 25, zIndex: 10 }, style]}
         >
           {children}
         </View>
@@ -157,7 +160,7 @@ export function SnackbarHost() {
   if (!message) return null;
 
   // Determine intent (error, success, info/guest)
-  const isError = bg === '#CF4444' || bg === '#8B1A1A' || /error|failed|invalid|declined/i.test(message);
+  const isError = bg === '#CF4444' || bg === '#EF4444' || /error|failed|invalid|declined/i.test(message);
   const isSuccess = bg === '#075E54' || bg === '#2D9E6B' || /success|purchased|verified|added|saved|completed/i.test(message);
 
   let containerBg = '#0B132B'; // Deep obsidian midnight with maximum contrast
@@ -256,11 +259,12 @@ export function useSheet<T>() {
 /* -------------------------------------------------------------------- PopupMenu */
 /** PopupMenuButton equivalent: icon button that opens an anchored menu (Material 3 surface, radius 14). */
 export function PopupMenu<T extends string>({
-  items, onSelected, icon = 'more_vert_rounded', iconColor = AppColors.textMuted, iconSize = 20, testID, menuColor = AppColors.surfaceVariantDark,
+  items, onSelected, icon = 'more_vert_rounded', iconColor, iconSize = 20, testID, menuColor,
 }: {
   items: Array<{ value: T; label: string; color?: string }>; onSelected: (v: T) => void; icon?: string; iconColor?: string;
   iconSize?: number; testID?: string; menuColor?: string;
 }) {
+  const colors = useThemeColors();
   const ref = React.useRef<View>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const open = () => ref.current?.measureInWindow((x, y, w, h) => setPos({ x: x + w, y: y + h }));
@@ -268,12 +272,12 @@ export function PopupMenu<T extends string>({
   return (
     <>
       <Pressable ref={ref} testID={testID} onPress={open} style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}>
-        <AppIcon name={icon} color={iconColor} size={iconSize} />
+        <AppIcon name={icon} color={iconColor ?? colors.textMuted} size={iconSize} />
       </Pressable>
       <Modal transparent visible={!!pos} animationType="fade" onRequestClose={() => setPos(null)}>
         <Pressable style={{ flex: 1 }} onPress={() => setPos(null)}>
           {pos ? (
-            <View style={{ position: 'absolute', top: pos.y - 40, right: Math.max(8, screenW - pos.x), minWidth: 160, paddingVertical: 8, borderRadius: 14, backgroundColor: menuColor, elevation: 8, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10 }}>
+            <View style={{ position: 'absolute', top: pos.y - 40, right: Math.max(8, screenW - pos.x), minWidth: 160, paddingVertical: 8, borderRadius: 14, backgroundColor: menuColor ?? colors.surface, borderWidth: 1, borderColor: colors.cardBorder, elevation: 8, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10 }}>
               {items.map((it) => (
                 <Pressable
                   key={it.value}
@@ -281,7 +285,7 @@ export function PopupMenu<T extends string>({
                   onPress={() => { setPos(null); onSelected(it.value); }}
                   style={{ paddingHorizontal: 16, height: 48, justifyContent: 'center' }}
                 >
-                  <Text style={{ color: it.color ?? AppColors.textPrimary, fontSize: 14 }}>{it.label}</Text>
+                  <Text style={{ color: it.color ?? colors.textPrimary, fontSize: 14 }}>{it.label}</Text>
                 </Pressable>
               ))}
             </View>

@@ -14,11 +14,11 @@ import { ElevatedButton } from '@/components/common';
 import { showSnackBar } from '@/components/overlays';
 import { Text } from '@/components/Text';
 import { pop } from '@/navigation/routes';
-import { AppColors, withAlpha } from '@/theme/colors';
-import { AppLanguage, useLanguageStore, useTranslation } from '@/theme/languageStore';
+import { withAlpha } from '@/theme/colors';
+import { AppLanguage, useTranslation } from '@/theme/languageStore';
 import { AccentName, ThemeName, useThemeColors, useThemeStore } from '@/theme/themeStore';
 
-const LANGUAGES: Array<{ name: AppLanguage; native: string; flag: string }> = [
+const LANGUAGES: { name: AppLanguage; native: string; flag: string }[] = [
   { name: 'English', native: 'English', flag: '🇬🇧' },
   { name: 'Hindi', native: 'हिंदी', flag: '🇮🇳' },
   { name: 'Telugu', native: 'తెలుగు', flag: '🇮🇳' },
@@ -126,15 +126,8 @@ export function LanguageScreen() {
   );
 }
 
-// STRICTLY restricted to 'Dark Cosmic' and 'Light Vedic' ONLY as required
-const THEMES: Array<{ name: ThemeName; desc: string; emoji: string; preview: string; light: boolean }> = [
-  {
-    name: 'Dark Cosmic',
-    desc: 'Deep cosmic space with starry depth and luminous gold accents',
-    emoji: '🌌',
-    preview: '#080D1A',
-    light: false,
-  },
+// STRICTLY restricted to 'Light Vedic' and 'Dark Cosmic' ONLY as required
+const THEMES: { name: ThemeName; desc: string; emoji: string; preview: string; light: boolean }[] = [
   {
     name: 'Light Vedic',
     desc: 'Luminous pearl white and sacred gold tones with crystal-clear readability',
@@ -142,12 +135,19 @@ const THEMES: Array<{ name: ThemeName; desc: string; emoji: string; preview: str
     preview: '#FAF9F6',
     light: true,
   },
+  {
+    name: 'Dark Cosmic',
+    desc: 'Deep cosmic space with starry depth and luminous gold accents',
+    emoji: '🌌',
+    preview: '#080D1A',
+    light: false,
+  },
 ];
 
-const ACCENTS: Array<{ name: AccentName; color: string }> = [
+const ACCENTS: { name: AccentName; color: string }[] = [
   { name: 'Sacred Gold', color: '#C9A84C' },
   { name: 'Cosmic Purple', color: '#9370DB' },
-  { name: 'Divine Red', color: '#8B1A1A' },
+  { name: 'Divine Red', color: '#713B32' },
   { name: 'Celestial Blue', color: '#4FC3F7' },
   { name: 'Emerald', color: '#2D9E6B' },
   { name: 'Saffron', color: '#FFB347' },
@@ -178,7 +178,7 @@ export function ThemeScreen() {
           Select App Theme
         </Text>
         <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 12 }}>
-          Choose between Dark Cosmic or Light Vedic. Both provide high-contrast text and optimal readability.
+          Choose between Light Vedic or Dark Cosmic. Both provide high-contrast text and optimal readability.
         </Text>
 
         <View style={{ marginTop: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 12 }} onLayout={(e) => setW(e.nativeEvent.layout.width)}>

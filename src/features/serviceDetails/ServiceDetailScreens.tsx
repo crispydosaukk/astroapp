@@ -20,6 +20,7 @@ import { ElevatedButton, OutlinedButton } from '@/components/common';
 import { lh, Text, TextInput } from '@/components/Text';
 import { AppRoutes, pop, push } from '@/navigation/routes';
 import { AppColors, withAlpha } from '@/theme/colors';
+import { useThemeColors } from '@/theme/themeStore';
 import { SOURCE_INERT } from '@/utils/sourceInert';
 
 /* ------------------------------------------------------------- shared */
@@ -33,7 +34,7 @@ function ServiceHeroCard({ title, subtitle, imageUrl, semanticLabel, accent, ico
           <AppIcon name={icon} color={accent} size={20} />
         </View>
         <View style={{ marginLeft: 12, flex: 1 }}>
-          <Text style={{ color: AppColors.textPrimary, fontSize: 20, fontWeight: '800' }}>{title}</Text>
+          <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '800' }}>{title}</Text>
           <Text style={{ color: accent, fontSize: 12, fontWeight: '500' }}>{subtitle}</Text>
         </View>
       </View>
@@ -41,53 +42,58 @@ function ServiceHeroCard({ title, subtitle, imageUrl, semanticLabel, accent, ico
   );
 }
 function Intro({ children }: { children: string }) {
-  return <Text style={{ paddingHorizontal: 16, color: AppColors.textSecondary, ...lh(13, 1.7) }}>{children}</Text>;
+  const colors = useThemeColors();
+  return <Text style={{ paddingHorizontal: 16, color: colors.textSecondary, ...lh(13, 1.7) }}>{children}</Text>;
 }
 function SectionTitle({ title, accent }: { title: string; accent: string }) {
+  const colors = useThemeColors();
   return (
     <View style={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
       <View style={{ width: 3, height: 18, borderRadius: 2, backgroundColor: accent }} />
-      <Text style={{ marginLeft: 10, color: AppColors.textPrimary, fontSize: 16, fontWeight: '700' }}>{title}</Text>
+      <Text style={{ marginLeft: 10, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>{title}</Text>
     </View>
   );
 }
 function InfoCard({ icon, title, description, accent }: { icon: string; title: string; description: string; accent: string }) {
+  const colors = useThemeColors();
   return (
-    <View style={{ marginHorizontal: 16, marginBottom: 10, padding: 16, borderRadius: 16, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: AppColors.cardBorder, flexDirection: 'row', alignItems: 'flex-start' }}>
-      <View style={{ padding: 10, borderRadius: 12, backgroundColor: withAlpha(accent, 20) }}>
+    <View style={{ marginHorizontal: 16, marginBottom: 10, padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'flex-start' }}>
+      <View style={{ padding: 10, borderRadius: 12, backgroundColor: withAlpha(accent, colors.isLight ? 25 : 20) }}>
         <AppIcon name={icon} color={accent} size={20} />
       </View>
       <View style={{ flex: 1, marginLeft: 14 }}>
-        <Text style={{ color: AppColors.textPrimary, fontSize: 14, fontWeight: '600' }}>{title}</Text>
-        <Text style={{ marginTop: 4, color: AppColors.textSecondary, ...lh(12, 1.5) }}>{description}</Text>
+        <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>{title}</Text>
+        <Text style={{ marginTop: 4, color: colors.textSecondary, ...lh(12, 1.5) }}>{description}</Text>
       </View>
     </View>
   );
 }
 function ConsultCTABar({ testIDPrefix }: { testIDPrefix: string }) {
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
   return (
-    <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(24, insets.bottom + 8), backgroundColor: AppColors.backgroundDark, borderTopWidth: 1, borderTopColor: AppColors.goldBorder, flexDirection: 'row' }}>
-      <OutlinedButton testID={`${testIDPrefix}.chatNow`} label="Chat Now" icon="chat_bubble_outline_rounded" color={AppColors.goldAccent} borderColor={AppColors.goldAccent} onPress={() => push(AppRoutes.liveAstrologersScreen)} style={{ flex: 1 }} />
+    <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(24, insets.bottom + 8), backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.cardBorder, flexDirection: 'row' }}>
+      <OutlinedButton testID={`${testIDPrefix}.chatNow`} label="Chat Now" icon="chat_bubble_outline_rounded" color={colors.goldAccent} borderColor={colors.goldAccent} onPress={() => push(AppRoutes.liveAstrologersScreen)} style={{ flex: 1 }} />
       <View style={{ width: 12 }} />
-      <ElevatedButton testID={`${testIDPrefix}.consultNow`} label="Consult Now" icon="call_rounded" onPress={() => push(AppRoutes.liveAstrologersScreen)} radius={14} paddingV={14} paddingH={8} fontSize={14} style={{ flex: 1 }} />
+      <ElevatedButton testID={`${testIDPrefix}.consultNow`} label="Consult Now" icon="call_rounded" bg="#713B32" fg="#FFFFFF" onPress={() => push(AppRoutes.liveAstrologersScreen)} radius={100} paddingV={14} paddingH={8} fontSize={14} style={{ flex: 1 }} />
     </View>
   );
 }
 type Mini = { name: string; specialty: string; imageUrl: string; rating: number; price: number };
 function AstrologerRow({ items, accent }: { items: Mini[]; accent: string }) {
+  const colors = useThemeColors();
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height: 180 }} contentContainerStyle={{ paddingHorizontal: 16 }}>
       {items.map((a) => (
-        <View key={a.name} style={{ width: 160, marginRight: 12, padding: 14, borderRadius: 16, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: AppColors.cardBorder, alignItems: 'center', alignSelf: 'flex-start' }}>
+        <View key={a.name} style={{ width: 160, marginRight: 12, padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, alignItems: 'center', alignSelf: 'flex-start' }}>
           <View style={{ width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: withAlpha(accent, 100), overflow: 'hidden' }}>
             <AppImage uri={a.imageUrl} semanticLabel={`Astrologer ${a.name} profile photo`} width="100%" height="100%" fit="cover" />
           </View>
-          <Text numberOfLines={1} style={{ marginTop: 8, color: AppColors.textPrimary, fontSize: 12, fontWeight: '600', textAlign: 'center' }}>{a.name}</Text>
-          <Text numberOfLines={1} style={{ marginTop: 2, color: AppColors.textMuted, fontSize: 10, textAlign: 'center' }}>{a.specialty}</Text>
+          <Text numberOfLines={1} style={{ marginTop: 8, color: colors.textPrimary, fontSize: 12, fontWeight: '600', textAlign: 'center' }}>{a.name}</Text>
+          <Text numberOfLines={1} style={{ marginTop: 2, color: colors.textMuted, fontSize: 10, textAlign: 'center' }}>{a.specialty}</Text>
           <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center' }}>
-            <AppIcon name="star_rounded" color={AppColors.goldAccent} size={12} />
-            <Text style={{ marginLeft: 2, color: AppColors.goldAccent, fontSize: 11, fontWeight: '600' }}>{String(a.rating)}</Text>
+            <AppIcon name="star_rounded" color={colors.goldAccent} size={12} />
+            <Text style={{ marginLeft: 2, color: colors.goldAccent, fontSize: 11, fontWeight: '600' }}>{String(a.rating)}</Text>
           </View>
           <Text style={{ marginTop: 6, color: accent, fontSize: 11, fontWeight: '700' }}>{`₹${a.price}/min`}</Text>
         </View>
@@ -97,9 +103,10 @@ function AstrologerRow({ items, accent }: { items: Mini[]; accent: string }) {
 }
 function ServiceLayout({ title, testID, children }: { title: string; testID: string; children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
   return (
-    <View style={{ flex: 1, backgroundColor: AppColors.backgroundDark }} testID={`${testID}.screen`}>
-      <AppBar title={title} onBack={pop} testIDPrefix={testID} backSize={24} />
+    <View style={{ flex: 1, backgroundColor: colors.background }} testID={`${testID}.screen`}>
+      <AppBar title={title} onBack={pop} testIDPrefix={testID} backSize={24} backgroundColor={colors.background} backColor={colors.textPrimary} />
       <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
         {children}
         <View style={{ height: Math.max(140, insets.bottom + 85) }} />
@@ -116,6 +123,7 @@ const P = (id: string) => `https://images.pexels.com/photos/${id}/pexels-photo-$
 
 /* ------------------------------------------------------------- Career */
 export function CareerAstrologyScreen() {
+  const colors = useThemeColors();
   const a = '#FFD700';
   return (
     <ServiceLayout title="Career Astrology" testID="careerAstrology">
@@ -129,10 +137,10 @@ export function CareerAstrologyScreen() {
       <SectionTitle title="Career Insights" accent={a} />
       <HScroll height={90}>
         {[['Saturn', 'Career Karaka', 'circle_outlined'], ['10th House', 'Profession House', 'home_work_outlined'], ['Sun', 'Authority & Status', 'wb_sunny_outlined'], ['Mercury', 'Business & Trade', 'swap_horiz_rounded']].map(([p, r, i]) => (
-          <View key={p} style={{ width: 110, height: 90, marginRight: 10, padding: 12, borderRadius: 14, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(a, 60), alignItems: 'center', justifyContent: 'center' }}>
+          <View key={p} style={{ width: 110, height: 90, marginRight: 10, padding: 12, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, alignItems: 'center', justifyContent: 'center' }}>
             <AppIcon name={i} color={a} size={20} />
-            <Text style={{ marginTop: 4, color: AppColors.textPrimary, fontSize: 12, fontWeight: '600' }}>{p}</Text>
-            <Text style={{ color: AppColors.textMuted, fontSize: 10, textAlign: 'center' }}>{r}</Text>
+            <Text style={{ marginTop: 4, color: colors.textPrimary, fontSize: 12, fontWeight: '600' }}>{p}</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 10, textAlign: 'center' }}>{r}</Text>
           </View>
         ))}
       </HScroll>
@@ -148,6 +156,7 @@ export function CareerAstrologyScreen() {
 
 /* ------------------------------------------------------------- Marriage */
 export function MarriageAstrologyScreen() {
+  const colors = useThemeColors();
   const a = '#FF6B6B';
   const [w, setW] = useState(0);
   const cell = w > 0 ? (w - 24) / 4 : 0;
@@ -165,9 +174,9 @@ export function MarriageAstrologyScreen() {
       <View style={{ paddingHorizontal: 16 }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
           {cell > 0 && aspects.map(([n, m, c], i) => (
-            <View key={i} style={{ width: cell, height: cell, borderRadius: 12, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(c, 60), alignItems: 'center', justifyContent: 'center' }}>
+            <View key={i} style={{ width: cell, height: cell, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(c, colors.isLight ? 50 : 60), alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ color: c, fontSize: 18, fontWeight: '800' }}>{String(m)}</Text>
-              <Text style={{ color: AppColors.textMuted, fontSize: 9, textAlign: 'center' }}>{n}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 9, textAlign: 'center' }}>{n}</Text>
             </View>
           ))}
         </View>
@@ -184,6 +193,7 @@ export function MarriageAstrologyScreen() {
 
 /* ------------------------------------------------------------- Business */
 export function BusinessAstrologyScreen() {
+  const colors = useThemeColors();
   const a = '#4FC3F7';
   const sectors = [['Mercury', 'IT & Communication', '#4FC3F7'], ['Venus', 'Fashion & Beauty', '#FF6B6B'], ['Mars', 'Real Estate', '#FF6B35'], ['Jupiter', 'Education & Law', '#FFD700'], ['Saturn', 'Manufacturing', '#9370DB'], ['Sun', 'Government & Politics', '#FFB347']];
   return (
@@ -198,9 +208,9 @@ export function BusinessAstrologyScreen() {
       <SectionTitle title="Business Sectors by Planet" accent={a} />
       <HScroll height={80}>
         {sectors.map(([p, s, c]) => (
-          <View key={p} style={{ width: 130, height: 80, marginRight: 10, padding: 12, borderRadius: 14, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(c, 60), justifyContent: 'center' }}>
+          <View key={p} style={{ width: 130, height: 80, marginRight: 10, padding: 12, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(c, colors.isLight ? 50 : 60), justifyContent: 'center' }}>
             <Text style={{ color: c, fontSize: 12, fontWeight: '700' }}>{p}</Text>
-            <Text style={{ marginTop: 2, color: AppColors.textSecondary, fontSize: 11 }}>{s}</Text>
+            <Text style={{ marginTop: 2, color: colors.textSecondary, fontSize: 11 }}>{s}</Text>
           </View>
         ))}
       </HScroll>
@@ -215,6 +225,7 @@ export function BusinessAstrologyScreen() {
 
 /* ------------------------------------------------------------- Finance */
 export function FinanceAstrologyScreen() {
+  const colors = useThemeColors();
   const a = '#81C784';
   return (
     <ServiceLayout title="Finance Astrology" testID="financeAstrology">
@@ -228,13 +239,13 @@ export function FinanceAstrologyScreen() {
       <SectionTitle title="Wealth Houses" accent={a} />
       <View style={{ paddingHorizontal: 16 }}>
         {[['2nd House', 'Savings & Assets', 'Venus'], ['5th House', 'Speculation & Gains', 'Jupiter'], ['8th House', 'Inheritance', 'Saturn'], ['11th House', 'Income & Profits', 'Jupiter']].map(([h, g, p]) => (
-          <View key={h} style={{ marginBottom: 8, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(a, 40), flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: withAlpha(a, 20), alignItems: 'center', justifyContent: 'center' }}>
+          <View key={h} style={{ marginBottom: 8, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: withAlpha(a, colors.isLight ? 25 : 20), alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ color: a, fontSize: 11, fontWeight: '700' }}>{h.split(' ')[0]}</Text>
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={{ color: AppColors.textPrimary, fontSize: 13, fontWeight: '600' }}>{h}</Text>
-              <Text style={{ color: AppColors.textSecondary, fontSize: 12 }}>{g}</Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{h}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{g}</Text>
             </View>
             <Text style={{ color: a, fontSize: 12, fontWeight: '600' }}>{p}</Text>
           </View>
@@ -261,6 +272,7 @@ const TAROT_CARDS = [
   { name: 'The Chariot', meaning: 'Control, willpower, success, determination', reversed: 'Self-discipline, opposition' },
 ];
 export function TarotScreen() {
+  const colors = useThemeColors();
   const a = '#9370DB';
   const [selected, setSelected] = useState<number | null>(null);
   return (
@@ -268,16 +280,16 @@ export function TarotScreen() {
       <ServiceHeroCard title="Tarot Reading" subtitle="Ancient wisdom through sacred cards" imageUrl="https://images.pixabay.com/photo/2020/05/11/06/14/tarot-5157112_1280.jpg" semanticLabel="Mystical tarot cards spread on a dark velvet cloth with candles and crystals" accent={a} icon="style_rounded" />
       <Intro>Tarot is a powerful divination tool that uses 78 symbolic cards to reveal hidden truths, illuminate life paths, and provide guidance on love, career, and spiritual growth. Each card carries profound archetypal wisdom.</Intro>
       <SectionTitle title="Daily Card Draw" accent={a} />
-      <LinearGradient colors={[withAlpha(a, 30), AppColors.surfaceDark]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ marginHorizontal: 16, padding: 20, borderRadius: 20, borderWidth: 1, borderColor: withAlpha(a, 80), alignItems: 'center' }}>
-        <Text style={{ color: AppColors.textSecondary, fontSize: 13 }}>Your Card of the Day</Text>
+      <LinearGradient colors={[withAlpha(a, colors.isLight ? 20 : 30), colors.surface]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ marginHorizontal: 16, padding: 20, borderRadius: 20, borderWidth: 1, borderColor: withAlpha(a, colors.isLight ? 50 : 80), alignItems: 'center' }}>
+        <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Your Card of the Day</Text>
         <View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center' }}>
           <LinearGradient colors={[withAlpha(a, 80), '#1A0A2E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 80, height: 130, borderRadius: 12, borderWidth: 1.5, borderColor: a, alignItems: 'center', justifyContent: 'center' }}>
             <AppIcon name="auto_awesome" color={a} size={28} />
-            <Text style={{ marginTop: 8, color: AppColors.textPrimary, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{'The\nStar'}</Text>
+            <Text style={{ marginTop: 8, color: '#FFFFFF', fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{'The\nStar'}</Text>
           </LinearGradient>
           <View style={{ flex: 1, marginLeft: 20 }}>
             <Text style={{ color: a, fontSize: 18, fontWeight: '800' }}>The Star</Text>
-            <Text style={{ marginTop: 6, color: AppColors.textSecondary, ...lh(12, 1.5) }}>Hope, faith, purpose, renewal, and spirituality. A period of calm after a storm — trust in the universe&apos;s plan.</Text>
+            <Text style={{ marginTop: 6, color: colors.textSecondary, ...lh(12, 1.5) }}>Hope, faith, purpose, renewal, and spirituality. A period of calm after a storm — trust in the universe&apos;s plan.</Text>
           </View>
         </View>
       </LinearGradient>
@@ -295,16 +307,16 @@ export function TarotScreen() {
               testID={`tarot.card.${i}`}
               onPress={() => setSelected(sel ? null : i)}
               duration={200}
-              style={{ marginBottom: 8, padding: 14, borderRadius: 14, borderWidth: 1, backgroundColor: sel ? withAlpha(a, 20) : AppColors.surfaceDark, borderColor: sel ? a : AppColors.cardBorder }}
+              style={{ marginBottom: 8, padding: 14, borderRadius: 14, borderWidth: 1, backgroundColor: sel ? withAlpha(a, colors.isLight ? 25 : 20) : colors.surface, borderColor: sel ? a : colors.cardBorder }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <AppIcon name="auto_awesome" color={a} size={16} />
-                <Text style={{ marginLeft: 8, flex: 1, color: AppColors.textPrimary, fontSize: 14, fontWeight: '600' }}>{c.name}</Text>
-                <AppIcon name={sel ? 'keyboard_arrow_up_rounded' : 'keyboard_arrow_down_rounded'} color={AppColors.textMuted} size={18} />
+                <Text style={{ marginLeft: 8, flex: 1, color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>{c.name}</Text>
+                <AppIcon name={sel ? 'keyboard_arrow_up_rounded' : 'keyboard_arrow_down_rounded'} color={colors.textMuted} size={18} />
               </View>
               {sel ? (
                 <>
-                  <Text style={{ marginTop: 10, color: AppColors.textSecondary, ...lh(12, 1.5) }}>{`✦ Upright: ${c.meaning}`}</Text>
+                  <Text style={{ marginTop: 10, color: colors.textSecondary, ...lh(12, 1.5) }}>{`✦ Upright: ${c.meaning}`}</Text>
                   <Text style={{ marginTop: 4, color: withAlpha(a, 180), ...lh(12, 1.5) }}>{`✦ Reversed: ${c.reversed}`}</Text>
                 </>
               ) : null}
@@ -347,19 +359,21 @@ export function calcDestiny(name: string): number | null {
 }
 
 function NumField({ label, icon, value, onChange, accent, testID }: { label: string; icon: string; value: string; onChange: (s: string) => void; accent: string; testID: string }) {
+  const colors = useThemeColors();
   const [focused, setFocused] = useState(false);
   return (
-    <View style={{ height: 56, borderRadius: 12, borderWidth: 1, borderColor: focused ? accent : withAlpha(accent, 40), flexDirection: 'row', alignItems: 'center' }}>
+    <View style={{ height: 56, borderRadius: 12, borderWidth: 1, borderColor: focused ? accent : withAlpha(accent, colors.isLight ? 50 : 40), backgroundColor: colors.surfaceVariant, flexDirection: 'row', alignItems: 'center' }}>
       <AppIcon name={icon} color={accent} style={{ marginHorizontal: 12 }} />
       <View style={{ flex: 1 }}>
-        {value || focused ? <Text style={{ color: AppColors.textSecondary, fontSize: 11 }}>{label}</Text> : null}
-        <TextInput testID={testID} value={value} onChangeText={onChange} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} placeholder={value || focused ? '' : label} placeholderTextColor={AppColors.textSecondary} style={{ fontSize: 14 }} />
+        {value || focused ? <Text style={{ color: colors.textSecondary, fontSize: 11 }}>{label}</Text> : null}
+        <TextInput testID={testID} value={value} onChangeText={onChange} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} placeholder={value || focused ? '' : label} placeholderTextColor={colors.textMuted} style={{ fontSize: 14, color: colors.textPrimary }} />
       </View>
     </View>
   );
 }
 
 export function NumerologyScreen() {
+  const colors = useThemeColors();
   const a = '#FFB347';
   const [name, setName] = useState('');
   const [dob, setDob] = useState('');
@@ -372,10 +386,10 @@ export function NumerologyScreen() {
     if (d != null) setDestiny(d);
   };
   const ResultCard = ({ value, label, color, testID }: { value: number; label: string; color: string; testID: string }) => (
-    <LinearGradient testID={testID} colors={[withAlpha(color, 40), AppColors.surfaceDark]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ flex: 1, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: withAlpha(color, 100), alignItems: 'center' }}>
+    <LinearGradient testID={testID} colors={[withAlpha(color, colors.isLight ? 25 : 40), colors.surface]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ flex: 1, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: withAlpha(color, 100), alignItems: 'center' }}>
       <Text style={{ color, fontSize: 40, fontWeight: '900' }}>{String(value)}</Text>
-      <Text style={{ color: AppColors.textSecondary, fontSize: 12 }}>{label}</Text>
-      {MEANINGS[value] ? <Text style={{ marginTop: 6, color: AppColors.textPrimary, fontSize: 12, fontWeight: '600', textAlign: 'center' }}>{MEANINGS[value].title}</Text> : null}
+      <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{label}</Text>
+      {MEANINGS[value] ? <Text style={{ marginTop: 6, color: colors.textPrimary, fontSize: 12, fontWeight: '600', textAlign: 'center' }}>{MEANINGS[value].title}</Text> : null}
     </LinearGradient>
   );
   return (
@@ -383,10 +397,10 @@ export function NumerologyScreen() {
       <ServiceHeroCard title="Numerology" subtitle="Decode the numbers of your destiny" imageUrl="https://images.pixabay.com/photo/2017/08/06/22/01/numerology-2596740_1280.jpg" semanticLabel="Sacred numbers and mathematical symbols glowing in golden light on a dark mystical background" accent={a} icon="tag_rounded" />
       <Intro>Numerology is the ancient science of numbers and their divine influence on human life. Every number carries a unique vibration that shapes your personality, destiny, and life path.</Intro>
       <SectionTitle title="Calculate Your Numbers" accent={a} />
-      <View style={{ marginHorizontal: 16, padding: 20, borderRadius: 20, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(a, 80), gap: 12 }}>
+      <View style={{ marginHorizontal: 16, padding: 20, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(a, colors.isLight ? 50 : 80), gap: 12 }}>
         <NumField testID="numerology.name" label="Full Name" icon="person_outline_rounded" value={name} onChange={setName} accent={a} />
         <NumField testID="numerology.dob" label="Date of Birth (DD/MM/YYYY)" icon="calendar_today_rounded" value={dob} onChange={setDob} accent={a} />
-        <ElevatedButton testID="numerology.calculate" label="Calculate My Numbers" onPress={calculate} bg={a} fg="#000000" radius={12} paddingV={14} fontWeight="700" style={{ marginTop: 4 }} />
+        <ElevatedButton testID="numerology.calculate" label="Calculate My Numbers" onPress={calculate} bg="#713B32" fg="#FFFFFF" radius={100} paddingV={14} fontWeight="700" style={{ marginTop: 4 }} />
       </View>
       {lifePath != null || destiny != null ? (
         <View style={{ paddingHorizontal: 16, paddingTop: 16, flexDirection: 'row', gap: 12 }}>
@@ -404,6 +418,7 @@ export function NumerologyScreen() {
 
 /* ------------------------------------------------------------- Muhurat */
 export function MuhuratScreen() {
+  const colors = useThemeColors();
   const a = '#FFD700';
   const muhurats = [
     { event: 'Marriage', icon: 'favorite_rounded', dates: ['15 Nov 2025', '22 Nov 2025', '3 Dec 2025'], color: '#FF6B6B' },
@@ -418,16 +433,16 @@ export function MuhuratScreen() {
       <Intro>Muhurat is the Vedic science of selecting the most auspicious time for important life events. Starting any significant activity at the right cosmic moment ensures divine blessings and minimises obstacles.</Intro>
       <SectionTitle title="Upcoming Auspicious Dates" accent={a} />
       {muhurats.map((m) => (
-        <View key={m.event} style={{ marginHorizontal: 16, marginBottom: 10, padding: 16, borderRadius: 16, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(m.color, 60) }}>
+        <View key={m.event} style={{ marginHorizontal: 16, marginBottom: 10, padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(m.color, colors.isLight ? 50 : 60) }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ padding: 8, borderRadius: 10, backgroundColor: withAlpha(m.color, 20) }}>
               <AppIcon name={m.icon} color={m.color} size={18} />
             </View>
-            <Text style={{ marginLeft: 12, color: AppColors.textPrimary, fontSize: 15, fontWeight: '600' }}>{m.event}</Text>
+            <Text style={{ marginLeft: 12, color: colors.textPrimary, fontSize: 15, fontWeight: '600' }}>{m.event}</Text>
           </View>
           <View style={{ marginTop: 12, flexDirection: 'row' }}>
             {m.dates.map((d) => (
-              <View key={d} style={{ marginRight: 8, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: withAlpha(m.color, 20), borderWidth: 1, borderColor: withAlpha(m.color, 60) }}>
+              <View key={d} style={{ marginRight: 8, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: withAlpha(m.color, colors.isLight ? 25 : 20), borderWidth: 1, borderColor: withAlpha(m.color, 60) }}>
                 <Text style={{ color: m.color, fontSize: 11, fontWeight: '600' }}>{d}</Text>
               </View>
             ))}
@@ -435,11 +450,11 @@ export function MuhuratScreen() {
         </View>
       ))}
       <SectionTitle title="Daily Panchang" accent={a} />
-      <View style={{ marginHorizontal: 16, padding: 16, borderRadius: 16, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(a, 60) }}>
+      <View style={{ marginHorizontal: 16, padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }}>
         {[['Tithi', 'Ekadashi (11th)'], ['Nakshatra', 'Rohini'], ['Yoga', 'Siddhi'], ['Karana', 'Bava'], ['Vara', 'Tuesday']].map(([l, v]) => (
           <View key={l} style={{ paddingVertical: 6, flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text style={{ color: AppColors.textSecondary, fontSize: 13 }}>{l}</Text>
-            <Text style={{ color: AppColors.textPrimary, fontSize: 13, fontWeight: '600' }}>{v}</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{l}</Text>
+            <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{v}</Text>
           </View>
         ))}
       </View>
@@ -452,6 +467,7 @@ export function MuhuratScreen() {
 
 /* ------------------------------------------------------------- Spiritual */
 export function SpiritualGuidanceScreen() {
+  const colors = useThemeColors();
   const a = '#9370DB';
   return (
     <ServiceLayout title="Spiritual Guidance" testID="spiritualGuidance">
@@ -465,10 +481,10 @@ export function SpiritualGuidanceScreen() {
       <SectionTitle title="Daily Spiritual Practice" accent={a} />
       <HScroll height={100}>
         {[['Meditation', '20 min', 'self_improvement_rounded', '#9370DB'], ['Pranayama', '15 min', 'air_rounded', '#4FC3F7'], ['Mantra Japa', '108 times', 'music_note_rounded', '#FFD700'], ['Yoga Asana', '30 min', 'accessibility_new_rounded', '#81C784']].map(([n, d, i, c]) => (
-          <View key={n} style={{ width: 120, height: 100, marginRight: 10, padding: 14, borderRadius: 16, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: withAlpha(c, 60), alignItems: 'center', justifyContent: 'center' }}>
+          <View key={n} style={{ width: 120, height: 100, marginRight: 10, padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(c, colors.isLight ? 50 : 60), alignItems: 'center', justifyContent: 'center' }}>
             <AppIcon name={i} color={c} size={24} />
-            <Text style={{ marginTop: 6, color: AppColors.textPrimary, fontSize: 12, fontWeight: '600' }}>{n}</Text>
-            <Text style={{ color: AppColors.textMuted, fontSize: 10 }}>{d}</Text>
+            <Text style={{ marginTop: 6, color: colors.textPrimary, fontSize: 12, fontWeight: '600' }}>{n}</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 10 }}>{d}</Text>
           </View>
         ))}
       </HScroll>
@@ -478,8 +494,8 @@ export function SpiritualGuidanceScreen() {
           ['The soul is not born; it does not die; it was not produced from anyone. Unborn, eternal, ever-existing and primeval.', 'Bhagavad Gita 2.20'],
           ['You have the right to perform your prescribed duties, but you are not entitled to the fruits of your actions.', 'Bhagavad Gita 2.47'],
         ].map(([t, s]) => (
-          <LinearGradient key={s} colors={[withAlpha(a, 20), AppColors.surfaceDark]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ marginBottom: 10, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: withAlpha(a, 60) }}>
-            <Text style={{ color: AppColors.textPrimary, fontStyle: 'italic', ...lh(13, 1.6) }}>{`"${t}"`}</Text>
+          <LinearGradient key={s} colors={[withAlpha(a, colors.isLight ? 20 : 20), colors.surface]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ marginBottom: 10, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: withAlpha(a, colors.isLight ? 50 : 60) }}>
+            <Text style={{ color: colors.textPrimary, fontStyle: 'italic', ...lh(13, 1.6) }}>{`"${t}"`}</Text>
             <Text style={{ marginTop: 8, color: a, fontSize: 12, fontWeight: '600' }}>{`— ${s}`}</Text>
           </LinearGradient>
         ))}
@@ -490,6 +506,7 @@ export function SpiritualGuidanceScreen() {
 
 /* ------------------------------------------------------------- Reports */
 export function AstrologyReportsScreen() {
+  const colors = useThemeColors();
   const a = '#4FC3F7';
   const reports = [
     { name: 'Comprehensive Birth Chart Report', pages: '40+ pages', price: 499, desc: 'Complete analysis of all 12 houses, 9 planets, Dasha periods, and life predictions.', icon: 'auto_stories_rounded', color: '#9370DB', popular: true },
@@ -505,27 +522,27 @@ export function AstrologyReportsScreen() {
       <Intro>Our expert astrologers prepare detailed, personalised PDF reports that provide deep insights into every aspect of your life. Each report is hand-crafted based on your exact birth details.</Intro>
       <SectionTitle title="Available Reports" accent={a} />
       {reports.map((r, i) => (
-        <View key={r.name} style={{ marginHorizontal: 16, marginBottom: 12, padding: 16, borderRadius: 18, backgroundColor: AppColors.surfaceDark, borderWidth: 1, borderColor: r.popular ? withAlpha(r.color, 100) : AppColors.cardBorder }}>
+        <View key={r.name} style={{ marginHorizontal: 16, marginBottom: 12, padding: 16, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: r.popular ? withAlpha(r.color, 100) : colors.cardBorder }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ padding: 10, borderRadius: 12, backgroundColor: withAlpha(r.color, 20) }}>
               <AppIcon name={r.icon} color={r.color} size={22} />
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ flex: 1, color: AppColors.textPrimary, fontSize: 14, fontWeight: '600' }}>{r.name}</Text>
+                <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>{r.name}</Text>
                 {r.popular ? (
-                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: withAlpha(AppColors.goldAccent, 30), borderWidth: 1, borderColor: withAlpha(AppColors.goldAccent, 80) }}>
-                    <Text style={{ color: AppColors.goldAccent, fontSize: 10, fontWeight: '600' }}>Popular</Text>
+                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: withAlpha(colors.goldAccent, 25), borderWidth: 1, borderColor: withAlpha(colors.goldAccent, 80) }}>
+                    <Text style={{ color: colors.goldAccent, fontSize: 10, fontWeight: '600' }}>Popular</Text>
                   </View>
                 ) : null}
               </View>
               <Text style={{ color: r.color, fontSize: 11, fontWeight: '500' }}>{r.pages}</Text>
             </View>
           </View>
-          <Text style={{ marginTop: 10, color: AppColors.textSecondary, ...lh(12, 1.5) }}>{r.desc}</Text>
+          <Text style={{ marginTop: 10, color: colors.textSecondary, ...lh(12, 1.5) }}>{r.desc}</Text>
           <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ color: AppColors.goldAccent, fontSize: 20, fontWeight: '800' }}>{`₹${r.price}`}</Text>
-            <Text style={{ marginLeft: 4, flex: 1, color: AppColors.textMuted, fontSize: 11 }}>one-time</Text>
+            <Text style={{ color: colors.goldAccent, fontSize: 20, fontWeight: '800' }}>{`₹${r.price}`}</Text>
+            <Text style={{ marginLeft: 4, flex: 1, color: colors.textMuted, fontSize: 11 }}>one-time</Text>
             <Pressable testID={`astrologyReports.getReport.${i}`} onPress={SOURCE_INERT('astrologyReports.getReport')} style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: r.color }}>
               <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}>Get Report</Text>
             </Pressable>

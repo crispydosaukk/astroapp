@@ -22,7 +22,7 @@ export function CustomErrorWidget({ onBack }: { onBack: () => void }) {
         <Pressable
           testID="error.back"
           onPress={onBack}
-          style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', backgroundColor: '#8B1A1A', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 }}
+          style={{ marginTop: 24, flexDirection: 'row', alignItems: 'center', backgroundColor: '#713B32', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 }}
         >
           <AppIcon name="arrow_back" size={18} color="#FFFFFF" />
           <Text style={{ color: '#FFFFFF', marginLeft: 8, fontWeight: '500' }}>Back</Text>

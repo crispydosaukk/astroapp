@@ -4,11 +4,11 @@
  * - Existing User: Direct login to Home Dashboard with saved profile.
  * - New User: Seamless transition to Birth Profile Setup ("Who is this profile for?").
  */
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -25,7 +25,7 @@ import { lh, Text, TextInput } from '@/components/Text';
 import { API_ENDPOINTS } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, go } from '@/navigation/routes';
-import { argb, withAlpha } from '@/theme/colors';
+import { argb } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 
 const API_BASE = API_ENDPOINTS.auth;
@@ -127,19 +127,32 @@ export default function SignInScreen() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        if (data.isNewUser) {
-          // New user: Save pending auth and proceed to Profile Setup screen ("Who is this profile for?")
+        const cleanPhone = fullPhoneNumber.replace(/\D/g, '');
+        const localProfileRaw =
+          (await AsyncStorage.getItem(`astroparihar_user_birth_details_${cleanPhone}`)) ||
+          (data.uid ? await AsyncStorage.getItem(`astroparihar_user_birth_details_${data.uid}`) : null);
+        const localProfile = localProfileRaw ? JSON.parse(localProfileRaw) : null;
+
+        if (data.isNewUser && !localProfile?.name) {
+          // Genuinely new user with no profile on backend or device
           setPendingAuth({
             uid: data.uid,
             phone: data.phone || fullPhoneNumber,
             isNewUser: true,
+            token: data.token,
           });
           showSnackBar('Mobile verified! Set up your cosmic birth profile.');
           go(AppRoutes.birthProfileSetupScreen);
         } else {
-          // Existing user: Restore user data and jump straight to Home
-          await setUser(data.user || { uid: data.uid, phone: fullPhoneNumber }, data.token);
-          showSnackBar(`Welcome back, ${data.user?.name || 'Seeker'}!`);
+          // Existing user (found in backend or saved on device)
+          const mergedUser = {
+            uid: data.uid || localProfile?.uid || `phone_${cleanPhone}`,
+            phone: data.phone || fullPhoneNumber,
+            ...(localProfile || {}),
+            ...(data.user || {}),
+          };
+          await setUser(mergedUser, data.token || `session_${mergedUser.uid}`);
+          showSnackBar(`Welcome back, ${mergedUser.name || 'Seeker'}!`);
           go(AppRoutes.homeDashboardScreen);
         }
       } else {
@@ -147,11 +160,29 @@ export default function SignInScreen() {
       }
     } catch (err: any) {
       console.warn('Verify OTP fallback:', err.message);
-      // Fallback for offline testing
+      // Fallback for offline/test verification (1234 or 9999)
       if (otp === '1234' || otp === '9999') {
-        const fallbackUid = `phone_${phone.replace(/\D/g, '')}`;
-        setPendingAuth({ uid: fallbackUid, phone: fullPhoneNumber, isNewUser: true });
-        go(AppRoutes.birthProfileSetupScreen);
+        const cleanDigits = phone.replace(/\D/g, '');
+        const fallbackUid = `phone_${cleanDigits}`;
+        const localProfileRaw =
+          (await AsyncStorage.getItem(`astroparihar_user_birth_details_${cleanDigits}`)) ||
+          (await AsyncStorage.getItem(`astroparihar_user_birth_details_${fallbackUid}`));
+
+        if (localProfileRaw) {
+          const parsed = JSON.parse(localProfileRaw);
+          await setUser(parsed, `session_${fallbackUid}`);
+          showSnackBar(`Welcome back, ${parsed.name || 'Seeker'}!`);
+          go(AppRoutes.homeDashboardScreen);
+        } else {
+          setPendingAuth({
+            uid: fallbackUid,
+            phone: fullPhoneNumber,
+            isNewUser: true,
+            token: `session_${fallbackUid}`,
+          });
+          showSnackBar('Mobile verified! Set up your cosmic birth profile.');
+          go(AppRoutes.birthProfileSetupScreen);
+        }
       } else {
         showSnackBar('Verification error. Please try again.', '#CF4444');
       }
@@ -227,7 +258,7 @@ export default function SignInScreen() {
 
                 {/* Country Code Dropdown */}
                 {showCountryModal && (
-                  <View style={styles.countryDropdown}>
+                  <View style={[styles.countryDropdown, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
                     <ScrollView style={{ maxHeight: 160 }} nestedScrollEnabled>
                       {COUNTRY_CODES.map((item) => (
                         <Pressable
@@ -236,13 +267,13 @@ export default function SignInScreen() {
                             setSelectedCountry(item);
                             setShowCountryModal(false);
                           }}
-                          style={styles.countryOption}
+                          style={[styles.countryOption, { borderBottomColor: colors.cardBorder }]}
                         >
                           <Text style={{ fontSize: 16 }}>{item.flag}</Text>
-                          <Text style={{ color: '#F0EAD6', fontSize: 13, flex: 1, marginLeft: 8 }}>
+                          <Text style={{ color: colors.textPrimary, fontSize: 13, flex: 1, marginLeft: 8 }}>
                             {item.country}
                           </Text>
-                          <Text style={{ color: '#C9A84C', fontSize: 13, fontWeight: '700' }}>
+                          <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>
                             {item.code}
                           </Text>
                         </Pressable>
@@ -286,7 +317,7 @@ export default function SignInScreen() {
                 </Pressable>
 
                 <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 16, ...lh(11, 1.4) }}>
-                  By continuing, you agree to AstroParihar's{' '}
+                  By continuing, you agree to AstroParihar&apos;s{' '}
                   <Text style={{ color: colors.goldAccent }}>Terms of Service</Text> and{' '}
                   <Text style={{ color: colors.goldAccent }}>Privacy Policy</Text>.
                 </Text>
