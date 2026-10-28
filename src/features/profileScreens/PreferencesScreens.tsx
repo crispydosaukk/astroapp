@@ -19,18 +19,12 @@ import { AppLanguage, useTranslation } from '@/theme/languageStore';
 import { AccentName, ThemeName, useThemeColors, useThemeStore } from '@/theme/themeStore';
 
 const LANGUAGES: { name: AppLanguage; native: string; flag: string }[] = [
-  { name: 'English', native: 'English', flag: '🇬🇧' },
-  { name: 'Hindi', native: 'हिंदी', flag: '🇮🇳' },
-  { name: 'Telugu', native: 'తెలుగు', flag: '🇮🇳' },
-  { name: 'Tamil', native: 'தமிழ்', flag: '🇮🇳' },
-  { name: 'Kannada', native: 'ಕನ್ನಡ', flag: '🇮🇳' },
-  { name: 'Bengali', native: 'বাংলা', flag: '🇮🇳' },
-  { name: 'Marathi', native: 'मराठी', flag: '🇮🇳' },
-  { name: 'Gujarati', native: 'ગુજરાતી', flag: '🇮🇳' },
-  { name: 'Malayalam', native: 'മലയാളം', flag: '🇮🇳' },
-  { name: 'Punjabi', native: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
-  { name: 'Odia', native: 'ଓଡ଼ିଆ', flag: '🇮🇳' },
-  { name: 'Sanskrit', native: 'संस्कृतम्', flag: '🕉️' },
+  { name: 'Telugu', native: 'తెలుగు (Telugu)', flag: '🇮🇳' },
+  { name: 'Hindi', native: 'हिन्दी (Hindi)', flag: '🇮🇳' },
+  { name: 'Tamil', native: 'தமிழ் (Tamil)', flag: '🇮🇳' },
+  { name: 'Kannada', native: 'ಕನ್ನಡ (Kannada)', flag: '🇮🇳' },
+  { name: 'Malayalam', native: 'മലയാളം (Malayalam)', flag: '🇮🇳' },
+  { name: 'English', native: 'English (EN)', flag: '🇬🇧' },
 ];
 
 export function LanguageScreen() {
@@ -38,6 +32,11 @@ export function LanguageScreen() {
   const { selectedLanguage, setLanguage, t } = useTranslation();
   const [selected, setSelected] = useState<AppLanguage>(selectedLanguage);
   const colors = useThemeColors();
+
+  const handleSelectLanguage = (lang: AppLanguage) => {
+    setSelected(lang);
+    setLanguage(lang);
+  };
 
   const handleSaveLanguage = async () => {
     await setLanguage(selected);
@@ -82,7 +81,7 @@ export function LanguageScreen() {
               <View key={l.name}>
                 <Pressable
                   testID={`language.option.${l.name}`}
-                  onPress={() => setSelected(l.name)}
+                  onPress={() => handleSelectLanguage(l.name)}
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',

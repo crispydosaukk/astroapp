@@ -19,6 +19,7 @@ import { AppErrorBoundary } from '@/components/ErrorBoundary';
 import { SnackbarHost } from '@/components/overlays';
 import { PickerHost } from '@/components/pickers';
 import { fontAssets } from '@/theme/fonts';
+import { useLanguageStore } from '@/theme/languageStore';
 import { useThemeColors, useThemeStore } from '@/theme/themeStore';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -38,15 +39,17 @@ const PUSH_ROUTES = [
 export default function RootLayout() {
   const [fontsLoaded] = useFonts(fontAssets);
   const hydrated = useThemeStore((s) => s.hydrated);
-  const load = useThemeStore((s) => s.load);
+  const loadTheme = useThemeStore((s) => s.load);
+  const loadLanguage = useLanguageStore((s) => s.load);
   const colors = useThemeColors();
 
   useEffect(() => {
-    load();
+    loadTheme();
+    loadLanguage();
     if (Platform.OS !== 'web') {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
     }
-  }, [load]);
+  }, [loadTheme, loadLanguage]);
 
   useEffect(() => {
     if (fontsLoaded && hydrated) SplashScreen.hideAsync().catch(() => {});

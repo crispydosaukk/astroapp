@@ -24,7 +24,7 @@ import { showSnackBar } from '@/components/overlays';
 import { lh, Text, TextInput } from '@/components/Text';
 import { API_ENDPOINTS } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
-import { AppRoutes, go } from '@/navigation/routes';
+import { AppRoutes, go, push } from '@/navigation/routes';
 import { argb } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 
@@ -78,6 +78,14 @@ export default function SignInScreen() {
   }, [step]);
 
   const fullPhoneNumber = `${selectedCountry.code}${phone.replace(/\D/g, '')}`;
+
+  const openTerms = () => {
+    push(AppRoutes.termsScreen);
+  };
+
+  const openPrivacy = () => {
+    push(AppRoutes.privacyPolicyScreen);
+  };
 
   const handleSendOTP = async () => {
     const rawNumber = phone.replace(/\D/g, '');
@@ -318,8 +326,22 @@ export default function SignInScreen() {
 
                 <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 16, ...lh(11, 1.4) }}>
                   By continuing, you agree to AstroParihar&apos;s{' '}
-                  <Text style={{ color: colors.goldAccent }}>Terms of Service</Text> and{' '}
-                  <Text style={{ color: colors.goldAccent }}>Privacy Policy</Text>.
+                  <Text
+                    testID="signIn.termsLink"
+                    onPress={openTerms}
+                    style={{ color: colors.goldAccent, fontWeight: '700', textDecorationLine: 'underline' }}
+                  >
+                    Terms of Service
+                  </Text>{' '}
+                  and{' '}
+                  <Text
+                    testID="signIn.privacyLink"
+                    onPress={openPrivacy}
+                    style={{ color: colors.goldAccent, fontWeight: '700', textDecorationLine: 'underline' }}
+                  >
+                    Privacy Policy
+                  </Text>
+                  .
                 </Text>
               </>
             ) : (
@@ -385,6 +407,26 @@ export default function SignInScreen() {
                 >
                   <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Use different phone number</Text>
                 </Pressable>
+
+                <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 16, ...lh(11, 1.4) }}>
+                  By continuing, you agree to AstroParihar&apos;s{' '}
+                  <Text
+                    testID="signIn.otpTermsLink"
+                    onPress={openTerms}
+                    style={{ color: colors.goldAccent, fontWeight: '700', textDecorationLine: 'underline' }}
+                  >
+                    Terms of Service
+                  </Text>{' '}
+                  and{' '}
+                  <Text
+                    testID="signIn.otpPrivacyLink"
+                    onPress={openPrivacy}
+                    style={{ color: colors.goldAccent, fontWeight: '700', textDecorationLine: 'underline' }}
+                  >
+                    Privacy Policy
+                  </Text>
+                  .
+                </Text>
               </>
             )}
           </View>

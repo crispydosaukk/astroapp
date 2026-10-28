@@ -29,11 +29,10 @@ import {
   subscribeWallet,
 } from '@/services/walletService';
 import { showSnackBar } from '@/components/overlays';
-import { AppColors, withAlpha } from '@/theme/colors';
+import { withAlpha } from '@/theme/colors';
 import { useController } from '@/utils/anim';
 import {
   sendLiveAIChatMessage,
-  AIChatResponse,
 } from '@/services/astrologyService';
 import {
   speakAstrologerText,
@@ -66,6 +65,7 @@ export const LANGUAGES = [
   { code: 'Hindi', label: 'हिन्दी', full: 'हिन्दी (Hindi)' },
   { code: 'Tamil', label: 'தமிழ்', full: 'தமிழ் (Tamil)' },
   { code: 'Kannada', label: 'ಕನ್ನಡ', full: 'ಕನ್ನಡ (Kannada)' },
+  { code: 'Malayalam', label: 'മലയാളം', full: 'മലയാളം (Malayalam)' },
   { code: 'English', label: 'English', full: 'English (EN)' },
 ];
 
@@ -117,6 +117,14 @@ const QUICK_PROMPTS_BY_LANG: Record<string, string[]> = {
     '🪐 ನನಗೆ ಸಾಡೇ ಸಾತಿ ಅಥವಾ ರಾಹು ಮಹಾದಶ ನಡೆಯುತ್ತಿದೆಯೇ?',
     '🙏 ಗ್ರಹ ಶಾಂತಿ ಮತ್ತು ದೋಷ ನಿವಾರಣೆಗೆ ಯಾವ ಪರಿಹಾರ ಮಾಡಬೇಕು?',
   ],
+  Malayalam: [
+    '🔮 2026-ൽ എന്റെ ഗ്രഹങ്ങളുടെ സ്വാധീനം എങ്ങനെയുണ്ട്?',
+    '❤️ എന്റെ വിവാഹ യೋಗം എപ്പോഴാണ്?',
+    '💼 കരിയർ മാറ്റത്തിനോ പ്രമോഷനോ അനുയോജ്യമായ സമയം എപ്പോഴാണ്?',
+    '✨ എന്റെ ഭാഗ്യ രത്നം, രുദ്രാക്ഷം, നിത്യ മന്ത്രം എന്നിവ ഏതാണ്?',
+    '🪐 എനിക്ക് ഇപ്പോൾ ഏഴര ശനിയോ രാഹു ദശയോ നടക്കുന്നുണ്ടോ?',
+    '🙏 ദോഷ പരിഹാരത്തിനായി എന്തെല്ലാം പൂജകളും ദാനങ്ങളും ചെയ്യണം?',
+  ],
   English: [
     '🔮 What do planetary transits say for me in 2026?',
     '❤️ When will I meet my compatible life partner?',
@@ -132,6 +140,7 @@ const PLACEHOLDERS_BY_LANG: Record<string, string> = {
   Hindi: 'अपनी कुंडली, प्रेम, करियर या उपायों के बारे में पूछें...',
   Tamil: 'உங்கள் ஜாதகம், தொழில், திருமணம் அல்லது பரிகாரங்கள் பற்றி கேளுங்கள்...',
   Kannada: 'ನಿಮ್ಮ ಕುಂಡಲಿ, ಪ್ರೀತಿ, ವೃತ್ತಿ ಅಥವಾ ಪರಿಹಾರಗಳ ಬಗ್ಗೆ ಕೇಳಿ...',
+  Malayalam: 'നിങ്ങളുടെ ജാതകം, പ്രണയം, കരിയർ അല്ലെങ്കിൽ പരിഹാരങ്ങളെക്കുറിച്ച് ചോദിക്കുക...',
   English: 'Ask about your Kundli, love, career, or remedies...',
 };
 
@@ -161,6 +170,12 @@ function getWelcomeMessage(lang: string, name: string, astroName: string = 'Acha
       recommendations: QUICK_PROMPTS_BY_LANG.Kannada,
     };
   }
+  if (lang === 'Malayalam') {
+    return {
+      content: `**നമസ്കാരം, അനുഗ്രഹങ്ങൾ, ${name}!** 🙏\n\nഞാൻ **${astroName}**, നിങ്ങളുടെ വ്യക്തിഗത വൈദിക ജ്യോതിഷിയും ആത്മീയ വഴികാട്ടിയും. ${currentYear} വർഷത്തെ നിങ്ങളുടെ **ജാതകം, തൊഴിൽ, വിവാഹം അല്ലെങ്കിൽ പരിഹാരങ്ങൾ** സംബന്ധിച്ച് എന്തും ചോദിക്കാം. ഇന്ന് ഞാൻ നിങ്ങളെ എങ്ങനെ സഹായിക്കണം?`,
+      recommendations: QUICK_PROMPTS_BY_LANG.Malayalam,
+    };
+  }
   return {
     content: `**Namaste and blessings, ${name}!** 🙏\n\nI am **${astroName}**, your personal Vedic Astrologer & spiritual guide. Ask me any question about your **Kundli, career, marriage, finances, planetary dashas, or daily remedies** for ${currentYear}. How may I guide your chart today?`,
     recommendations: QUICK_PROMPTS_BY_LANG.English,
@@ -178,31 +193,118 @@ function approxCos(a: number): number {
 }
 const approxSin = (a: number) => approxCos(a - 1.5708);
 
+const WHATSAPP_DOODLE_EMOJIS = [
+  '✨', '🌙', '🔮', '🕉️', '☀️', '🪐', '🪷', '⭐', '🔔', '🌿',
+  '🕯️', '🌸', '🕊️', '📜', '💎', '☕', '💬', '🎵', '💖', '🔆',
+  '🌟', '🧘', '☸️', '📿', '🎯', '🌞', '🌌', '🪄', '☁️', '🌺',
+  '⏳', '🔭', '🌈', '💫', '📖', '🍵', '🍂', '🌻', '🧿', '🍀',
+  '🔥', '🌊', '🪔', '🛡️', '🎶', '💌', '🧭', '🌠',
+];
+
 function WhatsAppBackground() {
   const { width, height } = useWindowDimensions();
+
+  // WhatsApp-style scattered doodle emojis
+  const doodleItems = useMemo(() => {
+    const colSpacing = 48;
+    const rowSpacing = 52;
+    const cols = Math.ceil(width / colSpacing) + 2;
+    const rows = Math.ceil(height / rowSpacing) + 2;
+    const items: {
+      id: string;
+      emoji: string;
+      x: number;
+      y: number;
+      rotation: string;
+      size: number;
+      opacity: number;
+    }[] = [];
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const seed = r * 19 + c * 31;
+        const emojiIndex = (seed + (r % 7) * 5) % WHATSAPP_DOODLE_EMOJIS.length;
+        const emoji = WHATSAPP_DOODLE_EMOJIS[emojiIndex];
+        const staggerX = r % 2 === 1 ? colSpacing * 0.5 : 0;
+        const jitterX = (seed % 7) - 3;
+        const jitterY = ((seed * 3) % 7) - 3;
+        const x = c * colSpacing + staggerX + jitterX - 8;
+        const y = r * rowSpacing + jitterY - 8;
+        const rotation = `${((seed * 11) % 46) - 23}deg`;
+        const size = 15 + (seed % 5);
+        const opacity = 0.085 + ((seed % 4) * 0.01); // 0.085 to 0.115 subtle watermark opacity
+
+        items.push({
+          id: `d_${r}_${c}`,
+          emoji,
+          x,
+          y,
+          rotation,
+          size,
+          opacity,
+        });
+      }
+    }
+    return items;
+  }, [width, height]);
+
+  // Subtle micro constellation lines & dots between doodles
   const { lines, dots } = useMemo(() => {
-    const spacing = 60;
+    const spacing = 72;
     let l = '';
     let d = '';
     for (let x = 0; x < width + spacing; x += spacing) {
       for (let y0 = 0; y0 < height + spacing; y0 += spacing) {
-        const y = y0 + (Math.floor(x / spacing) % 2 === 0 ? 30 : 0);
-        const r = 6;
-        for (let i = 0; i < 6; i++) {
-          const angle = (i * 60 * 3.14159) / 180;
-          const k = i % 2 === 0 ? 1 : 0.5;
-          l += `M${x} ${y}L${x + r * k * approxCos(angle)} ${y + r * k * approxSin(angle)}`;
+        const y = y0 + (Math.floor(x / spacing) % 2 === 0 ? 36 : 0);
+        const r = 5;
+        for (let i = 0; i < 4; i++) {
+          const angle = (i * 90 * 3.14159) / 180;
+          l += `M${x} ${y}L${x + r * approxCos(angle)} ${y + r * approxSin(angle)}`;
         }
-        d += `M${x - 2} ${y}a2 2 0 1 0 4 0a2 2 0 1 0 -4 0`;
+        d += `M${x - 1.5} ${y}a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0`;
       }
     }
     return { lines: l, dots: d };
   }, [width, height]);
+
   return (
-    <Svg width={width} height={height} style={{ position: 'absolute' }} pointerEvents="none">
-      <Path d={lines} stroke="#D4C9B8" strokeWidth={1.2} fill="none" />
-      <Path d={dots} fill="#D4C9B8" />
-    </Svg>
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        overflow: 'hidden',
+      }}
+    >
+      {/* WhatsApp parchment beige base */}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#EFE7DE' }} />
+
+      {/* Subtle micro constellation lines */}
+      <Svg width={width} height={height} style={{ position: 'absolute' }} pointerEvents="none">
+        <Path d={lines} stroke="#D4C9B8" strokeWidth={0.8} fill="none" opacity={0.3} />
+        <Path d={dots} fill="#D4C9B8" opacity={0.35} />
+      </Svg>
+
+      {/* Scattered WhatsApp doodle emojis wallpaper */}
+      {doodleItems.map((item) => (
+        <Text
+          key={item.id}
+          style={{
+            position: 'absolute',
+            left: item.x,
+            top: item.y,
+            fontSize: item.size,
+            opacity: item.opacity,
+            transform: [{ rotate: item.rotation }],
+          }}
+        >
+          {item.emoji}
+        </Text>
+      ))}
+    </View>
   );
 }
 
@@ -322,12 +424,12 @@ function Bubble({
             paddingLeft: 12, paddingRight: 12, paddingTop: 9, paddingBottom: 22, backgroundColor: bg,
             borderTopLeftRadius: 12, borderTopRightRadius: 12, borderBottomLeftRadius: msg.isUser ? 12 : 2, borderBottomRightRadius: msg.isUser ? 2 : 12,
             shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1,
-            borderWidth: 0.5, borderColor: msg.isUser ? 'rgba(7,94,84,0.12)' : 'rgba(0,0,0,0.06)',
+            borderWidth: 0.5, borderColor: msg.isUser ? 'rgba(0,128,105,0.15)' : 'rgba(0,0,0,0.06)',
           }}
         >
           {!msg.isUser ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <Text style={{ color: '#075E54', fontSize: 12, fontWeight: '700' }}>
+              <Text style={{ color: '#008069', fontSize: 12, fontWeight: '700' }}>
                 {msg.modelUsed || 'AstroParihar AI'}
               </Text>
               <Pressable
@@ -339,17 +441,17 @@ function Bubble({
                   paddingHorizontal: 8,
                   paddingVertical: 3,
                   borderRadius: 12,
-                  backgroundColor: isSpeaking ? 'rgba(201,168,76,0.25)' : 'rgba(7,94,84,0.08)',
+                  backgroundColor: isSpeaking ? 'rgba(201,168,76,0.25)' : 'rgba(0,128,105,0.08)',
                   borderWidth: 1,
-                  borderColor: isSpeaking ? '#C9A84C' : 'rgba(7,94,84,0.2)',
+                  borderColor: isSpeaking ? '#C9A84C' : 'rgba(0,128,105,0.2)',
                 }}
               >
                 <AppIcon
                   name={isSpeaking ? 'stop_circle_rounded' : 'volume_up_rounded'}
                   size={13}
-                  color={isSpeaking ? '#C9A84C' : '#075E54'}
+                  color={isSpeaking ? '#C9A84C' : '#008069'}
                 />
-                <Text style={{ marginLeft: 3, color: isSpeaking ? '#C9A84C' : '#075E54', fontSize: 10, fontWeight: '700' }}>
+                <Text style={{ marginLeft: 3, color: isSpeaking ? '#C9A84C' : '#008069', fontSize: 10, fontWeight: '700' }}>
                   {isSpeaking ? 'Stop' : 'Listen'}
                 </Text>
               </Pressable>
@@ -385,7 +487,112 @@ function Bubble({
   );
 }
 
-const TOPICS = ['All', 'Love', 'Career', 'Marriage', 'Money', 'Family', 'Remedies', 'Health'];
+export interface TopicItem {
+  id: string;
+  label: string;
+  emoji: string;
+  promptByLang: Record<string, string>;
+}
+
+export const TOPICS: TopicItem[] = [
+  {
+    id: 'All',
+    label: 'All',
+    emoji: '🌐',
+    promptByLang: {},
+  },
+  {
+    id: 'Remedies',
+    label: 'Remedies',
+    emoji: '🕉️',
+    promptByLang: {
+      Telugu: 'నమస్కారం, నా జన్మ కుండలిని పరిశీలించి గ్రహ దోష నివారణకు తగిన అష్ట పరిహారాలు, నిత్య మంత్రాలు, మరియు రత్న ధారణ పూజా విధానాలు సూచించండి.',
+      Hindi: 'नमस्ते, कृपया मेरी जन्म पत्रिका का विश्लेषण कर ग्रह शांति हेतु अनुकूल वैदिक उपाय (अष्ट परिहार), रत्न, सिद्ध मंत्र एवं दान विधान बताएं।',
+      Tamil: 'வணக்கம், எனது ஜாதகத்தை ஆய்வு செய்து அஷ்ட பரிகாரங்கள், கிரக தோஷ நிவர்த்தி மந்திரங்கள் மற்றும் எளிய பரிகார முறைகளை பரிந்துரைக்கவும்.',
+      Kannada: 'ನಮಸ್ಕಾರ, ನನ್ನ ಜನ್ಮ ಕುಂಡಲಿಯನ್ನು ಪರಿಶೀಲಿಸಿ ಗ್ರಹ ದೋಷ ಶಾಂತಿಗೆ ಸೂಕ್ತ ಅಷ್ಟ ಪರಿಹಾರಗಳು, ಮಂತ್ರಗಳು ಮತ್ತು ದಾನ ವಿಧಾನಗಳನ್ನು ತಿಳಿಸಿ.',
+      Malayalam: 'നമസ്കാരം, എന്റെ ജാതകം പരിശോധിച്ച് ഗ്രഹദോഷ ശാന്തിക്ക് അനുയോജ്യമായ അഷ്ട പരിഹാരങ്ങളും മന്ത്രങ്ങളും നിർദ്ദേശിക്കുക.',
+      English: 'Namaste, please analyze my birth chart and prescribe personalized Vedic remedies (Ashta Parihar, planetary mantras, gemstone, and puja rituals) to pacify afflictions and strengthen benefic planets.',
+    },
+  },
+  {
+    id: 'Career',
+    label: 'Career',
+    emoji: '💼',
+    promptByLang: {
+      Telugu: 'నా జాతకంలో 10వ భావం మరియు ప్రస్తుతం నడుస్తున్న దశ ఆధారంగా ఉద్యోగ మార్పు, ప్రమోషన్ మరియు కెరీర్ పురోగతి ఎలా ఉందో చెప్పండి.',
+      Hindi: 'मेरी कुंडली के 10वें भाव और वर्तमान महादशा के आधार पर करियर उन्नति, पदोन्नति अथवा नौकरी परिवर्तन का शुभ समय बताएं।',
+      Tamil: 'எனது ஜாதகத்தில் 10-ஆம் வீடு மற்றும் தற்போதைய தசா புத்தியின்படி தொழில் வளர்ச்சி, வேலை மாற்றம் எப்போது சாத்தியமாகும்?',
+      Kannada: 'ನನ್ನ ಕುಂಡಲಿಯ 10ನೇ ಸ್ಥಾನ ಮತ್ತು ದಶಾ ಕಾಲದ ಪ್ರಕಾರ ವೃತ್ತಿ ಪ್ರಗತಿ, ಬಡ್ತಿ ಅಥವಾ ಉದ್ಯೋಗ ಬದಲಾವಣೆಗೆ ಸೂಕ್ತ ಸಮಯ ತಿಳಿಸಿ.',
+      Malayalam: 'എന്റെ ജാതകത്തിലെ പത്താം ഭാവം പരിശോധിച്ച് ജോലി മാറ്റം, പ്രമോഷൻ, തൊഴിൽ വളർച്ച എന്നിവയെക്കുറിച്ച് വ്യക്തമാക്കുക.',
+      English: 'Please analyze my 10th house and active planetary dasha for career growth, job change, promotion, and professional milestones.',
+    },
+  },
+  {
+    id: 'Love',
+    label: 'Love',
+    emoji: '❤️',
+    promptByLang: {
+      Telugu: 'నా జాతకంలో 5వ మరియు 7వ స్థానాల ఆధారంగా ప్రేమ సంబంధాలు, అనుకూలత మరియు భవిష్యత్ దాంపత్య జీవితం ఎలా ఉంటుందో విశ్లేషించండి.',
+      Hindi: 'मेरी जन्म कुंडली के 5वें और 7वें भाव के अनुसार प्रेम संबंध, अनुकूलता और भविष्य के रिश्ते की स्थिति का विश्लेषण करें।',
+      Tamil: 'எனது ஜாதகத்தில் 5 மற்றும் 7-ஆம் வீடுகளின் அடிப்படையில் காதல் உறவு, ஒற்றுமை மற்றும் எதிர்காலம் குறித்து விளக்கவும்.',
+      Kannada: 'ನನ್ನ ಜನ್ಮ ಕುಂಡಲಿಯ 5 ಮತ್ತು 7ನೇ ಸ್ಥಾನಗಳ ಪ್ರಕಾರ ಪ್ರೇಮ ಸಂಬಂಧಗಳು, ಹೊಂದಾಣಿಕೆ ಮತ್ತು ಭವಿಷ್ಯದ ಬಗ್ಗೆ ವಿಶ್ಲೇಷಿಸಿ.',
+      Malayalam: 'എന്റെ ജാതകത്തിലെ 5, 7 ഭാവങ്ങളുടെ അടിസ്ഥാനത്തിൽ പ്രണയ ബന്ധങ്ങളും അനുയോജ്യതയും വിശകലനം ചെയ്യുക.',
+      English: 'Please analyze my 5th and 7th houses for love life, relationship compatibility, emotional harmony, and romantic prospects.',
+    },
+  },
+  {
+    id: 'Marriage',
+    label: 'Marriage',
+    emoji: '💍',
+    promptByLang: {
+      Telugu: 'నా జాతకంలో వివాహ యోగం ఎప్పుడు ఉంది? 7వ స్థానం ప్రకారం నా జీవిత భాగస్వామి స్వభావం మరియు వైవాహిక జీవితం ఎలా ఉంటుంది?',
+      Hindi: 'मेरी कुंडली में विवाह का शुभ योग कब बनेगा? 7वें भाव के अनुसार जीवनसाथी का स्वरूप एवं दांपत्य जीवन कैसा रहेगा?',
+      Tamil: 'எனக்கு திருமண யோகம் எப்போது கூடிவரும்? 7-ஆம் பாவத்தின்படி எனது வாழ்க்கை துணைவர் மற்றும் இல்லற வாழ்க்கை எவ்வாறு அமையும்?',
+      Kannada: 'ನನ್ನ ಜಾತಕದಲ್ಲಿ ವಿವಾಹ ಯೋಗ ಯಾವಾಗ ಬರುತ್ತದೆ? 7ನೇ ಸ್ಥಾನದ ಪ್ರಕಾರ ನನ್ನ ಜೀವನ ಸಂಗಾತಿ ಮತ್ತು ದಾಂಪತ್ಯ ಜೀವನ ಹೇಗಿರುತ್ತದೆ?',
+      Malayalam: 'എനിക്ക് വിവാഹ യോഗം എപ്പോഴാണ്? ഏഴാം ഭാവം അനുസരിച്ച് എന്റെ ജീവിത പങ്കാളിയെക്കുറിച്ചും ദാമ്പത്യത്തെക്കുറിച്ചും പറയുക.',
+      English: 'When is the most auspicious timing for my marriage, and what does my 7th house reveal about my future spouse and married life?',
+    },
+  },
+  {
+    id: 'Money',
+    label: 'Money',
+    emoji: '💰',
+    promptByLang: {
+      Telugu: 'నా జాతకంలో 2వ మరియు 11వ ధన స్థానాల ప్రకారం సంపద ప్రాప్తి, ఆర్థిక స్థిరత్వం మరియు పెట్టుబడుల లాభాలు ఎలా ఉన్నాయి?',
+      Hindi: 'मेरी कुंडली के 2वें और 11वें धन भाव के अनुसार आर्थिक स्थिति, धन संचय और निवेश के लिए कौन सा समय सबसे उत्तम रहेगा?',
+      Tamil: 'எனது ஜாதகத்தில் 2 மற்றும் 11-ஆம் வீடுகளின்படி தன யோகம், நிதி நிலைமை மற்றும் முதலீடுகளுக்கான பலன்கள் எவ்வாறு உள்ளன?',
+      Kannada: 'ನನ್ನ ಕುಂಡಲಿಯ 2 ಮತ್ತು 11ನೇ ಸ್ಥಾನಗಳ ಪ್ರಕಾರ ಧನ ಯೋಗ, ಆರ್ಥಿಕ ಸ್ಥಿರತೆ ಮತ್ತು ಹೂಡಿಕೆಗಳ ಬಗ್ಗೆ ತಿಳಿಸಿ.',
+      Malayalam: 'എന്റെ ജാതകത്തിലെ ധന ഭാവങ്ങൾ അനുസരിച്ച് സാമ്പത്തിക സ്ഥിതിയും നിക്ഷേപ നേട്ടങ്ങളും എങ്ങനെയെന്ന് വ്യക്തമാക്കുക.',
+      English: 'Please examine my 2nd and 11th houses of wealth for financial prosperity, debt clearance, and auspicious investment timing.',
+    },
+  },
+  {
+    id: 'Health',
+    label: 'Health',
+    emoji: '🌿',
+    promptByLang: {
+      Telugu: 'నా జాతకంలో 6వ భావం మరియు గ్రహ గోచారం ప్రకారం శారీరక ఆరోగ్యం, రక్షణ మరియు శక్తి వృద్ధికి ఎలాంటి సూచనలు ఉన్నాయి?',
+      Hindi: 'मेरी कुंडली के 6वें भाव और गोचर के अनुसार स्वास्थ्य, रोग मुक्ति एवं दीर्घायु के लिए क्या सावधानियां और उपाय आवश्यक हैं?',
+      Tamil: 'எனது ஜாதகத்தில் 6-ஆம் பாவத்தின்படி உடல் நலம், ஆரோக்கியம் மற்றும் பாதுகாப்புக்கான பரிகார ஆலோசனைகள் என்ன?',
+      Kannada: 'ನನ್ನ ಕುಂಡಲಿಯ 6ನೇ ಸ್ಥಾನ ಮತ್ತು ಗೋಚಾರ ಫಲಗಳ ಪ್ರಕಾರ ಆರೋಗ್ಯ ಸುಧಾರಣೆ ಮತ್ತು ರಕ್ಷಣೆಗೆ ಅಗತ್ಯ ಪರಿಹಾರಗಳನ್ನು ತಿಳಿಸಿ.',
+      Malayalam: 'എന്റെ ജാതകത്തിലെ ആറാം ഭാവം അനുസരിച്ച് ആരോഗ്യ രക്ഷയ്ക്കും ദീർഘായുസ്സിനുമുള്ള നിർദ്ദേശങ്ങൾ നൽകുക.',
+      English: 'Please evaluate my 6th house, Ascendant lord, and active planetary transits for health vitality, wellness, and preventive parihars.',
+    },
+  },
+  {
+    id: 'Family',
+    label: 'Family',
+    emoji: '👨‍👩‍👧',
+    promptByLang: {
+      Telugu: 'నా జాతకంలో 4వ స్థానం ప్రకారం కుటుంబ సామరస్యం, గృహ శాంతి మరియు తల్లిదండ్రుల ఆశీర్వాదం ఎలా ఉంది?',
+      Hindi: 'मेरी कुंडली के 4थे भाव के अनुसार पारिवारिक सुख, गृह शांति और माता-पिता के स्वास्थ्य व स्नेह का मार्गदर्शन करें।',
+      Tamil: 'எனது ஜாதகத்தில் 4-ஆம் வீட்டின்படி குடும்ப அமைதி, மகிழ்ச்சி மற்றும் பெற்றோரின் ஆசிகள் குறித்து விவரிக்கவும்.',
+      Kannada: 'ನನ್ನ ಕುಂಡಲಿಯ 4ನೇ ಸ್ಥಾನದ ಪ್ರಕಾರ ಕುಟುಂಬ ಸಾಮರಸ್ಯ, ಗೃಹ ಶಾಂತಿ ಮತ್ತು ಸುಖ ಸಂತೋಷದ ಬಗ್ಗೆ ಮಾರ್ಗದರ್ಶನ ನೀಡಿ.',
+      Malayalam: 'എന്റെ ജാതകത്തിലെ നാലാം ഭാവം അനുസരിച്ച് കുടുംബ സമാധാനവും ഗൃഹ ശാന്തിയും എങ്ങനെയെന്ന് വിശകലനം ചെയ്യുക.',
+      English: 'Please examine my 4th house for family harmony, domestic happiness, ancestral blessings, and peaceful living environment.',
+    },
+  },
+];
 
 export default function AiChatScreen() {
   const insets = useSafeAreaInsets();
@@ -503,7 +710,7 @@ export default function AiChatScreen() {
       if (res.success) {
         setWalletBalance(res.newBalance);
         setShowRechargeModal(false);
-        showSnackBar(`₹${rechargeAmount} added via ${selectedPaymentMethod}! New balance: ₹${res.newBalance}`, '#075E54');
+        showSnackBar(`₹${rechargeAmount} added via ${selectedPaymentMethod}! New balance: ₹${res.newBalance}`, '#008069');
       } else {
         showSnackBar('Recharge failed. Please try again.', '#CF4444');
       }
@@ -643,14 +850,14 @@ export default function AiChatScreen() {
   };
 
   const currentPlaceholder = PLACEHOLDERS_BY_LANG[selectedLanguage] || PLACEHOLDERS_BY_LANG.English;
-  const listData: Array<ChatMessage | 'typing'> = isTyping ? [...messages, 'typing'] : messages;
+  const listData: (ChatMessage | 'typing')[] = isTyping ? [...messages, 'typing'] : messages;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#EFE7DC' }} testID="aiChat.screen">
       <WhatsAppBackground />
       <KeyboardAvoidingView style={{ flex: 1, paddingTop: insets.top }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {/* Custom Rich Header with Language & Model Selector */}
-        <View style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 8, backgroundColor: '#075E54', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, elevation: 4, zIndex: 2 }}>
+        <View style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 8, backgroundColor: '#008069', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, elevation: 4, zIndex: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Pressable testID="aiChat.back" onPress={onBack} style={{ minWidth: 36, minHeight: 36, alignItems: 'center', justifyContent: 'center' }}>
               <AppIcon name="arrow_back" color="#FFFFFF" size={22} />
@@ -790,37 +997,65 @@ export default function AiChatScreen() {
                 paddingHorizontal: 9,
                 paddingVertical: 4,
                 borderRadius: 12,
-                backgroundColor: withAlpha('#075E54', 15),
+                backgroundColor: withAlpha('#008069', 15),
                 borderWidth: 1,
-                borderColor: '#075E54',
+                borderColor: '#008069',
               }}
             >
-              <Text style={{ color: '#075E54', fontSize: 11, fontWeight: '700' }}>
+              <Text style={{ color: '#008069', fontSize: 11, fontWeight: '700' }}>
                 + Recharge ↗
               </Text>
             </Pressable>
           </View>
         </View>
 
-        {/* Topic Chips */}
-        <View style={{ height: 40, backgroundColor: '#EFE7DC', borderBottomWidth: 1, borderBottomColor: '#E2D9C8' }}>
+        {/* Topic Chips with Remedies in First Position */}
+        <View style={{ height: 42, backgroundColor: '#EFE7DC', borderBottomWidth: 1, borderBottomColor: '#E2D9C8' }}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10, paddingVertical: 5, alignItems: 'center' }}>
-            {TOPICS.map((t) => {
-              const sel = selectedTopic === t;
+            {TOPICS.map((topic) => {
+              const sel = selectedTopic === topic.id;
+              const isRemedies = topic.id === 'Remedies';
               return (
                 <AnimatedPressable
-                  key={t}
-                  testID={`aiChat.topic.${t.toLowerCase()}`}
+                  key={topic.id}
+                  testID={`aiChat.topic.${topic.id.toLowerCase()}`}
                   onPress={() => {
-                    setSelectedTopic(t);
-                    if (t !== 'All') {
-                      sendMessage(`Tell me about my ${t} prospects and astrological remedies.`);
+                    setSelectedTopic(topic.id);
+                    if (topic.id !== 'All') {
+                      const prompt =
+                        topic.promptByLang[selectedLanguage] ||
+                        topic.promptByLang.English ||
+                        `Tell me about my ${topic.label} prospects and astrological remedies.`;
+                      sendMessage(prompt);
                     }
                   }}
                   duration={180}
-                  style={{ marginRight: 8, paddingHorizontal: 14, paddingVertical: 4, borderRadius: 100, backgroundColor: sel ? '#075E54' : '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 2, elevation: 1 }}
+                  style={{
+                    marginRight: 8,
+                    paddingHorizontal: 13,
+                    paddingVertical: 5,
+                    borderRadius: 100,
+                    backgroundColor: sel ? (isRemedies ? '#8B1A1A' : '#008069') : '#FFFFFF',
+                    borderWidth: isRemedies ? 1.5 : 1,
+                    borderColor: isRemedies ? (sel ? '#C9A84C' : '#8B1A1A') : (sel ? '#008069' : '#E2D9C8'),
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    shadowColor: isRemedies ? '#8B1A1A' : '#000',
+                    shadowOpacity: isRemedies ? 0.12 : 0.06,
+                    shadowRadius: 2,
+                    elevation: 1,
+                  }}
                 >
-                  <Text style={{ color: sel ? '#FFFFFF' : '#4A5568', fontSize: 11, fontWeight: sel ? '700' : '500' }}>{t}</Text>
+                  <Text style={{ fontSize: 12, marginRight: 5 }}>{topic.emoji}</Text>
+                  <Text
+                    style={{
+                      color: sel ? '#FFFFFF' : (isRemedies ? '#8B1A1A' : '#4A5568'),
+                      fontSize: 11,
+                      fontWeight: (sel || isRemedies) ? '700' : '600',
+                    }}
+                  >
+                    {topic.label}
+                  </Text>
                 </AnimatedPressable>
               );
             })}
@@ -943,7 +1178,7 @@ export default function AiChatScreen() {
                 marginTop: 7,
                 paddingVertical: 7,
                 borderRadius: 8,
-                backgroundColor: '#075E54',
+                backgroundColor: '#008069',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexDirection: 'row',
@@ -1002,12 +1237,12 @@ export default function AiChatScreen() {
               width: 44,
               height: 44,
               borderRadius: 22,
-              backgroundColor: '#075E54',
+              backgroundColor: '#00A884',
               alignItems: 'center',
               justifyContent: 'center',
               opacity: !isAuth || input.trim().length > 0 || walletBalance < 5 ? 1 : 0.6,
-              shadowColor: '#075E54',
-              shadowOpacity: 0.3,
+              shadowColor: '#00A884',
+              shadowOpacity: 0.35,
               shadowRadius: 4,
               elevation: 2,
             }}

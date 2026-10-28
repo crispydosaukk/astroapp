@@ -10,7 +10,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, useWindowDimensions, View, ActivityIndicator } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, View, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AnimatedBox } from '@/components/AnimatedBox';
@@ -23,7 +24,7 @@ import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, go, push, useExtra } from '@/navigation/routes';
 import { submitConsultationReview } from '@/services/reviewService';
 import { deductWalletBalance, getWalletBalance, subscribeWallet } from '@/services/walletService';
-import { generateZegoRoomId, openAiCallRoom, openZegoCallRoom, ZEGO_CONFIG } from '@/services/zegoService';
+import { generateZegoRoomId, openAiCallRoom, openZegoCallRoom } from '@/services/zegoService';
 import { speakAstrologerText, stopAstrologerSpeech } from '@/services/speechService';
 import { AppColors, argb, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
@@ -154,7 +155,25 @@ export default function ConsultationScreen() {
     clearInterval(timers.current.balance);
     stopAstrologerSpeech();
   };
-  const endCall = () => { stopTimers(); setEnded(true); };
+  const endCall = async () => {
+    stopTimers();
+    setEnded(true);
+    try {
+      const stored = await AsyncStorage.getItem('astroparihar_consultation_history');
+      const list = stored ? JSON.parse(stored) : [];
+      const record = {
+        id: `call_${Date.now()}`,
+        astrologerName: astro.name,
+        type: isVideo ? 'Video Call' : 'Voice Call',
+        date: 'Today',
+        duration: fmt(secondsRef.current),
+        amount: totalCharged,
+        avatar: astro.imageUrl,
+        roomID,
+      };
+      await AsyncStorage.setItem('astroparihar_consultation_history', JSON.stringify([record, ...list]));
+    } catch {}
+  };
 
   // 1. Initial wallet subscription & real-time sync
   useEffect(() => {

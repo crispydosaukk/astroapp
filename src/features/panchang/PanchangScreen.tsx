@@ -17,6 +17,7 @@ import { Text } from '@/components/Text';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 import { fetchLivePanchang, PanchangLiveResult } from '@/services/astrologyService';
+import { useAuthStore } from '@/features/auth/authStore';
 
 const PANCHANG = [
   { label: 'Tithi', value: 'Chaturdashi (14th)', sub: 'Krishna Paksha', icon: 'nights_stay_outlined', color: '#9370DB' },
@@ -60,19 +61,21 @@ export default function PanchangScreen() {
   const [dateOffset, setDateOffset] = useState(0);
   const [w, setW] = useState(Dimensions.get('window').width - 40);
   const [panchangData, setPanchangData] = useState<PanchangLiveResult | null>(null);
-  const [locationName, setLocationName] = useState('New Delhi, India');
+  const authUser = useAuthStore((s) => s.user);
+  const [locationName, setLocationName] = useState(authUser?.pob || 'New Delhi, India');
 
   useEffect(() => {
     let isMounted = true;
     const load = async () => {
       try {
         const loc = await AsyncStorage.getItem('astroparihar_user_location');
-        if (loc && isMounted) setLocationName(loc);
+        const effectiveLoc = loc || authUser?.pob || 'New Delhi, India';
+        if (isMounted) setLocationName(effectiveLoc);
         const yyyy = selectedDate.getFullYear();
         const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
         const dd = String(selectedDate.getDate()).padStart(2, '0');
         const dateStr = `${yyyy}-${mm}-${dd}`;
-        const data = await fetchLivePanchang(dateStr, loc || 'New Delhi, India');
+        const data = await fetchLivePanchang(dateStr, effectiveLoc);
         if (isMounted) setPanchangData(data);
       } catch (err) {
         console.warn('Failed to load panchang:', err);
@@ -80,7 +83,7 @@ export default function PanchangScreen() {
     };
     load();
     return () => { isMounted = false; };
-  }, [selectedDate]);
+  }, [selectedDate, authUser?.pob]);
 
   const dateLabel =
     dateOffset === 0 ? 'Today' : dateOffset === -1 ? 'Yesterday' : dateOffset === 1 ? 'Tomorrow'

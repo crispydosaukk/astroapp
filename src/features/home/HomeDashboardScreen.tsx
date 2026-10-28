@@ -484,8 +484,14 @@ function HoroscopeCards() {
       push(AppRoutes.signInScreen);
       return;
     }
+    const userDetailTag = [
+      authUser?.name ? `for ${authUser.name}` : '',
+      authUser?.dob ? `(Born: ${authUser.dob}${authUser.tob ? ` at ${authUser.tob}` : ''}${authUser.pob ? ` in ${authUser.pob}` : ''})` : '',
+      authUser?.zodiac ? `[Sign: ${authUser.zodiac}]` : '',
+    ].filter(Boolean).join(' ');
+
     push(AppRoutes.aiChatScreen, {
-      initialPrompt: `Namaste 🙏 Please analyze my ${cat.label} horoscope for today based on my birth chart and current planetary transits. What guidance and parihar do you recommend?`,
+      initialPrompt: `Namaste 🙏 Please analyze my ${cat.label} horoscope for today ${userDetailTag} based on my birth chart and current planetary transits. What guidance and parihar do you recommend?`,
     });
   };
 
@@ -1412,10 +1418,10 @@ function PromotionsOffersSection({ refreshKey }: { refreshKey?: number }) {
                       alignItems: 'center',
                     }}
                   >
-                    <Text style={{ color: promo.btnText, fontSize: 11, fontWeight: '800' }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>
                       {promo.btnLabel}
                     </Text>
-                    <AppIcon name="arrow_forward" color={promo.btnText} size={12} style={{ marginLeft: 4 }} />
+                    <AppIcon name="arrow_forward" color="#FFFFFF" size={12} style={{ marginLeft: 4 }} />
                   </Pressable>
                 </View>
               </LinearGradient>
@@ -1503,8 +1509,8 @@ function StickyHomeCTAs() {
             elevation: 2,
           }}
         >
-          <AppIcon name="call_rounded" color="#080D1A" size={16} />
-          <Text style={{ marginLeft: 6, color: '#080D1A', fontSize: 12.5, fontWeight: '800' }}>
+          <AppIcon name="call_rounded" color="#FFFFFF" size={16} />
+          <Text style={{ marginLeft: 6, color: '#FFFFFF', fontSize: 12.5, fontWeight: '800' }}>
             Call Astrologer
           </Text>
         </Pressable>

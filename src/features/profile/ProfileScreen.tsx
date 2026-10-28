@@ -30,9 +30,11 @@ type MenuItem = { icon: string; labelKey: string; defaultLabel: string; route: s
 
 const MY_ASTROLOGY: MenuItem[] = [
   { icon: 'auto_stories', labelKey: 'profile.myKundli', defaultLabel: 'My Kundli', route: AppRoutes.myKundliScreen, color: '#9370DB', id: 'myKundli' },
+  { icon: 'auto_awesome', labelKey: 'profile.myRemedies', defaultLabel: 'My Remedies (अष्ट परिहार)', route: AppRoutes.remediesScreen, color: '#C9A84C', id: 'myRemedies' },
   { icon: 'person_outline_rounded', labelKey: 'profile.birthProfiles', defaultLabel: 'Birth Profiles', route: AppRoutes.birthProfilesScreen, color: '#4FC3F7', id: 'birthProfiles' },
-  { icon: 'description_outlined', labelKey: 'profile.kundliReports', defaultLabel: 'Kundli Reports', route: AppRoutes.kundliReportsScreen, color: '#FFD700', id: 'kundliReports' },
+  { icon: 'description_outlined', labelKey: 'profile.kundliReports', defaultLabel: 'Kundli & Service Reports', route: AppRoutes.kundliReportsScreen, color: '#FFD700', id: 'kundliReports' },
   { icon: 'favorite_border', labelKey: 'profile.matchReports', defaultLabel: 'Match Reports', route: AppRoutes.matchReportsScreen, color: '#FF6B6B', id: 'matchReports' },
+  { icon: 'calendar_today_outlined', labelKey: 'profile.panchangReports', defaultLabel: 'Panchang & Muhurat', route: AppRoutes.panchangScreen, color: '#4FC3F7', id: 'panchangReports' },
   { icon: 'star_outline', labelKey: 'profile.savedAstrologers', defaultLabel: 'Saved Astrologers', route: AppRoutes.savedAstrologersScreen, color: '#FFB347', id: 'savedAstrologers' },
   { icon: 'history', labelKey: 'profile.consultationHistory', defaultLabel: 'Consultation History', route: AppRoutes.consultationHistoryScreen, color: '#81C784', id: 'consultationHistory' },
 ];
@@ -199,6 +201,8 @@ export default function ProfileScreen() {
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [reportCount, setReportCount] = useState(4);
+  const [consultationCount, setConsultationCount] = useState(2);
   const [profileData, setProfileData] = useState({
     name: currentUserName,
     email: isAuth ? (authUser?.phone ? `${authUser.phone}` : authUser?.email || 'Registered User') : 'Sign in to sync your profile',
@@ -313,6 +317,23 @@ export default function ProfileScreen() {
         moonSymbol,
         nakshatra,
       });
+
+      // Load dynamic report & consultation counts
+      try {
+        const storedReports = await AsyncStorage.getItem('astroparihar_kundli_reports');
+        if (storedReports) {
+          const parsed = JSON.parse(storedReports);
+          if (Array.isArray(parsed)) setReportCount(parsed.length);
+        }
+      } catch {}
+
+      try {
+        const storedHist = await AsyncStorage.getItem('astroparihar_consultation_history');
+        if (storedHist) {
+          const parsed = JSON.parse(storedHist);
+          if (Array.isArray(parsed)) setConsultationCount(parsed.length);
+        }
+      } catch {}
     } catch {}
   };
 
@@ -495,9 +516,13 @@ export default function ProfileScreen() {
 
           {/* Quick Stats */}
           <View style={{ marginTop: 18, flexDirection: 'row', alignItems: 'center' }}>
-            <ProfileStat label={t('profile.consultations', 'Consultations')} value={isAuth ? '2' : '0'} colors={colors} />
+            <Pressable onPress={() => push(isAuth ? AppRoutes.consultationHistoryScreen : AppRoutes.signInScreen)}>
+              <ProfileStat label={t('profile.consultations', 'Consultations')} value={isAuth ? String(consultationCount) : '0'} colors={colors} />
+            </Pressable>
             <View style={{ height: 30, width: 1, marginHorizontal: 20, backgroundColor: colors.divider }} />
-            <ProfileStat label={t('profile.reports', 'Reports')} value={isAuth ? '1' : '0'} colors={colors} />
+            <Pressable onPress={() => push(isAuth ? AppRoutes.kundliReportsScreen : AppRoutes.signInScreen)}>
+              <ProfileStat label={t('profile.reports', 'Reports')} value={isAuth ? String(reportCount) : '0'} colors={colors} />
+            </Pressable>
             <View style={{ height: 30, width: 1, marginHorizontal: 20, backgroundColor: colors.divider }} />
             <Pressable onPress={() => push(isAuth ? AppRoutes.walletScreen : AppRoutes.signInScreen)}>
               <ProfileStat label={t('profile.wallet', 'Wallet')} value={isAuth ? `₹${walletBalance}` : '₹0'} colors={colors} />

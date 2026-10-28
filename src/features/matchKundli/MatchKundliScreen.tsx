@@ -56,22 +56,51 @@ function StaticField({ label, value, icon, style }: { label: string; value: stri
   );
 }
 
-function PersonCard({ title, name, setName, emoji, color, testID }: { title: string; name: string; setName: (s: string) => void; emoji: string; color: string; testID: string }) {
+function PersonCard({
+  title,
+  name,
+  setName,
+  emoji,
+  color,
+  testID,
+  dob = '15 Mar 1992',
+  tob = '10:30 AM',
+  pob = 'New Delhi, India',
+  badge,
+}: {
+  title: string;
+  name: string;
+  setName: (s: string) => void;
+  emoji: string;
+  color: string;
+  testID: string;
+  dob?: string;
+  tob?: string;
+  pob?: string;
+  badge?: string;
+}) {
   const colors = useThemeColors();
   return (
     <View style={{ marginHorizontal: 20, padding: 20, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(color, colors.isLight ? 70 : 80) }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Text style={{ fontSize: 20 }}>{emoji}</Text>
-        <Text style={{ marginLeft: 8, color, fontSize: 15, fontWeight: '700' }}>{title}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={{ fontSize: 20 }}>{emoji}</Text>
+          <Text style={{ marginLeft: 8, color, fontSize: 15, fontWeight: '700' }}>{title}</Text>
+        </View>
+        {badge ? (
+          <View style={{ backgroundColor: withAlpha(color, 25), paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, borderColor: withAlpha(color, 80) }}>
+            <Text style={{ color, fontSize: 10, fontWeight: '700' }}>{badge}</Text>
+          </View>
+        ) : null}
       </View>
       <View style={{ height: 16 }} />
       <OutlinedField testID={testID} label="Full Name" icon="person_outline" value={name} onChangeText={setName} />
       <View style={{ marginTop: 12, flexDirection: 'row' }}>
-        <StaticField label="Date of Birth" value="15 Mar 1992" icon="calendar_today_outlined" style={{ flex: 1 }} />
+        <StaticField label="Date of Birth" value={dob} icon="calendar_today_outlined" style={{ flex: 1 }} />
         <View style={{ width: 12 }} />
-        <StaticField label="Time" value="10:30 AM" icon="access_time_outlined" style={{ flex: 1 }} />
+        <StaticField label="Time" value={tob} icon="access_time_outlined" style={{ flex: 1 }} />
       </View>
-      <StaticField label="Birth Place" value="New Delhi, India" icon="location_on_outlined" style={{ marginTop: 12 }} />
+      <StaticField label="Birth Place" value={pob} icon="location_on_outlined" style={{ marginTop: 12 }} />
     </View>
   );
 }
@@ -106,12 +135,22 @@ export default function MatchKundliScreen() {
   const [p2, setP2] = useState('Partner');
   const scoreCtl = useController({ duration: 1500 });
 
+  useEffect(() => {
+    if (authUser?.name) {
+      setP1(authUser.name);
+    }
+  }, [authUser?.name]);
+
+  const p1Dob = authUser?.dob || '15 Mar 1992';
+  const p1Tob = authUser?.tob || '10:30 AM';
+  const p1Pob = authUser?.pob || 'New Delhi, India';
+
   const calculate = async () => {
     setIsCalculating(true);
     try {
       const res = await calculateLiveKundliMatch(
         { name: p2, dob: '1994-05-12', tob: '10:30 AM', pob: 'New Delhi, India' },
-        { name: p1, dob: '1996-08-20', tob: '09:15 AM', pob: 'New Delhi, India' }
+        { name: p1, dob: p1Dob, tob: p1Tob, pob: p1Pob }
       );
       setMatchResult(res);
     } catch {
@@ -162,11 +201,32 @@ export default function MatchKundliScreen() {
               <Text style={{ marginTop: 12, color: colors.textPrimary, fontSize: 22, fontWeight: '700', textAlign: 'center' }}>Match Your Kundli</Text>
               <Text style={{ marginTop: 8, color: colors.textSecondary, textAlign: 'center', ...lh(13, 1.5) }}>Discover compatibility using traditional Vedic astrology and the ancient science of Guna Milan.</Text>
             </LinearGradient>
-            <PersonCard testID="matchKundli.p1Name" title="Person 1 (Bride)" name={p1} setName={setP1} emoji="👰" color="#FF6B6B" />
+            <PersonCard
+              testID="matchKundli.p1Name"
+              title={authUser?.name ? `${authUser.name} (You)` : 'Person 1 (Self)'}
+              name={p1}
+              setName={setP1}
+              emoji="👰"
+              color="#FF6B6B"
+              dob={p1Dob}
+              tob={p1Tob}
+              pob={p1Pob}
+              badge={authUser ? 'Auto-Fetched' : undefined}
+            />
             <View style={{ alignSelf: 'center', marginVertical: 12, width: 40, height: 40, borderRadius: 20, backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 30), borderWidth: 1, borderColor: colors.cardBorder, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 18 }}>💞</Text>
             </View>
-            <PersonCard testID="matchKundli.p2Name" title="Person 2 (Groom)" name={p2} setName={setP2} emoji="🤵" color="#4FC3F7" />
+            <PersonCard
+              testID="matchKundli.p2Name"
+              title="Person 2 (Partner)"
+              name={p2}
+              setName={setP2}
+              emoji="🤵"
+              color="#4FC3F7"
+              dob="12 May 1994"
+              tob="10:30 AM"
+              pob="New Delhi, India"
+            />
             <View style={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8 }}>
               {isCalculating ? (
                 <View testID="matchKundli.calculating" style={{ borderRadius: 16, paddingVertical: 16, backgroundColor: withAlpha(colors.textPrimary, 25), flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>

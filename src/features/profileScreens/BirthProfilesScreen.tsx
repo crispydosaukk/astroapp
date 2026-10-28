@@ -98,7 +98,26 @@ export default function BirthProfilesScreen() {
     try {
       const stored = await AsyncStorage.getItem(userStorageKey);
       if (stored) {
-        setProfiles(JSON.parse(stored));
+        const parsed: BirthProfile[] = JSON.parse(stored);
+        if (authUser) {
+          const synced = parsed.map((p) => {
+            if (p.type === 'Myself' || p.active) {
+              return {
+                ...p,
+                name: authUser.name?.trim() || p.name,
+                dob: authUser.dob || p.dob,
+                time: authUser.tob || p.time,
+                place: authUser.pob || p.place,
+                sign: authUser.zodiac || p.sign,
+                nakshatra: authUser.nakshatra || p.nakshatra,
+              };
+            }
+            return p;
+          });
+          setProfiles(synced);
+        } else {
+          setProfiles(parsed);
+        }
       } else {
         const initialProfiles: BirthProfile[] = [
           {
@@ -109,8 +128,8 @@ export default function BirthProfilesScreen() {
             time: authUser?.tob || 'Not specified',
             place: authUser?.pob || 'Not specified',
             zodiac: '♏',
-            sign: 'Scorpio',
-            nakshatra: 'Pushya',
+            sign: authUser?.zodiac || 'Scorpio',
+            nakshatra: authUser?.nakshatra || 'Pushya',
             emoji: '🔮',
             color: '#9370DB',
             active: true,

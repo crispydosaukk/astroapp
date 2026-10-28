@@ -9,9 +9,10 @@
  * SOURCE_INERT: "Get Report" buttons on Astrology Reports.
  */
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuthStore } from '@/features/auth/authStore';
 import { AnimatedPressable } from '@/components/AnimatedBox';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
@@ -21,7 +22,6 @@ import { lh, Text, TextInput } from '@/components/Text';
 import { AppRoutes, pop, push } from '@/navigation/routes';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
-import { SOURCE_INERT } from '@/utils/sourceInert';
 
 /* ------------------------------------------------------------- shared */
 function ServiceHeroCard({ title, subtitle, imageUrl, semanticLabel, accent, icon }: { title: string; subtitle: string; imageUrl: string; semanticLabel: string; accent: string; icon: string }) {
@@ -374,11 +374,32 @@ function NumField({ label, icon, value, onChange, accent, testID }: { label: str
 
 export function NumerologyScreen() {
   const colors = useThemeColors();
+  const authUser = useAuthStore((s) => s.user);
   const a = '#FFB347';
-  const [name, setName] = useState('');
-  const [dob, setDob] = useState('');
-  const [lifePath, setLifePath] = useState<number | null>(null);
-  const [destiny, setDestiny] = useState<number | null>(null);
+  const [name, setName] = useState(authUser?.name || '');
+  const [dob, setDob] = useState(authUser?.dob || '');
+  const [lifePath, setLifePath] = useState<number | null>(() => {
+    return authUser?.dob ? calcLifePath(authUser.dob) : null;
+  });
+  const [destiny, setDestiny] = useState<number | null>(() => {
+    return authUser?.name ? calcDestiny(authUser.name) : null;
+  });
+
+  useEffect(() => {
+    if (authUser) {
+      if (authUser.name && !name) {
+        setName(authUser.name);
+        const d = calcDestiny(authUser.name);
+        if (d != null) setDestiny(d);
+      }
+      if (authUser.dob && !dob) {
+        setDob(authUser.dob);
+        const lp = calcLifePath(authUser.dob);
+        if (lp != null) setLifePath(lp);
+      }
+    }
+  }, [authUser]);
+
   const calculate = () => {
     const lp = calcLifePath(dob);
     if (lp != null) setLifePath(lp); // source only updates when ≥ 8 digits (keeps previous value otherwise)
@@ -543,7 +564,7 @@ export function AstrologyReportsScreen() {
           <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ color: colors.goldAccent, fontSize: 20, fontWeight: '800' }}>{`₹${r.price}`}</Text>
             <Text style={{ marginLeft: 4, flex: 1, color: colors.textMuted, fontSize: 11 }}>one-time</Text>
-            <Pressable testID={`astrologyReports.getReport.${i}`} onPress={SOURCE_INERT('astrologyReports.getReport')} style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: r.color }}>
+            <Pressable testID={`astrologyReports.getReport.${i}`} onPress={() => push(AppRoutes.kundliReportsScreen)} style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: r.color }}>
               <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}>Get Report</Text>
             </Pressable>
           </View>

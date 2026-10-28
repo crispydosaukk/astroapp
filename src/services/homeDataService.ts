@@ -244,7 +244,7 @@ export interface DynamicPromotion {
   imageUrl?: string;
 }
 
-const STORAGE_PROMOTIONS_KEY = 'astroparihar_promotions_cache';
+const STORAGE_PROMOTIONS_KEY = 'astroparihar_promotions_v2';
 
 export const DEFAULT_DYNAMIC_PROMOTIONS: DynamicPromotion[] = [
   {
@@ -257,7 +257,7 @@ export const DEFAULT_DYNAMIC_PROMOTIONS: DynamicPromotion[] = [
     gradientColors: ['#552B24', '#351B17'],
     borderColor: '#713B32',
     btnBg: '#C9A84C',
-    btnText: '#080D1A',
+    btnText: '#FFFFFF',
     btnLabel: 'Claim 50% Off',
     route: '/live-astrologers-screen',
     icon: 'local_offer',
@@ -273,7 +273,7 @@ export const DEFAULT_DYNAMIC_PROMOTIONS: DynamicPromotion[] = [
     gradientColors: ['#0A1D37', '#06101E'],
     borderColor: '#4FC3F7',
     btnBg: '#4FC3F7',
-    btnText: '#080D1A',
+    btnText: '#FFFFFF',
     btnLabel: 'Get Free Report',
     route: '/kundli-reports-screen',
     icon: 'auto_stories',
@@ -289,7 +289,7 @@ export const DEFAULT_DYNAMIC_PROMOTIONS: DynamicPromotion[] = [
     gradientColors: ['#2E1805', '#140A00'],
     borderColor: '#FFB347',
     btnBg: '#FFB347',
-    btnText: '#080D1A',
+    btnText: '#FFFFFF',
     btnLabel: 'Explore Parihar',
     route: '/remedies-screen',
     icon: 'local_fire_department',
@@ -325,10 +325,10 @@ export async function getDynamicPromotions(): Promise<DynamicPromotion[]> {
           const activeBanners = data.banners.filter((b: any) => b.active !== false);
 
           const palettes: Array<{ gradient: [string, string]; border: string; btnBg: string; btnText: string; icon: string }> = [
-            { gradient: ['#552B24', '#351B17'], border: '#713B32', btnBg: '#C9A84C', btnText: '#080D1A', icon: 'local_offer' },
-            { gradient: ['#0A1D37', '#06101E'], border: '#4FC3F7', btnBg: '#4FC3F7', btnText: '#080D1A', icon: 'auto_stories' },
-            { gradient: ['#2E1805', '#140A00'], border: '#FFB347', btnBg: '#FFB347', btnText: '#080D1A', icon: 'local_fire_department' },
-            { gradient: ['#1B0F2E', '#0D0518'], border: '#9370DB', btnBg: '#9370DB', btnText: '#080D1A', icon: 'stars' },
+            { gradient: ['#552B24', '#351B17'], border: '#713B32', btnBg: '#C9A84C', btnText: '#FFFFFF', icon: 'local_offer' },
+            { gradient: ['#0A1D37', '#06101E'], border: '#4FC3F7', btnBg: '#4FC3F7', btnText: '#FFFFFF', icon: 'auto_stories' },
+            { gradient: ['#2E1805', '#140A00'], border: '#FFB347', btnBg: '#FFB347', btnText: '#FFFFFF', icon: 'local_fire_department' },
+            { gradient: ['#1B0F2E', '#0D0518'], border: '#9370DB', btnBg: '#9370DB', btnText: '#FFFFFF', icon: 'stars' },
           ];
 
           const mapped: DynamicPromotion[] = activeBanners.map((b: any, idx: number) => {

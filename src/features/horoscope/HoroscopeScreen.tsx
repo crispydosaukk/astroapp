@@ -17,6 +17,7 @@ import { AppRoutes, pop, push } from '@/navigation/routes';
 import { argb, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 import { fetchLiveHoroscopes } from '@/services/astrologyService';
+import { useAuthStore } from '@/features/auth/authStore';
 
 export const ZODIACS = [
   { sign: 'Aries', symbol: '♈', emoji: '🐏', dates: 'Mar 21 – Apr 19', element: 'Fire' },
@@ -131,11 +132,27 @@ function LuckyItem({ label, value, emoji }: { label: string; value: string; emoj
 export default function HoroscopeScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const authUser = useAuthStore((s) => s.user);
   const [dateOffset, setDateOffset] = useState(0);
-  const [zodiac, setZodiac] = useState('Aries');
+  const [zodiac, setZodiac] = useState(() => {
+    if (authUser?.zodiac) {
+      const match = ZODIACS.find((z) => z.sign.toLowerCase() === authUser.zodiac?.toLowerCase());
+      if (match) return match.sign;
+    }
+    return 'Aries';
+  });
   const [liveData, setLiveData] = useState<Record<string, HoroscopeData>>({});
   const fade = useSharedValue(0);
   const pending = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (authUser?.zodiac) {
+      const match = ZODIACS.find((z) => z.sign.toLowerCase() === authUser.zodiac?.toLowerCase());
+      if (match) {
+        setZodiac(match.sign);
+      }
+    }
+  }, [authUser?.zodiac]);
 
   useEffect(() => {
     let isMounted = true;
@@ -192,11 +209,15 @@ export default function HoroscopeScreen() {
         </Pressable>
         <View style={{ flex: 1, marginLeft: 14 }}>
           <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800' }}>Daily Horoscope</Text>
-          <Text style={{ color: colors.isLight ? '#5A6A85' : '#6B7A99', fontSize: 12 }}>Personalised cosmic guidance</Text>
+          <Text style={{ color: colors.isLight ? '#5A6A85' : '#6B7A99', fontSize: 12 }}>
+            {authUser?.name ? `Personalised for ${authUser.name}` : 'Personalised cosmic guidance'}
+          </Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 100, backgroundColor: colors.isLight ? '#FFF8EE' : argb('1AC9A84C'), borderWidth: 1, borderColor: colors.goldAccent }}>
           <Text style={{ fontSize: 12 }}>✨</Text>
-          <Text style={{ marginLeft: 4, color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 11, fontWeight: '700' }}>Vedic</Text>
+          <Text style={{ marginLeft: 4, color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 11, fontWeight: '700' }}>
+            {authUser?.zodiac ? authUser.zodiac : 'Vedic'}
+          </Text>
         </View>
       </View>
 

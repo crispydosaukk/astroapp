@@ -550,8 +550,22 @@ export async function sendLiveAIChatMessage(params: {
   let effectiveUserInfo = params.userInfo;
   if (!effectiveUserInfo?.dob) {
     try {
-      const stored = await AsyncStorage.getItem('astroparihar_user_birth_details');
-      if (stored) effectiveUserInfo = JSON.parse(stored);
+      const authUser = useAuthStore.getState().user;
+      if (authUser?.dob) {
+        effectiveUserInfo = {
+          name: authUser.name || 'Seeker',
+          dob: authUser.dob,
+          tob: authUser.tob || '12:00 PM',
+          pob: authUser.pob || 'New Delhi, India',
+          gender: authUser.gender || 'Male',
+          zodiac: authUser.zodiac,
+          moonSign: authUser.moonSign,
+          nakshatra: authUser.nakshatra,
+        };
+      } else {
+        const stored = await AsyncStorage.getItem('astroparihar_user_birth_details');
+        if (stored) effectiveUserInfo = JSON.parse(stored);
+      }
     } catch {}
   }
 
@@ -591,7 +605,7 @@ export async function sendLiveAIChatMessage(params: {
   }
 
   // Graceful multi-lingual fallback
-  const latestQuery = params.messages[params.messages.length - 1]?.content || '';
+  const _latestQuery = params.messages[params.messages.length - 1]?.content || '';
   const dasha = 'Jupiter';
   const antardasha = 'Saturn';
   const lagna = 'Scorpio';

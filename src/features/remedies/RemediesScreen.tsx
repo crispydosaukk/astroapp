@@ -32,6 +32,7 @@ export const openRemedy = (r: Remedy) => push(AppRoutes.remedyDetailScreen, r);
 export default function RemediesScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const authUser = useAuthStore((s) => s.user);
   const pulse = useSharedValue(0.95);
   const wheel = useSharedValue(0);
   const [w, setW] = useState(Dimensions.get('window').width - 40);
@@ -102,6 +103,14 @@ export default function RemediesScreen() {
           <Text style={{ marginTop: 16, color: colors.textPrimary, fontSize: 22, fontWeight: '800', textAlign: 'center' }}>
             Sacred Vedic Remedies
           </Text>
+          {authUser?.name ? (
+            <View style={{ marginTop: 8, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 100, backgroundColor: withAlpha(colors.goldAccent, 25), borderWidth: 1, borderColor: withAlpha(colors.goldAccent, 80), flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ fontSize: 11 }}>🪷</Text>
+              <Text style={{ marginLeft: 6, color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
+                {`Personalised for ${authUser.name}${authUser.zodiac ? ` • ${authUser.zodiac}` : ''}`}
+              </Text>
+            </View>
+          ) : null}
           <Text style={{ marginTop: 8, color: colors.textSecondary, textAlign: 'center', ...lh(13, 1.5) }}>
             Personalised remedies aligned with your birth chart and planetary influences. Ancient wisdom for modern transformation.
           </Text>
@@ -191,6 +200,144 @@ export default function RemediesScreen() {
             ))}
           </View>
         </View>
+
+        {/* Comprehensive Vedic Remedies Principles & Knowledge Section */}
+        <View style={{ marginHorizontal: 20, marginTop: 24, marginBottom: 12 }}>
+          <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>
+            Sacred Ashta Parihar Principles
+          </Text>
+          <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
+            Ancient Vedic sciences for mitigating planetary doshas & karmic debts
+          </Text>
+
+          {/* Principle 1: Ashta-Digbandhana */}
+          <View
+            style={{
+              marginTop: 14,
+              padding: 16,
+              borderRadius: 18,
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.cardBorder,
+              shadowColor: '#000',
+              shadowOpacity: colors.isLight ? 0.03 : 0.15,
+              shadowRadius: 6,
+              elevation: 2,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <View
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 25 : 35),
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 10,
+                }}
+              >
+                <Text style={{ fontSize: 16 }}>🛡️</Text>
+              </View>
+              <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700', flex: 1 }}>
+                The 8-Fold Shield (Ashta-Digbandhana)
+              </Text>
+            </View>
+            <Text style={{ color: colors.textSecondary, fontSize: 12.5, lineHeight: 18 }}>
+              Each of the 8 directions is governed by an Ashta-Dikpala and corresponding planetary vibrations. By harmonizing Mantras (North), Yantras (North-East), Homa (East), Upasana (South-East), Ratna (South), Rudraksha (South-West), Vastu (West), and Dāna (North-West), a protective spiritual shield is established around your auric field.
+            </Text>
+          </View>
+
+          {/* Principle 2: Sādhana & Timing Rules */}
+          <View
+            style={{
+              marginTop: 12,
+              padding: 16,
+              borderRadius: 18,
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.cardBorder,
+              shadowColor: '#000',
+              shadowOpacity: colors.isLight ? 0.03 : 0.15,
+              shadowRadius: 6,
+              elevation: 2,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <View
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  backgroundColor: withAlpha('#81C784', colors.isLight ? 25 : 35),
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 10,
+                }}
+              >
+                <Text style={{ fontSize: 16 }}>🪔</Text>
+              </View>
+              <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700', flex: 1 }}>
+                Rules of Effective Remedy Practice
+              </Text>
+            </View>
+            <View style={{ gap: 6, marginTop: 4 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                • <Text style={{ fontWeight: '700', color: colors.textPrimary }}>Brahma Muhurta:</Text> Chanting & meditation between 4:00 AM – 6:00 AM yields 100x spiritual efficacy.
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                • <Text style={{ fontWeight: '700', color: colors.textPrimary }}>Sattvic Mindset:</Text> Maintain dietary purity and observe non-violence during remedy cycles.
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                • <Text style={{ fontWeight: '700', color: colors.textPrimary }}>Sankalpa:</Text> Clear, heartfelt intention dedicated to the divine ensures karmic dissipation.
+              </Text>
+            </View>
+          </View>
+
+          {/* Quick Consultation CTA */}
+          <LinearGradient
+            colors={
+              colors.isLight
+                ? ['#FFFDF9', '#F9F5EC']
+                : [withAlpha('#713B32', 40), colors.surfaceVariant]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              marginTop: 14,
+              padding: 16,
+              borderRadius: 18,
+              borderWidth: 1.5,
+              borderColor: colors.goldAccent,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '800' }}>
+                Need Custom Prescription?
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 11.5, marginTop: 2 }}>
+                Get an astrologer to analyze your Mahadasha, Dasha Sandhi & doshas.
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => push(AppRoutes.liveAstrologersScreen)}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 9,
+                borderRadius: 100,
+                backgroundColor: '#713B32',
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>
+                Consult Now
+              </Text>
+            </Pressable>
+          </LinearGradient>
+        </View>
+
         <View style={{ height: Math.max(140, insets.bottom + 80) }} />
       </ScrollView>
     </View>

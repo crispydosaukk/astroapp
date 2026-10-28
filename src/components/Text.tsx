@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { AppColors } from '@/theme/colors';
 import { ralewayFamily } from '@/theme/fonts';
+import { useLanguageStore } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
 
 function resolve(style: TextProps['style']): TextStyle {
@@ -18,8 +19,20 @@ function resolve(style: TextProps['style']): TextStyle {
   return { ...rest, fontFamily: fontFamily ?? ralewayFamily(fontWeight as string | undefined) };
 }
 
-export function Text({ style, ...props }: TextProps) {
+function translateNode(node: React.ReactNode, translate: (t: string) => string): React.ReactNode {
+  if (typeof node === 'string') {
+    return translate(node);
+  }
+  if (Array.isArray(node)) {
+    return React.Children.map(node, (child) => translateNode(child, translate));
+  }
+  return node;
+}
+
+export function Text({ style, children, ...props }: TextProps) {
   const { textPrimary, textSecondary, textMuted } = useThemeColors();
+  const selectedLanguage = useLanguageStore((s) => s.selectedLanguage);
+  const translateText = useLanguageStore((s) => s.translateText);
   const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
 
   let resolvedColor = flat.color;
@@ -31,17 +44,29 @@ export function Text({ style, ...props }: TextProps) {
     resolvedColor = textMuted;
   }
 
-  return <RNText allowFontScaling={false} {...props} style={[resolve(style), { color: resolvedColor }]} />;
+  const content = selectedLanguage === 'English'
+    ? children
+    : translateNode(children, translateText);
+
+  return <RNText allowFontScaling={false} {...props} style={[resolve(style), { color: resolvedColor }]}>{content}</RNText>;
 }
 
-export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(function TextInput({ style, placeholderTextColor, ...props }, ref) {
+export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(function TextInput({ style, placeholderTextColor, placeholder, ...props }, ref) {
   const { textPrimary, textMuted, accent } = useThemeColors();
+  const selectedLanguage = useLanguageStore((s) => s.selectedLanguage);
+  const translateText = useLanguageStore((s) => s.translateText);
   const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
   const resolvedColor = (!flat.color || flat.color === AppColors.textPrimary || flat.color === '#F0EAD6') ? textPrimary : flat.color;
+
+  const translatedPlaceholder = placeholder && selectedLanguage !== 'English'
+    ? translateText(placeholder)
+    : placeholder;
+
   return (
     <RNTextInput
       ref={ref}
       allowFontScaling={false}
+      placeholder={translatedPlaceholder}
       placeholderTextColor={placeholderTextColor ?? textMuted}
       selectionColor={accent}
       cursorColor={accent}
