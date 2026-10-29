@@ -21,10 +21,12 @@ import { ElevatedButton, OutlinedButton } from '@/components/common';
 import { lh, Text, TextInput } from '@/components/Text';
 import { AppRoutes, pop, push } from '@/navigation/routes';
 import { AppColors, withAlpha } from '@/theme/colors';
+import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
 
 /* ------------------------------------------------------------- shared */
 function ServiceHeroCard({ title, subtitle, imageUrl, semanticLabel, accent, icon }: { title: string; subtitle: string; imageUrl: string; semanticLabel: string; accent: string; icon: string }) {
+  const { t } = useTranslation();
   return (
     <View style={{ marginHorizontal: 16, marginBottom: 20, height: 200, borderRadius: 24, borderWidth: 1, borderColor: withAlpha(accent, 80), overflow: 'hidden' }}>
       <AppImage uri={imageUrl} semanticLabel={semanticLabel} width="100%" height="100%" fit="cover" />
@@ -34,8 +36,8 @@ function ServiceHeroCard({ title, subtitle, imageUrl, semanticLabel, accent, ico
           <AppIcon name={icon} color={accent} size={20} />
         </View>
         <View style={{ marginLeft: 12, flex: 1 }}>
-          <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '800' }}>{title}</Text>
-          <Text style={{ color: accent, fontSize: 12, fontWeight: '500' }}>{subtitle}</Text>
+          <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '800' }}>{t(title, title)}</Text>
+          <Text style={{ color: accent, fontSize: 12, fontWeight: '500' }}>{t(subtitle, subtitle)}</Text>
         </View>
       </View>
     </View>
@@ -43,27 +45,30 @@ function ServiceHeroCard({ title, subtitle, imageUrl, semanticLabel, accent, ico
 }
 function Intro({ children }: { children: string }) {
   const colors = useThemeColors();
-  return <Text style={{ paddingHorizontal: 16, color: colors.textSecondary, ...lh(13, 1.7) }}>{children}</Text>;
+  const { t } = useTranslation();
+  return <Text style={{ paddingHorizontal: 16, color: colors.textSecondary, ...lh(13, 1.7) }}>{t(children, children)}</Text>;
 }
 function SectionTitle({ title, accent }: { title: string; accent: string }) {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   return (
     <View style={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
       <View style={{ width: 3, height: 18, borderRadius: 2, backgroundColor: accent }} />
-      <Text style={{ marginLeft: 10, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>{title}</Text>
+      <Text style={{ marginLeft: 10, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>{t(title, title)}</Text>
     </View>
   );
 }
 function InfoCard({ icon, title, description, accent }: { icon: string; title: string; description: string; accent: string }) {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   return (
     <View style={{ marginHorizontal: 16, marginBottom: 10, padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'flex-start' }}>
       <View style={{ padding: 10, borderRadius: 12, backgroundColor: withAlpha(accent, colors.isLight ? 25 : 20) }}>
         <AppIcon name={icon} color={accent} size={20} />
       </View>
       <View style={{ flex: 1, marginLeft: 14 }}>
-        <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>{title}</Text>
-        <Text style={{ marginTop: 4, color: colors.textSecondary, ...lh(12, 1.5) }}>{description}</Text>
+        <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>{t(title, title)}</Text>
+        <Text style={{ marginTop: 4, color: colors.textSecondary, ...lh(12, 1.5) }}>{t(description, description)}</Text>
       </View>
     </View>
   );
@@ -71,17 +76,19 @@ function InfoCard({ icon, title, description, accent }: { icon: string; title: s
 function ConsultCTABar({ testIDPrefix }: { testIDPrefix: string }) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const { t } = useTranslation();
   return (
     <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(24, insets.bottom + 8), backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.cardBorder, flexDirection: 'row' }}>
-      <OutlinedButton testID={`${testIDPrefix}.chatNow`} label="Chat Now" icon="chat_bubble_outline_rounded" color={colors.goldAccent} borderColor={colors.goldAccent} onPress={() => push(AppRoutes.liveAstrologersScreen)} style={{ flex: 1 }} />
+      <OutlinedButton testID={`${testIDPrefix}.chatNow`} label={t('Chat Now', 'Chat Now')} icon="chat_bubble_outline_rounded" color={colors.goldAccent} borderColor={colors.goldAccent} onPress={() => push(AppRoutes.liveAstrologersScreen)} style={{ flex: 1 }} />
       <View style={{ width: 12 }} />
-      <ElevatedButton testID={`${testIDPrefix}.consultNow`} label="Consult Now" icon="call_rounded" bg="#713B32" fg="#FFFFFF" onPress={() => push(AppRoutes.liveAstrologersScreen)} radius={100} paddingV={14} paddingH={8} fontSize={14} style={{ flex: 1 }} />
+      <ElevatedButton testID={`${testIDPrefix}.consultNow`} label={t('Consult Now', 'Consult Now')} icon="call_rounded" bg="#713B32" fg="#FFFFFF" onPress={() => push(AppRoutes.liveAstrologersScreen)} radius={100} paddingV={14} paddingH={8} fontSize={14} style={{ flex: 1 }} />
     </View>
   );
 }
 type Mini = { name: string; specialty: string; imageUrl: string; rating: number; price: number };
 function AstrologerRow({ items, accent }: { items: Mini[]; accent: string }) {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height: 180 }} contentContainerStyle={{ paddingHorizontal: 16 }}>
       {items.map((a) => (
@@ -89,8 +96,8 @@ function AstrologerRow({ items, accent }: { items: Mini[]; accent: string }) {
           <View style={{ width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: withAlpha(accent, 100), overflow: 'hidden' }}>
             <AppImage uri={a.imageUrl} semanticLabel={`Astrologer ${a.name} profile photo`} width="100%" height="100%" fit="cover" />
           </View>
-          <Text numberOfLines={1} style={{ marginTop: 8, color: colors.textPrimary, fontSize: 12, fontWeight: '600', textAlign: 'center' }}>{a.name}</Text>
-          <Text numberOfLines={1} style={{ marginTop: 2, color: colors.textMuted, fontSize: 10, textAlign: 'center' }}>{a.specialty}</Text>
+          <Text numberOfLines={1} style={{ marginTop: 8, color: colors.textPrimary, fontSize: 12, fontWeight: '600', textAlign: 'center' }}>{t(a.name, a.name)}</Text>
+          <Text numberOfLines={1} style={{ marginTop: 2, color: colors.textMuted, fontSize: 10, textAlign: 'center' }}>{t(a.specialty, a.specialty)}</Text>
           <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center' }}>
             <AppIcon name="star_rounded" color={colors.goldAccent} size={12} />
             <Text style={{ marginLeft: 2, color: colors.goldAccent, fontSize: 11, fontWeight: '600' }}>{String(a.rating)}</Text>
@@ -104,9 +111,10 @@ function AstrologerRow({ items, accent }: { items: Mini[]; accent: string }) {
 function ServiceLayout({ title, testID, children }: { title: string; testID: string; children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const { t } = useTranslation();
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID={`${testID}.screen`}>
-      <AppBar title={title} onBack={pop} testIDPrefix={testID} backSize={24} backgroundColor={colors.background} backColor={colors.textPrimary} />
+      <AppBar title={t(title, title)} onBack={pop} testIDPrefix={testID} backSize={24} backgroundColor={colors.background} backColor={colors.textPrimary} />
       <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
         {children}
         <View style={{ height: Math.max(140, insets.bottom + 85) }} />
@@ -119,15 +127,17 @@ function HScroll({ height, children }: { height: number; children: React.ReactNo
   return <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height }} contentContainerStyle={{ paddingHorizontal: 16 }}>{children}</ScrollView>;
 }
 
-const P = (id: string) => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg`;
+// Verified high-speed Unsplash CDN image helper
+const P = (photoId: string) => `https://images.unsplash.com/${photoId}?w=800&auto=format&fit=crop`;
 
 /* ------------------------------------------------------------- Career */
 export function CareerAstrologyScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const a = '#FFD700';
   return (
     <ServiceLayout title="Career Astrology" testID="careerAstrology">
-      <ServiceHeroCard title="Career Astrology" subtitle="Unlock your professional destiny" imageUrl={P('3184465')} semanticLabel="Professional office setting with charts and career planning documents on a desk" accent={a} icon="work_outline_rounded" />
+      <ServiceHeroCard title="Career Astrology" subtitle="Unlock your professional destiny" imageUrl="https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop" semanticLabel="Professional office setting with charts and career planning documents on a desk" accent={a} icon="work_outline_rounded" />
       <Intro>Your birth chart holds the blueprint of your professional life. Vedic astrology reveals the most favourable career paths, promotion timings, and business opportunities aligned with your planetary positions.</Intro>
       <SectionTitle title="What We Analyse" accent={a} />
       <InfoCard icon="trending_up_rounded" title="Career Path & Profession" description="Identify the most suitable career fields based on your 10th house lord, Saturn, and Sun placements." accent={a} />
@@ -139,16 +149,16 @@ export function CareerAstrologyScreen() {
         {[['Saturn', 'Career Karaka', 'circle_outlined'], ['10th House', 'Profession House', 'home_work_outlined'], ['Sun', 'Authority & Status', 'wb_sunny_outlined'], ['Mercury', 'Business & Trade', 'swap_horiz_rounded']].map(([p, r, i]) => (
           <View key={p} style={{ width: 110, height: 90, marginRight: 10, padding: 12, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, alignItems: 'center', justifyContent: 'center' }}>
             <AppIcon name={i} color={a} size={20} />
-            <Text style={{ marginTop: 4, color: colors.textPrimary, fontSize: 12, fontWeight: '600' }}>{p}</Text>
-            <Text style={{ color: colors.textMuted, fontSize: 10, textAlign: 'center' }}>{r}</Text>
+            <Text style={{ marginTop: 4, color: colors.textPrimary, fontSize: 12, fontWeight: '600' }}>{t(p, p)}</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 10, textAlign: 'center' }}>{t(r, r)}</Text>
           </View>
         ))}
       </HScroll>
       <SectionTitle title="Expert Astrologers" accent={a} />
       <AstrologerRow accent={a} items={[
-        { name: 'Pt. Rajesh Sharma', specialty: 'Career & Finance', imageUrl: P('8108063'), rating: 4.9, price: 35 },
-        { name: 'Dr. Meena Iyer', specialty: 'Vedic Career', imageUrl: P('5905709'), rating: 4.8, price: 42 },
-        { name: 'Acharya Vikram', specialty: 'Job & Business', imageUrl: P('8108064'), rating: 4.95, price: 55 },
+        { name: 'Pt. Rajesh Sharma', specialty: 'Career & Finance', imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop', rating: 4.9, price: 35 },
+        { name: 'Dr. Meena Iyer', specialty: 'Vedic Career', imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop', rating: 4.8, price: 42 },
+        { name: 'Acharya Vikram', specialty: 'Job & Business', imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop', rating: 4.95, price: 55 },
       ]} />
     </ServiceLayout>
   );
@@ -157,13 +167,14 @@ export function CareerAstrologyScreen() {
 /* ------------------------------------------------------------- Marriage */
 export function MarriageAstrologyScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const a = '#FF6B6B';
   const [w, setW] = useState(0);
   const cell = w > 0 ? (w - 24) / 4 : 0;
   const aspects = [['Varna', 1, '#9370DB'], ['Vashya', 2, '#FF6B6B'], ['Tara', 3, '#FFB347'], ['Yoni', 4, '#4FC3F7'], ['Graha Maitri', 5, '#81C784'], ['Gana', 6, '#FFD700'], ['Bhakoot', 7, '#FF6B6B'], ['Nadi', 8, '#9370DB']] as const;
   return (
     <ServiceLayout title="Marriage Astrology" testID="marriageAstrology">
-      <ServiceHeroCard title="Marriage Astrology" subtitle="Find your destined life partner" imageUrl="https://images.pixabay.com/photo/2016/11/29/09/32/adult-1868750_1280.jpg" semanticLabel="Indian couple in traditional wedding attire with floral decorations and warm golden lighting" accent={a} icon="favorite_rounded" />
+      <ServiceHeroCard title="Marriage Astrology" subtitle="Find your destined life partner" imageUrl="https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=800&auto=format&fit=crop" semanticLabel="Indian couple in traditional wedding attire with floral decorations and warm golden lighting" accent={a} icon="favorite_rounded" />
       <Intro>Marriage is one of the most significant events in life. Vedic astrology provides deep insights into marriage timing, partner characteristics, compatibility, and the strength of your marital bond through the 7th house and Venus analysis.</Intro>
       <SectionTitle title="Marriage Analysis" accent={a} />
       <InfoCard icon="schedule_rounded" title="Marriage Timing" description="Determine the most auspicious period for marriage based on Venus Dasha, 7th house transits, and Navamsa chart analysis." accent={a} />
@@ -176,16 +187,16 @@ export function MarriageAstrologyScreen() {
           {cell > 0 && aspects.map(([n, m, c], i) => (
             <View key={i} style={{ width: cell, height: cell, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(c, colors.isLight ? 50 : 60), alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ color: c, fontSize: 18, fontWeight: '800' }}>{String(m)}</Text>
-              <Text style={{ color: colors.textMuted, fontSize: 9, textAlign: 'center' }}>{n}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 9, textAlign: 'center' }}>{t(n, n)}</Text>
             </View>
           ))}
         </View>
       </View>
       <SectionTitle title="Expert Astrologers" accent={a} />
       <AstrologerRow accent={a} items={[
-        { name: 'Jyotishi Priya', specialty: 'Marriage & Love', imageUrl: P('5905709'), rating: 4.97, price: 40 },
-        { name: 'Pt. Suresh Joshi', specialty: 'Kundli Milan', imageUrl: P('8108063'), rating: 4.88, price: 38 },
-        { name: 'Acharya Devi', specialty: 'Relationship', imageUrl: P('3807571'), rating: 4.92, price: 45 },
+        { name: 'Jyotishi Priya', specialty: 'Marriage & Love', imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop', rating: 4.97, price: 40 },
+        { name: 'Pt. Suresh Joshi', specialty: 'Kundli Milan', imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop', rating: 4.88, price: 38 },
+        { name: 'Acharya Devi', specialty: 'Relationship', imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop', rating: 4.92, price: 45 },
       ]} />
     </ServiceLayout>
   );
@@ -194,11 +205,12 @@ export function MarriageAstrologyScreen() {
 /* ------------------------------------------------------------- Business */
 export function BusinessAstrologyScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const a = '#4FC3F7';
   const sectors = [['Mercury', 'IT & Communication', '#4FC3F7'], ['Venus', 'Fashion & Beauty', '#FF6B6B'], ['Mars', 'Real Estate', '#FF6B35'], ['Jupiter', 'Education & Law', '#FFD700'], ['Saturn', 'Manufacturing', '#9370DB'], ['Sun', 'Government & Politics', '#FFB347']];
   return (
     <ServiceLayout title="Business Astrology" testID="businessAstrology">
-      <ServiceHeroCard title="Business Astrology" subtitle="Align your enterprise with the cosmos" imageUrl={P('3184291')} semanticLabel="Business team meeting around a conference table with charts and graphs on screens" accent={a} icon="business_center_rounded" />
+      <ServiceHeroCard title="Business Astrology" subtitle="Align your enterprise with the cosmos" imageUrl="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&auto=format&fit=crop" semanticLabel="Business team meeting around a conference table with charts and graphs on screens" accent={a} icon="business_center_rounded" />
       <Intro>Every successful business has cosmic timing. Vedic astrology helps entrepreneurs identify the best time to launch, expand, or pivot their business, choose the right partners, and navigate challenging periods with confidence.</Intro>
       <SectionTitle title="Business Insights" accent={a} />
       <InfoCard icon="rocket_launch_rounded" title="Business Launch Timing" description="Identify the most auspicious Muhurat for launching your business, signing contracts, or opening new ventures." accent={a} />
@@ -209,15 +221,15 @@ export function BusinessAstrologyScreen() {
       <HScroll height={80}>
         {sectors.map(([p, s, c]) => (
           <View key={p} style={{ width: 130, height: 80, marginRight: 10, padding: 12, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(c, colors.isLight ? 50 : 60), justifyContent: 'center' }}>
-            <Text style={{ color: c, fontSize: 12, fontWeight: '700' }}>{p}</Text>
-            <Text style={{ marginTop: 2, color: colors.textSecondary, fontSize: 11 }}>{s}</Text>
+            <Text style={{ color: c, fontSize: 12, fontWeight: '700' }}>{t(p, p)}</Text>
+            <Text style={{ marginTop: 2, color: colors.textSecondary, fontSize: 11 }}>{t(s, s)}</Text>
           </View>
         ))}
       </HScroll>
       <SectionTitle title="Expert Astrologers" accent={a} />
       <AstrologerRow accent={a} items={[
-        { name: 'Acharya Kapil', specialty: 'Business & Finance', imageUrl: P('8108064'), rating: 4.93, price: 50 },
-        { name: 'Pt. Anand Mishra', specialty: 'Entrepreneurship', imageUrl: P('8108063'), rating: 4.87, price: 45 },
+        { name: 'Acharya Kapil', specialty: 'Business & Finance', imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop', rating: 4.93, price: 50 },
+        { name: 'Pt. Anand Mishra', specialty: 'Entrepreneurship', imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop', rating: 4.87, price: 45 },
       ]} />
     </ServiceLayout>
   );
@@ -226,10 +238,11 @@ export function BusinessAstrologyScreen() {
 /* ------------------------------------------------------------- Finance */
 export function FinanceAstrologyScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const a = '#81C784';
   return (
     <ServiceLayout title="Finance Astrology" testID="financeAstrology">
-      <ServiceHeroCard title="Finance Astrology" subtitle="Wealth, investments & financial destiny" imageUrl={P('534216')} semanticLabel="Gold coins and financial charts with upward trending graphs on a dark background" accent={a} icon="account_balance_rounded" />
+      <ServiceHeroCard title="Finance Astrology" subtitle="Wealth, investments & financial destiny" imageUrl="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=800&auto=format&fit=crop" semanticLabel="Gold coins and financial charts with upward trending graphs on a dark background" accent={a} icon="account_balance_rounded" />
       <Intro>The 2nd, 5th, 8th, and 11th houses in your birth chart govern wealth accumulation, speculative gains, inheritance, and income respectively. Our expert astrologers decode your financial destiny and guide you toward prosperity.</Intro>
       <SectionTitle title="Financial Analysis" accent={a} />
       <InfoCard icon="savings_rounded" title="Wealth Accumulation Periods" description="Identify Jupiter and Venus Dasha periods that bring maximum financial growth and wealth accumulation." accent={a} />
@@ -241,20 +254,20 @@ export function FinanceAstrologyScreen() {
         {[['2nd House', 'Savings & Assets', 'Venus'], ['5th House', 'Speculation & Gains', 'Jupiter'], ['8th House', 'Inheritance', 'Saturn'], ['11th House', 'Income & Profits', 'Jupiter']].map(([h, g, p]) => (
           <View key={h} style={{ marginBottom: 8, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: withAlpha(a, colors.isLight ? 25 : 20), alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: a, fontSize: 11, fontWeight: '700' }}>{h.split(' ')[0]}</Text>
+              <Text style={{ color: a, fontSize: 11, fontWeight: '700' }}>{t(h.split(' ')[0], h.split(' ')[0])}</Text>
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{h}</Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{g}</Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{t(h, h)}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t(g, g)}</Text>
             </View>
-            <Text style={{ color: a, fontSize: 12, fontWeight: '600' }}>{p}</Text>
+            <Text style={{ color: a, fontSize: 12, fontWeight: '600' }}>{t(p, p)}</Text>
           </View>
         ))}
       </View>
       <SectionTitle title="Expert Astrologers" accent={a} />
       <AstrologerRow accent={a} items={[
-        { name: 'Pt. Ramesh Gupta', specialty: 'Wealth & Finance', imageUrl: P('8108063'), rating: 4.91, price: 48 },
-        { name: 'Jyotishi Kavita', specialty: 'Investment Timing', imageUrl: P('5905709'), rating: 4.85, price: 40 },
+        { name: 'Pt. Ramesh Gupta', specialty: 'Wealth & Finance', imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop', rating: 4.91, price: 48 },
+        { name: 'Jyotishi Kavita', specialty: 'Investment Timing', imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop', rating: 4.85, price: 40 },
       ]} />
     </ServiceLayout>
   );
@@ -273,23 +286,24 @@ const TAROT_CARDS = [
 ];
 export function TarotScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const a = '#9370DB';
   const [selected, setSelected] = useState<number | null>(null);
   return (
     <ServiceLayout title="Tarot Reading" testID="tarot">
-      <ServiceHeroCard title="Tarot Reading" subtitle="Ancient wisdom through sacred cards" imageUrl="https://images.pixabay.com/photo/2020/05/11/06/14/tarot-5157112_1280.jpg" semanticLabel="Mystical tarot cards spread on a dark velvet cloth with candles and crystals" accent={a} icon="style_rounded" />
+      <ServiceHeroCard title="Tarot Reading" subtitle="Ancient wisdom through sacred cards" imageUrl="https://images.unsplash.com/photo-1532012197267-da84d127e765?w=800&auto=format&fit=crop" semanticLabel="Mystical tarot cards spread on a dark velvet cloth with candles and crystals" accent={a} icon="style_rounded" />
       <Intro>Tarot is a powerful divination tool that uses 78 symbolic cards to reveal hidden truths, illuminate life paths, and provide guidance on love, career, and spiritual growth. Each card carries profound archetypal wisdom.</Intro>
       <SectionTitle title="Daily Card Draw" accent={a} />
       <LinearGradient colors={[withAlpha(a, colors.isLight ? 20 : 30), colors.surface]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ marginHorizontal: 16, padding: 20, borderRadius: 20, borderWidth: 1, borderColor: withAlpha(a, colors.isLight ? 50 : 80), alignItems: 'center' }}>
-        <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Your Card of the Day</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{t('Your Card of the Day')}</Text>
         <View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center' }}>
           <LinearGradient colors={[withAlpha(a, 80), '#1A0A2E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 80, height: 130, borderRadius: 12, borderWidth: 1.5, borderColor: a, alignItems: 'center', justifyContent: 'center' }}>
             <AppIcon name="auto_awesome" color={a} size={28} />
-            <Text style={{ marginTop: 8, color: '#FFFFFF', fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{'The\nStar'}</Text>
+            <Text style={{ marginTop: 8, color: '#FFFFFF', fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{t('The Star', 'The Star')}</Text>
           </LinearGradient>
           <View style={{ flex: 1, marginLeft: 20 }}>
-            <Text style={{ color: a, fontSize: 18, fontWeight: '800' }}>The Star</Text>
-            <Text style={{ marginTop: 6, color: colors.textSecondary, ...lh(12, 1.5) }}>Hope, faith, purpose, renewal, and spirituality. A period of calm after a storm — trust in the universe&apos;s plan.</Text>
+            <Text style={{ color: a, fontSize: 18, fontWeight: '800' }}>{t('The Star', 'The Star')}</Text>
+            <Text style={{ marginTop: 6, color: colors.textSecondary, ...lh(12, 1.5) }}>{t("Hope, faith, purpose, renewal, and spirituality. A period of calm after a storm — trust in the universe's plan.", "Hope, faith, purpose, renewal, and spirituality. A period of calm after a storm — trust in the universe's plan.")}</Text>
           </View>
         </View>
       </LinearGradient>
@@ -311,13 +325,13 @@ export function TarotScreen() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <AppIcon name="auto_awesome" color={a} size={16} />
-                <Text style={{ marginLeft: 8, flex: 1, color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>{c.name}</Text>
+                <Text style={{ marginLeft: 8, flex: 1, color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>{t(c.name, c.name)}</Text>
                 <AppIcon name={sel ? 'keyboard_arrow_up_rounded' : 'keyboard_arrow_down_rounded'} color={colors.textMuted} size={18} />
               </View>
               {sel ? (
                 <>
-                  <Text style={{ marginTop: 10, color: colors.textSecondary, ...lh(12, 1.5) }}>{`✦ Upright: ${c.meaning}`}</Text>
-                  <Text style={{ marginTop: 4, color: withAlpha(a, 180), ...lh(12, 1.5) }}>{`✦ Reversed: ${c.reversed}`}</Text>
+                  <Text style={{ marginTop: 10, color: colors.textSecondary, ...lh(12, 1.5) }}>{`✦ ${t('Upright')}: ${t(c.meaning, c.meaning)}`}</Text>
+                  <Text style={{ marginTop: 4, color: withAlpha(a, 180), ...lh(12, 1.5) }}>{`✦ ${t('Reversed')}: ${t(c.reversed, c.reversed)}`}</Text>
                 </>
               ) : null}
             </AnimatedPressable>
@@ -374,6 +388,7 @@ function NumField({ label, icon, value, onChange, accent, testID }: { label: str
 
 export function NumerologyScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const authUser = useAuthStore((s) => s.user);
   const a = '#FFB347';
   const [name, setName] = useState(authUser?.name || '');
@@ -409,19 +424,19 @@ export function NumerologyScreen() {
   const ResultCard = ({ value, label, color, testID }: { value: number; label: string; color: string; testID: string }) => (
     <LinearGradient testID={testID} colors={[withAlpha(color, colors.isLight ? 25 : 40), colors.surface]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ flex: 1, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: withAlpha(color, 100), alignItems: 'center' }}>
       <Text style={{ color, fontSize: 40, fontWeight: '900' }}>{String(value)}</Text>
-      <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{label}</Text>
-      {MEANINGS[value] ? <Text style={{ marginTop: 6, color: colors.textPrimary, fontSize: 12, fontWeight: '600', textAlign: 'center' }}>{MEANINGS[value].title}</Text> : null}
+      <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t(label, label)}</Text>
+      {MEANINGS[value] ? <Text style={{ marginTop: 6, color: colors.textPrimary, fontSize: 12, fontWeight: '600', textAlign: 'center' }}>{t(MEANINGS[value].title, MEANINGS[value].title)}</Text> : null}
     </LinearGradient>
   );
   return (
     <ServiceLayout title="Numerology" testID="numerology">
-      <ServiceHeroCard title="Numerology" subtitle="Decode the numbers of your destiny" imageUrl="https://images.pixabay.com/photo/2017/08/06/22/01/numerology-2596740_1280.jpg" semanticLabel="Sacred numbers and mathematical symbols glowing in golden light on a dark mystical background" accent={a} icon="tag_rounded" />
+      <ServiceHeroCard title="Numerology" subtitle="Decode the numbers of your destiny" imageUrl="https://images.unsplash.com/photo-1509228468518-180dd4864904?w=800&auto=format&fit=crop" semanticLabel="Sacred numbers and mathematical symbols glowing in golden light on a dark mystical background" accent={a} icon="tag_rounded" />
       <Intro>Numerology is the ancient science of numbers and their divine influence on human life. Every number carries a unique vibration that shapes your personality, destiny, and life path.</Intro>
       <SectionTitle title="Calculate Your Numbers" accent={a} />
       <View style={{ marginHorizontal: 16, padding: 20, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(a, colors.isLight ? 50 : 80), gap: 12 }}>
-        <NumField testID="numerology.name" label="Full Name" icon="person_outline_rounded" value={name} onChange={setName} accent={a} />
-        <NumField testID="numerology.dob" label="Date of Birth (DD/MM/YYYY)" icon="calendar_today_rounded" value={dob} onChange={setDob} accent={a} />
-        <ElevatedButton testID="numerology.calculate" label="Calculate My Numbers" onPress={calculate} bg="#713B32" fg="#FFFFFF" radius={100} paddingV={14} fontWeight="700" style={{ marginTop: 4 }} />
+        <NumField testID="numerology.name" label={t('Full Name')} icon="person_outline_rounded" value={name} onChange={setName} accent={a} />
+        <NumField testID="numerology.dob" label={t('Date of Birth (DD/MM/YYYY)')} icon="calendar_today_rounded" value={dob} onChange={setDob} accent={a} />
+        <ElevatedButton testID="numerology.calculate" label={t('Calculate My Numbers')} onPress={calculate} bg="#713B32" fg="#FFFFFF" radius={100} paddingV={14} fontWeight="700" style={{ marginTop: 4 }} />
       </View>
       {lifePath != null || destiny != null ? (
         <View style={{ paddingHorizontal: 16, paddingTop: 16, flexDirection: 'row', gap: 12 }}>
@@ -440,6 +455,7 @@ export function NumerologyScreen() {
 /* ------------------------------------------------------------- Muhurat */
 export function MuhuratScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const a = '#FFD700';
   const muhurats = [
     { event: 'Marriage', icon: 'favorite_rounded', dates: ['15 Nov 2025', '22 Nov 2025', '3 Dec 2025'], color: '#FF6B6B' },
@@ -450,7 +466,7 @@ export function MuhuratScreen() {
   ];
   return (
     <ServiceLayout title="Muhurat" testID="muhurat">
-      <ServiceHeroCard title="Muhurat" subtitle="Auspicious timings for life events" imageUrl={P('1624496')} semanticLabel="Traditional Hindu calendar with auspicious dates marked, surrounded by marigold flowers and diyas" accent={a} icon="event_available_rounded" />
+      <ServiceHeroCard title="Muhurat" subtitle="Auspicious timings for life events" imageUrl="https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800&auto=format&fit=crop" semanticLabel="Traditional Hindu calendar with auspicious dates marked, surrounded by marigold flowers and diyas" accent={a} icon="event_available_rounded" />
       <Intro>Muhurat is the Vedic science of selecting the most auspicious time for important life events. Starting any significant activity at the right cosmic moment ensures divine blessings and minimises obstacles.</Intro>
       <SectionTitle title="Upcoming Auspicious Dates" accent={a} />
       {muhurats.map((m) => (
@@ -459,7 +475,7 @@ export function MuhuratScreen() {
             <View style={{ padding: 8, borderRadius: 10, backgroundColor: withAlpha(m.color, 20) }}>
               <AppIcon name={m.icon} color={m.color} size={18} />
             </View>
-            <Text style={{ marginLeft: 12, color: colors.textPrimary, fontSize: 15, fontWeight: '600' }}>{m.event}</Text>
+            <Text style={{ marginLeft: 12, color: colors.textPrimary, fontSize: 15, fontWeight: '600' }}>{t(m.event, m.event)}</Text>
           </View>
           <View style={{ marginTop: 12, flexDirection: 'row' }}>
             {m.dates.map((d) => (
@@ -474,8 +490,8 @@ export function MuhuratScreen() {
       <View style={{ marginHorizontal: 16, padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }}>
         {[['Tithi', 'Ekadashi (11th)'], ['Nakshatra', 'Rohini'], ['Yoga', 'Siddhi'], ['Karana', 'Bava'], ['Vara', 'Tuesday']].map(([l, v]) => (
           <View key={l} style={{ paddingVertical: 6, flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{l}</Text>
-            <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{v}</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{t(l, l)}</Text>
+            <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{t(v, v)}</Text>
           </View>
         ))}
       </View>
@@ -489,10 +505,11 @@ export function MuhuratScreen() {
 /* ------------------------------------------------------------- Spiritual */
 export function SpiritualGuidanceScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const a = '#9370DB';
   return (
     <ServiceLayout title="Spiritual Guidance" testID="spiritualGuidance">
-      <ServiceHeroCard title="Spiritual Guidance" subtitle="Illuminate your soul's sacred path" imageUrl="https://images.pixabay.com/photo/2017/08/07/00/52/meditation-2601480_1280.jpg" semanticLabel="Person meditating in lotus position on a mountain peak at sunset with golden light and spiritual energy" accent={a} icon="psychology_rounded" />
+      <ServiceHeroCard title="Spiritual Guidance" subtitle="Illuminate your soul's sacred path" imageUrl="https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&auto=format&fit=crop" semanticLabel="Person meditating in lotus position on a mountain peak at sunset with golden light and spiritual energy" accent={a} icon="psychology_rounded" />
       <Intro>Beyond the material world lies the realm of the soul. Our spiritual astrologers and guides help you understand your karmic journey, past life influences, dharmic purpose, and the spiritual practices best suited for your soul&apos;s evolution.</Intro>
       <SectionTitle title="Spiritual Services" accent={a} />
       <InfoCard icon="loop_rounded" title="Karma & Past Life Analysis" description="Explore karmic debts and past life influences through the 12th house, Saturn, and Rahu-Ketu axis in your birth chart." accent={a} />
@@ -504,8 +521,8 @@ export function SpiritualGuidanceScreen() {
         {[['Meditation', '20 min', 'self_improvement_rounded', '#9370DB'], ['Pranayama', '15 min', 'air_rounded', '#4FC3F7'], ['Mantra Japa', '108 times', 'music_note_rounded', '#FFD700'], ['Yoga Asana', '30 min', 'accessibility_new_rounded', '#81C784']].map(([n, d, i, c]) => (
           <View key={n} style={{ width: 120, height: 100, marginRight: 10, padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(c, colors.isLight ? 50 : 60), alignItems: 'center', justifyContent: 'center' }}>
             <AppIcon name={i} color={c} size={24} />
-            <Text style={{ marginTop: 6, color: colors.textPrimary, fontSize: 12, fontWeight: '600' }}>{n}</Text>
-            <Text style={{ color: colors.textMuted, fontSize: 10 }}>{d}</Text>
+            <Text style={{ marginTop: 6, color: colors.textPrimary, fontSize: 12, fontWeight: '600' }}>{t(n, n)}</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 10 }}>{t(d, d)}</Text>
           </View>
         ))}
       </HScroll>
@@ -528,6 +545,7 @@ export function SpiritualGuidanceScreen() {
 /* ------------------------------------------------------------- Reports */
 export function AstrologyReportsScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const a = '#4FC3F7';
   const reports = [
     { name: 'Comprehensive Birth Chart Report', pages: '40+ pages', price: 499, desc: 'Complete analysis of all 12 houses, 9 planets, Dasha periods, and life predictions.', icon: 'auto_stories_rounded', color: '#9370DB', popular: true },
@@ -539,7 +557,7 @@ export function AstrologyReportsScreen() {
   ];
   return (
     <ServiceLayout title="Astrology Reports" testID="astrologyReports">
-      <ServiceHeroCard title="Astrology Reports" subtitle="Detailed PDF reports by expert astrologers" imageUrl={P('590022')} semanticLabel="Detailed astrological charts and reports spread on a desk with a pen and cosmic symbols" accent={a} icon="description_rounded" />
+      <ServiceHeroCard title="Astrology Reports" subtitle="Detailed PDF reports by expert astrologers" imageUrl="https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800&auto=format&fit=crop" semanticLabel="Detailed astrological charts and reports spread on a desk with a pen and cosmic symbols" accent={a} icon="description_rounded" />
       <Intro>Our expert astrologers prepare detailed, personalised PDF reports that provide deep insights into every aspect of your life. Each report is hand-crafted based on your exact birth details.</Intro>
       <SectionTitle title="Available Reports" accent={a} />
       {reports.map((r, i) => (
@@ -550,22 +568,22 @@ export function AstrologyReportsScreen() {
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>{r.name}</Text>
+                <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>{t(r.name, r.name)}</Text>
                 {r.popular ? (
                   <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: withAlpha(colors.goldAccent, 25), borderWidth: 1, borderColor: withAlpha(colors.goldAccent, 80) }}>
-                    <Text style={{ color: colors.goldAccent, fontSize: 10, fontWeight: '600' }}>Popular</Text>
+                    <Text style={{ color: colors.goldAccent, fontSize: 10, fontWeight: '600' }}>{t('Popular')}</Text>
                   </View>
                 ) : null}
               </View>
               <Text style={{ color: r.color, fontSize: 11, fontWeight: '500' }}>{r.pages}</Text>
             </View>
           </View>
-          <Text style={{ marginTop: 10, color: colors.textSecondary, ...lh(12, 1.5) }}>{r.desc}</Text>
+          <Text style={{ marginTop: 10, color: colors.textSecondary, ...lh(12, 1.5) }}>{t(r.desc, r.desc)}</Text>
           <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ color: colors.goldAccent, fontSize: 20, fontWeight: '800' }}>{`₹${r.price}`}</Text>
-            <Text style={{ marginLeft: 4, flex: 1, color: colors.textMuted, fontSize: 11 }}>one-time</Text>
+            <Text style={{ marginLeft: 4, flex: 1, color: colors.textMuted, fontSize: 11 }}>{t('one-time')}</Text>
             <Pressable testID={`astrologyReports.getReport.${i}`} onPress={() => push(AppRoutes.kundliReportsScreen)} style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: r.color }}>
-              <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}>Get Report</Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}>{t('Get Report')}</Text>
             </Pressable>
           </View>
         </View>

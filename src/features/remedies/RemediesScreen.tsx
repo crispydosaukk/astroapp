@@ -19,12 +19,15 @@ import { AppBar, BoxBackButton } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton, RadialGlow } from '@/components/common';
 import { lh, Text } from '@/components/Text';
+import { API_ENDPOINTS } from '@/config/api';
 import { REMEDIES, Remedy } from '@/data/remedies';
 import { AppRoutes, push } from '@/navigation/routes';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 import { fetchLiveRemedies } from '@/services/astrologyService';
+
+const STORAGE_REMEDIES_CACHE = 'astroparihar_dynamic_remedies_cache';
 
 /** Navigator.push(MaterialPageRoute(RemedyDetailScreen(remedy))) equivalent. */
 export const openRemedy = (r: Remedy) => push(AppRoutes.remedyDetailScreen, r);
@@ -36,12 +39,75 @@ export default function RemediesScreen() {
   const pulse = useSharedValue(0.95);
   const wheel = useSharedValue(0);
   const [w, setW] = useState(Dimensions.get('window').width - 40);
+  const [remediesList, setRemediesList] = useState<Remedy[]>(REMEDIES);
 
   useEffect(() => {
     pulse.value = withRepeat(withTiming(1.05, { duration: 1500, easing: Easing.inOut(Easing.ease) }), -1, true);
     wheel.value = withRepeat(withTiming(1, { duration: 20000, easing: Easing.linear }), -1, false);
 
     fetchLiveRemedies().catch(() => {});
+
+    let isMounted = true;
+    AsyncStorage.getItem(STORAGE_REMEDIES_CACHE)
+      .then((cached) => {
+        if (cached && isMounted) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) setRemediesList(parsed);
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    async function loadDynamicRemedies() {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(API_ENDPOINTS.services, { signal: controller.signal });
+        clearTimeout(timer);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.categories)) {
+            const remCat = data.categories.find(
+              (c: any) => c.id === 'cat-remedies' || c.category === 'remedies'
+            );
+            if (remCat && Array.isArray(remCat.items) && remCat.items.length > 0) {
+              const activeItems = remCat.items.filter((it: any) => it.active !== false);
+              const hydrated: Remedy[] = REMEDIES.map((base) => {
+                const match = activeItems.find(
+                  (ai: any) =>
+                    ai.id?.toLowerCase().includes(base.name.toLowerCase().split(' ')[0]) ||
+                    ai.name?.toLowerCase().includes(base.name.toLowerCase().split(' ')[0]) ||
+                    ai.direction?.toLowerCase() === base.direction.toLowerCase()
+                );
+                if (match) {
+                  return {
+                    ...base,
+                    name: match.name || base.name,
+                    sanskrit: match.sanskrit || base.sanskrit,
+                    desc: match.desc || base.desc,
+                    mantra: match.mantra || base.mantra,
+                    directionHindi: match.directionHindi || base.directionHindi,
+                    color: match.color || base.color,
+                  };
+                }
+                return base;
+              });
+
+              if (isMounted) {
+                setRemediesList(hydrated);
+                AsyncStorage.setItem(STORAGE_REMEDIES_CACHE, JSON.stringify(hydrated)).catch(() => {});
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+
+    loadDynamicRemedies();
+    return () => {
+      isMounted = false;
+    };
   }, [pulse, wheel]);
 
   const onDiscoverRemedies = async () => {
@@ -57,18 +123,24 @@ export default function RemediesScreen() {
       const dobStr = (profile?.dob || authUser?.dob) ? ` (Born: ${profile?.dob || authUser?.dob})` : '';
       push(AppRoutes.aiChatScreen, {
         astrologerId: 'vedika',
-        initialPrompt: `Namaste Vedika, please analyze my birth chart for ${name}${dobStr} and prescribe sacred Vedic remedies according to the Ashta-Digbandhana (8 sacred directions), including my Ishta Devata, planetary mantras, and homam rituals.`
+        initialPrompt: `Namaste, please analyze my birth chart for ${name}${dobStr} and prescribe sacred Vedic remedies according to the Ashta-Digbandhana (8 sacred directions), including my Ishta Devata, planetary mantras, and homam rituals.`
       });
     } catch {
       push(AppRoutes.aiChatScreen, {
         astrologerId: 'vedika',
-        initialPrompt: `Namaste Vedika, please prescribe sacred Vedic remedies for my planetary chart according to ancient Vedic traditions.`
+        initialPrompt: `Namaste, please prescribe sacred Vedic remedies for my planetary chart according to ancient Vedic traditions.`
       });
     }
   };
 
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
   const wheelStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${wheel.value * 360 * 0.05}deg` }] }));
+  const screenWidth = Dimensions.get('window').width;
+  const wheelBoxSize = Math.min(screenWidth - 40, 300);
+  const wheelCenter = wheelBoxSize / 2;
+  const nodeRadius = wheelBoxSize * 0.36;
+  const spokeRadius = wheelBoxSize * 0.27;
+  const nodeSize = Math.max(54, Math.min(60, wheelBoxSize * 0.2));
   const cellW = Math.max(140, (w - 12) / 2);
 
   return (
@@ -79,7 +151,10 @@ export default function RemediesScreen() {
         backColor={colors.textPrimary}
         leading={<BoxBackButton testID="remedies.back" onPress={() => router.back()} />}
       />
-      <ScrollView>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: Math.max(24, insets.bottom + 16) }}
+      >
         <LinearGradient
           colors={
             colors.isLight
@@ -131,70 +206,132 @@ export default function RemediesScreen() {
         <View style={{ marginHorizontal: 20, marginVertical: 8 }}>
           <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Ashta-Digbandhana</Text>
           <Text style={{ color: colors.textMuted, fontSize: 12 }}>The 8 Sacred Directions of Vedic Remedies</Text>
-          <View style={{ marginTop: 16, alignSelf: 'center', width: 300, height: 300, alignItems: 'center', justifyContent: 'center' }}>
-            <Animated.View style={[{ position: 'absolute', width: 300, height: 300, borderRadius: 150, borderWidth: 1, borderColor: colors.cardBorder }, wheelStyle]} />
-            <View style={{ width: 80, height: 80, borderRadius: 40, borderWidth: 1.5, borderColor: colors.goldAccent, backgroundColor: colors.surface, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ marginTop: 16, alignSelf: 'center', width: wheelBoxSize, height: wheelBoxSize, alignItems: 'center', justifyContent: 'center' }}>
+            <Animated.View style={[{ position: 'absolute', width: wheelBoxSize, height: wheelBoxSize, borderRadius: wheelBoxSize / 2, borderWidth: 1, borderColor: colors.cardBorder }, wheelStyle]} />
+            <View style={{ width: wheelBoxSize * 0.27, height: wheelBoxSize * 0.27, borderRadius: (wheelBoxSize * 0.27) / 2, borderWidth: 1.5, borderColor: colors.goldAccent, backgroundColor: colors.surface, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
               <RadialGlow colors={[withAlpha(colors.goldAccent, colors.isLight ? 50 : 120), colors.surfaceVariant]} />
-              <Text style={{ fontSize: 28 }}>🕉️</Text>
+              <Text style={{ fontSize: 26 }}>🕉️</Text>
             </View>
-            <Svg width={300} height={300} style={{ position: 'absolute' }} pointerEvents="none">
-              {REMEDIES.map((r) => (
-                <Line key={r.name} x1={150} y1={150} x2={150 + 80 * Math.cos(r.angle)} y2={150 + 80 * Math.sin(r.angle)} stroke={colors.cardBorder} strokeWidth={1} />
+            <Svg width={wheelBoxSize} height={wheelBoxSize} style={{ position: 'absolute' }} pointerEvents="none">
+              {remediesList.map((r) => (
+                <Line
+                  key={r.name}
+                  x1={wheelCenter}
+                  y1={wheelCenter}
+                  x2={wheelCenter + spokeRadius * Math.cos(r.angle)}
+                  y2={wheelCenter + spokeRadius * Math.sin(r.angle)}
+                  stroke={colors.cardBorder}
+                  strokeWidth={1}
+                />
               ))}
             </Svg>
-            {REMEDIES.map((r) => {
-              const x = 110 * Math.cos(r.angle), y = 110 * Math.sin(r.angle);
+            {remediesList.map((r) => {
+              const x = nodeRadius * Math.cos(r.angle);
+              const y = nodeRadius * Math.sin(r.angle);
+              const halfNode = nodeSize / 2;
               return (
                 <Pressable
                   key={r.name}
                   testID={`remedies.wheel.${r.name.replace(/[^A-Za-z]/g, '')}`}
                   onPress={() => openRemedy(r)}
                   style={{
-                    position: 'absolute', left: 150 + x - 30, top: 150 + y - 30, width: 60, height: 60, borderRadius: 30,
-                    backgroundColor: withAlpha(r.color, colors.isLight ? 25 : 30), borderWidth: 1.5, borderColor: withAlpha(r.color, colors.isLight ? 120 : 150), alignItems: 'center', justifyContent: 'center',
-                    shadowColor: r.color, shadowOpacity: colors.isLight ? 0.12 : 0.24, shadowRadius: 8, shadowOffset: { width: 0, height: 0 }, elevation: 4,
+                    position: 'absolute',
+                    left: wheelCenter + x - halfNode,
+                    top: wheelCenter + y - halfNode,
+                    width: nodeSize,
+                    height: nodeSize,
+                    borderRadius: halfNode,
+                    backgroundColor: colors.surface,
+                    borderWidth: 1.2,
+                    borderColor: withAlpha(colors.goldAccent, colors.isLight ? 50 : 75),
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    shadowColor: '#000',
+                    shadowOpacity: colors.isLight ? 0.05 : 0.2,
+                    shadowRadius: 6,
+                    shadowOffset: { width: 0, height: 2 },
+                    elevation: 3,
                   }}
                 >
-                  <Text style={{ fontSize: 18 }}>{r.emoji}</Text>
-                  <Text numberOfLines={1} style={{ color: colors.textPrimary, fontSize: 8, fontWeight: '700', textAlign: 'center' }}>{r.name}</Text>
+                  <Text style={{ fontSize: 17 }}>{r.emoji}</Text>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: colors.textPrimary,
+                      fontSize: 8.5,
+                      fontWeight: '700',
+                      textAlign: 'center',
+                      marginTop: 1,
+                    }}
+                  >
+                    {r.name}
+                  </Text>
                 </Pressable>
               );
             })}
           </View>
-          <Text style={{ marginTop: 8, color: colors.textMuted, fontSize: 12, textAlign: 'center' }}>Tap any direction to explore that remedy</Text>
+          <Text style={{ marginTop: 12, color: colors.textMuted, fontSize: 12, textAlign: 'center' }}>
+            Tap any direction to explore that remedy
+          </Text>
         </View>
 
         <View style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 8 }}>
           <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>All Remedies</Text>
-          <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 12 }} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
-            {REMEDIES.map((r) => (
+          <View
+            style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}
+            onLayout={(e) => {
+              const newW = e.nativeEvent.layout.width;
+              if (newW > 0 && Math.abs(newW - w) > 2) setW(newW);
+            }}
+          >
+            {remediesList.map((r) => (
               <Pressable
                 key={r.name}
                 testID={`remedies.card.${r.name.replace(/[^A-Za-z]/g, '')}`}
                 onPress={() => openRemedy(r)}
-                style={{
+                style={({ pressed }) => ({
                   width: cellW,
-                  minHeight: 140,
-                  padding: 16,
+                  height: 148,
+                  padding: 14,
                   borderRadius: 18,
                   backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: withAlpha(r.color, colors.isLight ? 60 : 80),
+                  borderWidth: 1.2,
+                  borderColor: colors.cardBorder,
                   justifyContent: 'space-between',
-                  shadowColor: colors.isLight ? '#000000' : colors.goldAccent,
-                  shadowOpacity: colors.isLight ? 0.04 : 0.15,
-                  shadowRadius: 8,
+                  shadowColor: '#000',
+                  shadowOpacity: colors.isLight ? 0.03 : 0.15,
+                  shadowRadius: 6,
                   elevation: 2,
-                }}
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                })}
               >
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 24 }}>{r.emoji}</Text>
-                  <AppIcon name="arrow_forward_ios_rounded" color={r.color} size={14} />
+                  <View
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 12,
+                      backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 16 : 24),
+                      borderWidth: 1,
+                      borderColor: withAlpha(colors.goldAccent, colors.isLight ? 35 : 55),
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: 20 }}>{r.emoji}</Text>
+                  </View>
+                  <AppIcon name="arrow_forward_ios_rounded" color={colors.textMuted} size={12} />
                 </View>
                 <View>
-                  <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>{r.name}</Text>
-                  <Text style={{ color: r.color, fontSize: 12, fontWeight: '600' }}>{r.sanskrit}</Text>
-                  <Text numberOfLines={2} style={{ marginTop: 4, color: colors.textMuted, ...lh(10, 1.3) }}>{r.desc}</Text>
+                  <Text numberOfLines={1} style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>
+                    {r.name}
+                  </Text>
+                  <Text numberOfLines={1} style={{ color: colors.goldAccent, fontSize: 11.5, fontWeight: '700', marginTop: 1 }}>
+                    {r.sanskrit}
+                  </Text>
+                  <Text numberOfLines={2} style={{ marginTop: 3, color: colors.textSecondary, fontSize: 11, lineHeight: 15 }}>
+                    {r.desc}
+                  </Text>
                 </View>
               </Pressable>
             ))}
@@ -337,8 +474,6 @@ export default function RemediesScreen() {
             </Pressable>
           </LinearGradient>
         </View>
-
-        <View style={{ height: Math.max(140, insets.bottom + 80) }} />
       </ScrollView>
     </View>
   );

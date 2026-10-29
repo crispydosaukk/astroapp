@@ -431,7 +431,7 @@ export default function HoroscopeScreen() {
                 onPress={() => {
                   push(AppRoutes.aiChatScreen, {
                     astrologerId: 'vedika',
-                    initialPrompt: `Namaste Vedika, according to today's Vedic horoscope for ${zodiac} (${formattedDate}), my overall score is ${data.overall}%. What cosmic remedies or advice do you have for my love life, career, and spiritual progress today?`
+                    initialPrompt: `Namaste, according to today's Vedic horoscope for ${zodiac} (${formattedDate}), my overall score is ${data.overall}%. What cosmic remedies or advice do you have for my love life, career, and spiritual progress today?`
                   });
                 }}
                 style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#713B32', alignItems: 'center' }}

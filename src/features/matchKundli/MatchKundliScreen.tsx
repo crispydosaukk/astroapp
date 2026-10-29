@@ -325,7 +325,7 @@ export default function MatchKundliScreen() {
                 onPress={() => {
                   push(AppRoutes.aiChatScreen, {
                     astrologerId: 'vedika',
-                    initialPrompt: `Namaste Vedika, I need the full detailed marriage compatibility report for ${p1} and ${p2} (Score: ${score}/36). Please analyze all 8 Kutas, dosha cancellations, and remedies.`
+                    initialPrompt: `Namaste, I need the full detailed marriage compatibility report for ${p1} and ${p2} (Score: ${score}/36). Please analyze all 8 Kutas, dosha cancellations, and remedies.`
                   });
                 }}
                 bg="#713B32"
@@ -342,7 +342,7 @@ export default function MatchKundliScreen() {
                 onPress={() => {
                   push(AppRoutes.aiChatScreen, {
                     astrologerId: 'vedika',
-                    initialPrompt: `Namaste Vedika, we just matched ${p1} and ${p2} with a Guna Milan score of ${score}/36 (${verdictTitle}). What does this mean for our future harmony, careers, and family life?`
+                    initialPrompt: `Namaste, we just matched ${p1} and ${p2} with a Guna Milan score of ${score}/36 (${verdictTitle}). What does this mean for our future harmony, careers, and family life?`
                   });
                 }}
                 color={colors.textPrimary}

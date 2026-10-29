@@ -54,7 +54,16 @@ function TabItem({
         <AppIcon name={active ? spec.activeIcon : spec.icon} color={color} size={22} />
         <Animated.Text
           allowFontScaling={false}
-          style={{ marginTop: 3, fontSize: 10, color, fontFamily: ralewayFamily(active ? 700 : 400) }}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+          style={{
+            marginTop: 3,
+            fontSize: 9.5,
+            color,
+            fontFamily: ralewayFamily(active ? 700 : 400),
+            textAlign: 'center',
+            paddingHorizontal: 1,
+          }}
         >
           {label}
         </Animated.Text>

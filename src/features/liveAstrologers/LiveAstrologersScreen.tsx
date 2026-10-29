@@ -48,7 +48,7 @@ function SearchHeader({
             {isReal ? 'Verified Real Astrologers' : '24/7 AI Astrologers'}
           </Text>
           <Text style={{ color: colors.isLight ? '#7C5205' : colors.goldAccent, fontSize: 11, fontWeight: '600', marginTop: 1 }}>
-            {isReal ? 'Authentic Human Masters from Backend Onboarding' : 'Autonomous Astronomical Engine with Vedika AI'}
+            {isReal ? 'Authentic Human Masters from Backend Onboarding' : 'Autonomous Astronomical Engine with AstroParihar AI'}
           </Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 100, backgroundColor: colors.isLight ? '#DCFCE7' : argb('1A3DCB7A'), borderWidth: 1, borderColor: colors.isLight ? '#86EFAC' : argb('333DCB7A') }}>
@@ -79,13 +79,27 @@ function SearchHeader({
   );
 }
 
-/* ---------------------------------------------------- category chips widget */
 const CATEGORIES = [
-  { label: 'All', emoji: '✦' }, { label: 'Love', emoji: '❤️' }, { label: 'Marriage', emoji: '💍' }, { label: 'Career', emoji: '💼' },
-  { label: 'Vedic', emoji: '🕉️' }, { label: 'Finance', emoji: '💰' }, { label: 'Spirituality', emoji: '🧘' }, { label: 'Tarot', emoji: '🃏' },
-  { label: 'Numerology', emoji: '🔢' }, { label: 'Vastu', emoji: '🏛️' }, { label: 'KP', emoji: '📐' }, { label: 'Nadi', emoji: '📜' },
-  { label: 'Mantra', emoji: '🔔' }, { label: 'Yantra', emoji: '🔯' }, { label: 'Homa', emoji: '🔥' }, { label: 'Devata', emoji: '🪔' },
-  { label: 'Gemstones', emoji: '💎' }, { label: 'Rudraksha', emoji: '📿' }, { label: 'Dāna & Seva', emoji: '🤲' },
+  { label: 'All', emoji: '✦' },
+  { label: 'Remedies', emoji: '🪔' },
+  { label: 'Love', emoji: '❤️' },
+  { label: 'Marriage', emoji: '💍' },
+  { label: 'Career', emoji: '💼' },
+  { label: 'Vedic', emoji: '🕉️' },
+  { label: 'Finance', emoji: '💰' },
+  { label: 'Numerology', emoji: '🔢' },
+  { label: 'Vastu', emoji: '🏛️' },
+  { label: 'Spirituality', emoji: '🧘' },
+  { label: 'Tarot', emoji: '🃏' },
+  { label: 'KP', emoji: '📐' },
+  { label: 'Nadi', emoji: '📜' },
+  { label: 'Gemstones', emoji: '💎' },
+  { label: 'Rudraksha', emoji: '📿' },
+  { label: 'Yantra', emoji: '🔯' },
+  { label: 'Mantra', emoji: '🔔' },
+  { label: 'Homa', emoji: '🔥' },
+  { label: 'Devata', emoji: '🪔' },
+  { label: 'Dāna & Seva', emoji: '🤲' },
 ];
 function CategoryChips({ selected, onSelect }: { selected: string; onSelect: (c: string) => void }) {
   const colors = useThemeColors();
@@ -145,7 +159,7 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
   },
   {
     id: 'vedika',
-    name: 'Vedika AI Engine',
+    name: 'AstroParihar AI',
     specialty: 'Sub-Second Planetary Math, Gochara & KP Astrology',
     title: 'Precision Astronomical Vedic Engine',
     experience: '2,50,000+ calculations',
@@ -163,10 +177,10 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     discount: 'Instant <1s reply',
   },
   {
-    id: 'swami-ji',
-    name: 'Swami Shankarananda AI',
-    specialty: 'Himalayan Dasha Analysis & Sade Sati Resolution',
-    title: 'Himalayan Parashari Sage & Spiritual Guide',
+    id: 'ai-guru-brihaspati',
+    name: 'Guru Brihaspati (AI)',
+    specialty: 'Higher Dharma, Dasha Transits & Spiritual Sadhana',
+    title: 'Autonomous Celestial AI Mentor • Instant Voice',
     experience: '95,000+ charts',
     rating: 4.99,
     reviews: '29,800',
@@ -175,11 +189,11 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     isOnline: true,
     languages: 'Hindi, English, Sanskrit',
     imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&fit=crop',
-    semanticLabel: 'Himalayan Vedic monk with rudraksha beads',
+    semanticLabel: 'Autonomous celestial AI sage',
     category: 'Spirituality',
     isAi: true,
     isFeatured: false,
-    discount: 'Top Spiritual Seer',
+    discount: 'Top Spiritual AI Seer',
   },
   {
     id: 'astro-ananya',
@@ -544,9 +558,31 @@ function matchesCategoryFilter(a: AstrologerData, selectedCategory: string): boo
   const aCat = (a.category || '').toLowerCase();
   const aSpec = (a.specialty || '').toLowerCase();
   const aTitle = (a.title || '').toLowerCase();
+  const aBio = ((a as any).bio || (a as any).about || '').toLowerCase();
 
   if (aCat === cat) return true;
-  if (aSpec.includes(cat) || aTitle.includes(cat)) return true;
+  if (aSpec.includes(cat) || aTitle.includes(cat) || aBio.includes(cat)) return true;
+
+  if (cat === 'remedies' || cat === 'gemstones' || cat === 'rudraksha' || cat === 'yantra' || cat === 'homa' || cat === 'mantra') {
+    return (
+      aSpec.includes('remed') ||
+      aTitle.includes('remed') ||
+      aBio.includes('remed') ||
+      aSpec.includes('parihar') ||
+      aTitle.includes('parihar') ||
+      aBio.includes('parihar') ||
+      aSpec.includes('lal kitab') ||
+      aSpec.includes('gemstone') ||
+      aSpec.includes('rudraksha') ||
+      aSpec.includes('yantra') ||
+      aSpec.includes('mantra') ||
+      aSpec.includes('homa') ||
+      aSpec.includes('puja') ||
+      aSpec.includes('dosh') ||
+      aSpec.includes('vastu') ||
+      aCat === 'remedies'
+    );
+  }
 
   if (cat === 'love') {
     return aSpec.includes('love') || aSpec.includes('relationship') || aSpec.includes('harmony') || aCat === 'love';
@@ -580,9 +616,6 @@ function matchesCategoryFilter(a: AstrologerData, selectedCategory: string): boo
   }
   if (cat === 'nadi') {
     return aSpec.includes('nadi') || aCat === 'nadi';
-  }
-  if (cat === 'remedies' || cat === 'gemstones' || cat === 'rudraksha' || cat === 'yantra' || cat === 'homa' || cat === 'mantra') {
-    return aSpec.includes(cat) || aTitle.includes(cat) || aSpec.includes('remed') || aSpec.includes('lal kitab') || aSpec.includes('parihar');
   }
 
   return false;
@@ -629,18 +662,7 @@ export default function LiveAstrologersScreen() {
           isAi: false,
         }));
 
-        // Merge live real from backend onboarding + fallback master real astrologers (never AI)
-        const masterReal = LIVE_ASTROLOGERS.map((a) => ({ ...a, isAi: false, category: getCategoryForAstrologer(a.specialty, a.category) }));
-        const seenReal = new Set<string>();
-        const combinedReal: AstrologerData[] = [];
-        for (const item of [...liveMapped, ...masterReal]) {
-          const key = (item.id || item.name).toLowerCase();
-          if (!seenReal.has(key)) {
-            seenReal.add(key);
-            combinedReal.push(item);
-          }
-        }
-        setRealAstrologers(combinedReal);
+        setRealAstrologers(liveMapped);
       }
 
       if (aiList && aiList.length > 0) {
@@ -662,18 +684,7 @@ export default function LiveAstrologersScreen() {
           isAi: true,
         }));
 
-        // Merge backend AI with fallback AI personas (never real human)
-        const fallbackAi = AI_ASTROLOGERS_DATA.map((a) => ({ ...a, isAi: true, category: getCategoryForAstrologer(a.specialty, a.category) }));
-        const seenAi = new Set<string>();
-        const combinedAi: AstrologerData[] = [];
-        for (const item of [...liveMappedAi, ...fallbackAi]) {
-          const key = (item.id || item.name).toLowerCase();
-          if (!seenAi.has(key)) {
-            seenAi.add(key);
-            combinedAi.push(item);
-          }
-        }
-        setAiAstrologers(combinedAi);
+        setAiAstrologers(liveMappedAi);
       }
     } catch (err) {
       console.warn('Failed to fetch separated astrologers list:', err);

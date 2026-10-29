@@ -522,7 +522,7 @@ export default function ConsultationScreen() {
       {isVideo && connected ? (
         <Pressable testID="consultation.pip" onPress={SOURCE_INERT('consultation.pip')} style={{ position: 'absolute', top: 100, right: 16, width: 90, height: 130, borderRadius: 14, borderWidth: 1.5, borderColor: AppColors.goldAccent, backgroundColor: '#1A2640', overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 8 }}>
           <AppImage
-            uri="https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg"
+            uri="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop"
             width="100%" height="100%" fit="cover"
             semanticLabel="User video preview in picture-in-picture"
             errorWidget={<View style={{ flex: 1, backgroundColor: '#1A2640', alignItems: 'center', justifyContent: 'center' }}><AppIcon name="person_rounded" color={AppColors.textMuted} size={36} /></View>}

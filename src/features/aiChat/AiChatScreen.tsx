@@ -34,6 +34,8 @@ import { useController } from '@/utils/anim';
 import {
   sendLiveAIChatMessage,
 } from '@/services/astrologyService';
+import { AppLanguage, useLanguageStore, useTranslation } from '@/theme/languageStore';
+import { useThemeColors } from '@/theme/themeStore';
 import {
   speakAstrologerText,
   stopAstrologerSpeech,
@@ -70,18 +72,18 @@ export const LANGUAGES = [
 ];
 
 export const AI_MODELS = [
-  { id: 'auto', name: 'Auto (Recommended)', icon: '⚡', desc: 'Hybrid Vedika Ephemeris + OpenAI Brain' },
-  { id: 'vedika-ai', name: 'Vedika AI Engine', icon: '🔮', desc: 'High-Precision Vedic Ephemeris & Kundli Calculations' },
-  { id: 'openai-gpt4o', name: 'OpenAI GPT-4o', icon: '🧠', desc: 'Deep Astrological Synthesis & Sacred Counsel' },
+  { id: 'auto', name: 'Auto (Recommended)', icon: '⚡', desc: 'Optimal Astrological Synthesis & Fast Calculations' },
+  { id: 'vedika-ai', name: 'Vedic Ephemeris AI', icon: '🔮', desc: 'High-Precision Vedic Ephemeris & Kundli Calculations' },
+  { id: 'openai-gpt4o', name: 'Deep Synthesis AI', icon: '🧠', desc: 'Deep Astrological Synthesis & Sacred Counsel' },
 ];
 
 export const ASTROLOGER_PERSONAS = [
-  { id: 'acharya-devavrat', name: 'Acharya Devavrat', title: 'Vedic Grandmaster & Dasha Guru', emoji: '🧘‍♂️', color: '#C9A84C' },
-  { id: 'vedika', name: 'Vedika AI', title: 'Autonomous Vedic Ephemeris Engine', emoji: '🔮', color: '#9370DB' },
-  { id: 'swami-ji', name: 'Swami Shankarananda', title: 'Himalayan Parashari Sage', emoji: '🕉️', color: '#FF9800' },
-  { id: 'astro-ananya', name: 'Astro Ananya', title: 'Nadi & Kundli Seer', emoji: '🌸', color: '#E91E63' },
-  { id: 'arjun-pandit', name: 'Arjun Pandit', title: 'Vedic Kundli Prodigy', emoji: '✨', color: '#2196F3' },
-  { id: 'pandit-raghav', name: 'Pandit Raghavendra', title: 'Lal Kitab & Parihar Master', emoji: '📿', color: '#4CAF50' },
+  { id: 'acharya-devavrat', name: 'Acharya Devavrat (AI)', title: 'Vedic Grandmaster & Dasha Guru', emoji: '🧘‍♂️', color: '#C9A84C' },
+  { id: 'vedika', name: 'AstroParihar AI', title: 'Autonomous Vedic Ephemeris Engine', emoji: '🔮', color: '#9370DB' },
+  { id: 'guru-brihaspati', name: 'Guru Brihaspati (AI)', title: 'Celestial Wisdom & Higher Dharma Guide', emoji: '🕉️', color: '#FF9800' },
+  { id: 'astro-ananya', name: 'Astro Ananya (AI)', title: 'Nadi & Kundli Seer', emoji: '🌸', color: '#E91E63' },
+  { id: 'arjun-pandit', name: 'Arjun Pandit (AI)', title: 'Vedic Kundli Prodigy', emoji: '✨', color: '#2196F3' },
+  { id: 'ratna-vidya', name: 'Ratna Vidya AI', title: 'Planetary Gem Resonance Specialist', emoji: '💎', color: '#4CAF50' },
 ];
 
 const QUICK_PROMPTS_BY_LANG: Record<string, string[]> = {
@@ -596,9 +598,14 @@ export const TOPICS: TopicItem[] = [
 
 export default function AiChatScreen() {
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ initialPrompt?: string; astrologerName?: string; astrologerId?: string; avatarUrl?: string }>();
 
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('English');
+  const selectedLanguage = useLanguageStore((s) => s.selectedLanguage);
+  const setSelectedLanguage = (lang: string) => {
+    useLanguageStore.getState().setLanguage(lang as AppLanguage);
+  };
   const [selectedModel, setSelectedModel] = useState<'auto' | 'vedika-ai' | 'openai-gpt4o'>('auto');
   const [selectedAstrologer, setSelectedAstrologer] = useState<{ id: string; name: string; title: string; emoji?: string; color?: string; avatarUrl?: string }>(() => {
     if (params.astrologerName) {
@@ -723,7 +730,8 @@ export default function AiChatScreen() {
 
   // Set initial welcome message when language or astrologer changes
   useEffect(() => {
-    const welcome = getWelcomeMessage(selectedLanguage, userProfile?.name || 'Guest', selectedAstrologer.name);
+    const userName = authUser?.name || userProfile?.name || 'Guest';
+    const welcome = getWelcomeMessage(selectedLanguage, userName, selectedAstrologer.name);
     setMessages([
       {
         isUser: false,
@@ -733,7 +741,7 @@ export default function AiChatScreen() {
         modelUsed: selectedAstrologer.name,
       },
     ]);
-  }, [selectedLanguage, selectedAstrologer, userProfile?.name]);
+  }, [selectedLanguage, selectedAstrologer, userProfile?.name, authUser?.name]);
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -804,7 +812,7 @@ export default function AiChatScreen() {
           time: currentTime(),
           recommendations: res.recommendations,
           structured: res.structured,
-          modelUsed: `${selectedAstrologer.name} (${res.modelUsed || 'Vedika AI'})`,
+          modelUsed: `${selectedAstrologer.name} (${res.modelUsed || 'AstroParihar AI'})`,
         },
       ]);
       scrollToBottom();
@@ -815,7 +823,7 @@ export default function AiChatScreen() {
         ...prev,
         {
           isUser: false,
-          text: 'The celestial transits are moving into harmony. May Lord Shiva and the planetary deities grant peace, clarity, and auspicious fortune to your inquiries.',
+          text: useLanguageStore.getState().translateText('The celestial transits are moving into harmony. May Lord Shiva and the planetary deities grant peace, clarity, and auspicious fortune to your inquiries.'),
           time: currentTime(),
           recommendations: QUICK_PROMPTS_BY_LANG[selectedLanguage] || QUICK_PROMPTS_BY_LANG.English,
         },
@@ -890,21 +898,20 @@ export default function AiChatScreen() {
                   {selectedAstrologer.name}
                 </Text>
                 <Text style={{ color: '#B2DFDB', fontSize: 10 }}>
-                  Online • {selectedModel === 'vedika-ai' ? 'Vedika AI' : selectedModel === 'openai-gpt4o' ? 'GPT-4o' : 'Vedika & OpenAI'}
+                  Online • Certified Vedic AI Astrologer
                 </Text>
               </View>
             </Pressable>
 
-            {/* Language Selector Pill */}
+            {/* Language Selector Symbol */}
             <Pressable
               testID="aiChat.langPill"
               onPress={() => setShowLanguageModal(true)}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: '#C9A84C', marginRight: 6 }}
+              style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: '#C9A84C', marginRight: 6 }}
+              accessibilityRole="button"
+              accessibilityLabel="Select Language"
             >
-              <Text style={{ fontSize: 11, color: '#FFFFFF', fontWeight: '700' }}>
-                🌐 {LANGUAGES.find((l) => l.code === selectedLanguage)?.label || 'Eng'}
-              </Text>
-              <AppIcon name="keyboard_arrow_down" color="#FFFFFF" size={14} style={{ marginLeft: 2 }} />
+              <Text style={{ fontSize: 13, color: '#FFFFFF' }}>🌐</Text>
             </Pressable>
 
             {/* Model Selector Pill */}
@@ -914,7 +921,7 @@ export default function AiChatScreen() {
               style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 14, backgroundColor: 'rgba(201,168,76,0.25)', borderWidth: 1, borderColor: '#C9A84C' }}
             >
               <Text style={{ fontSize: 11, color: '#C9A84C', fontWeight: '700' }}>
-                {selectedModel === 'vedika-ai' ? '🔮 Vedika' : selectedModel === 'openai-gpt4o' ? '🧠 GPT-4' : '⚡ Auto'}
+                {selectedModel === 'vedika-ai' ? '🔮 Ephemeris' : selectedModel === 'openai-gpt4o' ? '🧠 Deep AI' : '⚡ Auto'}
               </Text>
             </Pressable>
 
@@ -1254,16 +1261,16 @@ export default function AiChatScreen() {
 
       {/* 1. Language Selection Modal */}
       <Modal visible={showLanguageModal} transparent animationType="fade" onRequestClose={() => setShowLanguageModal(false)}>
-        <Pressable onPress={() => setShowLanguageModal(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 24 }}>
-          <View style={{ backgroundColor: '#0D1B2A', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#C9A84C' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <Text style={{ color: '#F0EAD6', fontSize: 18, fontWeight: '700' }}>🌐 Select Astrology Language</Text>
+        <Pressable onPress={() => setShowLanguageModal(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: colors.isLight ? '#FFFFFF' : '#0D1B2A', borderRadius: 24, padding: 22, borderWidth: 1.5, borderColor: '#C9A84C' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <Text style={{ color: colors.isLight ? '#1F1535' : '#FFFFFF', fontSize: 18, fontWeight: '800' }}>🌐 {t('Select Astrology Language', 'Select Astrology Language')}</Text>
               <Pressable onPress={() => setShowLanguageModal(false)} style={{ padding: 4 }}>
-                <AppIcon name="close" color="#A0A8C0" size={22} />
+                <AppIcon name="close" color={colors.isLight ? '#5A6A85' : '#A0A8C0'} size={22} />
               </Pressable>
             </View>
-            <Text style={{ color: '#A0A8C0', fontSize: 12, marginBottom: 14 }}>
-              Choose your preferred language for horoscope readings and AI consultations.
+            <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 12.5, marginBottom: 14, lineHeight: 18 }}>
+              {t('Choose your preferred language for horoscope readings and AI consultations.', 'Choose your preferred language for horoscope readings and AI consultations.')}
             </Text>
             {LANGUAGES.map((lang) => {
               const isSel = selectedLanguage === lang.code;
@@ -1274,9 +1281,20 @@ export default function AiChatScreen() {
                     setSelectedLanguage(lang.code);
                     setShowLanguageModal(false);
                   }}
-                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14, marginBottom: 8, backgroundColor: isSel ? 'rgba(201,168,76,0.2)' : '#16253B', borderWidth: 1, borderColor: isSel ? '#C9A84C' : 'transparent' }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingVertical: 13,
+                    paddingHorizontal: 16,
+                    borderRadius: 14,
+                    marginBottom: 8,
+                    backgroundColor: isSel ? 'rgba(201,168,76,0.22)' : (colors.isLight ? '#F5F5F7' : '#16253B'),
+                    borderWidth: 1.2,
+                    borderColor: isSel ? '#C9A84C' : 'transparent',
+                  }}
                 >
-                  <Text style={{ color: isSel ? '#C9A84C' : '#F0EAD6', fontSize: 15, fontWeight: isSel ? '700' : '500' }}>
+                  <Text style={{ color: isSel ? '#C9A84C' : (colors.isLight ? '#1F1535' : '#FFFFFF'), fontSize: 15, fontWeight: isSel ? '800' : '600' }}>
                     {lang.full}
                   </Text>
                   {isSel ? <AppIcon name="check_circle" color="#C9A84C" size={20} /> : null}
@@ -1289,19 +1307,19 @@ export default function AiChatScreen() {
 
       {/* 2. Model & Astrologer Persona Selection Modal */}
       <Modal visible={showModelModal} transparent animationType="fade" onRequestClose={() => setShowModelModal(false)}>
-        <Pressable onPress={() => setShowModelModal(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 }}>
-          <View style={{ backgroundColor: '#0D1B2A', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#C9A84C', maxHeight: '85%' }}>
+        <Pressable onPress={() => setShowModelModal(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: colors.isLight ? '#FFFFFF' : '#0D1B2A', borderRadius: 24, padding: 20, borderWidth: 1.5, borderColor: '#C9A84C', maxHeight: '85%' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <Text style={{ color: '#F0EAD6', fontSize: 17, fontWeight: '700' }}>🔮 AI Engine & Astrologer</Text>
+              <Text style={{ color: colors.isLight ? '#1F1535' : '#FFFFFF', fontSize: 18, fontWeight: '800' }}>🔮 {t('Vedic Engine & Astrologer', 'Vedic Engine & Astrologer')}</Text>
               <Pressable onPress={() => setShowModelModal(false)} style={{ padding: 4 }}>
-                <AppIcon name="close" color="#A0A8C0" size={22} />
+                <AppIcon name="close" color={colors.isLight ? '#5A6A85' : '#A0A8C0'} size={22} />
               </Pressable>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
               {/* Engine Model Section */}
-              <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-                AI Calculation Engine
+              <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+                {t('AI Calculation Engine', 'AI Calculation Engine')}
               </Text>
               {AI_MODELS.map((m) => {
                 const isSel = selectedModel === m.id;
@@ -1309,12 +1327,21 @@ export default function AiChatScreen() {
                   <Pressable
                     key={m.id}
                     onPress={() => setSelectedModel(m.id as any)}
-                    style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 14, marginBottom: 8, backgroundColor: isSel ? 'rgba(201,168,76,0.2)' : '#16253B', borderWidth: 1, borderColor: isSel ? '#C9A84C' : 'transparent' }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      padding: 12,
+                      borderRadius: 14,
+                      marginBottom: 8,
+                      backgroundColor: isSel ? 'rgba(201,168,76,0.22)' : (colors.isLight ? '#F5F5F7' : '#16253B'),
+                      borderWidth: 1.2,
+                      borderColor: isSel ? '#C9A84C' : 'transparent',
+                    }}
                   >
                     <Text style={{ fontSize: 20 }}>{m.icon}</Text>
                     <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text style={{ color: isSel ? '#C9A84C' : '#F0EAD6', fontSize: 13, fontWeight: '700' }}>{m.name}</Text>
-                      <Text style={{ color: '#A0A8C0', fontSize: 10 }}>{m.desc}</Text>
+                      <Text style={{ color: isSel ? '#C9A84C' : (colors.isLight ? '#1F1535' : '#FFFFFF'), fontSize: 13, fontWeight: '700' }}>{t(m.name, m.name)}</Text>
+                      <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 10.5 }}>{t(m.desc, m.desc)}</Text>
                     </View>
                     {isSel ? <AppIcon name="check_circle" color="#C9A84C" size={18} /> : null}
                   </Pressable>
@@ -1322,8 +1349,8 @@ export default function AiChatScreen() {
               })}
 
               {/* Astrologer Persona Section */}
-              <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginTop: 12, marginBottom: 8 }}>
-                Vedic Master Persona
+              <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginTop: 12, marginBottom: 8 }}>
+                {t('Vedic Master Persona', 'Vedic Master Persona')}
               </Text>
               {ASTROLOGER_PERSONAS.map((astro) => {
                 const isSel = selectedAstrologer.id === astro.id;
@@ -1334,12 +1361,21 @@ export default function AiChatScreen() {
                       setSelectedAstrologer(astro);
                       setShowModelModal(false);
                     }}
-                    style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 14, marginBottom: 8, backgroundColor: isSel ? 'rgba(201,168,76,0.2)' : '#16253B', borderWidth: 1, borderColor: isSel ? '#C9A84C' : 'transparent' }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      padding: 12,
+                      borderRadius: 14,
+                      marginBottom: 8,
+                      backgroundColor: isSel ? 'rgba(201,168,76,0.22)' : (colors.isLight ? '#F5F5F7' : '#16253B'),
+                      borderWidth: 1.2,
+                      borderColor: isSel ? '#C9A84C' : 'transparent',
+                    }}
                   >
                     <Text style={{ fontSize: 22 }}>{astro.emoji}</Text>
                     <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text style={{ color: isSel ? '#C9A84C' : '#F0EAD6', fontSize: 13, fontWeight: '700' }}>{astro.name}</Text>
-                      <Text style={{ color: '#A0A8C0', fontSize: 10 }}>{astro.title}</Text>
+                      <Text style={{ color: isSel ? '#C9A84C' : (colors.isLight ? '#1F1535' : '#FFFFFF'), fontSize: 13, fontWeight: '700' }}>{astro.name}</Text>
+                      <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 10.5 }}>{astro.title}</Text>
                     </View>
                     {isSel ? <AppIcon name="check_circle" color="#C9A84C" size={18} /> : null}
                   </Pressable>
@@ -1364,12 +1400,12 @@ export default function AiChatScreen() {
           <Pressable
             onPress={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: '#0D1B2A',
+              backgroundColor: colors.isLight ? '#FFFFFF' : '#0D1B2A',
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               padding: 20,
               paddingBottom: Math.max(24, insets.bottom + 12),
-              borderWidth: 1,
+              borderWidth: 1.5,
               borderColor: '#C9A84C',
             }}
           >
@@ -1380,12 +1416,12 @@ export default function AiChatScreen() {
                   <Text style={{ fontSize: 18 }}>⚡</Text>
                 </View>
                 <View>
-                  <Text style={{ color: '#F0EAD6', fontSize: 18, fontWeight: '800' }}>Recharge Wallet</Text>
-                  <Text style={{ color: '#A0A8C0', fontSize: 11 }}>Instant credit for AI & Astrologer Consultations</Text>
+                  <Text style={{ color: colors.isLight ? '#1F1535' : '#FFFFFF', fontSize: 18, fontWeight: '800' }}>{t('Recharge Wallet', 'Recharge Wallet')}</Text>
+                  <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 11 }}>{t('Instant credit for AI & Astrologer Consultations', 'Instant credit for AI & Astrologer Consultations')}</Text>
                 </View>
               </View>
               <Pressable onPress={() => setShowRechargeModal(false)} style={{ padding: 4 }}>
-                <AppIcon name="close" color="#A0A8C0" size={22} />
+                <AppIcon name="close" color={colors.isLight ? '#5A6A85' : '#A0A8C0'} size={22} />
               </Pressable>
             </View>
 
@@ -1397,20 +1433,20 @@ export default function AiChatScreen() {
                 alignItems: 'center',
                 padding: 12,
                 borderRadius: 14,
-                backgroundColor: '#16253B',
+                backgroundColor: colors.isLight ? '#FAF5E8' : '#16253B',
                 borderWidth: 1,
                 borderColor: 'rgba(201,168,76,0.3)',
                 marginBottom: 16,
               }}
             >
               <View>
-                <Text style={{ color: '#A0A8C0', fontSize: 11 }}>Current Balance</Text>
-                <Text style={{ color: walletBalance < 5 ? '#FF6B6B' : '#FFD700', fontSize: 20, fontWeight: '800', marginTop: 2 }}>
+                <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 11 }}>{t('Current Balance', 'Current Balance')}</Text>
+                <Text style={{ color: walletBalance < 5 ? '#FF6B6B' : (colors.isLight ? '#B45309' : '#FFD700'), fontSize: 20, fontWeight: '800', marginTop: 2 }}>
                   ₹{walletBalance}
                 </Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
-                <Text style={{ color: '#A0A8C0', fontSize: 11 }}>Consultation Rate</Text>
+                <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 11 }}>{t('Consultation Rate', 'Consultation Rate')}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
                   <Text style={{ color: '#C9A84C', fontSize: 13, fontWeight: '700' }}>₹5 per prompt</Text>
                 </View>
@@ -1419,7 +1455,7 @@ export default function AiChatScreen() {
 
             {/* Select Recharge Amount */}
             <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
-              Select Amount
+              {t('Select Amount', 'Select Amount')}
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
               {[
@@ -1442,16 +1478,16 @@ export default function AiChatScreen() {
                       borderRadius: 12,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      backgroundColor: isSel ? 'rgba(201,168,76,0.25)' : '#16253B',
+                      backgroundColor: isSel ? 'rgba(201,168,76,0.25)' : (colors.isLight ? '#F5F5F7' : '#16253B'),
                       borderWidth: isSel ? 2 : 1,
-                      borderColor: isSel ? '#C9A84C' : 'rgba(255,255,255,0.08)',
+                      borderColor: isSel ? '#C9A84C' : (colors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'),
                     }}
                   >
-                    <Text style={{ color: isSel ? '#C9A84C' : '#F0EAD6', fontSize: 15, fontWeight: '800' }}>
+                    <Text style={{ color: isSel ? '#C9A84C' : (colors.isLight ? '#1F1535' : '#FFFFFF'), fontSize: 15, fontWeight: '800' }}>
                       {opt.label}
                     </Text>
                     {opt.bonus ? (
-                      <Text style={{ color: '#4ADE80', fontSize: 9, fontWeight: '700', marginTop: 2 }}>
+                      <Text style={{ color: '#16A34A', fontSize: 9, fontWeight: '700', marginTop: 2 }}>
                         {opt.bonus}
                       </Text>
                     ) : null}
@@ -1462,7 +1498,7 @@ export default function AiChatScreen() {
 
             {/* Payment Method Selector */}
             <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
-              Select Payment Method
+              {t('Select Payment Method', 'Select Payment Method')}
             </Text>
             <View style={{ gap: 8, marginBottom: 18 }}>
               {[
@@ -1480,19 +1516,19 @@ export default function AiChatScreen() {
                       alignItems: 'center',
                       padding: 12,
                       borderRadius: 12,
-                      backgroundColor: isSel ? 'rgba(201,168,76,0.18)' : '#16253B',
+                      backgroundColor: isSel ? 'rgba(201,168,76,0.18)' : (colors.isLight ? '#F8F9FA' : '#16253B'),
                       borderWidth: 1,
-                      borderColor: isSel ? '#C9A84C' : 'rgba(255,255,255,0.06)',
+                      borderColor: isSel ? '#C9A84C' : (colors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)'),
                     }}
                   >
                     <Text style={{ fontSize: 18, marginRight: 10 }}>{pm.icon}</Text>
-                    <Text style={{ flex: 1, color: isSel ? '#C9A84C' : '#F0EAD6', fontSize: 13, fontWeight: isSel ? '700' : '500' }}>
+                    <Text style={{ flex: 1, color: isSel ? '#C9A84C' : (colors.isLight ? '#1F1535' : '#FFFFFF'), fontSize: 13, fontWeight: isSel ? '700' : '500' }}>
                       {pm.label}
                     </Text>
                     {isSel ? (
                       <AppIcon name="check_circle" color="#C9A84C" size={18} />
                     ) : (
-                      <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: '#A0A8C0' }} />
+                      <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: colors.isLight ? '#9CA3AF' : '#A0A8C0' }} />
                     )}
                   </Pressable>
                 );
@@ -1518,7 +1554,7 @@ export default function AiChatScreen() {
               }}
             >
               <Text style={{ color: '#080D1A', fontSize: 15, fontWeight: '800' }}>
-                {isRecharging ? 'Processing Secure Payment...' : `Pay & Recharge ₹${rechargeAmount}`}
+                {isRecharging ? t('Processing Secure Payment...', 'Processing Secure Payment...') : `${t('Pay & Recharge', 'Pay & Recharge')} ₹${rechargeAmount}`}
               </Text>
             </Pressable>
 
@@ -1530,8 +1566,8 @@ export default function AiChatScreen() {
               }}
               style={{ marginTop: 12, alignItems: 'center', paddingVertical: 4 }}
             >
-              <Text style={{ color: '#A0A8C0', fontSize: 12, textDecorationLine: 'underline' }}>
-                View Full Wallet & Transaction History →
+              <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 12, textDecorationLine: 'underline' }}>
+                {t('View Full Wallet & Transaction History →', 'View Full Wallet & Transaction History →')}
               </Text>
             </Pressable>
           </Pressable>
@@ -1541,16 +1577,60 @@ export default function AiChatScreen() {
       {/* 4. Auth Required Modal */}
       <Modal visible={showAuthModal} transparent animationType="fade" onRequestClose={() => setShowAuthModal(false)}>
         <Pressable onPress={() => setShowAuthModal(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.68)', justifyContent: 'center', padding: 24 }}>
-          <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: '#0D1B2A', borderRadius: 24, padding: 22, borderWidth: 1.5, borderColor: '#C9A84C' }}>
-            <View style={{ alignItems: 'center', marginBottom: 14 }}>
-              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(201,168,76,0.18)', borderWidth: 1.5, borderColor: '#C9A84C', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: colors.isLight ? '#FFFFFF' : '#0D1B2A',
+              borderRadius: 24,
+              padding: 24,
+              borderWidth: 1.5,
+              borderColor: '#C9A84C',
+              shadowColor: '#C9A84C',
+              shadowOpacity: 0.25,
+              shadowRadius: 16,
+              elevation: 8,
+            }}
+          >
+            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+              <View
+                style={{
+                  width: 58,
+                  height: 58,
+                  borderRadius: 29,
+                  backgroundColor: colors.isLight ? 'rgba(201,168,76,0.14)' : 'rgba(201,168,76,0.22)',
+                  borderWidth: 1.5,
+                  borderColor: '#C9A84C',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 14,
+                }}
+              >
                 <AppIcon name="lock" color="#C9A84C" size={28} />
               </View>
-              <Text style={{ color: '#F0EAD6', fontSize: 18, fontWeight: '800', textAlign: 'center' }}>
-                Sign In to Consult
+              <Text
+                style={{
+                  color: colors.isLight ? '#1F1535' : '#FFFFFF',
+                  fontSize: 20,
+                  fontWeight: '800',
+                  textAlign: 'center',
+                  letterSpacing: 0.3,
+                }}
+              >
+                {t('Sign In to Consult', 'Sign In to Consult')}
               </Text>
-              <Text style={{ color: '#A0A8C0', fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 19 }}>
-                Please sign in to your AstroParihar account to ask AI Astrologers and unlock Vedic Jyotish insights. Each consultation prompt costs ₹5 from your wallet.
+              <Text
+                style={{
+                  color: colors.isLight ? '#4A5568' : '#CBD5E1',
+                  fontSize: 13.5,
+                  textAlign: 'center',
+                  marginTop: 10,
+                  lineHeight: 20,
+                }}
+              >
+                {t(
+                  'Please sign in to your AstroParihar account to ask AI Astrologers and unlock Vedic Jyotish insights. Each consultation prompt costs ₹5 from your wallet.',
+                  'Please sign in to your AstroParihar account to ask AI Astrologers and unlock Vedic Jyotish insights. Each consultation prompt costs ₹5 from your wallet.'
+                )}
               </Text>
             </View>
 
@@ -1566,10 +1646,14 @@ export default function AiChatScreen() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginTop: 8,
+                shadowColor: '#C9A84C',
+                shadowOpacity: 0.3,
+                shadowRadius: 6,
+                elevation: 3,
               }}
             >
               <Text style={{ color: '#080D1A', fontSize: 15, fontWeight: '800' }}>
-                Sign In / Register Now ↗
+                {t('Sign In / Register Now ↗', 'Sign In / Register Now ↗')}
               </Text>
             </Pressable>
 
@@ -1577,8 +1661,8 @@ export default function AiChatScreen() {
               onPress={() => setShowAuthModal(false)}
               style={{ marginTop: 12, alignItems: 'center', paddingVertical: 6 }}
             >
-              <Text style={{ color: '#7E8BA8', fontSize: 13, fontWeight: '500' }}>
-                Maybe Later
+              <Text style={{ color: colors.isLight ? '#718096' : '#94A3B8', fontSize: 13.5, fontWeight: '600' }}>
+                {t('Maybe Later', 'Maybe Later')}
               </Text>
             </Pressable>
           </Pressable>

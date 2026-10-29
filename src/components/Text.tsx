@@ -23,7 +23,20 @@ function translateNode(node: React.ReactNode, translate: (t: string) => string):
   if (typeof node === 'string') {
     return translate(node);
   }
+  if (typeof node === 'number') {
+    return node;
+  }
   if (Array.isArray(node)) {
+    const isAllPrimitives = node.every(
+      (c) => typeof c === 'string' || typeof c === 'number' || c == null
+    );
+    if (isAllPrimitives) {
+      const combined = node.map((c) => (c == null ? '' : String(c))).join('');
+      const translatedCombined = translate(combined);
+      if (translatedCombined !== combined) {
+        return translatedCombined;
+      }
+    }
     return React.Children.map(node, (child) => translateNode(child, translate));
   }
   return node;

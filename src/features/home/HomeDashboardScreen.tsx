@@ -4,7 +4,7 @@
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedPressable, switcherEntering } from '@/components/AnimatedBox';
@@ -14,6 +14,7 @@ import { ProgressRing } from '@/components/common';
 import { lh, Text, TextInput } from '@/components/Text';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, push } from '@/navigation/routes';
+import { AppLanguage, useLanguageStore } from '@/theme/languageStore';
 import {
   CosmicInsight,
   DEFAULT_REAL_ASTROLOGERS,
@@ -37,6 +38,21 @@ function getGreeting(): string {
 }
 
 /* --------------------------------------------------------- HomeHeaderWidget */
+const APP_HEADER_LANGUAGES: Array<{
+  code: AppLanguage;
+  nativeName: string;
+  englishLabel: string;
+  greetingSample: string;
+  flagEmoji: string;
+}> = [
+  { code: 'Telugu', nativeName: 'తెలుగు', englishLabel: 'Telugu', greetingSample: 'నమస్కారం', flagEmoji: '☀️' },
+  { code: 'Hindi', nativeName: 'हिन्दी', englishLabel: 'Hindi', greetingSample: 'नमस्ते', flagEmoji: '🕉️' },
+  { code: 'English', nativeName: 'English', englishLabel: 'English', greetingSample: 'Namaste', flagEmoji: '✨' },
+  { code: 'Tamil', nativeName: 'தமிழ்', englishLabel: 'Tamil', greetingSample: 'வணக்கம்', flagEmoji: '🪷' },
+  { code: 'Kannada', nativeName: 'ಕನ್ನಡ', englishLabel: 'Kannada', greetingSample: 'ನಮಸ್ಕಾರ', flagEmoji: '🌿' },
+  { code: 'Malayalam', nativeName: 'മലയാളം', englishLabel: 'Malayalam', greetingSample: 'നമസ്കാരം', flagEmoji: '🌙' },
+];
+
 function HomeHeader() {
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
@@ -44,6 +60,11 @@ function HomeHeader() {
   const userName = (isAuthenticated && user?.name?.trim()) ? user.name.trim() : 'Guest';
   const initial = (userName[0] || 'G').toUpperCase();
   const greeting = getGreeting();
+
+  const selectedLanguage = useLanguageStore((s) => s.selectedLanguage);
+  const setLanguage = useLanguageStore((s) => s.setLanguage);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const currentLang = APP_HEADER_LANGUAGES.find((l) => l.code === selectedLanguage) || APP_HEADER_LANGUAGES[0];
 
   const { location, isLoading, loadCached, detectLocation } = useLocationStore();
 
@@ -69,121 +90,313 @@ function HomeHeader() {
   };
 
   return (
-    <View
-      style={{
-        paddingHorizontal: 20,
-        paddingTop: 12,
-        paddingBottom: 4,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}
-    >
-      {/* User profile (Avatar + Name & Greeting) */}
-      <Pressable
-        testID="home.profile"
-        onPress={() => push(AppRoutes.profileScreen)}
+    <>
+      <View
         style={{
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: 4,
           flexDirection: 'row',
           alignItems: 'center',
-          flex: 1,
-          marginRight: 10,
+          justifyContent: 'space-between',
         }}
-        accessibilityRole="button"
-        accessibilityLabel={`Profile of ${userName}`}
       >
-        <View
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: 21,
-            borderWidth: 1.5,
-            borderColor: colors.goldAccent,
-            overflow: 'hidden',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 10,
-          }}
-        >
-          <LinearGradient
-            colors={['#713B32', '#552B24']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-          />
-          <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700' }}>{initial}</Text>
-        </View>
-
-        <View style={{ flex: 1, justifyContent: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <AppIcon name="wb_sunny_rounded" color={colors.goldAccent} size={12} />
-            <Text style={{ marginLeft: 4, color: colors.isLight ? '#5A6A85' : '#8F9CAE', fontSize: 11, fontWeight: '600' }}>
-              {greeting}
-            </Text>
-          </View>
-          <Text
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700', marginTop: 1 }}
-          >
-            {userName}
-          </Text>
-        </View>
-      </Pressable>
-
-      {/* Location Badge + Notification Bell in the same line */}
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {/* User profile (Avatar + Name & Greeting) */}
         <Pressable
-          testID="home.location"
-          onPress={handleLocationPress}
+          testID="home.profile"
+          onPress={() => push(AppRoutes.profileScreen)}
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            height: 38,
-            paddingHorizontal: 11,
-            borderRadius: 19,
-            backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
-            borderWidth: 1,
-            borderColor: colors.isLight ? 'rgba(201,168,76,0.35)' : argb('1AC9A84C'),
-            marginRight: 8,
+            flex: 1,
+            marginRight: 6,
           }}
           accessibilityRole="button"
-          accessibilityLabel={`Current Location: ${displayCity}`}
+          accessibilityLabel={`Profile of ${userName}`}
         >
-          {isLoading ? (
-            <ActivityIndicator size="small" color={colors.goldAccent} style={{ width: 14, height: 14 }} />
-          ) : (
-            <AppIcon name="location_on_rounded" color={colors.goldAccent} size={14} />
-          )}
-          <Text
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            style={{ marginLeft: 4, color: colors.textPrimary, fontSize: 12, fontWeight: '600', maxWidth: 85 }}
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              borderWidth: 1.5,
+              borderColor: colors.goldAccent,
+              overflow: 'hidden',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 8,
+            }}
           >
-            {displayCity}
-          </Text>
+            <LinearGradient
+              colors={['#713B32', '#552B24']}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            />
+            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>{initial}</Text>
+          </View>
+
+          <View style={{ flex: 1, justifyContent: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <AppIcon name="wb_sunny_rounded" color={colors.goldAccent} size={12} />
+              <Text numberOfLines={1} ellipsizeMode="tail" style={{ marginLeft: 4, color: colors.isLight ? '#5A6A85' : '#8F9CAE', fontSize: 11, fontWeight: '600' }}>
+                {greeting}
+              </Text>
+            </View>
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700', marginTop: 1 }}
+            >
+              {userName}
+            </Text>
+          </View>
         </Pressable>
 
-        <Pressable
-          testID="home.notifications"
-          onPress={() => push(AppRoutes.notificationsScreen)}
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 12,
-            backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
-            borderWidth: 1,
-            borderColor: colors.isLight ? 'rgba(201,168,76,0.35)' : argb('1AC9A84C'),
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Notifications"
-        >
-          <AppIcon name="notifications_outlined" color={colors.textPrimary} size={19} />
-        </Pressable>
+        {/* Right Header Cluster: Language Selector + Location Badge + Notifications */}
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {/* Professional Language Selection Icon */}
+          <Pressable
+            testID="home.languagePill"
+            onPress={() => setShowLanguageModal(true)}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 12,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
+              borderWidth: 1,
+              borderColor: colors.isLight ? 'rgba(201,168,76,0.32)' : argb('1AC9A84C'),
+              marginRight: 6,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Language: ${currentLang.nativeName}`}
+          >
+            <AppIcon name="translate" color={colors.goldAccent} size={18} />
+          </Pressable>
+
+          {/* Location Badge */}
+          <Pressable
+            testID="home.location"
+            onPress={handleLocationPress}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              height: 36,
+              paddingHorizontal: 8,
+              borderRadius: 18,
+              backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
+              borderWidth: 1,
+              borderColor: colors.isLight ? 'rgba(201,168,76,0.32)' : argb('1AC9A84C'),
+              marginRight: 6,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Current Location: ${displayCity}`}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color={colors.goldAccent} style={{ width: 12, height: 12 }} />
+            ) : (
+              <AppIcon name="location_on_rounded" color={colors.goldAccent} size={13} />
+            )}
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={{ marginLeft: 3, color: colors.textPrimary, fontSize: 11, fontWeight: '600', maxWidth: 60 }}
+            >
+              {displayCity}
+            </Text>
+          </Pressable>
+
+          {/* Notifications */}
+          <Pressable
+            testID="home.notifications"
+            onPress={() => push(AppRoutes.notificationsScreen)}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 12,
+              backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
+              borderWidth: 1,
+              borderColor: colors.isLight ? 'rgba(201,168,76,0.32)' : argb('1AC9A84C'),
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Notifications"
+          >
+            <AppIcon name="notifications_outlined" color={colors.textPrimary} size={18} />
+          </Pressable>
+        </View>
       </View>
-    </View>
+
+      {/* Professional Language Selection Modal */}
+      <Modal
+        visible={showLanguageModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLanguageModal(false)}
+      >
+        <Pressable
+          onPress={() => setShowLanguageModal(false)}
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: 360,
+              borderRadius: 24,
+              backgroundColor: colors.isLight ? '#FFFDF9' : '#0D1B2A',
+              borderWidth: 1.5,
+              borderColor: colors.goldAccent,
+              padding: 20,
+              shadowColor: colors.goldAccent,
+              shadowOpacity: 0.25,
+              shadowRadius: 16,
+              elevation: 8,
+            }}
+          >
+            {/* Modal Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: colors.isLight ? '#FFF3E0' : 'rgba(201,168,76,0.18)',
+                    borderWidth: 1,
+                    borderColor: colors.goldAccent,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 9,
+                  }}
+                >
+                  <AppIcon name="translate" color={colors.goldAccent} size={17} />
+                </View>
+                <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800' }}>
+                  Select Language
+                </Text>
+              </View>
+
+              <Pressable
+                testID="home.languageModal.close"
+                onPress={() => setShowLanguageModal(false)}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  backgroundColor: colors.isLight ? '#F0EAD6' : 'rgba(255,255,255,0.08)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AppIcon name="close" color={colors.textSecondary} size={16} />
+              </Pressable>
+            </View>
+
+            <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 16, lineHeight: 17 }}>
+              Choose your preferred language for horoscope readings, panchang & AI consultations.
+            </Text>
+
+            {/* Language Options List */}
+            <View style={{ gap: 8 }}>
+              {APP_HEADER_LANGUAGES.map((lang) => {
+                const isSelected = selectedLanguage === lang.code;
+                return (
+                  <Pressable
+                    key={lang.code}
+                    testID={`home.langOption.${lang.code.toLowerCase()}`}
+                    onPress={() => {
+                      setLanguage(lang.code);
+                      setShowLanguageModal(false);
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                      borderRadius: 16,
+                      backgroundColor: isSelected
+                        ? (colors.isLight ? '#FFF7E6' : 'rgba(201,168,76,0.18)')
+                        : (colors.isLight ? '#FFFFFF' : 'rgba(255,255,255,0.04)'),
+                      borderWidth: isSelected ? 1.5 : 1,
+                      borderColor: isSelected
+                        ? colors.goldAccent
+                        : (colors.isLight ? 'rgba(201,168,76,0.22)' : 'rgba(255,255,255,0.08)'),
+                      shadowColor: isSelected ? colors.goldAccent : '#000',
+                      shadowOpacity: isSelected ? 0.08 : 0,
+                      shadowRadius: 4,
+                      elevation: isSelected ? 1 : 0,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 16, marginRight: 10 }}>{lang.flagEmoji}</Text>
+                      <View>
+                        <Text
+                          style={{
+                            color: isSelected ? (colors.isLight ? '#713B32' : '#FFD700') : colors.textPrimary,
+                            fontSize: 15,
+                            fontWeight: isSelected ? '800' : '600',
+                          }}
+                        >
+                          {lang.nativeName}
+                        </Text>
+                        <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 1 }}>
+                          {`${lang.englishLabel} • ${lang.greetingSample}`}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {isSelected ? (
+                      <AppIcon name="check_circle_rounded" color={colors.goldAccent} size={20} />
+                    ) : (
+                      <View
+                        style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: 9,
+                          borderWidth: 1.5,
+                          borderColor: colors.isLight ? '#D1C7B7' : '#4A5568',
+                        }}
+                      />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Micro reassurance badge */}
+            <View
+              style={{
+                marginTop: 14,
+                paddingVertical: 8,
+                paddingHorizontal: 10,
+                borderRadius: 10,
+                backgroundColor: colors.isLight ? '#FAF5E8' : 'rgba(0,0,0,0.25)',
+                borderWidth: 1,
+                borderColor: colors.isLight ? 'rgba(201,168,76,0.25)' : 'rgba(201,168,76,0.15)',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 10.5, color: colors.goldAccent, fontWeight: '600', textAlign: 'center' }}>
+                ✦ Entire app and AI Chat will update to your selected language instantly.
+              </Text>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
@@ -500,7 +713,7 @@ function HoroscopeCards() {
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 }}>
         <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 18, fontWeight: '700' }}>Today&apos;s Horoscope</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100, backgroundColor: colors.isLight ? 'rgba(201,168,76,0.15)' : argb('1AC9A84C'), borderWidth: colors.isLight ? 1 : 0, borderColor: colors.goldAccent }}>
-          <Text style={{ color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 10, fontWeight: '700' }}>✦ Vedika AI Engine</Text>
+          <Text style={{ color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 10, fontWeight: '700' }}>✦ AstroParihar AI</Text>
         </View>
       </View>
       <FlatList
@@ -697,7 +910,7 @@ function AiPromptCard() {
               </View>
             </View>
             <Text style={{ color: colors.isLight ? '#5A6A85' : '#8A99AD', fontSize: 12, marginTop: 2 }}>
-              Powered by Vedika AI & Vedic Ephemeris
+              Powered by Sacred Vedic Ephemeris & AI
             </Text>
           </View>
         </View>
@@ -816,7 +1029,7 @@ function PersonalisedRecs({
     {
       emoji: '🔮',
       title: `Talk to AI Astrologer: ${topAi.name}`,
-      subtitle: `${topAi.specialty} • Instant Answers with Vedika AI`,
+      subtitle: `${topAi.specialty} • Instant Answers with AstroParihar AI`,
       tag: 'AI Guru',
       tagColor: '#C9A84C',
       tagBgLight: '#FFF8EE',
@@ -945,23 +1158,34 @@ function RealAstrologersCarousel({ realAstrologers = [] }: { realAstrologers?: L
 
   return (
     <View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 }}>
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700' }}>Talk to Verified Astrologers</Text>
-            <View style={{ marginLeft: 8, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100, backgroundColor: colors.isLight ? '#DCFCE7' : argb('1A3DCB7A'), borderWidth: colors.isLight ? 1 : 0, borderColor: '#86EFAC' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 }}>
+        <View style={{ flex: 1, marginRight: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800' }}>Talk to Astrologers</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 100, backgroundColor: colors.isLight ? '#DCFCE7' : argb('1A3DCB7A'), borderWidth: colors.isLight ? 1 : 0, borderColor: '#86EFAC' }}>
               <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.isLight ? '#16A34A' : '#3DCB7A' }} />
               <Text style={{ marginLeft: 4, color: colors.isLight ? '#15803D' : '#3DCB7A', fontSize: 11, fontWeight: '700' }}>
                 {`${onlineCount} Online`}
               </Text>
             </View>
           </View>
-          <Text style={{ color: colors.isLight ? '#7C5205' : colors.goldAccent, fontSize: 11, fontWeight: '600', marginTop: 1 }}>
+          <Text style={{ color: colors.isLight ? '#7C5205' : colors.goldAccent, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
             Authentic Human Gurus from Backend Onboarding
           </Text>
         </View>
-        <Pressable testID="home.astrologers.viewAll" onPress={() => push(AppRoutes.liveAstrologersScreen)}>
-          <Text style={{ color: colors.isLight ? '#713B32' : '#C9A84C', fontSize: 13, fontWeight: '700' }}>View All</Text>
+        <Pressable
+          testID="home.astrologers.viewAll"
+          onPress={() => push(AppRoutes.liveAstrologersScreen)}
+          style={{
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            borderRadius: 10,
+            backgroundColor: colors.isLight ? '#FAF5E8' : 'rgba(201,168,76,0.12)',
+            borderWidth: 1,
+            borderColor: colors.isLight ? 'rgba(201,168,76,0.35)' : 'rgba(201,168,76,0.25)',
+          }}
+        >
+          <Text style={{ color: colors.isLight ? '#713B32' : '#C9A84C', fontSize: 12, fontWeight: '700' }}>View All ›</Text>
         </Pressable>
       </View>
 
@@ -971,140 +1195,147 @@ function RealAstrologersCarousel({ realAstrologers = [] }: { realAstrologers?: L
         style={{ marginTop: 14 }}
         contentContainerStyle={{ paddingHorizontal: 20 }}
       >
-        {displayList.map((a) => (
-          <Pressable
-            key={a.id || a.name}
-            testID={`home.realAstrologer.${a.id || a.name}`}
-            onPress={() => push(AppRoutes.liveAstrologersScreen)}
-            style={{
-              width: 300,
-              height: 124,
-              marginRight: 14,
-              borderRadius: 20,
-              backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
-              borderWidth: 1.5,
-              borderColor: colors.isLight ? 'rgba(201,168,76,0.35)' : argb('1AC9A84C'),
-              padding: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              shadowColor: colors.isLight ? '#C9A84C' : '#000',
-              shadowOpacity: colors.isLight ? 0.08 : 0.2,
-              shadowRadius: 6,
-              elevation: 2,
-            }}
-          >
-            {/* Left Side: Circular Image with Online & Verified Indicators */}
-            <View style={{ width: 66, height: 66, alignItems: 'center', justifyContent: 'center' }}>
-              <View
-                style={{
-                  width: 60,
-                  height: 60,
-                  borderRadius: 30,
-                  borderWidth: 2,
-                  borderColor: colors.goldAccent,
-                  overflow: 'hidden',
-                  backgroundColor: colors.isLight ? '#FAF5E8' : '#0D1B2A',
-                }}
-              >
-                <AppImage
-                  uri={a.imageUrl}
-                  width={60}
-                  height={60}
-                  fit="cover"
-                  semanticLabel={a.semanticLabel || a.name}
-                  errorWidget={
-                    <View style={{ width: 60, height: 60, backgroundColor: colors.isLight ? '#F0E8D5' : '#1A2A3D', alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 18, fontWeight: '800' }}>
-                        {(a.name || 'A').replace(/^(Acharya|Swami|Pt\.|Pandit|Guru|Dr\.)\s+/i, '')[0] || 'A'}
-                      </Text>
-                    </View>
-                  }
-                />
-              </View>
+        {displayList.map((a) => {
+          const formattedName = (a.name || 'Astrologer')
+            .split(' ')
+            .map((w) => (w.length > 0 ? w[0].toUpperCase() + w.slice(1).toLowerCase() : ''))
+            .join(' ');
 
-              {/* Online indicator */}
-              <View
-                style={{
-                  position: 'absolute',
-                  top: 2,
-                  right: 2,
-                  width: 12,
-                  height: 12,
-                  borderRadius: 6,
-                  borderWidth: 2,
-                  borderColor: colors.isLight ? '#FFFFFF' : '#080D1A',
-                  backgroundColor: a.isOnline ? '#3DCB7A' : '#6B7A99',
-                }}
-              />
-
-              {/* Verified Real Astrologer badge */}
-              <View
-                style={{
-                  position: 'absolute',
-                  bottom: -2,
-                  paddingHorizontal: 6,
-                  paddingVertical: 1.5,
-                  borderRadius: 100,
-                  backgroundColor: colors.isLight ? '#FEF3C7' : '#0D1B2A',
-                  borderWidth: 1,
-                  borderColor: colors.goldAccent,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                }}
-              >
-                <AppIcon name="verified_rounded" color={colors.isLight ? '#B45309' : '#C9A84C'} size={8} />
-                <Text style={{ marginLeft: 2, color: colors.isLight ? '#B45309' : '#F0EAD6', fontSize: 8, fontWeight: '700' }}>
-                  Verified
-                </Text>
-              </View>
-            </View>
-
-            {/* Right Side: Related Content */}
-            <View style={{ flex: 1, marginLeft: 12, justifyContent: 'center' }}>
-              <Text numberOfLines={1} style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>
-                {a.name}
-              </Text>
-              <Text numberOfLines={1} style={{ marginTop: 2, color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 11, fontWeight: '600' }}>
-                {a.specialty}
-              </Text>
-
-              <View style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center' }}>
-                <AppIcon name="star_rounded" color={colors.isLight ? '#D97706' : '#C9A84C'} size={12} />
-                <Text style={{ marginLeft: 2, color: colors.isLight ? '#B45309' : '#C9A84C', fontSize: 11, fontWeight: '700' }}>
-                  {String(a.rating)}
-                </Text>
-                <Text style={{ marginLeft: 3, color: colors.isLight ? '#6B7280' : '#6B7A99', fontSize: 10 }}>
-                  {`(${a.reviews})`}
-                </Text>
-                <Text style={{ marginHorizontal: 4, color: colors.isLight ? '#9CA3AF' : '#6B7A99', fontSize: 10 }}>•</Text>
-                <Text style={{ color: colors.isLight ? '#4B5563' : '#8F9CAE', fontSize: 10, fontWeight: '500' }}>
-                  {a.experience}
-                </Text>
-              </View>
-
-              <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '700' }}>
-                  {`₹${a.price}/min`}
-                </Text>
+          return (
+            <Pressable
+              key={a.id || a.name}
+              testID={`home.realAstrologer.${a.id || a.name}`}
+              onPress={() => push(AppRoutes.liveAstrologersScreen)}
+              style={{
+                width: 300,
+                height: 124,
+                marginRight: 14,
+                borderRadius: 20,
+                backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
+                borderWidth: 1.5,
+                borderColor: colors.isLight ? 'rgba(201,168,76,0.35)' : argb('1AC9A84C'),
+                padding: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                shadowColor: colors.isLight ? '#C9A84C' : '#000',
+                shadowOpacity: colors.isLight ? 0.08 : 0.2,
+                shadowRadius: 6,
+                elevation: 2,
+              }}
+            >
+              {/* Left Side: Circular Image with Online & Verified Indicators */}
+              <View style={{ width: 66, height: 66, alignItems: 'center', justifyContent: 'center' }}>
                 <View
                   style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 5,
+                    width: 60,
+                    height: 60,
+                    borderRadius: 30,
+                    borderWidth: 2,
+                    borderColor: colors.goldAccent,
+                    overflow: 'hidden',
+                    backgroundColor: colors.isLight ? '#FAF5E8' : '#0D1B2A',
+                  }}
+                >
+                  <AppImage
+                    uri={a.imageUrl}
+                    width={60}
+                    height={60}
+                    fit="cover"
+                    semanticLabel={a.semanticLabel || a.name}
+                    errorWidget={
+                      <View style={{ width: 60, height: 60, backgroundColor: colors.isLight ? '#F0E8D5' : '#1A2A3D', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 18, fontWeight: '800' }}>
+                          {(a.name || 'A').replace(/^(Acharya|Swami|Pt\.|Pandit|Guru|Dr\.)\s+/i, '')[0] || 'A'}
+                        </Text>
+                      </View>
+                    }
+                  />
+                </View>
+
+                {/* Online indicator */}
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: 2,
+                    right: 2,
+                    width: 12,
+                    height: 12,
+                    borderRadius: 6,
+                    borderWidth: 2,
+                    borderColor: colors.isLight ? '#FFFFFF' : '#080D1A',
+                    backgroundColor: a.isOnline ? '#3DCB7A' : '#6B7A99',
+                  }}
+                />
+
+                {/* Verified Real Astrologer badge */}
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: -2,
+                    paddingHorizontal: 6,
+                    paddingVertical: 1.5,
                     borderRadius: 100,
-                    backgroundColor: '#713B32',
+                    backgroundColor: colors.isLight ? '#FEF3C7' : '#0D1B2A',
+                    borderWidth: 1,
+                    borderColor: colors.goldAccent,
                     flexDirection: 'row',
                     alignItems: 'center',
                   }}
                 >
-                  <AppIcon name="call_rounded" color="#FFFFFF" size={11} />
-                  <Text style={{ marginLeft: 4, color: '#FFFFFF', fontSize: 10, fontWeight: '800', letterSpacing: 0.4 }}>
-                    Consult Now
+                  <AppIcon name="verified_rounded" color={colors.isLight ? '#B45309' : '#C9A84C'} size={8} />
+                  <Text style={{ marginLeft: 2, color: colors.isLight ? '#B45309' : '#F0EAD6', fontSize: 8, fontWeight: '700' }}>
+                    Verified
                   </Text>
                 </View>
               </View>
-            </View>
-          </Pressable>
-        ))}
+
+              {/* Right Side: Related Content */}
+              <View style={{ flex: 1, marginLeft: 12, justifyContent: 'center' }}>
+                <Text numberOfLines={1} style={{ color: colors.textPrimary, fontSize: 13.5, fontWeight: '700' }}>
+                  {formattedName}
+                </Text>
+                <Text numberOfLines={1} style={{ marginTop: 2, color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 11, fontWeight: '600' }}>
+                  {a.specialty}
+                </Text>
+
+                <View style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center' }}>
+                  <AppIcon name="star_rounded" color={colors.isLight ? '#D97706' : '#C9A84C'} size={12} />
+                  <Text style={{ marginLeft: 2, color: colors.isLight ? '#B45309' : '#C9A84C', fontSize: 11, fontWeight: '700' }}>
+                    {String(a.rating)}
+                  </Text>
+                  <Text style={{ marginLeft: 3, color: colors.isLight ? '#6B7280' : '#6B7A99', fontSize: 10 }}>
+                    {`(${a.reviews})`}
+                  </Text>
+                  <Text style={{ marginHorizontal: 4, color: colors.isLight ? '#9CA3AF' : '#6B7A99', fontSize: 10 }}>•</Text>
+                  <Text style={{ color: colors.isLight ? '#4B5563' : '#8F9CAE', fontSize: 10, fontWeight: '500' }}>
+                    {a.experience}
+                  </Text>
+                </View>
+
+                <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '700' }}>
+                    {`₹${a.price}/min`}
+                  </Text>
+                  <View
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 5,
+                      borderRadius: 100,
+                      backgroundColor: '#713B32',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <AppIcon name="call_rounded" color="#FFFFFF" size={11} />
+                    <Text style={{ marginLeft: 4, color: '#FFFFFF', fontSize: 10, fontWeight: '800', letterSpacing: 0.4 }}>
+                      Consult Now
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </Pressable>
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -1117,20 +1348,31 @@ function AiAstrologersCarousel({ aiAstrologers = [] }: { aiAstrologers?: LiveAst
 
   return (
     <View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 }}>
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700' }}>✦ 24/7 AI Expert Astrologers</Text>
-            <View style={{ marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100, backgroundColor: '#713B32', borderWidth: 0.5, borderColor: '#C9A84C' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 }}>
+        <View style={{ flex: 1, marginRight: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800' }}>✦ 24/7 AI Astrologers</Text>
+            <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 100, backgroundColor: '#713B32', borderWidth: 0.5, borderColor: '#C9A84C' }}>
               <Text style={{ color: '#F0EAD6', fontSize: 10, fontWeight: '800' }}>Instant</Text>
             </View>
           </View>
-          <Text style={{ color: colors.isLight ? '#7C5205' : colors.goldAccent, fontSize: 11, fontWeight: '600', marginTop: 1 }}>
-            Sub-Second Vedic Calculations Powered by Vedika AI
+          <Text style={{ color: colors.isLight ? '#7C5205' : colors.goldAccent, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
+            Sub-Second Vedic Calculations Powered by AstroParihar AI
           </Text>
         </View>
-        <Pressable testID="home.aiAstrologers.viewAll" onPress={() => push(AppRoutes.aiChatScreen)}>
-          <Text style={{ color: colors.isLight ? '#713B32' : '#C9A84C', fontSize: 13, fontWeight: '700' }}>Chat AI</Text>
+        <Pressable
+          testID="home.aiAstrologers.viewAll"
+          onPress={() => push(AppRoutes.aiChatScreen)}
+          style={{
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            borderRadius: 10,
+            backgroundColor: '#713B32',
+            borderWidth: 1,
+            borderColor: '#C9A84C',
+          }}
+        >
+          <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>Chat AI ›</Text>
         </Pressable>
       </View>
 
@@ -1289,6 +1531,8 @@ function AiAstrologersCarousel({ aiAstrologers = [] }: { aiAstrologers?: LiveAst
 function PromotionsOffersSection({ refreshKey }: { refreshKey?: number }) {
   const colors = useThemeColors();
   const [promotions, setPromotions] = useState<DynamicPromotion[]>([]);
+  const scrollRef = React.useRef<ScrollView>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     getDynamicPromotions().then((data) => {
@@ -1296,22 +1540,34 @@ function PromotionsOffersSection({ refreshKey }: { refreshKey?: number }) {
     });
   }, [refreshKey]);
 
+  useEffect(() => {
+    if (promotions.length <= 1) return;
+    const timer = setInterval(() => {
+      setActiveIndex((prev) => {
+        const next = (prev + 1) % promotions.length;
+        scrollRef.current?.scrollTo({ x: next * (290 + 14), animated: true });
+        return next;
+      });
+    }, 3800);
+    return () => clearInterval(timer);
+  }, [promotions.length]);
+
   if (promotions.length === 0) return null;
 
   return (
     <View style={{ marginBottom: 20 }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, marginRight: 8 }}>
           <Text style={{ fontSize: 16 }}>🎁</Text>
-          <Text style={{ marginLeft: 6, color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={{ marginLeft: 6, color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
             Promotions & Offers
           </Text>
         </View>
         <Pressable
           testID="home.promotions.viewAll"
           onPress={() => push(AppRoutes.walletScreen)}
-          style={{ flexDirection: 'row', alignItems: 'center' }}
+          style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}
         >
           <Text style={{ color: colors.goldAccent, fontSize: 12, fontWeight: '700' }}>
             View All Offers
@@ -1322,12 +1578,24 @@ function PromotionsOffersSection({ refreshKey }: { refreshKey?: number }) {
 
       {/* Horizontal Carousel */}
       <ScrollView
+        ref={scrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+        snapToInterval={290 + 14}
+        decelerationRate="fast"
+        onMomentumScrollEnd={(e) => {
+          const offsetX = e.nativeEvent.contentOffset.x;
+          const idx = Math.round(offsetX / (290 + 14));
+          setActiveIndex(Math.min(Math.max(0, idx), promotions.length - 1));
+        }}
       >
         {promotions.map((promo) => {
           const targetRoute = (promo.route?.startsWith('/') ? promo.route : `/${promo.route || 'live-astrologers-screen'}`) as any;
+          const showDiscount =
+            promo.discount &&
+            promo.discount.trim().toLowerCase() !== promo.badge.trim().toLowerCase();
+
           return (
             <View
               key={promo.id}
@@ -1350,7 +1618,7 @@ function PromotionsOffersSection({ refreshKey }: { refreshKey?: number }) {
                 end={{ x: 1, y: 1 }}
                 style={{ padding: 16 }}
               >
-                {/* Badge & Discount */}
+                {/* Badge & Discount (No Duplication) */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <View
                     style={{
@@ -1366,18 +1634,20 @@ function PromotionsOffersSection({ refreshKey }: { refreshKey?: number }) {
                       {promo.badge}
                     </Text>
                   </View>
-                  <View
-                    style={{
-                      paddingHorizontal: 8,
-                      paddingVertical: 3,
-                      borderRadius: 100,
-                      backgroundColor: '#713B32',
-                    }}
-                  >
-                    <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '800' }}>
-                      {promo.discount}
-                    </Text>
-                  </View>
+                  {showDiscount ? (
+                    <View
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderRadius: 100,
+                        backgroundColor: '#713B32',
+                      }}
+                    >
+                      <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '800' }}>
+                        {promo.discount}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
 
                 {/* Title & Subtitle */}
@@ -1429,6 +1699,38 @@ function PromotionsOffersSection({ refreshKey }: { refreshKey?: number }) {
           );
         })}
       </ScrollView>
+
+      {/* Pagination Dot Indicators */}
+      {promotions.length > 1 && (
+        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 12, gap: 6 }}>
+          {promotions.map((p, idx) => {
+            const isDotActive = activeIndex === idx;
+            return (
+              <Pressable
+                key={`dot-${p.id}`}
+                onPress={() => {
+                  setActiveIndex(idx);
+                  scrollRef.current?.scrollTo({ x: idx * (290 + 14), animated: true });
+                }}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={`Go to banner ${idx + 1}`}
+              >
+                <View
+                  style={{
+                    width: isDotActive ? 22 : 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: isDotActive
+                      ? colors.goldAccent
+                      : (colors.isLight ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.2)'),
+                  }}
+                />
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
@@ -1445,7 +1747,7 @@ function StickyHomeCTAs() {
         position: 'absolute',
         left: 16,
         right: 16,
-        bottom: insets.bottom + 84, // Pinned right above the 68px floating bottom tab bar
+        bottom: insets.bottom + 92, // Pinned with 12px breathing room above the 68px floating tab bar
         zIndex: 99,
       }}
     >
@@ -1474,7 +1776,8 @@ function StickyHomeCTAs() {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            paddingVertical: 12,
+            minHeight: 46,
+            paddingVertical: 10,
             paddingHorizontal: 8,
             borderRadius: 13,
             backgroundColor: '#713B32',
@@ -1484,8 +1787,8 @@ function StickyHomeCTAs() {
             elevation: 2,
           }}
         >
-          <AppIcon name="auto_awesome_rounded" color="#FFFFFF" size={16} />
-          <Text style={{ marginLeft: 6, color: '#FFFFFF', fontSize: 12.5, fontWeight: '800' }}>
+          <AppIcon name="auto_awesome_rounded" color="#FFFFFF" size={15} />
+          <Text numberOfLines={1} ellipsizeMode="tail" style={{ marginLeft: 6, color: '#FFFFFF', fontSize: 11.5, fontWeight: '800' }}>
             Chat with AI Astrologer
           </Text>
         </Pressable>
@@ -1499,7 +1802,8 @@ function StickyHomeCTAs() {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            paddingVertical: 12,
+            minHeight: 46,
+            paddingVertical: 10,
             paddingHorizontal: 8,
             borderRadius: 13,
             backgroundColor: '#C9A84C',
@@ -1509,8 +1813,8 @@ function StickyHomeCTAs() {
             elevation: 2,
           }}
         >
-          <AppIcon name="call_rounded" color="#FFFFFF" size={16} />
-          <Text style={{ marginLeft: 6, color: '#FFFFFF', fontSize: 12.5, fontWeight: '800' }}>
+          <AppIcon name="call_rounded" color="#FFFFFF" size={15} />
+          <Text numberOfLines={1} ellipsizeMode="tail" style={{ marginLeft: 6, color: '#FFFFFF', fontSize: 11.5, fontWeight: '800' }}>
             Call Astrologer
           </Text>
         </Pressable>

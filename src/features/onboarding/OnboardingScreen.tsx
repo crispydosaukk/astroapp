@@ -34,7 +34,7 @@ const LOCAL_ASTRO_IMG = require('@/../assets/images/onboarding_astrologer.jpg');
 
 export const DEFAULT_ONBOARDING_SLIDES: Slide[] = [
   {
-    imageUrl: 'https://images.pexels.com/photos/1169754/pexels-photo-1169754.jpeg?auto=compress&cs=tinysrgb&w=800',
+    imageUrl: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800&auto=format&fit=crop',
     semanticLabel: 'Night sky with bright stars and Milky Way galaxy, deep cosmic blue tones',
     title: 'Discover Your\nCosmic Path',
     titleHighlight: 'Cosmic Path',

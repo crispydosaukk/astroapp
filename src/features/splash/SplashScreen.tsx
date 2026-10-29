@@ -110,6 +110,7 @@ export default function SplashScreen() {
 
   // Calculate balanced proportions with comfortable margins on any screen size
   const wheelSize = Math.min(width * 0.76, height * 0.38, 290);
+  const emblemSize = wheelSize * 0.334;
   const logoWidth = Math.min(width * 0.54, 210);
   const logoHeight = logoWidth * 0.44;
 
@@ -146,7 +147,7 @@ export default function SplashScreen() {
           />
         </View>
 
-        {/* Center: Animated Rotating Ashta Parihar Wheel with Cosmic Aura */}
+        {/* Center: Animated Rotating Ashta Parihar Wheel with Constant Center Emblem */}
         <View
           style={{
             width: wheelSize,
@@ -169,7 +170,7 @@ export default function SplashScreen() {
             }}
           />
 
-          {/* Continuously Rotating Ashta Wheel */}
+          {/* 1. The 8 Remedies Wheel — Continuously Rotates around the center */}
           <Animated.View
             style={{
               width: wheelSize,
@@ -185,13 +186,38 @@ export default function SplashScreen() {
             }}
           >
             <Image
-              source={require('@/../assets/images/ashta_parihar_wheel.png')}
+              source={require('@/../assets/images/ashta_parihar_wheel_outer.png')}
               style={{ width: '100%', height: '100%' }}
               contentFit="contain"
               priority="high"
-              accessibilityLabel="Ashta Parihar Wheel"
+              accessibilityLabel="Ashta Parihar 8 Remedies Wheel"
             />
           </Animated.View>
+
+          {/* 2. Middle Logo / Sacred Emblem — Kept CONSTANT (Stationary, Does NOT Rotate) */}
+          <View
+            style={{
+              position: 'absolute',
+              width: emblemSize,
+              height: emblemSize,
+              borderRadius: emblemSize / 2,
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10,
+              shadowColor: colors.goldAccent,
+              shadowOpacity: 0.35,
+              shadowRadius: 6,
+              elevation: 6,
+            }}
+          >
+            <Image
+              source={require('@/../assets/images/app_logo_emblem.png')}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="contain"
+              priority="high"
+              accessibilityLabel="AstroParihar Center Sacred Emblem"
+            />
+          </View>
         </View>
 
         {/* Bottom: Sacred Sanskrit Inscription & Vedic Tagline */}

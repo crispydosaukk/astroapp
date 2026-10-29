@@ -42,7 +42,7 @@ export const DEFAULT_COSMIC_INSIGHTS: CosmicInsight[] = [
     tag: '✦ Your Cosmic Insight Today',
     title: 'Scorpio — Moon in Punarvasu Nakshatra',
     description: "Jupiter's transit brings divine clarity to your career path and financial growth today.",
-    imageUrl: 'https://images.pexels.com/photos/1252890/pexels-photo-1252890.jpeg?auto=compress&cs=tinysrgb&w=600',
+    imageUrl: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800&auto=format&fit=crop',
     active: true,
     ctaText: "View Today's Guidance",
     ctaAction: '/ai-chat-screen',
@@ -79,90 +79,49 @@ export const DEFAULT_COSMIC_INSIGHTS: CosmicInsight[] = [
 
 export const DEFAULT_REAL_ASTROLOGERS: LiveAstrologer[] = [
   {
-    id: 'astro-swami-shankarananda',
-    name: 'Swami Shankarananda Giri',
-    specialty: 'Parashara Dasha Guru & Vedic Astrology',
-    experience: '35+ Yrs',
-    rating: 4.99,
-    reviews: '24.5k',
-    price: 45,
-    isOnline: true,
-    isAi: false,
-    imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&fit=crop',
-    languages: 'Hindi, Sanskrit, English',
-    semanticLabel: 'Venerable Himalayan sage with white beard and traditional robes',
-  },
-  {
-    id: 'astro-swami-rao',
-    name: 'Swami Sadasiva Rao',
-    specialty: 'Dasha Transitions & Milestones',
-    experience: '42+ Yrs',
-    rating: 4.99,
-    reviews: '26.8k',
-    price: 55,
-    isOnline: true,
-    isAi: false,
-    imageUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&fit=crop',
-    languages: 'Telugu, Tamil, Hindi, English',
-    semanticLabel: 'Elderly South Indian Vedic scholar with sacred thread',
-  },
-  {
-    id: 'astro-raghvendra-shastri',
-    name: 'Acharya Raghvendra Shastri',
-    specialty: 'Relationship & Soul Harmony',
-    experience: '19+ Yrs',
-    rating: 4.96,
-    reviews: '18.9k',
-    price: 22,
-    isOnline: true,
-    isAi: false,
-    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&fit=crop',
-    languages: 'Hindi, English',
-    semanticLabel: 'Indian scholar in traditional kurta with calm and wise expression',
-  },
-  {
-    id: 'astro-shreya-devi',
-    name: 'Acharya Shreya Devi',
-    specialty: 'Kundli Milan & Navamsha (D9)',
-    experience: '16+ Yrs',
-    rating: 4.97,
-    reviews: '15.2k',
+    id: '8No3bTeCRKRdQ2c1AVXi9ZGvSGc2',
+    name: 'Sharma',
+    specialty: 'Numerology & Vedic Astrology',
+    experience: '12+ Yrs',
+    rating: 4.95,
+    reviews: '0.9k',
     price: 20,
     isOnline: true,
     isAi: false,
-    imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&fit=crop',
-    languages: 'Tamil, Hindi, English',
-    semanticLabel: 'Indian woman in traditional saree with warm smile',
+    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+    languages: 'English',
+    semanticLabel: 'Sharma - Verified Vedic & Numerology Astrologer',
   },
   {
-    id: 'astro-radhey-shyam',
-    name: 'Pandit Radhey Shyam Chaturvedi',
-    specialty: 'Kaal Sarp & Manglik Dosha',
-    experience: '28+ Yrs',
-    rating: 4.96,
-    reviews: '16.4k',
-    price: 35,
+    id: 'AaQbqgvOUOMifZi4Sg0YUxJvBDJ2',
+    name: 'Raj Vishwa',
+    specialty: 'Vastu & Numerology',
+    experience: '20+ Yrs',
+    rating: 4.95,
+    reviews: '1.2k',
+    price: 25,
     isOnline: false,
     isAi: false,
-    imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&fit=crop',
-    languages: 'Hindi, Sanskrit',
-    semanticLabel: 'Middle-aged Indian pandit with sacred tilak',
+    imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&fit=crop',
+    languages: 'English, Telugu, Tamil, Hindi',
+    semanticLabel: 'Raj Vishwa - Verified Vastu & Vedic Astrologer',
   },
   {
-    id: 'astro-meenakshi-iyer',
-    name: 'Jyotishacharya Meenakshi Iyer',
-    specialty: 'KP Astrology & Career Timing',
-    experience: '14+ Yrs',
-    rating: 4.95,
-    reviews: '11.2k',
-    price: 18,
+    id: 'ast-1789887155087',
+    name: 'Sandy',
+    specialty: 'Vedic Jyotish',
+    experience: '12+ Yrs',
+    rating: 4.92,
+    reviews: '0.8k',
+    price: 25,
     isOnline: true,
     isAi: false,
-    imageUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&fit=crop',
-    languages: 'Tamil, English, Hindi',
-    semanticLabel: 'South Indian woman with warm smile and professional demeanor',
+    imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&fit=crop',
+    languages: 'English, Telugu',
+    semanticLabel: 'Sandy - Verified Vedic Jyotish Astrologer',
   },
 ];
+
 
 export const DEFAULT_AI_ASTROLOGERS: LiveAstrologer[] = [
   {
@@ -181,7 +140,7 @@ export const DEFAULT_AI_ASTROLOGERS: LiveAstrologer[] = [
   },
   {
     id: 'ai-vedika',
-    name: 'Vedika AI Engine',
+    name: 'AstroParihar AI Engine',
     specialty: 'Sub-Second Planetary Math & KP Astrology',
     experience: '2,50,000+ calculations',
     rating: 4.98,
@@ -420,7 +379,7 @@ export async function getDynamicCosmicInsights(): Promise<CosmicInsight[]> {
               tag: m.tag?.stringValue || '✦ Cosmic Transit',
               title: m.title?.stringValue || 'Planetary Shift',
               description: m.description?.stringValue || '',
-              imageUrl: m.imageUrl?.stringValue || 'https://images.pexels.com/photos/1252890/pexels-photo-1252890.jpeg?auto=compress&cs=tinysrgb&w=600',
+              imageUrl: m.imageUrl?.stringValue || 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800&auto=format&fit=crop',
               active: m.active?.booleanValue !== false,
               ctaText: m.ctaText?.stringValue || "View Today's Guidance",
               ctaAction: m.ctaAction?.stringValue || '/ai-chat-screen',
@@ -440,6 +399,88 @@ export async function getDynamicCosmicInsights(): Promise<CosmicInsight[]> {
   }
 
   return DEFAULT_COSMIC_INSIGHTS;
+}
+
+async function fetchDirectFirestoreRealAstrologers(): Promise<LiveAstrologer[]> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(
+      'https://firestore.googleapis.com/v1/projects/astroparihar-85e2d/databases/(default)/documents/astrologers',
+      { signal: controller.signal }
+    );
+    clearTimeout(timer);
+    if (!res.ok) return [];
+    const json = await res.json();
+    if (!Array.isArray(json.documents)) return [];
+
+    const result: LiveAstrologer[] = [];
+    for (const doc of json.documents) {
+      const id = doc.name ? doc.name.split('/').pop() : '';
+      const f = doc.fields || {};
+      const status = f.status?.stringValue || '';
+      if (!['approved', 'active', 'probation', 'verified'].includes(status)) continue;
+
+      const rawName = f.name?.stringValue || 'Astrologer';
+      const cleanName = rawName
+        .split(' ')
+        .map((w: string) => (w.length > 0 ? w[0].toUpperCase() + w.slice(1).toLowerCase() : ''))
+        .join(' ')
+        .trim();
+
+      let specialty = f.speciality?.stringValue || f.specialization?.stringValue || 'Vedic Astrology';
+      if (f.skills?.stringValue) {
+        specialty = f.skills.stringValue.split(',')[0].trim();
+      }
+
+      let expNum = f.experienceYears?.integerValue ? parseInt(f.experienceYears.integerValue, 10) : 12;
+      if (f.experience?.stringValue) {
+        const parsed = parseInt(f.experience.stringValue.replace(/[^0-9]/g, ''), 10);
+        if (!isNaN(parsed) && parsed > 0) expNum = parsed;
+      }
+
+      const isOnline = f.isOnline?.booleanValue !== undefined ? f.isOnline.booleanValue : true;
+      const price = f.amount?.integerValue ? Math.max(10, parseInt(f.amount.integerValue, 10)) : 25;
+
+      let languages = 'English, Hindi';
+      if (f.languages?.stringValue) {
+        languages = f.languages.stringValue;
+      } else if (f.languages?.arrayValue?.values) {
+        languages = f.languages.arrayValue.values
+          .map((v: any) => v.stringValue)
+          .filter(Boolean)
+          .join(', ');
+      }
+
+      const photo =
+        f.profileImageUrl?.stringValue ||
+        f.photoURL?.stringValue ||
+        f.avatar?.stringValue ||
+        (cleanName.toLowerCase() === 'sharma'
+          ? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400'
+          : cleanName.toLowerCase().includes('raj')
+          ? 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&fit=crop'
+          : 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&fit=crop');
+
+      result.push({
+        id: id || cleanName.toLowerCase(),
+        name: cleanName,
+        specialty,
+        experience: `${expNum}+ Yrs`,
+        rating: 4.95,
+        reviews: `${expNum * 80}+`,
+        price,
+        isOnline,
+        isAi: false,
+        imageUrl: photo,
+        languages,
+        semanticLabel: `${cleanName} - Verified Vedic Astrologer`,
+      });
+    }
+    return result;
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -468,10 +509,10 @@ export async function fetchRealAstrologers(): Promise<LiveAstrologer[]> {
         const list = Array.isArray(data.realAstrologers) && data.realAstrologers.length > 0
           ? data.realAstrologers
           : Array.isArray(data.astrologers)
-          ? data.astrologers.filter((a: any) => !a.isAi)
+          ? data.astrologers.filter((a: any) => !a.isAi && !a.id?.startsWith('ai-'))
           : null;
 
-        if (list && list.length > 0) {
+        if (list && list.length >= 3) {
           const resolved = list.map((a: any) => ({
             ...a,
             isAi: false,
@@ -482,6 +523,13 @@ export async function fetchRealAstrologers(): Promise<LiveAstrologer[]> {
         }
       }
     } catch {}
+
+    // Direct Firestore REST dynamic sync (ensures 1:1 parity with website live database)
+    const directLive = await fetchDirectFirestoreRealAstrologers();
+    if (directLive.length > 0) {
+      await AsyncStorage.setItem(STORAGE_REAL_ASTROLOGERS_KEY, JSON.stringify(directLive));
+      return directLive;
+    }
 
     if (parsedCache && parsedCache.length > 0) {
       return parsedCache.map((a: any) => ({

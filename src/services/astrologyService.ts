@@ -519,7 +519,7 @@ export async function fetchLiveHoroscopes(): Promise<Record<string, LiveHoroscop
 }
 
 // ----------------------------------------------------------------------------
-// 6. Unified AI Astrologer Chat Service (Vedika AI & OpenAI)
+// 6. Unified AI Astrologer Chat Service (AstroParihar AI)
 // ----------------------------------------------------------------------------
 export interface AIChatMessagePayload {
   role: 'user' | 'assistant';
@@ -595,7 +595,7 @@ export async function sendLiveAIChatMessage(params: {
           timingWindow: data.timingWindow || data.structured?.timingWindow,
           structured: data.structured,
           recommendations: data.recommendations || [],
-          modelUsed: data.modelUsed || 'Vedika AI & OpenAI Engine',
+          modelUsed: data.modelUsed || 'AstroParihar AI Engine',
           language: data.language || lang,
         };
       }
@@ -653,6 +653,16 @@ export async function sendLiveAIChatMessage(params: {
       '✨ ನನ್ನ ಅದೃಷ್ಟ ರತ್ನ, ರುದ್ರಾಕ್ಷಿ ಮತ್ತು ನಿತ್ಯ ಮಂತ್ರ ಯಾವುದು?',
       '🪐 ನನಗೆ ಸಾಡೇ ಸಾತಿ ಅಥವಾ ರಾಹು ಮಹಾದಶ ನಡೆಯುತ್ತಿದೆಯೇ?',
       '🙏 ಗ್ರಹ ಶಾಂತಿ ಮತ್ತು ದೋಷ ನಿವಾರಣೆಗೆ ಯಾವ ಪರಿಹಾರ ಮಾಡಬೇಕು?',
+    ];
+  } else if (lang === 'Malayalam') {
+    fallbackReply = `**നമസ്കാരം, ദിവ്യാനുഗ്രഹങ്ങൾ!** 🙏\n\nനിങ്ങളുടെ ജനന ജാതകമനുസരിച്ച്, ലഗ്നം **${lagna}**, ചന്ദ്ര രാശി **${moon}** ആണ്. നിലവിൽ നിങ്ങളുടെ ജാതകത്തിൽ **${dasha} മഹാദശ - ${antardasha} അപഹാരം** നടന്നുകൊണ്ടിരിക്കുന്നു.\n\n✦ **ഗ്രഹ സ്വാധീനം**: വ്യാഴത്തിന്റെ അനുകൂല ദൃഷ്ടി നിങ്ങളുടെ പ്രധാന ഭാവങ്ങളിൽ സമൃദ്ധിയും തടസ്സമില്ലായ്മയും നൽകുന്നു.\n✦ **ശുഭ സമയം**: വരാനിരിക്കുന്ന 3 മുതൽ 6 മാസം വരെയുള്ള കാലയളവ് പ്രധാന കാര്യങ്ങൾക്ക് വളരെ അനുകൂലമാണ്.\n✦ **വൈദിക പരിഹാരം**: വ്യാഴാഴ്ചകളിൽ നെയ്യ് വിളക്ക് കൊളുത്തുകയും വിഷ്ണു സഹസ്രനാമം ജപിക്കുകയും ചെയ്യുക.`;
+    fallbackRecs = [
+      '🔮 2026-ൽ എന്റെ ഗ്രഹങ്ങളുടെ സ്വാധീനം എങ്ങനെയുണ്ട്?',
+      '❤️ എന്റെ വിവാഹ യോഗം എപ്പോഴാണ്?',
+      '💼 കരിയർ മാറ്റത്തിനോ പ്രമോഷനോ അനുയോജ്യമായ സമയം എപ്പോഴാണ്?',
+      '✨ എന്റെ ഭാഗ്യ രത്നം, രുദ്രാക്ഷം, നിത്യ മന്ത്രം എന്നിവ ഏതാണ്?',
+      '🪐 എനിക്ക് ഇപ്പോൾ ഏഴര ശനിയോ രാഹു ദശയോ നടക്കുന്നുണ്ടോ?',
+      '🙏 ദോഷ പരിഹാരത്തിനായി എന്തെല്ലാം പൂജകളും ദാനങ്ങളും ചെയ്യണം?',
     ];
   } else {
     fallbackReply = `**Namaste and Divine Blessings!** 🙏\n\nBased on your authentic Vedic birth chart, your Lagna is **${lagna}** and your Moon Rashi is **${moon}**. You are currently traversing the **${dasha} Mahadasha – ${antardasha} Antardasha** cycle.\n\n✦ **Cosmic Transit Alignment**: Jupiter is casting a protective aspect over your key quadrant houses, unlocking progressive growth and removing past obstacles.\n✦ **Timing Window**: The upcoming 3 to 6 months present an exceptionally auspicious window for your key aspirations.\n✦ **Sacred Pariharam**: Light a cow-ghee deepam on Thursdays and recite the Guru or Gayatri Mantra 108 times at dawn.`;
