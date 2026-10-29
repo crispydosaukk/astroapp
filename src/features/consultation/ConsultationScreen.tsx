@@ -1,16 +1,19 @@
 /**
- * Port of lib/presentation/consultation_screen/consultation_screen.dart
- * Payload: { type: 'voice' | 'video', astrologer } (anything other than 'voice' → video, like the GoRoute builder).
- * - connect after 3 s → call timer (1 s) + balance deduction (every 60 s, rate = price) + system message
- * - pulse 0.95↔1.05 / 1500 ms (voice avatar); connecting ripple + dots 800 ms linear repeat
- * - session chat: canned random reply after 2 s
- * - End → non-dismissible "Session Ended" dialog → Done pops dialog + screen
- * SOURCE_INERT: rating stars in dialog, user PiP tap.
+ * Real-time Astrologer Consultation Screen
+ * AstroParihar - Mobile & Web Parity
+ *
+ * Full integration with:
+ * 1. Firebase Firestore 'consultations' booking & status polling
+ * 2. Real-time Astrologer acceptance alert & ringtone synchronization
+ * 3. ZegoCloud WebRTC 1-on-1 Audio/Video Call Rooms
+ * 4. Live Server Billing APIs (/api/start-call-billing & /api/deduct-minute)
  */
+
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, View, ActivityIndicator } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
+import { WebView } from 'react-native-webview';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,13 +21,21 @@ import { AnimatedBox } from '@/components/AnimatedBox';
 import { AppIcon } from '@/components/AppIcon';
 import { AppImage } from '@/components/AppImage';
 import { RadialGlow } from '@/components/common';
-import { Dialog } from '@/components/overlays';
+import { Dialog, showSnackBar } from '@/components/overlays';
 import { Text, TextInput } from '@/components/Text';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, go, push, useExtra } from '@/navigation/routes';
 import { submitConsultationReview } from '@/services/reviewService';
 import { deductWalletBalance, getWalletBalance, subscribeWallet } from '@/services/walletService';
 import { generateZegoRoomId, openAiCallRoom, openZegoCallRoom } from '@/services/zegoService';
+import {
+  createConsultationBooking,
+  getConsultationStatus,
+  cancelConsultationBooking,
+  completeConsultationBooking,
+  startCallBilling,
+} from '@/services/consultationService';
+import { sendLiveAIChatMessage } from '@/services/astrologyService';
 import { speakAstrologerText, stopAstrologerSpeech } from '@/services/speechService';
 import { AppColors, argb, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
@@ -35,16 +46,22 @@ type Astro = { id?: string; name: string; title?: string; imageUrl: string; sema
 type Msg = { text: string; isSystem: boolean; isUser?: boolean; time: string };
 
 const DEFAULT_ASTRO: Astro = {
-  name: 'Swami Shankarananda Giri', title: 'Vedic Astrologer & Dasha Expert',
+  name: 'Swami Shankarananda Giri',
+  title: 'Vedic Astrologer & Dasha Expert',
   imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/swami-ji.png',
-  semanticLabel: 'Elderly Indian sage with white beard and traditional orange robes', isOnline: true, price: 45, rating: 4.99,
+  semanticLabel: 'Elderly Indian sage with white beard and traditional orange robes',
+  isOnline: true,
+  price: 45,
+  rating: 4.99,
 };
+
 const REPLIES = [
   'I can see the planetary positions clearly. Let me analyse this for you.',
   'Your question is very important. The stars indicate a significant period ahead.',
   'Based on your birth chart, I see strong Jupiter influence here.',
   'This is a favourable time for the matter you are asking about.',
 ];
+
 const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
 function Avatar({ uri, size, border = 0 }: { uri: string; size: number; border?: number }) {
@@ -74,14 +91,23 @@ export default function ConsultationScreen() {
   const ratePerMin = Number(astro.price ?? 45);
   const isAi = Boolean((astro as any)?.isAi || astro.name?.includes('(AI)') || (astro.title && astro.title.toLowerCase().includes('ai')));
 
-  // Authentication check: Guests cannot start consultations
+  // Authentication check
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authUser = useAuthStore((s) => s.user);
   const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
 
   const [authModalVisible, setAuthModalVisible] = useState(false);
   const [lowBalanceVisible, setLowBalanceVisible] = useState(false);
+  const [consultationId, setConsultationId] = useState<string | null>(null);
   const roomID = useRef(extra?.roomID || generateZegoRoomId()).current;
+
+  // Real consultation states
+  const [isWaitingAstrologer, setIsWaitingAstrologer] = useState(!isAi);
+  const [acceptanceCountdown, setAcceptanceCountdown] = useState(60);
+  const [connectionStatusText, setConnectionStatusText] = useState(
+    isAi ? 'Connecting to AI Astrologer...' : 'Calling Astrologer... Waiting for acceptance'
+  );
+  const [inAppVideoVisible, setInAppVideoVisible] = useState(false);
 
   const [isMuted, setMuted] = useState(false);
   const [isCameraOff, setCameraOff] = useState(false);
@@ -106,63 +132,47 @@ export default function ConsultationScreen() {
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
-  const REVIEW_TAG_OPTIONS = [
-    'Accurate Prediction 🎯',
-    'Calm & Compassionate 🙏',
-    'Effective Remedies ✨',
-    'Deep Vedic Wisdom 📜',
-    'Clear Guidance 🗣️',
-    'Career Clarity 💼',
-  ];
-
-  const toggleTag = (t: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(t) ? prev.filter((item) => item !== t) : [...prev, t]
-    );
-  };
-
-  const handleReviewSubmit = async () => {
-    setIsSubmittingReview(true);
-    try {
-      await submitConsultationReview({
-        astrologerId: String((astro as any).id || 'swami-shankarananda'),
-        astrologerName: astro.name,
-        rating: reviewRating,
-        reviewText: reviewComment.trim() || 'Very accurate reading and compassionate Vedic guidance.',
-        tags: selectedTags,
-        serviceType: isVideo ? 'Video Call' : 'Voice Call',
-      });
-      setReviewSubmitted(true);
-    } catch {
-      setReviewSubmitted(true);
-    } finally {
-      setIsSubmittingReview(false);
-    }
-  };
-
   const secondsRef = useRef(0);
   secondsRef.current = seconds;
-  const timers = useRef<{ connect?: ReturnType<typeof setTimeout>; call?: ReturnType<typeof setInterval>; balance?: ReturnType<typeof setInterval> }>({});
+  const consultationIdRef = useRef<string | null>(null);
+  consultationIdRef.current = consultationId;
+
+  const timers = useRef<{
+    countdown?: ReturnType<typeof setInterval>;
+    poll?: ReturnType<typeof setInterval>;
+    call?: ReturnType<typeof setInterval>;
+    balance?: ReturnType<typeof setInterval>;
+  }>({});
   const listRef = useRef<FlatList<Msg>>(null);
   const mounted = useRef(true);
 
   const scrollChat = () => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 0);
-  const addSystem = (text: string) => { setMessages((m) => [...m, { text, isSystem: true, time: fmt(secondsRef.current) }]); scrollChat(); };
+  const addSystem = (text: string) => {
+    setMessages((m) => [...m, { text, isSystem: true, time: fmt(secondsRef.current) }]);
+    scrollChat();
+  };
 
   const stopTimers = () => {
-    clearTimeout(timers.current.connect);
+    clearInterval(timers.current.countdown);
+    clearInterval(timers.current.poll);
     clearInterval(timers.current.call);
     clearInterval(timers.current.balance);
     stopAstrologerSpeech();
   };
+
   const endCall = async () => {
     stopTimers();
     setEnded(true);
+
+    if (consultationIdRef.current) {
+      completeConsultationBooking(consultationIdRef.current).catch(() => {});
+    }
+
     try {
       const stored = await AsyncStorage.getItem('astroparihar_consultation_history');
       const list = stored ? JSON.parse(stored) : [];
       const record = {
-        id: `call_${Date.now()}`,
+        id: consultationIdRef.current || `call_${Date.now()}`,
         astrologerName: astro.name,
         type: isVideo ? 'Video Call' : 'Voice Call',
         date: 'Today',
@@ -175,7 +185,16 @@ export default function ConsultationScreen() {
     } catch {}
   };
 
-  // 1. Initial wallet subscription & real-time sync
+  const cancelCallBeforeAcceptance = async () => {
+    stopTimers();
+    if (consultationIdRef.current) {
+      await cancelConsultationBooking(consultationIdRef.current, 'Cancelled by user before acceptance');
+    }
+    showSnackBar('Consultation request cancelled. No amount was deducted.', '#D97706');
+    if (router.canGoBack()) router.back();
+  };
+
+  // 1. Initial wallet subscription & real-time balance sync
   useEffect(() => {
     let isSubscribed = true;
     getWalletBalance().then((b) => {
@@ -210,61 +229,155 @@ export default function ConsultationScreen() {
         return;
       }
 
-      // Valid: Start connection sequence mirroring website
-      timers.current.connect = setTimeout(async () => {
-        if (!mounted.current) return;
-        setConnecting(false);
-        setConnected(true);
+      // If this is an AI Astrologer: Connect immediately without waiting for human acceptance
+      if (isAi) {
+        setTimeout(async () => {
+          if (!mounted.current) return;
+          setConnecting(false);
+          setConnected(true);
+          setIsWaitingAstrologer(false);
 
-        // Immediate 1st minute deduction upon connect (matching website start-call-billing)
-        try {
-          const firstMinDeduct = await deductWalletBalance(
+          // Deduct 1st minute
+          const firstMin = await deductWalletBalance(
             ratePerMin,
-            `1st Min: ${isVideo ? 'Video' : 'Voice'} Call with ${astro.name}`,
+            `1st Min: AI Consultation with ${astro.name}`,
             astro.name
           );
-          if (firstMinDeduct.success) {
-            setBalance(firstMinDeduct.newBalance);
+          if (firstMin.success) {
+            setBalance(firstMin.newBalance);
             setTotalCharged(ratePerMin);
-            addSystem(`Call connected. First minute (₹${ratePerMin}) billed.`);
-            addSystem(`ZegoCloud Room: ${roomID}`);
-          } else {
-            addSystem('Wallet balance insufficient for consultation.');
-            setTimeout(endCall, 800);
-            return;
+            addSystem(`AI Consultation connected. First minute (₹${ratePerMin}) billed.`);
+            addSystem(`Session: ${roomID}`);
           }
-        } catch {
-          setBalance((b) => Math.max(0, b - ratePerMin));
-          setTotalCharged(ratePerMin);
-        }
 
-        // Call duration seconds timer
-        timers.current.call = setInterval(() => setSeconds((s) => s + 1), 1000);
+          // Call timer
+          timers.current.call = setInterval(() => setSeconds((s) => s + 1), 1000);
 
-        // Continuous 60s minute deduction engine
-        timers.current.balance = setInterval(async () => {
-          try {
+          // 60-second billing interval
+          timers.current.balance = setInterval(async () => {
             const res = await deductWalletBalance(
               ratePerMin,
-              `${isVideo ? 'Video' : 'Voice'} Call with ${astro.name}`,
+              `AI Consultation with ${astro.name}`,
               astro.name
             );
             if (res.success) {
               setBalance(res.newBalance);
               setTotalCharged((prev) => prev + ratePerMin);
-              if (res.newBalance < ratePerMin) {
-                addSystem(`⚠️ Low balance: ₹${res.newBalance.toFixed(0)} left. Less than 1 minute remaining.`);
-              }
-            } else {
+            } else if (res.isDepleted) {
               addSystem('Wallet balance exhausted. Ending session...');
               setTimeout(endCall, 800);
             }
-          } catch {
-            setBalance((b) => Math.max(0, b - ratePerMin));
-            setTotalCharged((prev) => prev + ratePerMin);
+          }, 60000);
+        }, 1200);
+        return;
+      }
+
+      // If this is a REAL HUMAN Astrologer:
+      // Create live Firestore booking and wait for astrologer acceptance
+      try {
+        setConnectionStatusText(`Sending request to ${astro.name}...`);
+        const bookingRes = await createConsultationBooking({
+          astrologerId: String((astro as any).id || (astro as any).uid || 'astrologer_live'),
+          astrologerName: astro.name,
+          customerId: authUser?.uid || 'anonymous_user',
+          customerName: authUser?.name || 'Customer',
+          customerPhone: authUser?.phone || '',
+          type: isVideo ? 'video' : 'voice',
+          price: ratePerMin,
+          roomID,
+          duration: Math.floor(curBal / ratePerMin),
+        });
+
+        if (!bookingRes.success || !bookingRes.consultationId) {
+          showSnackBar(bookingRes.error || 'Failed to request consultation.', '#CF4444');
+          setTimeout(() => { if (router.canGoBack()) router.back(); }, 1200);
+          return;
+        }
+
+        const activeConsultId = bookingRes.consultationId;
+        setConsultationId(activeConsultId);
+        setIsWaitingAstrologer(true);
+        setConnectionStatusText(`Waiting for ${astro.name} to accept...`);
+
+        // Countdown timer: 60s
+        let countdownSec = 60;
+        timers.current.countdown = setInterval(() => {
+          countdownSec -= 1;
+          setAcceptanceCountdown(countdownSec);
+          if (countdownSec <= 0) {
+            clearInterval(timers.current.countdown);
+            clearInterval(timers.current.poll);
+            cancelConsultationBooking(activeConsultId, 'Astrologer timeout (60s)').catch(() => {});
+            showSnackBar(`${astro.name} is currently occupied with devotees. Please try again or select another astrologer.`, '#D97706');
+            setTimeout(() => { if (router.canGoBack()) router.back(); }, 1500);
           }
-        }, 60000);
-      }, 2500);
+        }, 1000);
+
+        // Status Polling every 2.5s
+        timers.current.poll = setInterval(async () => {
+          const statusRes = await getConsultationStatus(activeConsultId);
+          if (!mounted.current) return;
+
+          if (statusRes.status === 'active') {
+            // Astrologer accepted!
+            clearInterval(timers.current.countdown);
+            clearInterval(timers.current.poll);
+
+            setIsWaitingAstrologer(false);
+            setConnecting(false);
+            setConnected(true);
+
+            // Trigger server call billing
+            try {
+              await startCallBilling(activeConsultId);
+            } catch {}
+
+            // Deduct 1st minute from live database
+            const firstMin = await deductWalletBalance(
+              ratePerMin,
+              `1st Min: ${isVideo ? 'Video' : 'Voice'} Call with ${astro.name}`,
+              astro.name,
+              activeConsultId
+            );
+            if (firstMin.success) {
+              setBalance(firstMin.newBalance);
+              setTotalCharged(ratePerMin);
+              addSystem(`Astrologer accepted! Call connected. First minute (₹${ratePerMin}) billed.`);
+              addSystem(`ZegoCloud Room: ${roomID}`);
+            }
+
+            // Start 1-second call duration timer
+            timers.current.call = setInterval(() => setSeconds((s) => s + 1), 1000);
+
+            // Start 60-second billing interval calling live /api/deduct-minute
+            timers.current.balance = setInterval(async () => {
+              const res = await deductWalletBalance(
+                ratePerMin,
+                `${isVideo ? 'Video' : 'Voice'} Call with ${astro.name}`,
+                astro.name,
+                activeConsultId
+              );
+              if (res.success) {
+                setBalance(res.newBalance);
+                setTotalCharged((prev) => prev + ratePerMin);
+                if (res.newBalance < ratePerMin) {
+                  addSystem(`⚠️ Low balance: ₹${res.newBalance.toFixed(0)} left. Less than 1 minute remaining.`);
+                }
+              } else if (res.isDepleted) {
+                addSystem('Wallet balance exhausted. Ending session...');
+                setTimeout(endCall, 800);
+              }
+            }, 60000);
+          } else if (statusRes.status === 'declined' || statusRes.status === 'cancelled') {
+            clearInterval(timers.current.countdown);
+            clearInterval(timers.current.poll);
+            showSnackBar(`${astro.name} is unavailable right now. No amount has been deducted.`, '#D97706');
+            setTimeout(() => { if (router.canGoBack()) router.back(); }, 1500);
+          }
+        }, 2500);
+      } catch (err: any) {
+        showSnackBar(err.message || 'Error connecting to astrologer', '#CF4444');
+      }
     });
 
     return () => {
@@ -274,31 +387,68 @@ export default function ConsultationScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuth]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     const text = input.trim();
     if (!text) return;
     setMessages((m) => [...m, { text, isSystem: false, isUser: true, time: fmt(secondsRef.current) }]);
     setInput('');
     scrollChat();
+
+    if (isAi) {
+      try {
+        const res = await sendLiveAIChatMessage({
+          messages: [{ role: 'user', content: text }],
+          astrologerId: String((astro as any).id || 'acharya-devavrat'),
+        });
+        if (res.reply) {
+          setMessages((m) => [...m, { text: res.reply, isSystem: false, isUser: false, time: fmt(secondsRef.current) }]);
+          scrollChat();
+          if (isSpeakerOn && !isMuted) {
+            speakAstrologerText(res.reply, { astrologerName: astro.name });
+          }
+          return;
+        }
+      } catch {}
+    }
+
     setTimeout(() => {
       if (!mounted.current) return;
-      const reply = REPLIES[Math.floor(Math.random() * REPLIES.length)];
+      const reply = isAi ? REPLIES[Math.floor(Math.random() * REPLIES.length)] : 'The astrologer is listening directly on the live audio channel.';
       setMessages((m) => [...m, { text: reply, isSystem: false, isUser: false, time: fmt(secondsRef.current) }]);
       scrollChat();
-      if (isSpeakerOn && !isMuted) {
-        speakAstrologerText(reply, {
-          astrologerName: astro.name,
-        });
+      if (isAi && isSpeakerOn && !isMuted) {
+        speakAstrologerText(reply, { astrologerName: astro.name });
       }
-    }, 2000);
+    }, 1500);
   };
 
   /* animations */
   const pulse = useSharedValue(0.95);
-  useEffect(() => { pulse.value = withRepeat(withTiming(1.05, { duration: 1500, easing: Easing.inOut(Easing.ease) }), -1, true); }, [pulse]);
+  useEffect(() => {
+    pulse.value = withRepeat(withTiming(1.05, { duration: 1500, easing: Easing.inOut(Easing.ease) }), -1, true);
+  }, [pulse]);
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
   const conn = useController({ duration: 800, repeat: true, autoStart: true });
   const cv = conn.value;
+
+  const handleReviewSubmit = async () => {
+    setIsSubmittingReview(true);
+    try {
+      await submitConsultationReview({
+        astrologerId: String((astro as any).id || 'swami-shankarananda'),
+        astrologerName: astro.name,
+        rating: reviewRating,
+        reviewText: reviewComment.trim() || 'Very accurate reading and compassionate Vedic guidance.',
+        tags: selectedTags,
+        serviceType: isVideo ? 'Video Call' : 'Voice Call',
+      });
+      setReviewSubmitted(true);
+    } catch {
+      setReviewSubmitted(true);
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#030710' }} testID="consultation.screen">
@@ -345,8 +495,10 @@ export default function ConsultationScreen() {
               <View style={{ marginLeft: 10, flex: 1 }}>
                 <Text numberOfLines={1} style={{ color: AppColors.textPrimary, fontSize: 14, fontWeight: '700' }}>{astro.name}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: AppColors.online }} />
-                  <Text style={{ marginLeft: 4, color: AppColors.online, fontSize: 11, fontWeight: '500' }}>{connecting ? 'Connecting...' : isVideo ? 'Video Call' : 'Voice Call'}</Text>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: connected ? AppColors.online : AppColors.goldAccent }} />
+                  <Text style={{ marginLeft: 4, color: connected ? AppColors.online : AppColors.goldAccent, fontSize: 11, fontWeight: '500' }}>
+                    {connected ? (isVideo ? 'Live Video Call' : 'Live Voice Call') : 'Connecting...'}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -367,7 +519,7 @@ export default function ConsultationScreen() {
                 style={{
                   padding: 16,
                   borderRadius: 22,
-                  backgroundColor: 'rgba(8,13,26,0.85)',
+                  backgroundColor: 'rgba(8,13,26,0.88)',
                   borderWidth: 1.5,
                   borderColor: AppColors.goldAccent,
                   shadowColor: AppColors.goldAccent,
@@ -380,12 +532,12 @@ export default function ConsultationScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#3DCB7A', marginRight: 8 }} />
                     <Text style={{ color: '#F0EAD6', fontSize: 13, fontWeight: '700' }}>
-                      {isAi ? '⚡ AI Voice Stream Room' : '🎥 ZegoCloud WebRTC Room'}
+                      {isAi ? '⚡ AI Voice Stream Room' : '🎥 Live ZegoCloud Call Room'}
                     </Text>
                   </View>
                   <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(201,168,76,0.18)', borderWidth: 1, borderColor: '#C9A84C' }}>
                     <Text style={{ color: '#C9A84C', fontSize: 10, fontWeight: '800' }}>
-                      Zego App ID: 1951519898
+                      ₹{ratePerMin}/min
                     </Text>
                   </View>
                 </View>
@@ -393,7 +545,7 @@ export default function ConsultationScreen() {
                 <Text style={{ color: '#A0A8C0', fontSize: 11, marginBottom: 12, lineHeight: 16 }}>
                   {isAi
                     ? 'Connected to autonomous AI Vedic ephemeris stream with real-time speech synthesis.'
-                    : 'Real-time encrypted 1-on-1 audio/video stream powered by ZegoCloud WebRTC.'}
+                    : 'Real-time encrypted 1-on-1 audio/video stream with your verified astrologer.'}
                 </Text>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)' }}>
@@ -402,14 +554,8 @@ export default function ConsultationScreen() {
                 </View>
 
                 <Pressable
-                  testID="consultation.openZegoCloud"
-                  onPress={() => {
-                    if (isAi) {
-                      openAiCallRoom(roomID);
-                    } else {
-                      openZegoCallRoom(roomID);
-                    }
-                  }}
+                  testID="consultation.openInAppVideo"
+                  onPress={() => setInAppVideoVisible(true)}
                   style={{
                     borderRadius: 14,
                     overflow: 'hidden',
@@ -433,7 +579,7 @@ export default function ConsultationScreen() {
                   >
                     <AppIcon name="videocam_rounded" color="#FFFFFF" size={18} style={{ marginRight: 8 }} />
                     <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
-                      Join Live ZegoCloud Room (Camera & Mic) ↗
+                      {isVideo ? 'Open In-App Video Call Stream' : 'In-App Voice Call Active'}
                     </Text>
                   </LinearGradient>
                 </Pressable>
@@ -519,283 +665,189 @@ export default function ConsultationScreen() {
         </KeyboardAvoidingView>
       </SafeAreaView>
 
-      {isVideo && connected ? (
-        <Pressable testID="consultation.pip" onPress={SOURCE_INERT('consultation.pip')} style={{ position: 'absolute', top: 100, right: 16, width: 90, height: 130, borderRadius: 14, borderWidth: 1.5, borderColor: AppColors.goldAccent, backgroundColor: '#1A2640', overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 8 }}>
-          <AppImage
-            uri="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop"
-            width="100%" height="100%" fit="cover"
-            semanticLabel="User video preview in picture-in-picture"
-            errorWidget={<View style={{ flex: 1, backgroundColor: '#1A2640', alignItems: 'center', justifyContent: 'center' }}><AppIcon name="person_rounded" color={AppColors.textMuted} size={36} /></View>}
-          />
-          {isMuted ? (
-            <View style={{ position: 'absolute', bottom: 6, right: 6, padding: 4, borderRadius: 10, backgroundColor: withAlpha(AppColors.error, 200) }}>
-              <AppIcon name="mic_off_rounded" color="#FFFFFF" size={10} />
+      {/* Connecting & Astrologer Acceptance Radar Overlay */}
+      {connecting ? (
+        <View testID="consultation.connecting" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: argb('F5030710'), alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+          <View style={{ width: 170, height: 170, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ position: 'absolute', width: 170, height: 170, borderRadius: 85, borderWidth: 2, borderColor: withAlpha(AppColors.goldAccent, Math.floor(90 * (1 - cv))), transform: [{ scale: 0.6 + cv * 0.6 }] }} />
+            <Avatar uri={astro.imageUrl} size={110} border={2.5} />
+          </View>
+
+          <Text style={{ marginTop: 24, color: AppColors.textPrimary, fontSize: 22, fontWeight: '700', textAlign: 'center' }}>{astro.name}</Text>
+          <Text style={{ marginTop: 6, color: AppColors.goldAccent, fontSize: 13, fontWeight: '600' }}>
+            {connectionStatusText}
+          </Text>
+
+          {isWaitingAstrologer ? (
+            <View style={{ marginTop: 14, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(201,168,76,0.14)', borderWidth: 1, borderColor: AppColors.goldBorder, alignItems: 'center' }}>
+              <Text style={{ color: '#E2D9C8', fontSize: 12 }}>
+                Ringing astrologer dashboard... ({acceptanceCountdown}s)
+              </Text>
             </View>
           ) : null}
-        </Pressable>
-      ) : null}
 
-      {connecting ? (
-        <View testID="consultation.connecting" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: argb('EE030710'), alignItems: 'center', justifyContent: 'center' }}>
-          <View style={{ width: 160, height: 160, alignItems: 'center', justifyContent: 'center' }}>
-            <View style={{ position: 'absolute', width: 160, height: 160, borderRadius: 80, borderWidth: 2, borderColor: withAlpha(AppColors.goldAccent, Math.floor(80 * (1 - cv))), transform: [{ scale: 0.6 + cv * 0.6 }] }} />
-            <Avatar uri={astro.imageUrl} size={100} border={2} />
-          </View>
-          <Text style={{ marginTop: 24, color: AppColors.textPrimary, fontSize: 20, fontWeight: '700' }}>{astro.name}</Text>
-          <Text style={{ marginTop: 8, color: AppColors.textSecondary, fontSize: 14 }}>{isVideo ? 'Connecting video call...' : 'Connecting voice call...'}</Text>
-          <View style={{ marginTop: 32, flexDirection: 'row' }}>
+          <View style={{ marginTop: 28, flexDirection: 'row' }}>
             {[0, 1, 2].map((i) => (
               <View key={i} style={{ marginHorizontal: 4, width: 8, height: 8, borderRadius: 4, backgroundColor: withAlpha(AppColors.goldAccent, Math.floor(50 + 200 * ((cv + i * 0.33) % 1))) }} />
             ))}
           </View>
+
           <Pressable
             testID="consultation.cancel"
-            onPress={() => { clearTimeout(timers.current.connect); if (router.canGoBack()) router.back(); }}
-            style={{ marginTop: 40, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 30, backgroundColor: withAlpha(AppColors.error, 40), borderWidth: 1, borderColor: withAlpha(AppColors.error, 100) }}
+            onPress={cancelCallBeforeAcceptance}
+            style={{ marginTop: 40, paddingHorizontal: 36, paddingVertical: 14, borderRadius: 30, backgroundColor: withAlpha(AppColors.error, 40), borderWidth: 1.5, borderColor: withAlpha(AppColors.error, 160) }}
           >
-            <Text style={{ color: AppColors.error, fontSize: 15, fontWeight: '600' }}>Cancel</Text>
+            <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>Cancel Call</Text>
           </Pressable>
         </View>
       ) : null}
 
+      {/* Session Ended Dialog with Rating */}
       <Dialog visible={ended} onClose={() => {}} barrierDismissible={false} style={{ borderRadius: 20, maxHeight: '85%', backgroundColor: colors.surface }} testID="consultation.endDialog">
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
           <Text style={{ color: colors.textPrimary, fontSize: 22, fontWeight: '700' }}>Session Ended</Text>
-        <View style={{ marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder, gap: 8 }}>
-          {[
-            ['Duration', fmt(seconds)],
-            ['Amount Charged', `₹${(totalCharged > 0 ? totalCharged : Math.round((seconds / 60) * ratePerMin)).toFixed(2)}`],
-            ['Remaining Balance', `₹${balance.toFixed(2)}`],
-          ].map(([l, v]) => (
-            <View key={l} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{l}</Text>
-              <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{v}</Text>
-            </View>
-          ))}
-        </View>
-        {/* Interactive Customer Review System */}
-        <View style={{ marginTop: 14, padding: 14, borderRadius: 16, backgroundColor: withAlpha(colors.goldAccent, 20), borderWidth: 1, borderColor: colors.cardBorder }}>
-          <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700', textAlign: 'center' }}>
-            {reviewSubmitted ? 'Review Submitted 🙏' : 'Rate Your Consultation'}
-          </Text>
-
-          {reviewSubmitted ? (
-            <View style={{ marginTop: 10, padding: 12, borderRadius: 12, backgroundColor: argb('1A2D9E6B'), borderWidth: 1, borderColor: argb('332D9E6B'), alignItems: 'center' }}>
-              <Text style={{ color: '#3DCB7A', fontSize: 13, fontWeight: '700' }}>✓ Review Submitted Successfully!</Text>
-              <Text style={{ marginTop: 4, color: colors.textSecondary, fontSize: 11, textAlign: 'center' }}>
-                Thank you for your valuable feedback. It helps thousands of seekers discover genuine Vedic guidance.
-              </Text>
-            </View>
-          ) : (
-            <>
-              {/* Star Rating Selectors */}
-              <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'center' }}>
-                {[0, 1, 2, 3, 4].map((i) => {
-                  const filled = i < reviewRating;
-                  return (
-                    <Pressable
-                      key={i}
-                      testID={`consultation.endDialog.star.${i}`}
-                      onPress={() => setReviewRating(i + 1)}
-                      style={{ paddingHorizontal: 4 }}
-                    >
-                      <AppIcon
-                        name={filled ? 'star_rounded' : 'star_outline_rounded'}
-                        color={filled ? colors.goldAccent : colors.textMuted}
-                        size={32}
-                      />
-                    </Pressable>
-                  );
-                })}
+          <View style={{ marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder, gap: 8 }}>
+            {[
+              ['Duration', fmt(seconds)],
+              ['Amount Charged', `₹${(totalCharged > 0 ? totalCharged : Math.round((seconds / 60) * ratePerMin)).toFixed(2)}`],
+              ['Remaining Balance', `₹${balance.toFixed(2)}`],
+            ].map(([l, v]) => (
+              <View key={l} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{l}</Text>
+                <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{v}</Text>
               </View>
+            ))}
+          </View>
 
-              <Text style={{ marginTop: 4, color: colors.goldAccent, fontSize: 11, fontWeight: '600', textAlign: 'center' }}>
-                {reviewRating === 5
-                  ? '🌟 Exceptional & Accurate Guidance'
-                  : reviewRating === 4
-                  ? '⭐ Very Helpful & Compassionate'
-                  : reviewRating === 3
-                  ? '✨ Good Consultation'
-                  : 'Fair Experience'}
-              </Text>
+          {/* Interactive Customer Review System */}
+          <View style={{ marginTop: 14, padding: 14, borderRadius: 16, backgroundColor: withAlpha(colors.goldAccent, 20), borderWidth: 1, borderColor: colors.cardBorder }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700', textAlign: 'center' }}>
+              {reviewSubmitted ? 'Review Submitted 🙏' : 'Rate Your Consultation'}
+            </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10, gap: 8 }}>
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Pressable key={s} onPress={() => !reviewSubmitted && setReviewRating(s)}>
+                  <AppIcon
+                    name={s <= reviewRating ? 'star' : 'star_outline'}
+                    color={s <= reviewRating ? colors.goldAccent : colors.textMuted}
+                    size={28}
+                  />
+                </Pressable>
+              ))}
+            </View>
 
-              {/* Tag Chips */}
-              <View style={{ marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
-                {REVIEW_TAG_OPTIONS.map((tag) => {
-                  const sel = selectedTags.includes(tag);
-                  return (
-                    <Pressable
-                      key={tag}
-                      onPress={() => toggleTag(tag)}
-                      style={{
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 12,
-                        backgroundColor: sel ? AppColors.primary : colors.surface,
-                        borderWidth: 1,
-                        borderColor: sel ? AppColors.primary : colors.cardBorder,
-                      }}
-                    >
-                      <Text style={{ color: sel ? '#FFFFFF' : colors.textSecondary, fontSize: 10, fontWeight: sel ? '700' : '400' }}>
-                        {tag}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {/* Review Comment Input */}
-              <TextInput
-                value={reviewComment}
-                onChangeText={setReviewComment}
-                placeholder="Share your experience with the astrologer..."
-                placeholderTextColor={colors.textMuted}
-                multiline
-                numberOfLines={2}
-                style={{
-                  marginTop: 10,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 10,
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.cardBorder,
-                  color: colors.textPrimary,
-                  fontSize: 12,
-                  maxHeight: 60,
-                }}
-              />
-
-              {/* Submit Review Button */}
-              <Pressable
-                testID="consultation.endDialog.submitReview"
-                onPress={handleReviewSubmit}
-                disabled={isSubmittingReview}
-                style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden' }}
-              >
-                <LinearGradient
-                  colors={['#C9A84C', '#E2C26A']}
-                  start={{ x: 0, y: 0.5 }}
-                  end={{ x: 1, y: 0.5 }}
-                  style={{ paddingVertical: 9, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
+            {!reviewSubmitted && (
+              <>
+                <TextInput
+                  value={reviewComment}
+                  onChangeText={setReviewComment}
+                  placeholder="Share your spiritual feedback..."
+                  placeholderTextColor={colors.textMuted}
+                  style={{
+                    marginTop: 12,
+                    padding: 10,
+                    borderRadius: 10,
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.cardBorder,
+                    color: colors.textPrimary,
+                    fontSize: 12,
+                    minHeight: 48,
+                  }}
+                  multiline
+                />
+                <Pressable
+                  onPress={handleReviewSubmit}
+                  disabled={isSubmittingReview}
+                  style={{
+                    marginTop: 10,
+                    paddingVertical: 10,
+                    borderRadius: 10,
+                    backgroundColor: colors.goldAccent,
+                    alignItems: 'center',
+                  }}
                 >
-                  {isSubmittingReview ? (
-                    <ActivityIndicator size="small" color="#080D1A" style={{ marginRight: 6 }} />
-                  ) : null}
-                  <Text style={{ color: '#080D1A', fontSize: 12, fontWeight: '800' }}>
-                    {isSubmittingReview ? 'Submitting Review...' : 'Submit Feedback ✦'}
+                  <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>
+                    {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
                   </Text>
-                </LinearGradient>
-              </Pressable>
-            </>
-          )}
-        </View>
+                </Pressable>
+              </>
+            )}
+          </View>
 
-        <View style={{ marginTop: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Pressable
-            testID="consultation.endDialog.recharge"
+            testID="consultation.done"
             onPress={() => {
               setEnded(false);
-              if (router.canGoBack()) router.back();
-              push(AppRoutes.walletScreen);
+              go(AppRoutes.homeDashboardScreen);
             }}
-            style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: withAlpha(colors.goldAccent, 25), borderWidth: 1, borderColor: colors.cardBorder }}
-          >
-            <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>💳 Recharge Wallet</Text>
-          </Pressable>
-          <Pressable
-            testID="consultation.endDialog.done"
-            onPress={() => {
-              setEnded(false);
-              if (router.canGoBack()) router.back();
+            style={{
+              marginTop: 16,
+              paddingVertical: 14,
+              borderRadius: 14,
+              backgroundColor: AppColors.primary,
+              alignItems: 'center',
             }}
-            style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: AppColors.primary }}
           >
-            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>Done</Text>
+            <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>Done</Text>
           </Pressable>
-        </View>
         </ScrollView>
       </Dialog>
 
-      {/* 2. Authentication Required Modal */}
-      <Dialog visible={authModalVisible} onClose={() => {}} barrierDismissible={false} style={{ borderRadius: 24, padding: 22, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.goldAccent }}>
-        <View style={{ alignItems: 'center' }}>
-          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: withAlpha(colors.goldAccent, 25), borderWidth: 1.5, borderColor: colors.goldAccent, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-            <AppIcon name="lock" color={colors.goldAccent} size={28} />
-          </View>
-          <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '800', textAlign: 'center' }}>
-            Sign In Required to Consult
-          </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 19 }}>
-            Connecting with astrologers requires an authenticated account. Please sign in or register to consult with {astro.name}.
-          </Text>
+      {/* Fullscreen In-App Video Call Modal (100% Inside the App) */}
+      <Modal visible={inAppVideoVisible} animationType="slide" onRequestClose={() => setInAppVideoVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: '#080D1A' }}>
+          <SafeAreaView edges={['top']} style={{ backgroundColor: 'rgba(8,13,26,0.98)', borderBottomWidth: 1, borderBottomColor: AppColors.goldBorder }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 }}>
+              <Pressable
+                onPress={() => setInAppVideoVisible(false)}
+                style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)' }}
+              >
+                <AppIcon name="arrow_back_ios_new" color={AppColors.goldAccent} size={16} />
+                <Text style={{ color: AppColors.goldAccent, fontSize: 12, fontWeight: '700', marginLeft: 4 }}>Minimize</Text>
+              </Pressable>
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 1, borderColor: AppColors.goldBorder }}>
+                <AppIcon name="timer_outlined" color={AppColors.goldAccent} size={14} />
+                <Text style={{ color: AppColors.goldAccent, fontSize: 12, fontWeight: '700', marginLeft: 4 }}>{fmt(seconds)}</Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  setInAppVideoVisible(false);
+                  endCall();
+                }}
+                style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 12, backgroundColor: AppColors.error }}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>End Call</Text>
+              </Pressable>
+            </View>
+          </SafeAreaView>
 
-          <Pressable
-            testID="consultation.authModal.signIn"
-            onPress={() => {
-              setAuthModalVisible(false);
-              if (router.canGoBack()) router.back();
-              go(AppRoutes.signInScreen);
-            }}
-            style={{ marginTop: 20, width: '100%', paddingVertical: 13, borderRadius: 14, backgroundColor: colors.goldAccent, alignItems: 'center' }}
-          >
-            <Text style={{ color: '#080D1A', fontSize: 14, fontWeight: '800' }}>
-              Sign In / Register Now ↗
-            </Text>
-          </Pressable>
-
-          <Pressable
-            testID="consultation.authModal.cancel"
-            onPress={() => {
-              setAuthModalVisible(false);
-              if (router.canGoBack()) router.back();
-            }}
-            style={{ marginTop: 12, paddingVertical: 6 }}
-          >
-            <Text style={{ color: colors.textMuted, fontSize: 13 }}>Go Back</Text>
-          </Pressable>
+          {Platform.OS !== 'web' ? (
+            <WebView
+              source={{
+                uri: isAi
+                  ? `https://astroparihar.com/ai-call/${roomID}?embedded=true`
+                  : `https://astroparihar.com/call/${roomID}?embedded=true`,
+              }}
+              style={{ flex: 1, backgroundColor: '#080D1A' }}
+              allowsInlineMediaPlayback={true}
+              mediaPlaybackRequiresUserAction={false}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              originWhitelist={['*']}
+              onPermissionRequest={(event: any) => {
+                event.grant(event.resources);
+              }}
+            />
+          ) : (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <Avatar uri={astro.imageUrl} size={120} border={3} />
+              <Text style={{ color: '#FFFFFF', marginTop: 14, fontSize: 16, fontWeight: '700' }}>{astro.name}</Text>
+              <Text style={{ color: AppColors.goldAccent, marginTop: 6, fontSize: 13 }}>Live 1-on-1 In-App Consultation</Text>
+            </View>
+          )}
         </View>
-      </Dialog>
-
-      {/* 3. Minimum 5-Min Balance Required Modal */}
-      <Dialog visible={lowBalanceVisible} onClose={() => {}} barrierDismissible={false} style={{ borderRadius: 24, padding: 22, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: AppColors.error }}>
-        <View style={{ alignItems: 'center' }}>
-          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: withAlpha(AppColors.error, 30), borderWidth: 1.5, borderColor: AppColors.error, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-            <AppIcon name="warning_amber_rounded" color={AppColors.error} size={28} />
-          </View>
-          <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '800', textAlign: 'center' }}>
-            Insufficient Wallet Balance
-          </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 19 }}>
-            A minimum balance of ₹{ratePerMin * 5} (5 minutes at ₹{ratePerMin}/min) is required to start a consultation with {astro.name}. Your available balance is ₹{balance.toFixed(0)}.
-          </Text>
-
-          <Pressable
-            testID="consultation.lowBalance.recharge"
-            onPress={() => {
-              setLowBalanceVisible(false);
-              if (router.canGoBack()) router.back();
-              push(AppRoutes.walletScreen);
-            }}
-            style={{ marginTop: 20, width: '100%', paddingVertical: 13, borderRadius: 14, backgroundColor: '#075E54', alignItems: 'center' }}
-          >
-            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800' }}>
-              💳 Recharge Wallet Now ↗
-            </Text>
-          </Pressable>
-
-          <Pressable
-            testID="consultation.lowBalance.cancel"
-            onPress={() => {
-              setLowBalanceVisible(false);
-              if (router.canGoBack()) router.back();
-            }}
-            style={{ marginTop: 12, paddingVertical: 6 }}
-          >
-            <Text style={{ color: colors.textMuted, fontSize: 13 }}>Cancel</Text>
-          </Pressable>
-        </View>
-      </Dialog>
+      </Modal>
     </View>
   );
 }

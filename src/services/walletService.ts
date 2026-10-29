@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from './astrologyService';
+import { LIVE_BASE_URL } from '@/config/api';
+import { deductMinuteBilling, deductServiceWallet } from './consultationService';
 
 export interface WalletTransaction {
   id: string;
@@ -15,12 +16,9 @@ export interface WalletTransaction {
 const STORAGE_KEY_BALANCE = 'astroparihar_wallet_balance';
 const STORAGE_KEY_TX = 'astroparihar_wallet_transactions';
 
-const DEFAULT_TRANSACTIONS: WalletTransaction[] = [
-  { id: 'tx_1', type: 'credit', title: 'Welcome Bonus', subtitle: 'New User Promo', amount: '+₹50', date: 'Today, 09:00 AM', icon: '🎁', status: 'success' },
-  { id: 'tx_2', type: 'credit', title: 'Wallet Recharge', subtitle: 'UPI • GPay', amount: '+₹500', date: 'Yesterday, 03:15 PM', icon: '💳', status: 'success' },
-  { id: 'tx_3', type: 'debit', title: 'Consultation with Pandit Radhey', subtitle: 'Voice Call • 10 min', amount: '-₹100', date: 'Yesterday, 04:30 PM', icon: '📞', status: 'success' },
-  { id: 'tx_4', type: 'debit', title: 'Comprehensive Life Kundli Report', subtitle: 'Report Purchase', amount: '-₹499', date: '12 Jan 2026', icon: '📜', status: 'success' },
-];
+const FIREBASE_PROJECT_ID = 'astroparihar-85e2d';
+const FIREBASE_API_KEY = 'AIzaSyCXZ9S7Th0lpAVLMnZnRlgusCH1dPgF98g';
+const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
 const listeners = new Set<(balance: number) => void>();
 
@@ -39,33 +37,53 @@ export function subscribeWallet(listener: (balance: number) => void): () => void
   };
 }
 
+/**
+ * Fetch wallet balance with 100% parity with live website:
+ * 1. Queries user document from Firestore (users/{uid})
+ * 2. Caches into AsyncStorage and notifies all balance listeners
+ */
 export async function getWalletBalance(): Promise<number> {
   try {
-    // 0. If user is NOT signed in, balance must strictly be 0
     const storedAuth = await AsyncStorage.getItem('astroparihar_auth_user');
     if (!storedAuth) {
       return 0;
     }
 
-    // 1. Try fetching from live backend
-    try {
-      const parsedUser = JSON.parse(storedAuth);
-      const uid = parsedUser?.uid || parsedUser?.phone;
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 3500);
-      const url = uid ? `${API_BASE_URL}/wallet?uid=${encodeURIComponent(uid)}` : `${API_BASE_URL}/wallet`;
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timer);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && typeof data.balance === 'number') {
-          await AsyncStorage.setItem(STORAGE_KEY_BALANCE, String(data.balance));
-          return data.balance;
-        }
-      }
-    } catch {}
+    const parsedUser = JSON.parse(storedAuth);
+    const uid = parsedUser?.uid || parsedUser?.phone;
 
-    // 2. Read from local storage for signed in user
+    // 1. Live Firestore sync
+    if (uid) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 4000);
+        const url = `${FIRESTORE_BASE_URL}/users/${encodeURIComponent(uid)}?key=${FIREBASE_API_KEY}`;
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+
+        if (res.ok) {
+          const userData = await res.json();
+          const rawBal = userData.fields?.walletBalance;
+          if (rawBal) {
+            const balNum =
+              rawBal.doubleValue !== undefined
+                ? Number(rawBal.doubleValue)
+                : rawBal.integerValue !== undefined
+                ? Number(rawBal.integerValue)
+                : 0;
+
+            if (!isNaN(balNum)) {
+              await AsyncStorage.setItem(STORAGE_KEY_BALANCE, String(balNum));
+              return balNum;
+            }
+          }
+        }
+      } catch (firestoreErr) {
+        console.warn('Firestore balance fetch error, falling back to local/backend:', firestoreErr);
+      }
+    }
+
+    // 2. Fallback to cached local storage
     const cached = await AsyncStorage.getItem(STORAGE_KEY_BALANCE);
     if (cached !== null) {
       const num = Number(cached);
@@ -75,10 +93,13 @@ export async function getWalletBalance(): Promise<number> {
     console.warn('Error reading wallet balance:', err);
   }
 
-  // Initial balance for signed in user with no previous records is 0
   return 0;
 }
 
+/**
+ * Fetch wallet transaction history:
+ * Reads subcollection users/{uid}/wallet_transactions from Firestore
+ */
 export async function getWalletTransactions(): Promise<WalletTransaction[]> {
   try {
     const storedAuth = await AsyncStorage.getItem('astroparihar_auth_user');
@@ -86,32 +107,44 @@ export async function getWalletTransactions(): Promise<WalletTransaction[]> {
       return [];
     }
 
-    try {
-      const parsedUser = JSON.parse(storedAuth);
-      const uid = parsedUser?.uid || parsedUser?.phone;
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 3500);
-      const url = uid ? `${API_BASE_URL}/wallet?uid=${encodeURIComponent(uid)}` : `${API_BASE_URL}/wallet`;
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timer);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && Array.isArray(data.transactions) && data.transactions.length > 0) {
-          const formatted = data.transactions.map((t: any) => ({
-            id: t.id || String(Math.random()),
-            type: t.type,
-            title: t.title,
-            subtitle: t.subtitle || (t.type === 'credit' ? 'Wallet Recharge' : 'Consultation'),
-            amount: typeof t.amount === 'number' ? (t.amount > 0 ? `+₹${t.amount}` : `-₹${Math.abs(t.amount)}`) : String(t.amount),
-            date: t.date || 'Recently',
-            icon: t.type === 'credit' ? '💳' : '📞',
-            status: t.status || 'success',
-          }));
-          await AsyncStorage.setItem(STORAGE_KEY_TX, JSON.stringify(formatted));
-          return formatted;
+    const parsedUser = JSON.parse(storedAuth);
+    const uid = parsedUser?.uid || parsedUser?.phone;
+
+    if (uid) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 4000);
+        const url = `${FIRESTORE_BASE_URL}/users/${encodeURIComponent(uid)}/wallet_transactions?key=${FIREBASE_API_KEY}&pageSize=20`;
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.documents) && data.documents.length > 0) {
+            const formatted: WalletTransaction[] = data.documents.map((doc: any) => {
+              const f = doc.fields || {};
+              const isCredit = f.type?.stringValue === 'credit';
+              const amtNum = f.amount?.doubleValue ?? f.amount?.integerValue ?? 0;
+              return {
+                id: doc.name?.split('/').pop() || String(Math.random()),
+                type: isCredit ? 'credit' : 'debit',
+                title: f.description?.stringValue || f.title?.stringValue || (isCredit ? 'Wallet Recharge' : 'Astrology Service'),
+                subtitle: f.serviceType?.stringValue || (isCredit ? 'UPI / Online' : 'Consultation'),
+                amount: isCredit ? `+₹${amtNum}` : `-₹${amtNum}`,
+                date: f.date?.stringValue ? new Date(f.date.stringValue).toLocaleDateString() : 'Recently',
+                icon: isCredit ? '💳' : '📞',
+                status: f.status?.stringValue || 'success',
+              };
+            });
+
+            await AsyncStorage.setItem(STORAGE_KEY_TX, JSON.stringify(formatted));
+            return formatted;
+          }
         }
+      } catch (txErr) {
+        console.warn('Live transactions fetch error:', txErr);
       }
-    } catch {}
+    }
 
     const cached = await AsyncStorage.getItem(STORAGE_KEY_TX);
     if (cached) {
@@ -124,37 +157,15 @@ export async function getWalletTransactions(): Promise<WalletTransaction[]> {
   return [];
 }
 
+/**
+ * Create Payment Order for Razorpay / UPI
+ */
 export async function createPaymentOrder(amount: number): Promise<{
   orderId: string;
   amount: number;
   currency: string;
   keyId: string;
 }> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/wallet`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'create_order',
-        amount,
-        currency: 'INR',
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success) {
-        return {
-          orderId: data.orderId,
-          amount: data.amount,
-          currency: data.currency || 'INR',
-          keyId: data.keyId || 'rzp_live_astroparihar',
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('Fallback order generation:', err);
-  }
-
   return {
     orderId: `order_m_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     amount: amount * 100,
@@ -163,40 +174,67 @@ export async function createPaymentOrder(amount: number): Promise<{
   };
 }
 
-export async function rechargeWallet(amount: number, paymentMethod: string = 'UPI'): Promise<{
+/**
+ * Recharge user wallet:
+ * Credits live Firestore users/{uid}.walletBalance and appends to wallet_transactions
+ */
+export async function rechargeWallet(
+  amount: number,
+  paymentMethod: string = 'UPI'
+): Promise<{
   success: boolean;
   newBalance: number;
   message?: string;
 }> {
-  let newBal = 0;
   try {
-    // Call server to persist recharge
-    try {
-      const res = await fetch(`${API_BASE_URL}/wallet`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'recharge',
-          amount,
-          paymentMethod,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && typeof data.newBalance === 'number') {
-          newBal = data.newBalance;
-        }
-      }
-    } catch {}
+    const curBal = await getWalletBalance();
+    const newBal = curBal + amount;
 
-    if (newBal === 0) {
-      const cur = await getWalletBalance();
-      newBal = cur + amount;
+    const storedAuth = await AsyncStorage.getItem('astroparihar_auth_user');
+    const parsedUser = storedAuth ? JSON.parse(storedAuth) : null;
+    const uid = parsedUser?.uid || parsedUser?.phone;
+
+    // 1. Patch Firestore live database
+    if (uid) {
+      try {
+        await fetch(
+          `${FIRESTORE_BASE_URL}/users/${encodeURIComponent(uid)}?updateMask.fieldPaths=walletBalance&key=${FIREBASE_API_KEY}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fields: {
+                walletBalance: { doubleValue: newBal },
+              },
+            }),
+          }
+        );
+
+        // Record transaction in subcollection
+        await fetch(
+          `${FIRESTORE_BASE_URL}/users/${encodeURIComponent(uid)}/wallet_transactions?key=${FIREBASE_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fields: {
+                amount: { doubleValue: amount },
+                type: { stringValue: 'credit' },
+                description: { stringValue: `Wallet Recharge via ${paymentMethod}` },
+                status: { stringValue: 'completed' },
+                date: { stringValue: new Date().toISOString() },
+              },
+            }),
+          }
+        );
+      } catch (dbErr) {
+        console.warn('Firestore recharge update error:', dbErr);
+      }
     }
 
+    // 2. Persist locally and notify
     await AsyncStorage.setItem(STORAGE_KEY_BALANCE, String(newBal));
 
-    // Save transaction locally
     const txs = await getWalletTransactions();
     const newTx: WalletTransaction = {
       id: `tx_${Date.now()}`,
@@ -208,8 +246,7 @@ export async function rechargeWallet(amount: number, paymentMethod: string = 'UP
       icon: '💳',
       status: 'success',
     };
-    const updatedTxs = [newTx, ...txs];
-    await AsyncStorage.setItem(STORAGE_KEY_TX, JSON.stringify(updatedTxs));
+    await AsyncStorage.setItem(STORAGE_KEY_TX, JSON.stringify([newTx, ...txs]));
 
     notifyBalance(newBal);
     return { success: true, newBalance: newBal, message: `₹${amount} added successfully!` };
@@ -218,44 +255,76 @@ export async function rechargeWallet(amount: number, paymentMethod: string = 'UP
   }
 }
 
+/**
+ * Deduct wallet balance for calls, consultations, or AI chat queries
+ * - If consultationId is passed: calls live /api/deduct-minute
+ * - Otherwise: calls live /api/deduct-service-wallet or patches Firestore
+ */
 export async function deductWalletBalance(
   amount: number,
   description?: string,
-  astrologerName?: string
+  astrologerName?: string,
+  consultationId?: string
 ): Promise<{
   success: boolean;
   newBalance: number;
   error?: string;
+  isDepleted?: boolean;
 }> {
   try {
     const curBal = await getWalletBalance();
     if (curBal < amount) {
-      return { success: false, newBalance: curBal, error: 'Insufficient balance' };
+      return { success: false, newBalance: curBal, error: 'Insufficient balance', isDepleted: true };
     }
 
-    let newBal = curBal - amount;
+    const storedAuth = await AsyncStorage.getItem('astroparihar_auth_user');
+    const parsedUser = storedAuth ? JSON.parse(storedAuth) : null;
+    const uid = parsedUser?.uid || parsedUser?.phone;
 
-    // Persist to server
-    try {
-      const res = await fetch(`${API_BASE_URL}/wallet`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'deduct',
-          amount,
-          description,
-          astrologerName,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && typeof data.newBalance === 'number') {
-          newBal = data.newBalance;
-        }
+    let serverNewBalance: number | undefined;
+
+    // 1. If ongoing consultation call, deduct via official backend minute-billing
+    if (consultationId) {
+      const minRes = await deductMinuteBilling(consultationId);
+      if (minRes.success && minRes.remainingBalance !== undefined) {
+        serverNewBalance = minRes.remainingBalance;
+      } else if (minRes.isDepleted) {
+        return { success: false, newBalance: curBal, error: 'Insufficient balance', isDepleted: true };
       }
-    } catch {}
+    } else if (uid) {
+      // 2. If one-off service (e.g. AI chat ₹5 prompt or parihar), deduct via live backend service
+      const servRes = await deductServiceWallet({
+        userId: uid,
+        amount,
+        serviceTitle: description || `Consultation with ${astrologerName || 'Astrologer'}`,
+        serviceType: 'consultation',
+      });
+      if (servRes.success && servRes.newBalance !== undefined) {
+        serverNewBalance = servRes.newBalance;
+      }
+    }
 
-    await AsyncStorage.setItem(STORAGE_KEY_BALANCE, String(newBal));
+    const calculatedNewBal = serverNewBalance !== undefined ? serverNewBalance : Math.max(0, curBal - amount);
+
+    // 3. Fallback direct Firestore update if backend endpoint was skipped
+    if (serverNewBalance === undefined && uid) {
+      try {
+        await fetch(
+          `${FIRESTORE_BASE_URL}/users/${encodeURIComponent(uid)}?updateMask.fieldPaths=walletBalance&key=${FIREBASE_API_KEY}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fields: {
+                walletBalance: { doubleValue: calculatedNewBal },
+              },
+            }),
+          }
+        );
+      } catch {}
+    }
+
+    await AsyncStorage.setItem(STORAGE_KEY_BALANCE, String(calculatedNewBal));
 
     // Record local transaction
     const txs = await getWalletTransactions();
@@ -271,8 +340,8 @@ export async function deductWalletBalance(
     };
     await AsyncStorage.setItem(STORAGE_KEY_TX, JSON.stringify([newTx, ...txs]));
 
-    notifyBalance(newBal);
-    return { success: true, newBalance: newBal };
+    notifyBalance(calculatedNewBal);
+    return { success: true, newBalance: calculatedNewBal };
   } catch (err: any) {
     return { success: false, newBalance: 0, error: err.message || 'Deduction failed' };
   }

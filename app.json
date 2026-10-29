@@ -16,7 +16,13 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/app_logo_emblem.png",
         "backgroundColor": "#080D1A"
-      }
+      },
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS",
+        "ACCESS_NETWORK_STATE"
+      ]
     },
     "web": { "bundler": "metro", "output": "single" },
     "plugins": [

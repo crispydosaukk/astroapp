@@ -32,7 +32,15 @@ import { withAlpha } from '@/theme/colors';
 import { AppLanguage, useLanguageStore, useTranslation } from '@/theme/languageStore';
 import { useThemeColors, useThemeStore } from '@/theme/themeStore';
 
-const STORAGE_PROFILE_CONFIG_KEY = 'astroparihar_app_profile_config_v2';
+const STORAGE_PROFILE_CONFIG_KEY = 'astroparihar_app_profile_config_v3';
+
+// Features explicitly deleted from Profile Settings per user request
+const DELETED_PROFILE_ITEM_IDS = new Set([
+  'notificationSettings',
+  'security',
+  'helpCentre',
+  'contactSupport',
+]);
 
 const APP_LANGUAGES: { name: AppLanguage; nativeName: string }[] = [
   { name: 'Telugu', nativeName: 'తెలుగు' },
@@ -164,7 +172,7 @@ export const DEFAULT_PROFILE_CONFIG: DynamicProfileConfig = {
   vipCtaRoute: '/wallet-screen',
   vipEmoji: '👑',
 
-  showSupportCard: true,
+  showSupportCard: false,
   supportCardTitle: 'Spiritual Care & Help Desk',
   supportPhone: '+91 98765 43210',
   supportPhoneLabel: 'Helpline',
@@ -228,27 +236,34 @@ export const DEFAULT_PROFILE_CONFIG: DynamicProfileConfig = {
       items: [
         { id: 'language', order: 1, labelKey: 'profile.language', defaultLabel: 'Language', subtitle: 'Choose Telugu, Hindi, English, Tamil, etc.', icon: 'translate', route: AppRoutes.languageScreen, action: 'languageModal', active: true },
         { id: 'theme', order: 2, labelKey: 'profile.theme', defaultLabel: 'Theme', subtitle: 'Switch between Light Vedic and Dark Cosmic', icon: 'palette_outlined', route: AppRoutes.themeScreen, action: 'themeToggle', active: true },
-        { id: 'notificationSettings', order: 3, labelKey: 'profile.notificationSettings', defaultLabel: 'Notification Settings', subtitle: 'Manage reminders, panchang & astro alerts', icon: 'tune_outlined', route: AppRoutes.notificationSettingsScreen, active: true },
-        { id: 'privacy', order: 4, labelKey: 'profile.privacy', defaultLabel: 'Privacy', subtitle: 'Manage your birth chart & account privacy', icon: 'lock_outline_rounded', route: AppRoutes.privacyScreen, active: true },
-        { id: 'security', order: 5, labelKey: 'profile.security', defaultLabel: 'Security', subtitle: 'Biometric lock, PIN & authentication', icon: 'security_outlined', route: AppRoutes.securityScreen, active: true },
+        { id: 'privacy', order: 3, labelKey: 'profile.privacy', defaultLabel: 'Privacy', subtitle: 'Manage your birth chart & account privacy', icon: 'lock_outline_rounded', route: AppRoutes.privacyScreen, active: true },
       ],
     },
     {
       id: 'support',
       order: 4,
-      title: 'SUPPORT & LEGAL',
+      title: 'LEGAL & POLICIES',
       labelKey: 'profile.support',
       active: true,
       items: [
-        { id: 'helpCentre', order: 1, labelKey: 'profile.helpCentre', defaultLabel: 'Help Centre', subtitle: 'Guides, tutorials and knowledge base', icon: 'help_outline_rounded', route: AppRoutes.helpCentreScreen, active: true },
-        { id: 'contactSupport', order: 2, labelKey: 'profile.contactSupport', defaultLabel: 'Contact Support', subtitle: 'Reach our spiritual care team 24/7', icon: 'support_agent_outlined', route: AppRoutes.contactSupportScreen, active: true },
+        { id: 'terms', order: 1, labelKey: 'profile.terms', defaultLabel: 'Terms of Service', subtitle: 'Platform usage rules and spiritual disclaimers', icon: 'gavel_outlined', route: AppRoutes.termsScreen, active: true },
+        { id: 'privacyPolicy', order: 2, labelKey: 'profile.privacyPolicy', defaultLabel: 'Privacy Policy', subtitle: 'Birth data privacy and security measures', icon: 'policy_outlined', route: AppRoutes.privacyPolicyScreen, active: true },
         { id: 'faqs', order: 3, labelKey: 'profile.faqs', defaultLabel: 'FAQs', subtitle: 'Frequently asked astrological questions', icon: 'quiz_outlined', route: AppRoutes.helpCentreScreen, active: true },
-        { id: 'terms', order: 4, labelKey: 'profile.terms', defaultLabel: 'Terms of Service', subtitle: 'Platform usage rules and spiritual disclaimers', icon: 'gavel_outlined', route: AppRoutes.termsScreen, active: true },
-        { id: 'privacyPolicy', order: 5, labelKey: 'profile.privacyPolicy', defaultLabel: 'Privacy Policy', subtitle: 'Birth data privacy and security measures', icon: 'policy_outlined', route: AppRoutes.privacyPolicyScreen, active: true },
       ],
     },
   ],
 };
+
+function formatDisplayDob(dobString: string): string {
+  if (!dobString || dobString === 'Not specified' || dobString === 'Sign in to view') return dobString || 'Not specified';
+  const m = dobString.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthName = months[parseInt(m[2], 10) - 1] || m[2];
+    return `${parseInt(m[3], 10)} ${monthName} ${m[1]}`;
+  }
+  return dobString;
+}
 
 function getZodiacSymbol(signName: string): string {
   const map: Record<string, string> = {
@@ -615,6 +630,25 @@ export default function ProfileScreen() {
       showSnackBar(`Theme switched to ${nextTheme}`);
       return;
     }
+
+    const AUTH_REQUIRED_ROUTES = new Set([
+      AppRoutes.myKundliScreen,
+      AppRoutes.kundliReportsScreen,
+      AppRoutes.matchReportsScreen,
+      AppRoutes.panchangScreen,
+      AppRoutes.savedAstrologersScreen,
+      AppRoutes.consultationHistoryScreen,
+      AppRoutes.birthProfilesScreen,
+      AppRoutes.remediesScreen,
+      AppRoutes.walletScreen,
+      AppRoutes.notificationsScreen,
+    ]);
+
+    if (!isAuth && it.route && AUTH_REQUIRED_ROUTES.has(it.route as any)) {
+      go(AppRoutes.signInScreen);
+      return;
+    }
+
     if (it.route) {
       push(it.route);
     }
@@ -714,44 +748,48 @@ export default function ProfileScreen() {
 
           <Pressable onPress={isAuth ? openEditModal : () => go(AppRoutes.signInScreen)}>
             <Text style={{ marginTop: 12, color: colors.textPrimary, fontSize: 21, fontWeight: '800' }}>
-              {profileData.name}
+              {isAuth ? profileData.name : t('Guest Seeker', 'Guest Seeker')}
             </Text>
           </Pressable>
 
           <Text style={{ marginTop: 2, color: colors.textMuted, fontSize: 13, textAlign: 'center' }}>
-            {profileData.email}
+            {isAuth ? profileData.email : t('Sign in to access your sacred astrology profile', 'Sign in to access your sacred astrology profile')}
           </Text>
 
           {!isAuth && (
             <Pressable
               onPress={() => go(AppRoutes.signInScreen)}
               style={{
-                marginTop: 10,
-                paddingHorizontal: 16,
-                paddingVertical: 7,
-                borderRadius: 20,
-                backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 25),
+                marginTop: 12,
+                paddingHorizontal: 20,
+                paddingVertical: 9,
+                borderRadius: 22,
+                backgroundColor: '#713B32',
                 borderWidth: 1.2,
                 borderColor: colors.goldAccent,
                 flexDirection: 'row',
                 alignItems: 'center',
+                shadowColor: colors.goldAccent,
+                shadowOpacity: 0.2,
+                shadowRadius: 6,
+                elevation: 3,
               }}
             >
-              <AppIcon name="login_rounded" size={15} color={colors.goldAccent} />
-              <Text style={{ marginLeft: 6, color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>
-                {config.guestSignInButtonText || 'Sign In / Register'}
+              <AppIcon name="login_rounded" size={16} color="#FFFFFF" />
+              <Text style={{ marginLeft: 8, color: '#FFFFFF', fontSize: 13.5, fontWeight: '700' }}>
+                {config.guestSignInButtonText || t('Sign In / Register', 'Sign In / Register')}
               </Text>
             </Pressable>
           )}
 
-          {/* Quick Stats: Dynamic Visibility & Labels */}
-          {(config.showConsultationStat || config.showReportsStat || config.showWalletStat) && (
+          {/* Quick Stats: Dynamic Visibility & Labels - ONLY when authenticated */}
+          {isAuth && (config.showConsultationStat || config.showReportsStat || config.showWalletStat) && (
             <View style={{ marginTop: 18, flexDirection: 'row', alignItems: 'center' }}>
               {config.showConsultationStat && (
-                <Pressable onPress={() => push(isAuth ? AppRoutes.consultationHistoryScreen : AppRoutes.signInScreen)}>
+                <Pressable onPress={() => push(AppRoutes.consultationHistoryScreen)}>
                   <ProfileStat
                     label={config.consultationStatLabel || t('profile.consultations', 'Consultations')}
-                    value={isAuth ? String(consultationCount) : '0'}
+                    value={String(consultationCount)}
                     colors={colors}
                   />
                 </Pressable>
@@ -762,10 +800,10 @@ export default function ProfileScreen() {
               )}
 
               {config.showReportsStat && (
-                <Pressable onPress={() => push(isAuth ? AppRoutes.kundliReportsScreen : AppRoutes.signInScreen)}>
+                <Pressable onPress={() => push(AppRoutes.kundliReportsScreen)}>
                   <ProfileStat
                     label={config.reportsStatLabel || t('profile.reports', 'Reports')}
-                    value={isAuth ? String(reportCount) : '0'}
+                    value={String(reportCount)}
                     colors={colors}
                   />
                 </Pressable>
@@ -776,10 +814,10 @@ export default function ProfileScreen() {
               )}
 
               {config.showWalletStat && (
-                <Pressable onPress={() => push(isAuth ? AppRoutes.walletScreen : AppRoutes.signInScreen)}>
+                <Pressable onPress={() => push(AppRoutes.walletScreen)}>
                   <ProfileStat
                     label={config.walletStatLabel || t('profile.wallet', 'Wallet')}
-                    value={isAuth ? `₹${walletBalance}` : '₹0'}
+                    value={`₹${walletBalance}`}
                     colors={colors}
                   />
                 </Pressable>
@@ -788,32 +826,169 @@ export default function ProfileScreen() {
           )}
 
           {/* Account status badge */}
-          <Pressable
-            testID="profile.premium"
-            onPress={isAuth ? undefined : () => go(AppRoutes.signInScreen)}
-            style={{
-              marginTop: 18,
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: 20,
-              backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 25),
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-            }}
-          >
-            <Text style={{ fontSize: 14 }}>{isAuth ? '⭐' : '✦'}</Text>
-            <Text style={{ marginLeft: 6, color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>
-              {isAuth
-                ? (config.defaultMemberBadge || t('profile.premium', 'AstroParihar Member'))
-                : (config.welcomeGuestText || 'Guest Explorer • Tap to Sign In')}
-            </Text>
-          </Pressable>
+          {isAuth && (
+            <Pressable
+              testID="profile.premium"
+              style={{
+                marginTop: 18,
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 20,
+                backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 25),
+                borderWidth: 1,
+                borderColor: colors.cardBorder,
+              }}
+            >
+              <Text style={{ fontSize: 14 }}>⭐</Text>
+              <Text style={{ marginLeft: 6, color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>
+                {config.defaultMemberBadge || t('profile.premium', 'AstroParihar Member')}
+              </Text>
+            </Pressable>
+          )}
         </View>
 
-        {/* Dynamic Astro Kundli Trio */}
-        {config.showAstroTrio !== false && (
+        {/* Dynamic Sacred Birth Details & Location Card - ONLY when authenticated */}
+        {isAuth && (
+          <View
+            style={{
+              marginHorizontal: 20,
+              marginBottom: 16,
+              padding: 18,
+              borderRadius: 22,
+              backgroundColor: colors.surface,
+              borderWidth: 1.5,
+              borderColor: colors.isLight ? 'rgba(201,168,76,0.35)' : 'rgba(201,168,76,0.25)',
+              shadowColor: colors.isLight ? '#C9A84C' : '#000',
+              shadowOpacity: colors.isLight ? 0.06 : 0.2,
+              shadowRadius: 8,
+              elevation: 2,
+            }}
+          >
+            {/* Header row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 10,
+                    backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 18 : 25),
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: withAlpha(colors.goldAccent, 50),
+                  }}
+                >
+                  <AppIcon name="cake_rounded" size={17} color={colors.goldAccent} />
+                </View>
+                <View style={{ marginLeft: 10 }}>
+                  <Text style={{ color: colors.textPrimary, fontSize: 14.5, fontWeight: '800' }}>
+                    {t('Birth Details & Location', 'Birth Details & Location')}
+                  </Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                    {t('Verified Vedic Kundli Baseline', 'Verified Vedic Kundli Baseline')}
+                  </Text>
+                </View>
+              </View>
+
+              <Pressable
+                testID="profile.editBirthDetails"
+                onPress={openEditModal}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 10,
+                  paddingVertical: 5,
+                  borderRadius: 12,
+                  backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 15 : 20),
+                  borderWidth: 1,
+                  borderColor: withAlpha(colors.goldAccent, 40),
+                }}
+              >
+                <AppIcon name="edit_rounded" size={13} color={colors.goldAccent} />
+                <Text style={{ marginLeft: 4, color: colors.goldAccent, fontSize: 11.5, fontWeight: '700' }}>
+                  {t('Edit', 'Edit')}
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* Grid of details */}
+            <View style={{ gap: 10 }}>
+              {/* Row 1: DOB and Birth Time */}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {/* DOB Tile */}
+                <View
+                  style={{
+                    flex: 1,
+                    padding: 12,
+                    borderRadius: 14,
+                    backgroundColor: colors.surfaceVariant,
+                    borderWidth: 1,
+                    borderColor: colors.cardBorder,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                    <AppIcon name="calendar_month_rounded" size={14} color={colors.goldAccent} />
+                    <Text style={{ marginLeft: 6, color: colors.textMuted, fontSize: 10.5, fontWeight: '600', textTransform: 'uppercase' }}>
+                      {t('Date of Birth', 'Date of Birth')}
+                    </Text>
+                  </View>
+                  <Text numberOfLines={1} style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>
+                    {formatDisplayDob(profileData.dob)}
+                  </Text>
+                </View>
+
+                {/* Birth Time Tile */}
+                <View
+                  style={{
+                    flex: 1,
+                    padding: 12,
+                    borderRadius: 14,
+                    backgroundColor: colors.surfaceVariant,
+                    borderWidth: 1,
+                    borderColor: colors.cardBorder,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                    <AppIcon name="access_time_rounded" size={14} color={colors.goldAccent} />
+                    <Text style={{ marginLeft: 6, color: colors.textMuted, fontSize: 10.5, fontWeight: '600', textTransform: 'uppercase' }}>
+                      {t('Birth Time', 'Birth Time')}
+                    </Text>
+                  </View>
+                  <Text numberOfLines={1} style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>
+                    {profileData.tob || 'Not specified'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Row 2: Birth Location Tile */}
+              <View
+                style={{
+                  padding: 12,
+                  borderRadius: 14,
+                  backgroundColor: colors.surfaceVariant,
+                  borderWidth: 1,
+                  borderColor: colors.cardBorder,
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                  <AppIcon name="location_on_rounded" size={14} color={colors.goldAccent} />
+                  <Text style={{ marginLeft: 6, color: colors.textMuted, fontSize: 10.5, fontWeight: '600', textTransform: 'uppercase' }}>
+                    {t('Birth Place / Location', 'Birth Place / Location')}
+                  </Text>
+                </View>
+                <Text numberOfLines={2} style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700', lineHeight: 18 }}>
+                  {profileData.pob || 'Not specified'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Dynamic Astro Kundli Trio - ONLY when authenticated */}
+        {isAuth && config.showAstroTrio !== false && (
           <View
             style={{
               marginHorizontal: 20,
@@ -856,8 +1031,8 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* Dynamic VIP Gold Member Promo Banner */}
-        {config.vipEnabled && (
+        {/* Dynamic VIP Gold Member Promo Banner - ONLY when authenticated */}
+        {isAuth && config.vipEnabled && (
           <View
             style={{
               marginHorizontal: 20,
@@ -917,13 +1092,106 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* Dynamic Menu Sections from Admin Dashboard */}
+        {/* If user is NOT authenticated, show a dedicated "Sign In to Access Your Astrology Profile" Card */}
+        {!isAuth && (
+          <View
+            style={{
+              marginHorizontal: 20,
+              marginBottom: 18,
+              padding: 20,
+              borderRadius: 22,
+              backgroundColor: colors.surface,
+              borderWidth: 1.5,
+              borderColor: colors.goldAccent,
+              shadowColor: colors.goldAccent,
+              shadowOpacity: colors.isLight ? 0.08 : 0.2,
+              shadowRadius: 8,
+              elevation: 3,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 23,
+                  backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 30),
+                  borderWidth: 1.2,
+                  borderColor: colors.goldAccent,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AppIcon name="lock_outline_rounded" color={colors.goldAccent} size={22} />
+              </View>
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
+                  {t('Sign In to AstroParihar', 'Sign In to AstroParihar')}
+                </Text>
+                <Text style={{ marginTop: 2, color: colors.textMuted, fontSize: 12 }}>
+                  {t('Sign in to unlock your full spiritual profile', 'Sign in to unlock your full spiritual profile')}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 12.5, lineHeight: 18 }}>
+              {t(
+                'profile.guestSignInNotice',
+                'Sign in to access your personal Kundli, birth charts, detailed reports, daily Panchang, saved astrologers, wallet & transaction receipts.'
+              )}
+            </Text>
+
+            <View style={{ marginTop: 14, gap: 8 }}>
+              {[
+                { icon: 'auto_stories', text: 'My Kundli & Birth Chart' },
+                { icon: 'description_outlined', text: 'Kundli & Service Reports' },
+                { icon: 'calendar_today_outlined', text: 'Panchang & Auspicious Muhurat' },
+                { icon: 'star_outline', text: 'Saved Astrologers' },
+                { icon: 'account_balance_wallet_outlined', text: 'Wallet Balance & Transactions' },
+                { icon: 'notifications_outlined', text: 'Astrological Alerts & Notifications' },
+              ].map((item) => (
+                <View key={item.text} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <AppIcon name={item.icon} size={15} color={colors.goldAccent} />
+                  <Text style={{ marginLeft: 8, color: colors.textPrimary, fontSize: 12.5, fontWeight: '600' }}>
+                    {t(item.text, item.text)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            <Pressable
+              testID="profile.guestSignInCta"
+              onPress={() => go(AppRoutes.signInScreen)}
+              style={{
+                marginTop: 18,
+                paddingVertical: 12,
+                borderRadius: 14,
+                backgroundColor: '#713B32',
+                borderWidth: 1,
+                borderColor: colors.goldAccent,
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+              }}
+            >
+              <AppIcon name="login_rounded" color="#FFFFFF" size={17} />
+              <Text style={{ marginLeft: 8, color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>
+                {t('Sign In / Register', 'Sign In / Register')}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Dynamic Menu Sections from Admin Dashboard:
+            When NOT signed in, my-astrology and my-account sections are excluded.
+            notificationSettings, security, helpCentre, and contactSupport are ALWAYS excluded.
+        */}
         {config.sections
-          ?.filter((sec) => sec.active !== false)
+          ?.filter((sec) => sec.active !== false && (isAuth || (sec.id !== 'my-astrology' && sec.id !== 'my-account')))
           ?.sort((a, b) => (a.order || 0) - (b.order || 0))
           ?.map((section) => {
             const activeItems = section.items
-              ?.filter((it) => it.active !== false)
+              ?.filter((it) => it.active !== false && !DELETED_PROFILE_ITEM_IDS.has(it.id))
               ?.sort((a, b) => (a.order || 0) - (b.order || 0));
 
             if (!activeItems || activeItems.length === 0) return null;
@@ -1049,51 +1317,8 @@ export default function ProfileScreen() {
             );
           })}
 
-        {/* Dynamic Support Care Info Card */}
-        {config.showSupportCard !== false && (
-          <View
-            style={{
-              marginHorizontal: 20,
-              marginBottom: 16,
-              padding: 16,
-              borderRadius: 18,
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-            }}
-          >
-            <Text style={{ color: colors.textPrimary, fontSize: 13.5, fontWeight: '700', marginBottom: 6 }}>
-              {config.supportCardTitle || 'Spiritual Care & Help Desk'}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-              <Pressable
-                onPress={() => Linking.openURL(`tel:${config.supportPhone || '+919876543210'}`)}
-                style={{ flexDirection: 'row', alignItems: 'center' }}
-              >
-                <AppIcon name="call" size={14} color={colors.goldAccent} />
-                <Text style={{ marginLeft: 6, color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
-                  {config.supportPhone || '+91 98765 43210'}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => Linking.openURL(`mailto:${config.supportEmail || 'support@astroparihar.com'}`)}
-                style={{ flexDirection: 'row', alignItems: 'center' }}
-              >
-                <AppIcon name="mail_outline" size={14} color={colors.goldAccent} />
-                <Text style={{ marginLeft: 6, color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
-                  {config.supportEmail || 'support@astroparihar.com'}
-                </Text>
-              </Pressable>
-            </View>
-            <Text style={{ marginTop: 8, color: colors.textMuted, fontSize: 11 }}>
-              {`${config.helplineHoursPrefix || 'Helpline: '}${config.helplineHours || 'Mon - Sun: 8:00 AM – 11:00 PM IST'}`}
-            </Text>
-          </View>
-        )}
-
-        {/* Sign Out or Sign In Button */}
-        {isAuth ? (
+        {/* Sign Out Button (ONLY when authenticated) */}
+        {isAuth && (
           <Pressable
             testID="profile.signOut"
             onPress={handleSignOutPress}
@@ -1114,29 +1339,6 @@ export default function ProfileScreen() {
             <AppIcon name="logout_rounded" size={19} color="#CF4444" />
             <Text style={{ marginLeft: 8, color: '#CF4444', fontSize: 15, fontWeight: '700' }}>
               {config.signOutButtonText || t('profile.signOut', 'Sign Out')}
-            </Text>
-          </Pressable>
-        ) : (
-          <Pressable
-            testID="profile.signIn"
-            onPress={() => go(AppRoutes.signInScreen)}
-            style={{
-              marginHorizontal: 20,
-              marginTop: 4,
-              marginBottom: 16,
-              paddingVertical: 14,
-              borderRadius: 16,
-              borderWidth: 1.5,
-              borderColor: colors.goldAccent,
-              backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 16 : 22),
-              flexDirection: 'row',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
-            <AppIcon name="login_rounded" size={19} color={colors.goldAccent} />
-            <Text style={{ marginLeft: 8, color: colors.goldAccent, fontSize: 15, fontWeight: '700' }}>
-              {config.guestSignInButtonText || 'Sign In / Register'}
             </Text>
           </Pressable>
         )}

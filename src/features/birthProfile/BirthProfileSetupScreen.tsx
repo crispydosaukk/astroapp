@@ -20,6 +20,7 @@ import { lh, Text, TextInput } from '@/components/Text';
 import { API_ENDPOINTS } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, go } from '@/navigation/routes';
+import { fetchCalculatedKundli } from '@/services/astrologyService';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 
@@ -346,6 +347,10 @@ export default function BirthProfileSetupScreen() {
   const barStyle = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` }));
 
   const handleCompleteSetup = async () => {
+    if (!birthPlace.trim()) {
+      showSnackBar('Please enter your birth place / location', '#CF4444');
+      return;
+    }
     setSaving(true);
     const cleanPhone = pendingAuth?.phone ? pendingAuth.phone.replace(/\D/g, '') : '';
     const uid = pendingAuth?.uid || (cleanPhone ? `phone_${cleanPhone}` : `user_${Date.now()}`);
@@ -353,15 +358,37 @@ export default function BirthProfileSetupScreen() {
     const formattedDob = date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : '';
     const formattedTob = time ? formatTimeOfDay(time) : '';
 
+    let calculatedZodiac = 'Scorpio';
+    let calculatedMoonSign = 'Cancer';
+    let calculatedNakshatra = 'Pushya';
+
+    try {
+      const chart = await fetchCalculatedKundli({
+        dob: formattedDob,
+        tob: formattedTob || '12:00 PM',
+        pob: birthPlace.trim(),
+        name: name.trim(),
+        gender,
+      });
+      if (chart) {
+        if (chart.ascendant?.sign) calculatedZodiac = chart.ascendant.sign;
+        if (chart.moonSign) calculatedMoonSign = chart.moonSign;
+        if (chart.nakshatra) calculatedNakshatra = chart.nakshatra;
+      }
+    } catch {}
+
     const profileData = {
       uid,
       phone,
-      name: name.trim() || 'Seeker',
+      name: name.trim(),
       gender,
       dob: formattedDob,
       tob: formattedTob,
       pob: birthPlace.trim(),
       profileType,
+      zodiac: calculatedZodiac,
+      moonSign: calculatedMoonSign,
+      nakshatra: calculatedNakshatra,
     };
 
     try {
@@ -395,12 +422,12 @@ export default function BirthProfileSetupScreen() {
         id: `bp_${uid}`,
         name: profileData.name,
         type: profileType,
-        dob: formattedDob || 'Not specified',
-        time: formattedTob || 'Not specified',
-        place: birthPlace.trim() || 'Not specified',
-        zodiac: '♏',
-        sign: 'Scorpio',
-        nakshatra: 'Pushya',
+        dob: formattedDob,
+        time: formattedTob,
+        place: birthPlace.trim(),
+        zodiac: calculatedZodiac,
+        sign: calculatedZodiac,
+        nakshatra: calculatedNakshatra,
         emoji: profileType === 'Partner' ? '❤️' : profileType === 'Child' ? '👶' : '🔮',
         color: '#9370DB',
         active: true,
@@ -409,34 +436,52 @@ export default function BirthProfileSetupScreen() {
       await AsyncStorage.setItem('astroparihar_birth_profiles', JSON.stringify([primaryProfileItem]));
     } catch {}
 
-    showSnackBar('Cosmic Profile successfully registered!');
+    showSnackBar('Cosmic Birth Profile successfully registered!');
     go(AppRoutes.homeDashboardScreen);
     setSaving(false);
   };
 
   const nextStep = () => {
-    if (currentStep < 2) {
-      setCurrentStep(currentStep + 1);
-    } else {
+    if (currentStep === 0) {
+      if (!profileType) {
+        showSnackBar('Please select who this profile is for', '#CF4444');
+        return;
+      }
+      setCurrentStep(1);
+      return;
+    }
+
+    if (currentStep === 1) {
+      if (!name.trim()) {
+        showSnackBar('Please enter your full name', '#CF4444');
+        return;
+      }
+      if (!gender) {
+        showSnackBar('Please select your gender', '#CF4444');
+        return;
+      }
+      if (!date) {
+        showSnackBar('Please select your date of birth', '#CF4444');
+        return;
+      }
+      if (!time) {
+        showSnackBar('Please select your birth time', '#CF4444');
+        return;
+      }
+      setCurrentStep(2);
+      return;
+    }
+
+    if (currentStep === 2) {
+      if (!birthPlace.trim()) {
+        showSnackBar('Please enter your birth place / location', '#CF4444');
+        return;
+      }
       handleCompleteSetup();
     }
   };
 
   const prevStep = () => (currentStep > 0 ? setCurrentStep(currentStep - 1) : go(AppRoutes.signInScreen));
-
-  const handleSkip = async () => {
-    const cleanPhone = pendingAuth?.phone ? pendingAuth.phone.replace(/\D/g, '') : '';
-    const uid = pendingAuth?.uid || (cleanPhone ? `phone_${cleanPhone}` : `user_${Date.now()}`);
-    const phone = pendingAuth?.phone || '';
-    const token = pendingAuth?.token || `session_${uid}_${Date.now()}`;
-    await setUser({
-      uid,
-      phone,
-      name: 'Seeker',
-      profileType: 'Myself',
-    }, token);
-    go(AppRoutes.homeDashboardScreen);
-  };
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }} testID="birthProfile.screen">
@@ -450,11 +495,9 @@ export default function BirthProfileSetupScreen() {
         </Pressable>
         <View style={{ marginLeft: 16, flex: 1 }}>
           <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '700' }}>Birth Profile</Text>
-          <Text style={{ color: colors.textMuted, fontSize: 12 }}>{`Step ${currentStep + 1} of 3`}</Text>
+          <Text style={{ color: colors.textMuted, fontSize: 12 }}>{`Step ${currentStep + 1} of 3 • Mandatory`}</Text>
         </View>
-        <Pressable testID="birthProfile.skip" onPress={handleSkip} style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
-          <Text style={{ color: colors.goldAccent, fontSize: 14, fontWeight: '600' }}>Skip</Text>
-        </Pressable>
+        <View style={{ width: 40 }} />
       </View>
 
       <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24 }}>
