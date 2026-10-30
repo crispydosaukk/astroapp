@@ -168,8 +168,9 @@ export default function AstrologerApplyScreen() {
 
   const [bio, setBio] = useState('');
 
-  // Upload Source Picker Sheet
+  // Upload Source Picker Sheet & Document Preview Modal
   const [uploadTarget, setUploadTarget] = useState<UploadTarget>(null);
+  const [previewDoc, setPreviewDoc] = useState<UploadedDoc | null>(null);
   const [showPhoneCodeSheet, setShowPhoneCodeSheet] = useState<'phone' | 'whatsapp' | null>(null);
 
   // Step 2: Vedic Theory Assessment State
@@ -324,16 +325,17 @@ export default function AstrologerApplyScreen() {
       }
       const res = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
-        quality: 0.75,
+        allowsEditing: true,
+        quality: 0.45,
         base64: true,
       });
       if (!res.canceled && res.assets?.[0]) {
         const asset = res.assets[0];
         const mime = asset.mimeType || 'image/jpeg';
-        const sizeKB = asset.fileSize
-          ? Math.max(1, Math.round(asset.fileSize / 1024))
-          : asset.base64
+        const sizeKB = asset.base64
           ? Math.max(1, Math.round((asset.base64.length * 0.75) / 1024))
+          : asset.fileSize
+          ? Math.max(1, Math.round(asset.fileSize / 1024))
           : 180;
         attachDocument(
           {
@@ -362,16 +364,17 @@ export default function AstrologerApplyScreen() {
       }
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        quality: 0.75,
+        allowsEditing: true,
+        quality: 0.45,
         base64: true,
       });
       if (!res.canceled && res.assets?.[0]) {
         const asset = res.assets[0];
         const mime = asset.mimeType || 'image/jpeg';
-        const sizeKB = asset.fileSize
-          ? Math.max(1, Math.round(asset.fileSize / 1024))
-          : asset.base64
+        const sizeKB = asset.base64
           ? Math.max(1, Math.round((asset.base64.length * 0.75) / 1024))
+          : asset.fileSize
+          ? Math.max(1, Math.round(asset.fileSize / 1024))
           : 210;
         attachDocument(
           {
@@ -389,6 +392,27 @@ export default function AstrologerApplyScreen() {
     }
   };
 
+  const readUriAsDataUrl = async (uri: string, fallbackMime: string): Promise<string> => {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      return await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string' && reader.result.startsWith('data:')) {
+            resolve(reader.result);
+          } else {
+            resolve(uri);
+          }
+        };
+        reader.onerror = () => resolve(uri);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return uri;
+    }
+  };
+
   const handlePickDocument = async () => {
     const target = uploadTarget;
     if (!target) return;
@@ -399,14 +423,16 @@ export default function AstrologerApplyScreen() {
       });
       if (!res.canceled && res.assets?.[0]) {
         const asset = res.assets[0];
+        const mime = asset.mimeType || 'application/pdf';
         const sizeKB = asset.size ? Math.max(1, Math.round(asset.size / 1024)) : 240;
+        const base64DataUrl = await readUriAsDataUrl(asset.uri, mime);
         attachDocument(
           {
             uri: asset.uri,
             name: asset.name || `${target}_document.pdf`,
             sizeKB,
-            mimeType: asset.mimeType || 'application/pdf',
-            dataUrl: asset.uri,
+            mimeType: mime,
+            dataUrl: base64DataUrl,
           },
           target
         );
@@ -711,15 +737,15 @@ export default function AstrologerApplyScreen() {
   const submitFinalApplication = async () => {
     setSubmittingFinal(true);
 
-    const finalSpecs = selectedSpecs
-      .map((s) => (s === 'Other (Specify Below)' ? otherSpecText.trim() : s))
-      .filter(Boolean)
-      .join(', ');
+    const finalSpecsArray = selectedSpecs
+      .map((s) => (s === 'Other' || s === 'Other (Specify Below)' ? otherSpecText.trim() : s))
+      .filter(Boolean);
+    const finalSpecs = finalSpecsArray.join(', ');
 
-    const finalLangs = selectedLangs
-      .map((l) => (l === 'Other (Specify Below)' ? otherLangText.trim() : l))
-      .filter(Boolean)
-      .join(', ');
+    const finalLangsArray = selectedLangs
+      .map((l) => (l === 'Other' || l === 'Other (Specify Below)' ? otherLangText.trim() : l))
+      .filter(Boolean);
+    const finalLangs = finalLangsArray.join(', ');
 
     const fullCallingPhone = `${phoneCode} ${phone.replace(/\D/g, '')}`;
     const fullWhatsappPhone = whatsappSameAsPhone
@@ -729,42 +755,84 @@ export default function AstrologerApplyScreen() {
     const refId = `AP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
     setApplicationRefId(refId);
 
+    const formattedOtherDocs = supportingDocs.map((d) => ({
+      id: d.id,
+      title: d.title,
+      category: d.category,
+      fileName: d.name,
+      fileSize: `${d.sizeKB} KB`,
+      fileSizeKB: d.sizeKB,
+      document: d.dataUrl || d.uri || '',
+      fileUrl: d.dataUrl || d.uri || '',
+      fileData: d.dataUrl || d.uri || '',
+      uploadedAt: new Date().toISOString(),
+    }));
+
     const payload = {
       name: name.trim(),
       email: email.trim(),
       phone: fullCallingPhone,
+      whatsapp: fullWhatsappPhone,
       whatsappNumber: fullWhatsappPhone,
+      location: city.trim(),
+      city: city.trim(),
+      learningBackground: qualification.trim(),
       qualification: qualification.trim(),
+      courseDetails: certificationTitle.trim(),
       certificationTitle: certificationTitle.trim(),
+      // Mandatory KYC Documents (matching /api/candidate/apply route.ts)
       aadhaarNumber: aadhaarNumber.replace(/\D/g, ''),
-      aadhaarDocName: aadhaarDoc?.name || '',
-      aadhaarFileData: aadhaarDoc?.dataUrl || '',
+      aadhaarFileName: aadhaarDoc?.name || 'Aadhaar_Document',
+      aadhaarDocName: aadhaarDoc?.name || 'Aadhaar_Document',
+      aadhaarDocument: aadhaarDoc?.dataUrl || aadhaarDoc?.uri || '',
+      aadhaarFileData: aadhaarDoc?.dataUrl || aadhaarDoc?.uri || '',
       panNumber: panNumber.trim().toUpperCase(),
-      panDocName: panDoc?.name || '',
-      panFileData: panDoc?.dataUrl || '',
-      supportingDocuments: supportingDocs.map((d) => ({
-        title: d.title,
-        category: d.category,
-        fileName: d.name,
-        fileSizeKB: d.sizeKB,
-        fileData: d.dataUrl || '',
-      })),
+      panFileName: panDoc?.name || 'PAN_Document',
+      panDocName: panDoc?.name || 'PAN_Document',
+      panDocument: panDoc?.dataUrl || panDoc?.uri || '',
+      panFileData: panDoc?.dataUrl || panDoc?.uri || '',
+      otherDocuments: formattedOtherDocs,
+      supportingDocuments: formattedOtherDocs,
+      // Practice & Specialisations
+      specialisations: finalSpecsArray,
       specialisation: finalSpecs,
       strongestArea,
       experience: `${experience.trim()} Years`,
-      city: city.trim(),
-      languages: finalLangs,
+      languages: finalLangsArray,
+      languagesString: finalLangs,
       bio: bio.trim(),
+      // Assessment & AI Evaluation Scores
+      assessmentLanguage: selectedLanguage,
       preferredAssessmentLanguage: selectedLanguage,
       theoryScore,
+      theoryAnswers,
+      theoryQuestionsList: activeQuestions,
+      chartCaseScore: kundaliEval?.score || 0,
       kundaliScore: kundaliEval?.score || 0,
       kundaliFeedback: kundaliEval?.feedback || '',
+      chartCaseAnalysis: kundaliAnalysis,
       kundaliAnalysis,
+      chartRemedy: kundaliRemedies,
       kundaliRemedies,
+      chartEvaluation: kundaliEval,
+      chartCaseTitle: activeKundaliCase.title,
+      chartCaseLagna: activeKundaliCase.lagna,
+      chartCaseQuery: activeKundaliCase.clientQuestion,
+      chartCasePlacements: activeKundaliCase.placements,
+      aiInterviewScore: interviewAvgScore,
       interviewScore: interviewAvgScore,
+      conversationHistory: interviewHistory,
       interviewTranscript: interviewHistory,
+      interviewDurationSeconds: interviewSeconds,
       overallScore: overallCompositeScore,
+      passingThreshold,
       passingThresholdUsed: passingThreshold,
+      theoryWeight: weights.theory,
+      chartCaseWeight: weights.kundali,
+      aiInterviewWeight: weights.interview,
+      isAiDynamicQuestions: questionMode === 'ai',
+      questionCount,
+      tabViolations: proctorViolations,
       proctorViolations,
       proctorLogs,
       referenceId: refId,
@@ -809,7 +877,7 @@ export default function AstrologerApplyScreen() {
     onRemove: () => void,
     accentColor = AppColors.success
   ) => {
-    const isImage = doc.mimeType.startsWith('image/');
+    const isImage = doc.mimeType.startsWith('image/') || (doc.dataUrl && doc.dataUrl.startsWith('data:image/'));
     return (
       <View
         style={[
@@ -821,22 +889,24 @@ export default function AstrologerApplyScreen() {
         ]}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {isImage ? (
-            <Image
-              source={{ uri: doc.uri }}
-              style={styles.docThumb}
-              contentFit="cover"
-            />
-          ) : (
-            <View
-              style={[
-                styles.pdfThumb,
-                { backgroundColor: withAlpha(AppColors.primary, 28) },
-              ]}
-            >
-              <AppIcon name="picture_as_pdf" size={24} color={AppColors.primary} />
-            </View>
-          )}
+          <Pressable onPress={() => setPreviewDoc(doc)}>
+            {isImage ? (
+              <Image
+                source={{ uri: doc.dataUrl || doc.uri }}
+                style={styles.docThumb}
+                contentFit="cover"
+              />
+            ) : (
+              <View
+                style={[
+                  styles.pdfThumb,
+                  { backgroundColor: withAlpha(AppColors.primary, 28) },
+                ]}
+              >
+                <AppIcon name="picture_as_pdf" size={24} color={AppColors.primary} />
+              </View>
+            )}
+          </Pressable>
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text
               numberOfLines={1}
@@ -844,7 +914,7 @@ export default function AstrologerApplyScreen() {
             >
               {doc.name}
             </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 }}>
               <View
                 style={{
                   paddingHorizontal: 7,
@@ -857,6 +927,11 @@ export default function AstrologerApplyScreen() {
                   ✓ Uploaded ({doc.sizeKB} KB)
                 </Text>
               </View>
+              <Pressable onPress={() => setPreviewDoc(doc)}>
+                <Text style={{ color: colors.goldAccent, fontSize: 10.5, fontWeight: '700', textDecorationLine: 'underline' }}>
+                  Preview
+                </Text>
+              </Pressable>
             </View>
           </View>
           <Pressable
@@ -1707,52 +1782,79 @@ export default function AstrologerApplyScreen() {
                     >
                       Attached Supporting Documents ({supportingDocs.length})
                     </Text>
-                    {supportingDocs.map((doc, idx) => (
-                      <View
-                        key={doc.id}
-                        style={[
-                          styles.supportingDocRow,
-                          {
-                            backgroundColor: colors.surface,
-                            borderColor: colors.cardBorder,
-                          },
-                        ]}
-                      >
+                    {supportingDocs.map((doc, idx) => {
+                      const isImg =
+                        doc.mimeType.startsWith('image/') ||
+                        (doc.dataUrl && doc.dataUrl.startsWith('data:image/'));
+                      return (
                         <View
-                          style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: 8,
-                            backgroundColor: withAlpha(colors.goldAccent, 30),
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
+                          key={doc.id}
+                          style={[
+                            styles.supportingDocRow,
+                            {
+                              backgroundColor: colors.surface,
+                              borderColor: colors.cardBorder,
+                            },
+                          ]}
                         >
-                          <Text style={{ color: colors.goldAccent, fontSize: 12, fontWeight: '800' }}>
-                            {idx + 1}
-                          </Text>
-                        </View>
-                        <View style={{ flex: 1, marginLeft: 10 }}>
-                          <Text
-                            numberOfLines={1}
-                            style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}
+                          <Pressable onPress={() => setPreviewDoc(doc)}>
+                            {isImg ? (
+                              <Image
+                                source={{ uri: doc.dataUrl || doc.uri }}
+                                style={{ width: 40, height: 40, borderRadius: 8 }}
+                                contentFit="cover"
+                              />
+                            ) : (
+                              <View
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 8,
+                                  backgroundColor: withAlpha(colors.goldAccent, 30),
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <AppIcon name="picture_as_pdf" size={20} color={AppColors.primary} />
+                              </View>
+                            )}
+                          </Pressable>
+                          <View style={{ flex: 1, marginLeft: 10 }}>
+                            <Text
+                              numberOfLines={1}
+                              style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}
+                            >
+                              {idx + 1}. {doc.title}
+                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2, gap: 6 }}>
+                              <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                                {doc.category} • {doc.sizeKB} KB
+                              </Text>
+                              <Pressable onPress={() => setPreviewDoc(doc)}>
+                                <Text
+                                  style={{
+                                    color: colors.goldAccent,
+                                    fontSize: 10.5,
+                                    fontWeight: '700',
+                                    textDecorationLine: 'underline',
+                                  }}
+                                >
+                                  Preview
+                                </Text>
+                              </Pressable>
+                            </View>
+                          </View>
+                          <Pressable
+                            onPress={() =>
+                              setSupportingDocs((prev) => prev.filter((d) => d.id !== doc.id))
+                            }
+                            style={{ padding: 6 }}
                           >
-                            {doc.title}
-                          </Text>
-                          <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>
-                            {doc.category} • {doc.name} ({doc.sizeKB} KB)
-                          </Text>
+                            <AppIcon name="delete_outline" size={18} color={AppColors.error} />
+                          </Pressable>
                         </View>
-                        <Pressable
-                          onPress={() =>
-                            setSupportingDocs((prev) => prev.filter((d) => d.id !== doc.id))
-                          }
-                          style={{ padding: 6 }}
-                        >
-                          <AppIcon name="delete_outline" size={18} color={AppColors.error} />
-                        </Pressable>
-                      </View>
-                    ))}
+                      );
+                    })}
                   </View>
                 ) : null}
               </View>
@@ -3613,6 +3715,69 @@ export default function AstrologerApplyScreen() {
             paddingV={13}
           />
         </View>
+      </Dialog>
+
+      {/* 9. Uploaded KYC / Certificate Document Preview Modal */}
+      <Dialog visible={previewDoc !== null} onClose={() => setPreviewDoc(null)}>
+        {previewDoc ? (
+          <View style={{ alignItems: 'center' }}>
+            <Text
+              numberOfLines={1}
+              style={{
+                color: colors.textPrimary,
+                fontSize: 16,
+                fontWeight: '800',
+                textAlign: 'center',
+              }}
+            >
+              {previewDoc.name}
+            </Text>
+            <Text style={{ color: AppColors.success, fontSize: 11.5, fontWeight: '700', marginTop: 4 }}>
+              ✓ Ready for Submission • {previewDoc.sizeKB} KB
+            </Text>
+            {previewDoc.mimeType.startsWith('image/') ||
+            (previewDoc.dataUrl && previewDoc.dataUrl.startsWith('data:image/')) ? (
+              <Image
+                source={{ uri: previewDoc.dataUrl || previewDoc.uri }}
+                style={{
+                  width: '100%',
+                  height: 260,
+                  borderRadius: 14,
+                  marginTop: 14,
+                  backgroundColor: colors.surfaceVariant,
+                }}
+                contentFit="contain"
+              />
+            ) : (
+              <View
+                style={{
+                  width: '100%',
+                  padding: 24,
+                  borderRadius: 14,
+                  marginTop: 14,
+                  backgroundColor: colors.surfaceVariant,
+                  borderWidth: 1,
+                  borderColor: colors.cardBorder,
+                  alignItems: 'center',
+                }}
+              >
+                <AppIcon name="picture_as_pdf" size={44} color={AppColors.primary} />
+                <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700', marginTop: 10 }}>
+                  PDF Document Attached
+                </Text>
+                <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
+                  Encoded as Base64 ({previewDoc.sizeKB} KB) for Vedic Verification Board review.
+                </Text>
+              </View>
+            )}
+            <ElevatedButton
+              label="Close Preview"
+              onPress={() => setPreviewDoc(null)}
+              style={{ marginTop: 16, width: '100%' }}
+              paddingV={12}
+            />
+          </View>
+        ) : null}
       </Dialog>
     </SafeAreaView>
   );
