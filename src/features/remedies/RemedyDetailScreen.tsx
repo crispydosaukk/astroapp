@@ -13,6 +13,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar, BoxBackButton } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton, OutlinedButton } from '@/components/common';
+import {
+  InlineServiceReportCard,
+  ReportIntakeConfig,
+  ServiceReportIntakeModal,
+} from '@/components/ServiceReportIntakeModal';
 import { lh, Text } from '@/components/Text';
 import {
   CHARITIES,
@@ -27,6 +32,7 @@ import {
   VASTU_DIRECTIONS,
   YANTRAS,
 } from '@/data/remedies';
+import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, push, useExtra } from '@/navigation/routes';
 import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
@@ -474,11 +480,36 @@ export default function RemedyDetailScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const { t } = useTranslation();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authUser = useAuthStore((s) => s.user);
+  const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+
   const rawRemedy = useExtra<Remedy>();
   const remedy = rawRemedy || REMEDIES[0];
 
   const { name } = remedy;
   const data = getRemedyData(name);
+  const isVastu = name.toLowerCase().includes('vastu') || name.toLowerCase().includes('vāstu');
+
+  const reportConfig: ReportIntakeConfig = isVastu
+    ? {
+        mode: 'vastu',
+        title: 'Personalised Vastu Shastra Consultation Report',
+        subtitle: '16-Zone spatial audit, entrance direction analysis & non-demolition remedies',
+        price: 149,
+        serviceId: 'svc-vastu',
+        remedyName: name,
+        category: 'remedies',
+      }
+    : {
+        mode: 'remedy',
+        title: `${name} Personalised Parihar Report`,
+        subtitle: `Custom ${remedy.sanskrit} prescription aligned with your natal chart & Dasha`,
+        price: 99,
+        remedyName: name,
+        category: 'remedies',
+      };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="remedyDetail.screen">
@@ -669,14 +700,23 @@ export default function RemedyDetailScreen() {
 
           {/* Specific Content for this Remedy */}
           <SpecificContent name={name} />
+
+          {/* Website Parity: Embedded Birth Details / Vastu Report Intake Card (#get-report) */}
+          <View style={{ marginTop: 8 }}>
+            <InlineServiceReportCard config={reportConfig} />
+          </View>
         </View>
 
         {/* Action Buttons */}
         <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 8 }}>
           <ElevatedButton
             testID="remedyDetail.report"
-            label="Get My Personalised Report"
-            onPress={() => push(AppRoutes.kundliReportsScreen)}
+            label={
+              !isUserLoggedIn
+                ? `🔒 Sign In to Get ${name} Report (₹${reportConfig.price})`
+                : `Get My Personalised ${name} Report — ₹${reportConfig.price}`
+            }
+            onPress={() => setReportModalOpen(true)}
             radius={100}
             paddingV={14}
             fontSize={14}
@@ -714,6 +754,12 @@ export default function RemedyDetailScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <ServiceReportIntakeModal
+        visible={reportModalOpen}
+        config={reportConfig}
+        onClose={() => setReportModalOpen(false)}
+      />
     </View>
   );
 }

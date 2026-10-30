@@ -54,6 +54,9 @@ export const AppRoutes = {
    * so it gets a path here; it is only ever pushed imperatively with its payload.
    */
   remedyDetailScreen: '/remedy-detail-screen',
+  astrologerLoginScreen: '/astrologer-login-screen',
+  astrologerApplyScreen: '/astrologer-apply-screen',
+  astrologerDashboardScreen: '/astrologer-dashboard-screen',
 } as const;
 
 export type AppRoute = (typeof AppRoutes)[keyof typeof AppRoutes];

@@ -18,6 +18,11 @@ import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { AppImage } from '@/components/AppImage';
 import { ElevatedButton, OutlinedButton } from '@/components/common';
+import {
+  InlineServiceReportCard,
+  ReportIntakeConfig,
+  ServiceReportIntakeModal,
+} from '@/components/ServiceReportIntakeModal';
 import { lh, Text, TextInput } from '@/components/Text';
 import { AppRoutes, pop, push } from '@/navigation/routes';
 import { AppColors, withAlpha } from '@/theme/colors';
@@ -112,11 +117,31 @@ function ServiceLayout({ title, testID, children }: { title: string; testID: str
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const { t } = useTranslation();
+
+  const serviceReportConfig: ReportIntakeConfig | null =
+    testID === 'astrologyReports'
+      ? null
+      : {
+          mode: 'service',
+          title: `${title} Personalised Vedic Report`,
+          subtitle: `Complete ${title.toLowerCase()} analysis, Dasha timings & Vedic remedies`,
+          price:
+            testID === 'careerAstrology' || testID === 'marriageAstrology' || testID === 'businessAstrology' || testID === 'financeAstrology'
+              ? 349
+              : 199,
+          category: testID === 'muhurat' ? 'panchang' : 'services',
+        };
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID={`${testID}.screen`}>
       <AppBar title={t(title, title)} onBack={pop} testIDPrefix={testID} backSize={24} backgroundColor={colors.background} backColor={colors.textPrimary} />
       <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
         {children}
+        {serviceReportConfig ? (
+          <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
+            <InlineServiceReportCard config={serviceReportConfig} />
+          </View>
+        ) : null}
         <View style={{ height: Math.max(140, insets.bottom + 85) }} />
       </ScrollView>
       <ConsultCTABar testIDPrefix={testID} />
@@ -546,7 +571,12 @@ export function SpiritualGuidanceScreen() {
 export function AstrologyReportsScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authUser = useAuthStore((s) => s.user);
+  const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
   const a = '#4FC3F7';
+  const [activeReportConfig, setActiveReportConfig] = useState<ReportIntakeConfig | null>(null);
+
   const reports = [
     { name: 'Comprehensive Birth Chart Report', pages: '40+ pages', price: 499, desc: 'Complete analysis of all 12 houses, 9 planets, Dasha periods, and life predictions.', icon: 'auto_stories_rounded', color: '#9370DB', popular: true },
     { name: 'Career & Finance Report', pages: '25+ pages', price: 349, desc: 'Detailed career path analysis, promotion timings, and wealth accumulation periods.', icon: 'work_rounded', color: '#FFD700', popular: false },
@@ -555,6 +585,17 @@ export function AstrologyReportsScreen() {
     { name: 'Numerology Life Report', pages: '20+ pages', price: 299, desc: 'Complete numerological analysis of your name, birth date, and destiny numbers.', icon: 'tag_rounded', color: '#FFB347', popular: false },
     { name: 'Child Astrology Report', pages: '28+ pages', price: 379, desc: "Comprehensive analysis of your child's talents, education path, and life journey.", icon: 'child_care_rounded', color: '#81C784', popular: false },
   ];
+
+  const handleGetReport = (reportItem: typeof reports[0]) => {
+    setActiveReportConfig({
+      mode: 'service',
+      title: reportItem.name,
+      subtitle: `${reportItem.pages} • ${reportItem.desc}`,
+      price: reportItem.price,
+      category: 'services',
+    });
+  };
+
   return (
     <ServiceLayout title="Astrology Reports" testID="astrologyReports">
       <ServiceHeroCard title="Astrology Reports" subtitle="Detailed PDF reports by expert astrologers" imageUrl="https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800&auto=format&fit=crop" semanticLabel="Detailed astrological charts and reports spread on a desk with a pen and cosmic symbols" accent={a} icon="description_rounded" />
@@ -582,12 +623,29 @@ export function AstrologyReportsScreen() {
           <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ color: colors.goldAccent, fontSize: 20, fontWeight: '800' }}>{`₹${r.price}`}</Text>
             <Text style={{ marginLeft: 4, flex: 1, color: colors.textMuted, fontSize: 11 }}>{t('one-time')}</Text>
-            <Pressable testID={`astrologyReports.getReport.${i}`} onPress={() => push(AppRoutes.kundliReportsScreen)} style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: r.color }}>
-              <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}>{t('Get Report')}</Text>
+            <Pressable
+              testID={`astrologyReports.getReport.${i}`}
+              onPress={() => handleGetReport(r)}
+              style={{
+                paddingHorizontal: 20,
+                paddingVertical: 10,
+                borderRadius: 10,
+                backgroundColor: r.color,
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>
+                {!isUserLoggedIn ? t('🔒 Sign In & Get') : t('Get Report')}
+              </Text>
             </Pressable>
           </View>
         </View>
       ))}
+
+      <ServiceReportIntakeModal
+        visible={!!activeReportConfig}
+        config={activeReportConfig}
+        onClose={() => setActiveReportConfig(null)}
+      />
     </ServiceLayout>
   );
 }

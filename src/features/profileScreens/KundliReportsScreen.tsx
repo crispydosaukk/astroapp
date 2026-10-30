@@ -1,49 +1,35 @@
 /**
- * Port of lib/presentation/profile_screens/kundli_reports_screen.dart
- * Completely dynamic:
+ * Kundli & Service Reports Screen
+ * Complete parity with AstroParihar web & mobile:
  * - Covers ALL Services, Remedies, Panchang, and Mahadasha Paid PDF Reports
- * - Multi-language support: English, Hindi, Telugu, Tamil, Kannada, Marathi, Gujarati
- * - Category filter chips: All, Remedies, Services, Panchang, Mahadasha PDFs
- * - Real-time wallet balance verification & deduction via walletService
- * - Instant report generation, persistent caching in AsyncStorage
- * - Comprehensive in-app PDF preview & high-res download
+ * - Sign-in validation: If user is not signed in, show sign-in prompt; direct reports are protected
+ * - Real-time wallet balance verification & deduction
+ * - Instant view & high-res download / share for all reports
+ * - No spinning loop or stuck processing states
  */
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton, OutlinedButton } from '@/components/common';
-import { BottomSheet, Dialog, showSnackBar } from '@/components/overlays';
+import { BottomSheet, showSnackBar } from '@/components/overlays';
+import {
+  ReportIntakeConfig,
+  ServiceReportIntakeModal,
+} from '@/components/ServiceReportIntakeModal';
 import { TabBar, TabPager } from '@/components/Tabs';
 import { Text } from '@/components/Text';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, pop, push } from '@/navigation/routes';
-import { deductWalletBalance, getWalletBalance } from '@/services/walletService';
+import {
+  KundliReportItem,
+  getUserReports,
+  downloadOrShareReport,
+} from '@/services/reportService';
 import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
-
-export type KundliReportItem = {
-  id: string;
-  title: string;
-  subtitle: string;
-  pages: string;
-  date: string;
-  status: 'Ready' | 'Processing';
-  emoji: string;
-  color: string;
-  size: string;
-  category: 'services' | 'remedies' | 'panchang' | 'mahadasha';
-  price?: number;
-  language?: string;
-  summary?: string;
-  astrologicalAnalysis?: string;
-  remediesPrescribed?: string[];
-};
-
-const STORAGE_REPORTS_KEY = 'astroparihar_kundli_reports';
 
 const REPORT_LANGUAGES = [
   { id: 'en', label: 'English' },
@@ -53,88 +39,6 @@ const REPORT_LANGUAGES = [
   { id: 'kn', label: 'ಕನ್ನಡ (Kannada)' },
   { id: 'mr', label: 'मराठी (Marathi)' },
   { id: 'gu', label: 'ગુજરાતી (Gujarati)' },
-];
-
-const INITIAL_REPORTS: KundliReportItem[] = [
-  {
-    id: 'rep_1',
-    title: 'Comprehensive Life Report',
-    subtitle: 'Personal Kundli • 2026 Edition',
-    pages: '48 pages',
-    date: '12 Jan 2026',
-    status: 'Ready',
-    emoji: '📜',
-    color: '#9370DB',
-    size: '2.4 MB',
-    category: 'services',
-    language: 'English',
-    summary: 'Complete life trajectory, 12 bhavas detailed predictions, Mahadasha timeline through 2038, and targeted Vedic pariharam remedies.',
-    astrologicalAnalysis: 'Ascendant (Lagna) in Scorpio with Moon in Pushya Nakshatra. Navigating Jupiter-Saturn Antardasha with high dharmic elevation and career expansion.',
-    remediesPrescribed: [
-      'North: Daily Gayatri Mantra 108 japa recitation',
-      'South: Red Coral (Moonga) 6.5 ratti in copper ring',
-      'East: Sunday Surya Arghya with copper vessel & red kumkum',
-    ],
-  },
-  {
-    id: 'rep_2',
-    title: 'Ashta Parihar 48-Day Protocol Report',
-    subtitle: 'Vedic Directional Remedies • 2026',
-    pages: '40 pages',
-    date: '18 Feb 2026',
-    status: 'Ready',
-    emoji: '🕉️',
-    color: '#713B32',
-    size: '3.1 MB',
-    category: 'remedies',
-    language: 'हिंदी (Hindi)',
-    summary: 'Comprehensive 8-direction energy harmonization (Mantra, Yantra, Homa, Devata Upasana, Ratna, Rudraksha, Vastu, Dana).',
-    astrologicalAnalysis: 'अष्ट-दिग्बंधन सुरक्षा कवच एवं नवग्रह शांति विधान। उत्तर-पूर्व में बृहस्पति यंत्र एवं दक्षिण-पश्चिम में राहु शांति मंत्र का अनुष्ठान।',
-    remediesPrescribed: [
-      'उत्तर: ॐ नमः शिवाय 108 बार नित्य जप',
-      'पूर्व: बुधवार को गणेश जी को 21 दूर्वा दल अर्पित करें',
-      'दक्षिण-पश्चिम: शनिवार को काले तिल एवं सरसों के तेल का छाया दान',
-    ],
-  },
-  {
-    id: 'rep_3',
-    title: 'Annual Shubh Muhurat Almanac 2026',
-    subtitle: 'Panchang & Sacred Timings • 2026',
-    pages: '32 pages',
-    date: '02 Mar 2026',
-    status: 'Ready',
-    emoji: '📅',
-    color: '#4FC3F7',
-    size: '2.0 MB',
-    category: 'panchang',
-    language: 'English',
-    summary: 'Comprehensive almanac for auspicious timings: Vivah, Griha Pravesh, Vahan Kharid, Vyapar commencement, and Abhijit Muhurat windows.',
-    astrologicalAnalysis: 'Highlights 42 auspicious Abhijit Muhurats and flags 52 Rahu Kaal / Yamaghanta periods with exact avoidance timings.',
-    remediesPrescribed: [
-      'Always begin major endeavors during Shukla Paksha Amrit Choghadiya',
-      'Chant Gayatri Mantra during twilight transitions (Sandhya Vandanam)',
-    ],
-  },
-  {
-    id: 'rep_4',
-    title: 'Rahu Mahadasha Stabilisation Guide',
-    subtitle: 'Paid PDF Dossier • Verified Blueprint',
-    pages: '36 pages',
-    date: '20 Mar 2026',
-    status: 'Ready',
-    emoji: '🛡️',
-    color: '#E65100',
-    size: '3.4 MB',
-    category: 'mahadasha',
-    language: 'English',
-    summary: 'Harmonize intense Rahu transit with exact Sanskrit mantras, planetary dietary rules, Rahu Kaal precautions, and Durga Saptashati sadhana.',
-    astrologicalAnalysis: 'Rahu transit in 11th house creating sudden financial volatility. Stabilized through silver coin talisman and Saturday Bhairava Ashtakam recitation.',
-    remediesPrescribed: [
-      'Daily: Durga Saptashati 4th Chapter recitation',
-      'Saturday: Feed stray dogs and birds before noon',
-      'Metal: Keep a pure silver square piece in pocket/wallet',
-    ],
-  },
 ];
 
 const CATALOG = [
@@ -343,83 +247,72 @@ export default function KundliReportsScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authUser = useAuthStore((s) => s.user);
+  const setPostLoginRedirect = useAuthStore((s) => s.setPostLoginRedirect);
+  const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
+
   const [tab, setTab] = useState(0);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('English');
   const [reports, setReports] = useState<KundliReportItem[]>([]);
+  const [loadingReports, setLoadingReports] = useState(true);
   const [selectedReport, setSelectedReport] = useState<KundliReportItem | null>(null);
-  const [buyTarget, setBuyTarget] = useState<typeof CATALOG[0] | null>(null);
-  const [insufficientOpen, setInsufficientOpen] = useState(false);
+  const [intakeConfig, setIntakeConfig] = useState<ReportIntakeConfig | null>(null);
 
   const loadReports = async () => {
+    if (!isUserLoggedIn) {
+      setReports([]);
+      setLoadingReports(false);
+      return;
+    }
+    setLoadingReports(true);
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_REPORTS_KEY);
-      if (stored) {
-        setReports(JSON.parse(stored));
-      } else {
-        await AsyncStorage.setItem(STORAGE_REPORTS_KEY, JSON.stringify(INITIAL_REPORTS));
-        setReports(INITIAL_REPORTS);
-      }
+      const list = await getUserReports(authUser?.uid || authUser?.phone);
+      setReports(list);
     } catch {
-      setReports(INITIAL_REPORTS);
+      setReports([]);
+    } finally {
+      setLoadingReports(false);
     }
   };
 
   useEffect(() => {
     loadReports();
-  }, []);
+  }, [isUserLoggedIn, authUser?.uid, authUser?.phone]);
 
-  const handleBuyReport = async (item: typeof CATALOG[0]) => {
-    const isAuthenticated = useAuthStore.getState().isAuthenticated;
-    const authUser = useAuthStore.getState().user;
-    const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
-    if (!isAuth) {
-      showSnackBar('Please sign in to order Vedic reports', '#713B32');
-      push(AppRoutes.signInScreen);
-      return;
-    }
+  const handleBuyReport = (item: typeof CATALOG[0]) => {
+    const lower = item.title.toLowerCase();
+    const mode =
+      item.id === 'cat_rem_ashta'
+        ? 'parihara_plan'
+        : item.id === 'cat_rem_vastu' || lower.includes('vastu')
+        ? 'vastu'
+        : item.category === 'remedies'
+        ? 'remedy'
+        : item.category === 'mahadasha'
+        ? 'mahadasha'
+        : 'service';
 
-    const balance = await getWalletBalance();
-    if (balance < item.price) {
-      setBuyTarget(item);
-      setInsufficientOpen(true);
-      return;
-    }
-
-    const deduction = await deductWalletBalance(item.price, `Report: ${item.title}`);
-    if (deduction.success) {
-      const newRep: KundliReportItem = {
-        id: `rep_${Date.now()}`,
-        title: item.title,
-        subtitle: `${authUser?.name || 'Devotee'} • ${new Date().getFullYear()} Edition`,
-        pages: item.pages,
-        date: 'Today',
-        status: 'Ready',
-        emoji: item.emoji,
-        color: item.color,
-        size: '2.8 MB',
-        category: item.category as any,
-        language: selectedLanguage,
-        summary: item.desc,
-        astrologicalAnalysis: `Authoritative Vedic Analysis for ${authUser?.name || 'Devotee'} (${item.title}) in ${selectedLanguage}. Generated with high-precision Nirayana ephemeris and verified by AstroParihar Council.`,
-        remediesPrescribed: [
-          'Perform daily Japa of governing deity mantra 108 times',
-          'Follow directional Ashta Parihar remedies aligned with your Lagna',
-          'Avoid major ventures during daily Rahu Kaal periods',
-        ],
-      };
-      const updated = [newRep, ...reports];
-      setReports(updated);
-      await AsyncStorage.setItem(STORAGE_REPORTS_KEY, JSON.stringify(updated));
-      showSnackBar(`Purchased ${item.title} (${selectedLanguage})! Added to My Reports.`, colors.surfaceVariant);
-      setTab(0);
-    } else {
-      showSnackBar('Transaction failed. Please check your wallet.', '#CF4444');
-    }
+    setIntakeConfig({
+      mode,
+      title: item.title,
+      subtitle: `${item.pages} • ${item.desc}`,
+      price: item.price,
+      serviceId: item.id,
+      remedyName: item.title,
+      category: item.category as any,
+      defaultLanguage: selectedLanguage,
+    });
   };
 
-  const handleDownload = (rep: KundliReportItem) => {
-    showSnackBar(`Downloading "${rep.title}.pdf" (${rep.language || selectedLanguage} • ${rep.size})... Saved to device!`, colors.surfaceVariant);
+  const handleDownload = async (rep: KundliReportItem) => {
+    showSnackBar(`Preparing "${rep.title}.pdf" (${rep.language || selectedLanguage})...`, colors.surfaceVariant);
+    const shared = await downloadOrShareReport(rep);
+    if (shared) {
+      showSnackBar(`"${rep.title}" exported successfully!`, colors.surfaceVariant);
+    }
   };
 
   const filteredCatalog = CATALOG.filter((c) => {
@@ -524,95 +417,211 @@ export default function KundliReportsScreen() {
               paddingBottom: Math.max(150, insets.bottom + 90),
             }}
           >
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <StatCard value={String(reports.length)} label="Total Reports" color="#9370DB" colors={colors} />
-              <StatCard value={String(reports.filter((r) => r.status === 'Ready').length)} label="Ready" color="#2D9E6B" colors={colors} />
-              <StatCard value={String(reports.filter((r) => r.status === 'Processing').length)} label="Processing" color="#D4821A" colors={colors} />
-            </View>
-
-            <View style={{ height: 18 }} />
-
-            {reports.map((r) => {
-              const ready = r.status === 'Ready';
-              return (
-                <Pressable
-                  key={r.id || r.title}
-                  onPress={() => ready && setSelectedReport(r)}
+            {/* If user is not authenticated, show sign-in prompt; direct reports are protected */}
+            {!isUserLoggedIn ? (
+              <View
+                style={{
+                  marginTop: 20,
+                  padding: 24,
+                  borderRadius: 24,
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: withAlpha(colors.goldAccent, 60),
+                  alignItems: 'center',
+                  shadowColor: '#000',
+                  shadowOpacity: colors.isLight ? 0.05 : 0.2,
+                  shadowRadius: 10,
+                  elevation: 3,
+                }}
+              >
+                <View
                   style={{
-                    marginBottom: 14,
-                    padding: 16,
+                    width: 64,
+                    height: 64,
                     borderRadius: 20,
-                    backgroundColor: colors.surface,
+                    backgroundColor: withAlpha(colors.goldAccent, 20),
                     borderWidth: 1,
-                    borderColor: colors.cardBorder,
-                    flexDirection: 'row',
+                    borderColor: withAlpha(colors.goldAccent, 50),
                     alignItems: 'center',
-                    shadowColor: '#000',
-                    shadowOpacity: colors.isLight ? 0.04 : 0.2,
-                    shadowRadius: 8,
+                    justifyContent: 'center',
                   }}
                 >
-                  <View
+                  <AppIcon name="lock" color={colors.goldAccent} size={30} />
+                </View>
+
+                <Text
+                  style={{
+                    marginTop: 16,
+                    color: colors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: '800',
+                    textAlign: 'center',
+                  }}
+                >
+                  Please Sign In to View Your Reports
+                </Text>
+
+                <Text
+                  style={{
+                    marginTop: 8,
+                    color: colors.textSecondary,
+                    fontSize: 12.5,
+                    lineHeight: 18,
+                    textAlign: 'center',
+                  }}
+                >
+                  Access all your personalized Vedic chart analysis, remedy reports, and unlocked Mahadasha guides in one place.
+                </Text>
+
+                <ElevatedButton
+                  label="Sign In to Your Account"
+                  icon="login"
+                  onPress={() => {
+                    setPostLoginRedirect({ route: '', popOnSuccess: true });
+                    push(AppRoutes.signInScreen);
+                  }}
+                  bg="#713B32"
+                  fg="#FFFFFF"
+                  radius={100}
+                  paddingV={13}
+                  paddingH={24}
+                  fontSize={14}
+                  fontWeight="700"
+                  style={{ marginTop: 20, width: '100%' }}
+                />
+              </View>
+            ) : loadingReports ? (
+              <View style={{ paddingVertical: 60, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={colors.goldAccent} />
+                <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 13 }}>
+                  Loading your Vedic reports...
+                </Text>
+              </View>
+            ) : reports.length === 0 ? (
+              <View
+                style={{
+                  marginTop: 20,
+                  padding: 28,
+                  borderRadius: 20,
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.cardBorder,
+                  alignItems: 'center',
+                }}
+              >
+                <AppIcon name="description_outlined" color={colors.textMuted} size={48} />
+                <Text style={{ marginTop: 12, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>
+                  No Reports Found
+                </Text>
+                <Text style={{ marginTop: 6, color: colors.textSecondary, fontSize: 12, textAlign: 'center' }}>
+                  You haven&apos;t generated any reports yet. Explore remedies, kundli matching, or browse our catalog below.
+                </Text>
+                <ElevatedButton
+                  label="Explore Reports Catalog"
+                  onPress={() => setTab(1)}
+                  bg="#713B32"
+                  fg="#FFFFFF"
+                  radius={100}
+                  paddingV={10}
+                  paddingH={20}
+                  fontSize={13}
+                  style={{ marginTop: 16 }}
+                />
+              </View>
+            ) : (
+              <>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <StatCard value={String(reports.length)} label="Total Reports" color="#9370DB" colors={colors} />
+                  <StatCard value={String(reports.filter((r) => r.status === 'Ready').length)} label="Ready" color="#2D9E6B" colors={colors} />
+                  <StatCard value={String(reports.filter((r) => r.status === 'Processing').length)} label="Processing" color="#D4821A" colors={colors} />
+                </View>
+
+                <View style={{ height: 18 }} />
+
+                {reports.map((r) => (
+                  <Pressable
+                    key={r.id || r.title}
+                    onPress={() => setSelectedReport(r)}
                     style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 16,
-                      backgroundColor: withAlpha(r.color, colors.isLight ? 25 : 30),
+                      marginBottom: 14,
+                      padding: 16,
+                      borderRadius: 20,
+                      backgroundColor: colors.surface,
+                      borderWidth: 1,
+                      borderColor: colors.cardBorder,
+                      flexDirection: 'row',
                       alignItems: 'center',
-                      justifyContent: 'center',
+                      shadowColor: '#000',
+                      shadowOpacity: colors.isLight ? 0.04 : 0.2,
+                      shadowRadius: 8,
+                      elevation: 2,
                     }}
                   >
-                    <Text style={{ fontSize: 24 }}>{r.emoji}</Text>
-                  </View>
-
-                  <View style={{ flex: 1, marginLeft: 14 }}>
-                    <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>{r.title}</Text>
-                    <Text style={{ marginTop: 2, color: colors.textMuted, fontSize: 11 }}>{r.subtitle}</Text>
-                    <View style={{ marginTop: 6, flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
-                      <MiniChip text={r.pages} color={colors.textMuted} />
-                      {r.language && <MiniChip text={r.language} color={colors.goldAccent} />}
-                      <MiniChip text={r.date} color={colors.textMuted} />
-                      <MiniChip text={r.status} color={ready ? '#2D9E6B' : '#D4821A'} />
+                    <View
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: 16,
+                        backgroundColor: withAlpha(r.color, colors.isLight ? 25 : 30),
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ fontSize: 24 }}>{r.emoji}</Text>
                     </View>
-                  </View>
 
-                  <View style={{ marginLeft: 8, alignItems: 'center' }}>
-                    {ready ? (
-                      <View style={{ flexDirection: 'row', gap: 6 }}>
-                        <Pressable
-                          onPress={() => setSelectedReport(r)}
-                          style={{
-                            width: 34,
-                            height: 34,
-                            borderRadius: 10,
-                            backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 25),
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <AppIcon name="visibility_outlined" color={colors.goldAccent} size={18} />
-                        </Pressable>
-                        <Pressable
-                          onPress={() => handleDownload(r)}
-                          style={{
-                            width: 34,
-                            height: 34,
-                            borderRadius: 10,
-                            backgroundColor: withAlpha(colors.textSecondary, colors.isLight ? 15 : 20),
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <AppIcon name="download_outlined" color={colors.textSecondary} size={18} />
-                        </Pressable>
+                    <View style={{ flex: 1, marginLeft: 14 }}>
+                      <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>{r.title}</Text>
+                      <Text style={{ marginTop: 2, color: colors.textMuted, fontSize: 11 }}>{r.subtitle}</Text>
+                      <View style={{ marginTop: 6, flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+                        <MiniChip text={r.pages} color={colors.textMuted} />
+                        {r.language && <MiniChip text={r.language} color={colors.goldAccent} />}
+                        <MiniChip text={r.date} color={colors.textMuted} />
+                        <MiniChip text="Ready" color="#2D9E6B" />
                       </View>
-                    ) : (
-                      <ActivityIndicator size="small" color="#D4821A" />
-                    )}
-                  </View>
-                </Pressable>
-              );
-            })}
+                    </View>
+
+                    <View style={{ marginLeft: 8, flexDirection: 'row', gap: 6 }}>
+                      {/* View Report Button */}
+                      <Pressable
+                        onPress={() => setSelectedReport(r)}
+                        accessibilityLabel="View Report"
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 10,
+                          backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 25 : 35),
+                          borderWidth: 1,
+                          borderColor: withAlpha(colors.goldAccent, 60),
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <AppIcon name="visibility_outlined" color={colors.goldAccent} size={18} />
+                      </Pressable>
+
+                      {/* Download / Share Report Button */}
+                      <Pressable
+                        onPress={() => handleDownload(r)}
+                        accessibilityLabel="Download Report"
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 10,
+                          backgroundColor: withAlpha(colors.textSecondary, colors.isLight ? 15 : 25),
+                          borderWidth: 1,
+                          borderColor: colors.cardBorder,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <AppIcon name="download_outlined" color={colors.textPrimary} size={18} />
+                      </Pressable>
+                    </View>
+                  </Pressable>
+                ))}
+              </>
+            )}
           </ScrollView>,
 
           /* Tab 1: Get Reports */
@@ -737,7 +746,7 @@ export default function KundliReportsScreen() {
         ]}
       </TabPager>
 
-      {/* Report Preview Modal */}
+      {/* Comprehensive Report Preview BottomSheet Modal */}
       <BottomSheet visible={!!selectedReport} onClose={() => setSelectedReport(null)} testID="kundliReports.detailSheet">
         {selectedReport ? (
           <View
@@ -748,7 +757,7 @@ export default function KundliReportsScreen() {
               borderTopRightRadius: 24,
               borderWidth: 1,
               borderColor: colors.cardBorder,
-              maxHeight: 580,
+              maxHeight: 620,
             }}
           >
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -774,17 +783,163 @@ export default function KundliReportsScreen() {
                     {selectedReport.pages} • {selectedReport.size}
                   </Text>
                 </View>
+                <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: withAlpha('#2D9E6B', 20) }}>
+                  <Text style={{ color: '#2D9E6B', fontSize: 11, fontWeight: '700' }}>
+                    Status: Ready
+                  </Text>
+                </View>
               </View>
 
               <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: 14 }} />
+
+              {/* Birth / Property Coordinates Badge Row */}
+              {(selectedReport.details?.dob || selectedReport.details?.pob || selectedReport.details?.propertyType) && (
+                <View
+                  style={{
+                    marginBottom: 12,
+                    padding: 12,
+                    borderRadius: 12,
+                    backgroundColor: withAlpha(colors.goldAccent, 14),
+                    borderWidth: 1,
+                    borderColor: withAlpha(colors.goldAccent, 45),
+                  }}
+                >
+                  <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '800', marginBottom: 4 }}>
+                    📋 BIRTH & CONSULTATION COORDINATES
+                  </Text>
+                  <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '600' }}>
+                    {selectedReport.details?.userName || authUser?.name || 'Seeker'}
+                    {selectedReport.details?.dob ? ` • Born: ${selectedReport.details.dob}` : ''}
+                    {selectedReport.details?.tob ? ` (${selectedReport.details.tob})` : ''}
+                  </Text>
+                  {selectedReport.details?.pob && (
+                    <Text style={{ color: colors.textSecondary, fontSize: 11.5, marginTop: 2 }}>
+                      📍 Location: {selectedReport.details.pob}
+                    </Text>
+                  )}
+                  {selectedReport.details?.primaryConcern && (
+                    <Text style={{ color: colors.textSecondary, fontSize: 11.5, marginTop: 2 }}>
+                      🎯 Sankalpa / Focus: {selectedReport.details.primaryConcern}
+                    </Text>
+                  )}
+                </View>
+              )}
 
               <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 20 }}>
                 {selectedReport.summary}
               </Text>
 
+              {/* Complete 8-Fold Parihara Plan Section (Website Parity) */}
+              {Array.isArray(selectedReport.details?.eightFoldRemedies) && (
+                <View style={{ marginTop: 14, gap: 8 }}>
+                  <Text style={{ color: colors.textPrimary, fontSize: 13.5, fontWeight: '800' }}>
+                    🕉️ 8-Directional Ashta-Digbandhana Remedies:
+                  </Text>
+                  {selectedReport.details.eightFoldRemedies.map((rem: any, idx: number) => (
+                    <View
+                      key={idx}
+                      style={{
+                        padding: 12,
+                        borderRadius: 12,
+                        backgroundColor: colors.surfaceVariant,
+                        borderWidth: 1,
+                        borderColor: colors.cardBorder,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ color: colors.textPrimary, fontSize: 12.5, fontWeight: '800', flex: 1 }}>
+                          {rem.title}
+                        </Text>
+                        <View
+                          style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 8,
+                            backgroundColor: withAlpha(colors.goldAccent, 22),
+                          }}
+                        >
+                          <Text style={{ color: colors.goldAccent, fontSize: 10, fontWeight: '700' }}>
+                            🧭 {rem.direction}
+                          </Text>
+                        </View>
+                      </View>
+                      {rem.deity && (
+                        <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
+                          Deity: {rem.deity}
+                        </Text>
+                      )}
+                      {rem.mantra && (
+                        <Text style={{ color: colors.textPrimary, fontSize: 11.5, fontStyle: 'italic', marginTop: 4 }}>
+                          {rem.mantra}
+                        </Text>
+                      )}
+                      <Text style={{ color: colors.textSecondary, fontSize: 11.5, lineHeight: 16, marginTop: 4 }}>
+                        {rem.prescription || rem.specificPrescription}
+                      </Text>
+                    </View>
+                  ))}
+
+                  {selectedReport.details?.sankalpaProtocol && (
+                    <View
+                      style={{
+                        marginTop: 6,
+                        padding: 12,
+                        borderRadius: 12,
+                        backgroundColor: withAlpha('#2D9E6B', 14),
+                        borderWidth: 1,
+                        borderColor: withAlpha('#2D9E6B', 50),
+                      }}
+                    >
+                      <Text style={{ color: '#2D9E6B', fontSize: 12.5, fontWeight: '800', marginBottom: 4 }}>
+                        🪔 48-Day Mandala Sankalpa Protocol:
+                      </Text>
+                      <Text style={{ color: colors.textSecondary, fontSize: 11.5, lineHeight: 17 }}>
+                        • Morning: {selectedReport.details.sankalpaProtocol.morningRoutine}{'\n'}
+                        • Evening: {selectedReport.details.sankalpaProtocol.eveningRoutine}{'\n'}
+                        • Rules: {selectedReport.details.sankalpaProtocol.dietaryRules}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* Vastu Room-by-Room Spatial Audit Section (Website Parity) */}
+              {Array.isArray(selectedReport.details?.roomAudits) && (
+                <View style={{ marginTop: 14, gap: 8 }}>
+                  <Text style={{ color: colors.textPrimary, fontSize: 13.5, fontWeight: '800' }}>
+                    🏠 Room-by-Room Vastu Spatial Audit:
+                  </Text>
+                  {selectedReport.details.roomAudits.map((rm: any, idx: number) => (
+                    <View
+                      key={idx}
+                      style={{
+                        padding: 12,
+                        borderRadius: 12,
+                        backgroundColor: colors.surfaceVariant,
+                        borderWidth: 1,
+                        borderColor: colors.cardBorder,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ color: colors.textPrimary, fontSize: 12.5, fontWeight: '800' }}>
+                          {rm.room} ({rm.direction})
+                        </Text>
+                        <Text style={{ color: colors.goldAccent, fontSize: 10.5, fontWeight: '700' }}>
+                          {rm.status}
+                        </Text>
+                      </View>
+                      <Text style={{ color: colors.textSecondary, fontSize: 11.5, lineHeight: 16, marginTop: 4 }}>
+                        {rm.remedy}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Astrological Analysis */}
               {selectedReport.astrologicalAnalysis && (
-                <View style={{ marginTop: 14, padding: 12, borderRadius: 12, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder }}>
-                  <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '800', marginBottom: 4 }}>
+                <View style={{ marginTop: 14, padding: 14, borderRadius: 14, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder }}>
+                  <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '800', marginBottom: 6 }}>
                     Cosmic Analysis & Ephemeris Insights:
                   </Text>
                   <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18 }}>
@@ -793,7 +948,39 @@ export default function KundliReportsScreen() {
                 </View>
               )}
 
-              {selectedReport.remediesPrescribed && (
+              {/* Specific Remedy Details if Present */}
+              {selectedReport.details?.mantra && (
+                <View style={{ marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: withAlpha(colors.goldAccent, 15), borderWidth: 1, borderColor: withAlpha(colors.goldAccent, 40) }}>
+                  <Text style={{ color: colors.goldAccent, fontSize: 12, fontWeight: '800', marginBottom: 2 }}>
+                    Consecrated Vedic Mantra:
+                  </Text>
+                  <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700', fontStyle: 'italic', lineHeight: 20 }}>
+                    {selectedReport.details.mantra}
+                  </Text>
+                  {selectedReport.details.direction && (
+                    <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 11 }}>
+                      Direction: {selectedReport.details.direction} • Deity: {selectedReport.details.deity || 'Devata'}
+                    </Text>
+                  )}
+                </View>
+              )}
+
+              {/* Materials Required & Precautions for Remedy Reports */}
+              {Array.isArray(selectedReport.details?.materialsRequired) && (
+                <View style={{ marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder }}>
+                  <Text style={{ color: colors.textPrimary, fontSize: 12.5, fontWeight: '800', marginBottom: 4 }}>
+                    🪔 Sacred Materials Required (Puja Samagri):
+                  </Text>
+                  {selectedReport.details.materialsRequired.map((mat: string, idx: number) => (
+                    <Text key={idx} style={{ color: colors.textSecondary, fontSize: 11.5, lineHeight: 17 }}>
+                      • {mat}
+                    </Text>
+                  ))}
+                </View>
+              )}
+
+              {/* Prescribed Directional Pariharam */}
+              {selectedReport.remediesPrescribed && selectedReport.remediesPrescribed.length > 0 && (
                 <View style={{ marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: withAlpha('#713B32', colors.isLight ? 12 : 25), borderWidth: 1, borderColor: withAlpha('#713B32', 40) }}>
                   <Text style={{ color: colors.isLight ? '#713B32' : colors.goldAccent, fontSize: 13, fontWeight: '800', marginBottom: 6 }}>
                     Prescribed Directional Vedic Pariharam:
@@ -806,6 +993,7 @@ export default function KundliReportsScreen() {
                 </View>
               )}
 
+              {/* Action Buttons */}
               <View style={{ marginTop: 20, flexDirection: 'row', gap: 10, paddingBottom: 16 }}>
                 <OutlinedButton
                   label="Close"
@@ -816,14 +1004,16 @@ export default function KundliReportsScreen() {
                   style={{ flex: 1 }}
                 />
                 <ElevatedButton
-                  label="Download PDF"
+                  label="Download / Share PDF"
+                  icon="share_outlined"
                   onPress={() => {
                     handleDownload(selectedReport);
-                    setSelectedReport(null);
                   }}
+                  bg="#713B32"
+                  fg="#FFFFFF"
                   radius={12}
                   paddingV={10}
-                  style={{ flex: 1 }}
+                  style={{ flex: 1.3 }}
                 />
               </View>
             </ScrollView>
@@ -831,45 +1021,17 @@ export default function KundliReportsScreen() {
         ) : null}
       </BottomSheet>
 
-      {/* Insufficient Balance Dialog */}
-      <Dialog
-        visible={insufficientOpen}
-        onClose={() => setInsufficientOpen(false)}
-        style={{
-          borderRadius: 24,
-          borderWidth: 1,
-          borderColor: colors.cardBorder,
-          backgroundColor: colors.surface,
-          padding: 24,
+      <ServiceReportIntakeModal
+        visible={!!intakeConfig}
+        config={intakeConfig}
+        onClose={() => setIntakeConfig(null)}
+        onSuccess={async (newRep) => {
+          setIntakeConfig(null);
+          await loadReports();
+          setTab(0);
+          setSelectedReport(newRep);
         }}
-      >
-        <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '800' }}>
-          Insufficient Wallet Balance
-        </Text>
-        <Text style={{ marginTop: 10, color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
-          {`You need ${buyTarget?.priceDisplay} to purchase the ${buyTarget?.title}. Please recharge your AstroParihar wallet.`}
-        </Text>
-        <View style={{ marginTop: 20, flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
-          <OutlinedButton
-            label="Cancel"
-            onPress={() => setInsufficientOpen(false)}
-            color={colors.textSecondary}
-            radius={12}
-            paddingV={8}
-            paddingH={14}
-          />
-          <ElevatedButton
-            label="Recharge Wallet"
-            onPress={() => {
-              setInsufficientOpen(false);
-              push(AppRoutes.walletScreen);
-            }}
-            radius={12}
-            paddingV={8}
-            paddingH={16}
-          />
-        </View>
-      </Dialog>
+      />
     </View>
   );
 }

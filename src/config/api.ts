@@ -24,6 +24,14 @@ export const API_ENDPOINTS = {
   reviews: `${BASE_URL}/api/app-dynamic/reviews`,
   services: `${BASE_URL}/api/app-dynamic/services`,
   profile: `${BASE_URL}/api/app-dynamic/profile`,
+  astrologerSendOtp: `${BASE_URL}/api/astrologer/auth/send-otp`,
+  astrologerVerifyOtp: `${BASE_URL}/api/astrologer/auth/verify-otp`,
+  candidateApply: `${BASE_URL}/api/candidate/apply`,
+  assessmentSettings: `${BASE_URL}/api/settings/assessment`,
+  generateQuestions: `${BASE_URL}/api/ai/generate-assignment-questions`,
+  generateChartCase: `${BASE_URL}/api/ai/generate-chart-case`,
+  evaluateKundali: `${BASE_URL}/api/ai/evaluate-kundali`,
+  candidateInterview: `${BASE_URL}/api/ai/candidate-interview`,
 } as const;
 
 /**

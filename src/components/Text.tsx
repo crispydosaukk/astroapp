@@ -91,3 +91,4 @@ export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(function 
 
 /** Flutter TextStyle(fontSize, height) → RN { fontSize, lineHeight }. */
 export const lh = (fontSize: number, height: number) => ({ fontSize, lineHeight: Math.round(fontSize * height) });
+

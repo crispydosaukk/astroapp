@@ -19,7 +19,7 @@ import { formatTimeOfDay, pickDate, pickTime } from '@/components/pickers';
 import { lh, Text, TextInput } from '@/components/Text';
 import { API_ENDPOINTS } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
-import { AppRoutes, go } from '@/navigation/routes';
+import { AppRoutes, go, push } from '@/navigation/routes';
 import { fetchCalculatedKundli } from '@/services/astrologyService';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
@@ -437,7 +437,16 @@ export default function BirthProfileSetupScreen() {
     } catch {}
 
     showSnackBar('Cosmic Birth Profile successfully registered!');
-    go(AppRoutes.homeDashboardScreen);
+    const redirect = useAuthStore.getState().postLoginRedirect;
+    if (redirect) {
+      useAuthStore.getState().setPostLoginRedirect(null);
+      go(AppRoutes.homeDashboardScreen);
+      if (redirect.route) {
+        setTimeout(() => push(redirect.route, redirect.extra), 100);
+      }
+    } else {
+      go(AppRoutes.homeDashboardScreen);
+    }
     setSaving(false);
   };
 

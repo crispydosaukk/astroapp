@@ -3,23 +3,26 @@
  * - Calculate: disabled while calculating; 2 s delay; ⭐ rotates (3 s repeat); then results
  * - score count-up 0→total over 1500 ms easeOutCubic; ring colour by score
  * - back in results mode returns to the form and resets the score animation
- * SOURCE_INERT: "Get Detailed Compatibility Report — ₹399", "🤖 Ask AI About This Match".
+ * - Report Generation: Authenticates user, generates detailed Kundli Milan report and saves to Kundli Reports
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { AppBar, BoxBackButton } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton, LinearProgress, OutlinedButton, ProgressRing } from '@/components/common';
 import { OutlinedField } from '@/components/fields';
+import { showSnackBar } from '@/components/overlays';
+import { formatTimeOfDay, pickDate, pickTime } from '@/components/pickers';
 import { lh, Text } from '@/components/Text';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 import { Curves, useController } from '@/utils/anim';
 import { calculateLiveKundliMatch, KundliMatchResult } from '@/services/astrologyService';
+import { generateKundliMatchReport } from '@/services/reportService';
 import { AppRoutes, push } from '@/navigation/routes';
 import { useAuthStore } from '@/features/auth/authStore';
 
@@ -43,16 +46,42 @@ const AREAS = [
 ];
 const TOTAL = GUNA_MILAN.reduce((s, g) => s + g.score, 0);
 
-function StaticField({ label, value, icon, style }: { label: string; value: string; icon: string; style?: object }) {
+function PickerField({
+  label,
+  value,
+  icon,
+  onPress,
+  style,
+}: {
+  label: string;
+  value: string;
+  icon: string;
+  onPress: () => void;
+  style?: object;
+}) {
   const colors = useThemeColors();
   return (
-    <View style={[{ padding: 12, borderRadius: 12, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center' }, style]}>
-      <AppIcon name={icon} color={colors.textMuted} size={16} />
+    <Pressable
+      onPress={onPress}
+      style={[
+        {
+          padding: 12,
+          borderRadius: 12,
+          backgroundColor: colors.surfaceVariant,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+          flexDirection: 'row',
+          alignItems: 'center',
+        },
+        style,
+      ]}
+    >
+      <AppIcon name={icon} color={colors.goldAccent} size={16} />
       <View style={{ marginLeft: 8, flex: 1 }}>
         <Text style={{ color: colors.textMuted, fontSize: 10 }}>{label}</Text>
         <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '600' }}>{value}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -63,9 +92,12 @@ function PersonCard({
   emoji,
   color,
   testID,
-  dob = '15 Mar 1992',
-  tob = '10:30 AM',
-  pob = 'New Delhi, India',
+  dob,
+  setDob,
+  tob,
+  setTob,
+  pob,
+  setPob,
   badge,
 }: {
   title: string;
@@ -74,12 +106,40 @@ function PersonCard({
   emoji: string;
   color: string;
   testID: string;
-  dob?: string;
-  tob?: string;
-  pob?: string;
+  dob: string;
+  setDob: (s: string) => void;
+  tob: string;
+  setTob: (s: string) => void;
+  pob: string;
+  setPob: (s: string) => void;
   badge?: string;
 }) {
   const colors = useThemeColors();
+
+  const onPickDate = async () => {
+    const picked = await pickDate({
+      value: new Date(1994, 4, 12),
+      minimumDate: new Date(1940, 0, 1),
+      maximumDate: new Date(),
+    });
+    if (picked) {
+      setDob(
+        picked.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        })
+      );
+    }
+  };
+
+  const onPickTime = async () => {
+    const picked = await pickTime({ value: new Date(2000, 0, 1, 10, 30) });
+    if (picked) {
+      setTob(formatTimeOfDay(picked));
+    }
+  };
+
   return (
     <View style={{ marginHorizontal: 20, padding: 20, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(color, colors.isLight ? 70 : 80) }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -96,11 +156,19 @@ function PersonCard({
       <View style={{ height: 16 }} />
       <OutlinedField testID={testID} label="Full Name" icon="person_outline" value={name} onChangeText={setName} />
       <View style={{ marginTop: 12, flexDirection: 'row' }}>
-        <StaticField label="Date of Birth" value={dob} icon="calendar_today_outlined" style={{ flex: 1 }} />
+        <PickerField label="Date of Birth" value={dob} icon="calendar_today_outlined" onPress={onPickDate} style={{ flex: 1 }} />
         <View style={{ width: 12 }} />
-        <StaticField label="Time" value={tob} icon="access_time_outlined" style={{ flex: 1 }} />
+        <PickerField label="Time of Birth" value={tob} icon="access_time_outlined" onPress={onPickTime} style={{ flex: 1 }} />
       </View>
-      <StaticField label="Birth Place" value={pob} icon="location_on_outlined" style={{ marginTop: 12 }} />
+      <View style={{ marginTop: 12 }}>
+        <OutlinedField
+          testID={`${testID}.pob`}
+          label="Birth Place (City, State)"
+          icon="location_on_outlined"
+          value={pob}
+          onChangeText={setPob}
+        />
+      </View>
     </View>
   );
 }
@@ -129,28 +197,39 @@ export default function MatchKundliScreen() {
   const colors = useThemeColors();
   const [showResults, setShowResults] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [matchResult, setMatchResult] = useState<KundliMatchResult | null>(null);
   const authUser = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const setPostLoginRedirect = useAuthStore((s) => s.setPostLoginRedirect);
   const [p1, setP1] = useState(authUser?.name || 'Self');
+  const [p1Dob, setP1Dob] = useState(authUser?.dob || '15 Mar 1992');
+  const [p1Tob, setP1Tob] = useState(authUser?.tob || '10:30 AM');
+  const [p1Pob, setP1Pob] = useState(authUser?.pob || 'New Delhi, India');
+
   const [p2, setP2] = useState('Partner');
+  const [p2Dob, setP2Dob] = useState('12 May 1994');
+  const [p2Tob, setP2Tob] = useState('10:30 AM');
+  const [p2Pob, setP2Pob] = useState('New Delhi, India');
   const scoreCtl = useController({ duration: 1500 });
 
   useEffect(() => {
-    if (authUser?.name) {
-      setP1(authUser.name);
-    }
-  }, [authUser?.name]);
-
-  const p1Dob = authUser?.dob || '15 Mar 1992';
-  const p1Tob = authUser?.tob || '10:30 AM';
-  const p1Pob = authUser?.pob || 'New Delhi, India';
+    if (authUser?.name) setP1(authUser.name);
+    if (authUser?.dob) setP1Dob(authUser.dob);
+    if (authUser?.tob) setP1Tob(authUser.tob);
+    if (authUser?.pob) setP1Pob(authUser.pob);
+  }, [authUser?.name, authUser?.dob, authUser?.tob, authUser?.pob]);
 
   const calculate = async () => {
+    if (!p1.trim() || !p2.trim()) {
+      showSnackBar('Please enter names for both partners', '#CF4444');
+      return;
+    }
     setIsCalculating(true);
     try {
       const res = await calculateLiveKundliMatch(
-        { name: p2, dob: '1994-05-12', tob: '10:30 AM', pob: 'New Delhi, India' },
-        { name: p1, dob: p1Dob, tob: p1Tob, pob: p1Pob }
+        { name: p2.trim(), dob: p2Dob, tob: p2Tob, pob: p2Pob },
+        { name: p1.trim(), dob: p1Dob, tob: p1Tob, pob: p1Pob }
       );
       setMatchResult(res);
     } catch {
@@ -175,6 +254,34 @@ export default function MatchKundliScreen() {
   const verdictDesc = matchResult?.verdict || 'A score above 28 indicates an excellent match. This couple shares strong spiritual, emotional, and practical compatibility.';
   const gunas = matchResult?.ashtakoot && matchResult.ashtakoot.length > 0 ? matchResult.ashtakoot : GUNA_MILAN;
   const areas = matchResult?.areas && matchResult.areas.length > 0 ? matchResult.areas : AREAS;
+
+  const handleGenerateReport = async () => {
+    const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
+    if (!isUserLoggedIn) {
+      setPostLoginRedirect({ route: '', popOnSuccess: true });
+      showSnackBar('Please sign in to save and download your compatibility report', '#713B32');
+      push(AppRoutes.signInScreen);
+      return;
+    }
+
+    try {
+      setIsGeneratingReport(true);
+      showSnackBar(`Generating detailed compatibility report for ${p1} & ${p2}...`, colors.surfaceVariant);
+      await generateKundliMatchReport({
+        groom: { name: p1.trim(), dob: p1Dob, tob: p1Tob, pob: p1Pob },
+        bride: { name: p2.trim(), dob: p2Dob, tob: p2Tob, pob: p2Pob },
+        score,
+        verdict: verdictTitle,
+        ashtakoot: gunas,
+      });
+      showSnackBar('Kundli Compatibility Report generated! Saved to Match & Kundli Reports.', colors.surfaceVariant);
+      push(AppRoutes.matchReportsScreen);
+    } catch (err: any) {
+      showSnackBar(err.message || 'Failed to generate report', '#CF4444');
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="matchKundli.screen">
@@ -209,8 +316,11 @@ export default function MatchKundliScreen() {
               emoji="👰"
               color="#FF6B6B"
               dob={p1Dob}
+              setDob={setP1Dob}
               tob={p1Tob}
+              setTob={setP1Tob}
               pob={p1Pob}
+              setPob={setP1Pob}
               badge={authUser ? 'Auto-Fetched' : undefined}
             />
             <View style={{ alignSelf: 'center', marginVertical: 12, width: 40, height: 40, borderRadius: 20, backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 30), borderWidth: 1, borderColor: colors.cardBorder, alignItems: 'center', justifyContent: 'center' }}>
@@ -223,9 +333,12 @@ export default function MatchKundliScreen() {
               setName={setP2}
               emoji="🤵"
               color="#4FC3F7"
-              dob="12 May 1994"
-              tob="10:30 AM"
-              pob="New Delhi, India"
+              dob={p2Dob}
+              setDob={setP2Dob}
+              tob={p2Tob}
+              setTob={setP2Tob}
+              pob={p2Pob}
+              setPob={setP2Pob}
             />
             <View style={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8 }}>
               {isCalculating ? (
@@ -321,13 +434,10 @@ export default function MatchKundliScreen() {
             <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
               <ElevatedButton
                 testID="matchKundli.detailedReport"
-                label="Get Detailed Compatibility Report — ₹399"
-                onPress={() => {
-                  push(AppRoutes.aiChatScreen, {
-                    astrologerId: 'vedika',
-                    initialPrompt: `Namaste, I need the full detailed marriage compatibility report for ${p1} and ${p2} (Score: ${score}/36). Please analyze all 8 Kutas, dosha cancellations, and remedies.`
-                  });
-                }}
+                label={isGeneratingReport ? 'Generating Report...' : 'Generate Detailed Compatibility Report'}
+                icon={isGeneratingReport ? undefined : 'description_outlined'}
+                disabled={isGeneratingReport}
+                onPress={handleGenerateReport}
                 bg="#713B32"
                 fg="#FFFFFF"
                 radius={100}

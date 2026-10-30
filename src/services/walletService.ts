@@ -264,10 +264,16 @@ export async function deductWalletBalance(
   amount: number,
   description?: string,
   astrologerName?: string,
-  consultationId?: string
+  consultationId?: string,
+  extraOptions?: {
+    serviceId?: string;
+    serviceType?: 'report' | 'guide' | 'consultation';
+    details?: any;
+  }
 ): Promise<{
   success: boolean;
   newBalance: number;
+  reportContent?: string;
   error?: string;
   isDepleted?: boolean;
 }> {
@@ -282,6 +288,7 @@ export async function deductWalletBalance(
     const uid = parsedUser?.uid || parsedUser?.phone;
 
     let serverNewBalance: number | undefined;
+    let serverReportContent: string | undefined;
 
     // 1. If ongoing consultation call, deduct via official backend minute-billing
     if (consultationId) {
@@ -292,15 +299,21 @@ export async function deductWalletBalance(
         return { success: false, newBalance: curBal, error: 'Insufficient balance', isDepleted: true };
       }
     } else if (uid) {
-      // 2. If one-off service (e.g. AI chat ₹5 prompt or parihar), deduct via live backend service
+      // 2. If one-off service (e.g. AI chat ₹5 prompt, report, or parihar), deduct via live backend service
       const servRes = await deductServiceWallet({
         userId: uid,
+        userEmail: parsedUser?.email || '',
         amount,
+        serviceId: extraOptions?.serviceId,
         serviceTitle: description || `Consultation with ${astrologerName || 'Astrologer'}`,
-        serviceType: 'consultation',
+        serviceType: extraOptions?.serviceType || 'consultation',
+        details: extraOptions?.details,
       });
       if (servRes.success && servRes.newBalance !== undefined) {
         serverNewBalance = servRes.newBalance;
+      }
+      if (servRes.reportContent) {
+        serverReportContent = servRes.reportContent;
       }
     }
 
@@ -321,6 +334,25 @@ export async function deductWalletBalance(
             }),
           }
         );
+
+        // Also record debit transaction in Firestore wallet_transactions subcollection
+        await fetch(
+          `${FIRESTORE_BASE_URL}/users/${encodeURIComponent(uid)}/wallet_transactions?key=${FIREBASE_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fields: {
+                amount: { doubleValue: amount },
+                type: { stringValue: 'debit' },
+                description: { stringValue: description || 'Service Payment' },
+                serviceType: { stringValue: extraOptions?.serviceType || 'consultation' },
+                status: { stringValue: 'completed' },
+                date: { stringValue: new Date().toISOString() },
+              },
+            }),
+          }
+        );
       } catch {}
     }
 
@@ -328,20 +360,21 @@ export async function deductWalletBalance(
 
     // Record local transaction
     const txs = await getWalletTransactions();
+    const isReport = extraOptions?.serviceType === 'report' || extraOptions?.serviceType === 'guide';
     const newTx: WalletTransaction = {
       id: `tx_${Date.now()}`,
       type: 'debit',
       title: description || (astrologerName ? `Consultation: ${astrologerName}` : 'Service Payment'),
-      subtitle: 'Consultation Usage',
+      subtitle: isReport ? 'Vedic Report / Guide' : 'Consultation Usage',
       amount: `-₹${amount}`,
       date: 'Just now',
-      icon: '📞',
+      icon: isReport ? '📜' : '📞',
       status: 'success',
     };
     await AsyncStorage.setItem(STORAGE_KEY_TX, JSON.stringify([newTx, ...txs]));
 
     notifyBalance(calculatedNewBal);
-    return { success: true, newBalance: calculatedNewBal };
+    return { success: true, newBalance: calculatedNewBal, reportContent: serverReportContent };
   } catch (err: any) {
     return { success: false, newBalance: 0, error: err.message || 'Deduction failed' };
   }

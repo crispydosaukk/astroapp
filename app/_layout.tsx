@@ -33,7 +33,7 @@ const PUSH_ROUTES = [
   'security-screen', 'help-centre-screen', 'contact-support-screen', 'terms-screen', 'privacy-policy-screen',
   'consultation-screen', 'career-astrology-screen', 'marriage-astrology-screen', 'business-astrology-screen',
   'finance-astrology-screen', 'tarot-screen', 'numerology-screen', 'muhurat-screen', 'spiritual-guidance-screen',
-  'astrology-reports-screen',
+  'astrology-reports-screen', 'astrologer-login-screen', 'astrologer-apply-screen', 'astrologer-dashboard-screen',
 ];
 
 export default function RootLayout() {

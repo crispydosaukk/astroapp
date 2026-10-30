@@ -1,7 +1,7 @@
 /**
  * Port of lib/presentation/panchang_screen/panchang_screen.dart
- * Date chevrons shift ±1 day; centre opens date picker (2020–2030). Panchang values are static (parity).
- * SOURCE_INERT: app-bar location, app-bar share, "Share Today's Panchang".
+ * Date chevrons shift ±1 day; centre opens date picker (2020–2030).
+ * Generates verified Vedic Panchang & Shubh Muhurat reports.
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -11,12 +11,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppBar, BoxBackButton } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
-import { OutlinedButton } from '@/components/common';
+import { ElevatedButton, OutlinedButton } from '@/components/common';
+import { showSnackBar } from '@/components/overlays';
 import { pickDate } from '@/components/pickers';
 import { Text } from '@/components/Text';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 import { fetchLivePanchang, PanchangLiveResult } from '@/services/astrologyService';
+import { generatePanchangReport } from '@/services/reportService';
+import { AppRoutes, push } from '@/navigation/routes';
 import { useAuthStore } from '@/features/auth/authStore';
 
 const PANCHANG = [
@@ -61,7 +64,11 @@ export default function PanchangScreen() {
   const [dateOffset, setDateOffset] = useState(0);
   const [w, setW] = useState(Dimensions.get('window').width - 40);
   const [panchangData, setPanchangData] = useState<PanchangLiveResult | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const authUser = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const setPostLoginRedirect = useAuthStore((s) => s.setPostLoginRedirect);
+  const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
   const [locationName, setLocationName] = useState(authUser?.pob || 'New Delhi, India');
 
   useEffect(() => {
@@ -135,6 +142,31 @@ export default function PanchangScreen() {
         message: `🕉️ Vedic Panchang (${formattedDate}) - ${locationName}\n• Tithi: ${dynamicPanchang[0].value}\n• Nakshatra: ${dynamicPanchang[1].value}\n• Abhijit Muhurat: ${dynamicTimes[3].value}\n• Rahu Kaal: ${dynamicTimes[0].value}\n\nShared via AstroParihar App ✨`,
       });
     } catch {}
+  };
+
+  const handleGenerateReport = async () => {
+    if (!isUserLoggedIn) {
+      setPostLoginRedirect({ route: '', popOnSuccess: true });
+      showSnackBar('Please sign in to generate and save your Panchang report', '#713B32');
+      push(AppRoutes.signInScreen);
+      return;
+    }
+
+    try {
+      setIsGeneratingReport(true);
+      showSnackBar(`Generating Panchang Almanac for ${formattedDate}...`, colors.surfaceVariant);
+      await generatePanchangReport({
+        dateStr: formattedDate,
+        locationStr: locationName,
+        panchangData: panchangData || {},
+      });
+      showSnackBar('Panchang & Muhurat Report generated successfully!', colors.surfaceVariant);
+      push(AppRoutes.kundliReportsScreen);
+    } catch (err: any) {
+      showSnackBar(err.message || 'Failed to generate report', '#CF4444');
+    } finally {
+      setIsGeneratingReport(false);
+    }
   };
 
   return (
@@ -307,7 +339,26 @@ export default function PanchangScreen() {
           })}
         </View>
 
-        <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8, gap: 10 }}>
+          <ElevatedButton
+            testID="panchang.generateReport"
+            label={
+              isGeneratingReport
+                ? 'Generating Almanac...'
+                : !isUserLoggedIn
+                ? '🔒 Sign In to Generate Panchang Report'
+                : 'Generate Panchang & Muhurat Report'
+            }
+            icon={isGeneratingReport ? undefined : 'description_outlined'}
+            disabled={isGeneratingReport}
+            onPress={handleGenerateReport}
+            bg="#713B32"
+            fg="#FFFFFF"
+            radius={100}
+            paddingV={14}
+            fontSize={14}
+            fontWeight="700"
+          />
           <OutlinedButton
             testID="panchang.share"
             label="Share Today's Panchang"

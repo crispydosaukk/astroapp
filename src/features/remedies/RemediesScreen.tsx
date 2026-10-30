@@ -17,7 +17,11 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTim
 import Svg, { Line } from 'react-native-svg';
 import { AppBar, BoxBackButton } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
-import { ElevatedButton, RadialGlow } from '@/components/common';
+import { ElevatedButton, OutlinedButton, RadialGlow } from '@/components/common';
+import {
+  ReportIntakeConfig,
+  ServiceReportIntakeModal,
+} from '@/components/ServiceReportIntakeModal';
 import { lh, Text } from '@/components/Text';
 import { API_ENDPOINTS } from '@/config/api';
 import { REMEDIES, Remedy } from '@/data/remedies';
@@ -36,10 +40,21 @@ export default function RemediesScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const authUser = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const pulse = useSharedValue(0.95);
   const wheel = useSharedValue(0);
   const [w, setW] = useState(Dimensions.get('window').width - 40);
   const [remediesList, setRemediesList] = useState<Remedy[]>(REMEDIES);
+  const [pariharaModalOpen, setPariharaModalOpen] = useState(false);
+
+  const pariharaPlanConfig: ReportIntakeConfig = {
+    mode: 'parihara_plan',
+    title: 'Complete 8-Fold Personalized Parihara Plan',
+    subtitle: 'All 8 directional remedies + 48-Day Sankalpa Protocol + 3 Sacred Temple Pariharams',
+    price: 499,
+    serviceId: 'svc-parihara-plan',
+    category: 'remedies',
+  };
 
   useEffect(() => {
     pulse.value = withRepeat(withTiming(1.05, { duration: 1500, easing: Easing.inOut(Easing.ease) }), -1, true);
@@ -131,6 +146,10 @@ export default function RemediesScreen() {
         initialPrompt: `Namaste, please prescribe sacred Vedic remedies for my planetary chart according to ancient Vedic traditions.`
       });
     }
+  };
+
+  const handleGenerateAshtaReport = () => {
+    setPariharaModalOpen(true);
   };
 
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
@@ -431,50 +450,114 @@ export default function RemediesScreen() {
             </View>
           </View>
 
-          {/* Quick Consultation CTA */}
-          <LinearGradient
-            colors={
-              colors.isLight
-                ? ['#FFFDF9', '#F9F5EC']
-                : [withAlpha('#713B32', 40), colors.surfaceVariant]
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              marginTop: 14,
-              padding: 16,
-              borderRadius: 18,
-              borderWidth: 1.5,
-              borderColor: colors.goldAccent,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '800' }}>
-                Need Custom Prescription?
-              </Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 11.5, marginTop: 2 }}>
-                Get an astrologer to analyze your Mahadasha, Dasha Sandhi & doshas.
-              </Text>
-            </View>
-            <Pressable
-              onPress={() => push(AppRoutes.liveAstrologersScreen)}
+            {/* Flagship Complete 8-Fold Personalized Parihara Plan Banner (Website Parity) */}
+            <LinearGradient
+              colors={
+                colors.isLight
+                  ? ['#FFFDF8', '#F6EDD9']
+                  : [withAlpha(colors.goldAccent, 30), withAlpha('#713B32', 45)]
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
               style={{
-                paddingHorizontal: 14,
-                paddingVertical: 9,
-                borderRadius: 100,
-                backgroundColor: '#713B32',
+                marginTop: 14,
+                padding: 18,
+                borderRadius: 20,
+                borderWidth: 1.5,
+                borderColor: colors.goldAccent,
               }}
             >
-              <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>
-                Consult Now
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 3,
+                    borderRadius: 100,
+                    backgroundColor: withAlpha(colors.goldAccent, 30),
+                    borderWidth: 1,
+                    borderColor: colors.goldAccent,
+                  }}
+                >
+                  <Text style={{ color: colors.goldAccent, fontSize: 10, fontWeight: '800' }}>
+                    ★ FLAGSHIP 8-DIRECTIONAL DOSSIER
+                  </Text>
+                </View>
+                <Text style={{ color: colors.goldAccent, fontSize: 18, fontWeight: '900' }}>₹499</Text>
+              </View>
+              <Text style={{ marginTop: 10, color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
+                Complete 8-Fold Personalized Parihara Plan
               </Text>
-            </Pressable>
-          </LinearGradient>
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
+              <Text style={{ marginTop: 4, color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
+                Synthesizes all 8 directional remedies (Mantra, Yantra, Homa, Devata, Gemstone, Rudraksha, Vastu & Dāna), a 48-Day Mandala Sankalpa Protocol, and 3 Temple Pariharams tailored to your birth chart.
+              </Text>
+              <ElevatedButton
+                testID="remedies.generateCompletePlan"
+                label={
+                  Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone))
+                    ? 'Generate My Complete Parihara Plan — ₹499'
+                    : '🔒 Sign In to Generate Complete Plan (₹499)'
+                }
+                onPress={handleGenerateAshtaReport}
+                bg="#713B32"
+                fg="#FFFFFF"
+                radius={100}
+                paddingV={13}
+                fontSize={13}
+                fontWeight="800"
+                style={{ marginTop: 14 }}
+              />
+            </LinearGradient>
+
+            {/* Quick Consultation CTA */}
+            <LinearGradient
+              colors={
+                colors.isLight
+                  ? ['#FFFDF9', '#F9F5EC']
+                  : [withAlpha('#713B32', 40), colors.surfaceVariant]
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                marginTop: 14,
+                padding: 16,
+                borderRadius: 18,
+                borderWidth: 1.5,
+                borderColor: colors.goldAccent,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <View style={{ flex: 1, marginRight: 12 }}>
+                <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '800' }}>
+                  Need Custom Prescription?
+                </Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 11.5, marginTop: 2 }}>
+                  Get an astrologer to analyze your Mahadasha, Dasha Sandhi & doshas.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => push(AppRoutes.liveAstrologersScreen)}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 9,
+                  borderRadius: 100,
+                  backgroundColor: '#713B32',
+                }}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>
+                  Consult Now
+                </Text>
+              </Pressable>
+            </LinearGradient>
+          </View>
+        </ScrollView>
+
+        <ServiceReportIntakeModal
+          visible={pariharaModalOpen}
+          config={pariharaPlanConfig}
+          onClose={() => setPariharaModalOpen(false)}
+        />
+      </View>
+    );
+  }

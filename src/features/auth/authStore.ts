@@ -23,6 +23,12 @@ export interface PendingAuth {
   token?: string;
 }
 
+export interface PostLoginRedirect {
+  route: string;
+  extra?: any;
+  popOnSuccess?: boolean;
+}
+
 const STORAGE_USER_KEY = 'astroparihar_auth_user';
 const STORAGE_TOKEN_KEY = 'astroparihar_auth_token';
 const STORAGE_ONBOARDING_KEY = 'astroparihar_onboarding_completed';
@@ -33,11 +39,13 @@ interface AuthState {
   isAuthenticated: boolean;
   hasCompletedOnboarding: boolean;
   pendingAuth: PendingAuth | null;
+  postLoginRedirect: PostLoginRedirect | null;
   hydrated: boolean;
   load: () => Promise<void>;
   setUser: (user: UserProfile | null, token?: string | null) => Promise<void>;
   updateUserProfile: (partial: Partial<UserProfile>) => Promise<void>;
   setPendingAuth: (pending: PendingAuth | null) => void;
+  setPostLoginRedirect: (redirect: PostLoginRedirect | null) => void;
   setOnboardingCompleted: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -48,6 +56,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   hasCompletedOnboarding: false,
   pendingAuth: null,
+  postLoginRedirect: null,
   hydrated: false,
 
   load: async () => {
@@ -137,6 +146,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setPendingAuth: (pending) => {
     set({ pendingAuth: pending });
+  },
+
+  setPostLoginRedirect: (redirect) => {
+    set({ postLoginRedirect: redirect });
   },
 
   setOnboardingCompleted: async () => {

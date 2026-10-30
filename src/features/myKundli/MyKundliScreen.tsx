@@ -18,9 +18,14 @@ import { AppBar, BoxBackButton } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton } from '@/components/common';
 import { BottomSheet, showSnackBar, useSheet } from '@/components/overlays';
+import {
+  ReportIntakeConfig,
+  ServiceReportIntakeModal,
+} from '@/components/ServiceReportIntakeModal';
 import { lh, Text } from '@/components/Text';
 import { AppRoutes, push } from '@/navigation/routes';
 import { fetchCalculatedKundli, KundliChartData } from '@/services/astrologyService';
+import { downloadOrShareReport } from '@/services/reportService';
 import { useAuthStore } from '@/features/auth/authStore';
 import { withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
@@ -407,11 +412,23 @@ export default function MyKundliScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const authUser = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const setPostLoginRedirect = useAuthStore((s) => s.setPostLoginRedirect);
+  const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
   const [selectedHouse, setSelectedHouse] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set([0, 1, 2]));
   const [chartData, setChartData] = useState<KundliChartData | null>(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const planetSheet = useSheet<Planet>();
   const houseSheet = useSheet<number>();
+
+  const detailedReportConfig: ReportIntakeConfig = {
+    mode: 'service',
+    title: 'Comprehensive Life Kundli Report',
+    subtitle: '48+ pages of 12-Bhava predictions, Mahadasha timeline & Vedic pariharam',
+    price: 499,
+    category: 'services',
+  };
 
   useEffect(() => {
     fetchCalculatedKundli().then((data) => {
@@ -438,8 +455,38 @@ export default function MyKundliScreen() {
     });
   };
 
+  const handleExportChartSummary = async () => {
+    if (!isUserLoggedIn) {
+      setPostLoginRedirect({ route: '', popOnSuccess: true });
+      showSnackBar('Please sign in to export or download your Vedic birth chart', '#713B32');
+      push(AppRoutes.signInScreen);
+      return;
+    }
+    await downloadOrShareReport({
+      id: `kundli_export_${Date.now()}`,
+      title: `Janam Kundli Birth Chart — ${chartData?.name || authUser?.name || 'Seeker'}`,
+      subtitle: `${chartData?.dob || authUser?.dob || ''} • ${chartData?.pob || authUser?.pob || ''}`,
+      pages: '14 sections',
+      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      status: 'Ready',
+      emoji: '🔮',
+      color: '#9370DB',
+      size: '1.8 MB',
+      category: 'services',
+      summary: `Ascendant (Lagna): ${chartData?.ascendant.sign || 'Scorpio'} (${chartData?.ascendant.degree || "12°45'"}) | Moon Sign (Rashi): ${chartData?.moonSign || 'Cancer'} | Nakshatra: ${chartData?.nakshatra || 'Punarvasu'} (Pada ${chartData?.nakshatraPada || 1}) | Active Mahadasha: ${chartData?.dasha.currentMahadasha || 'Jupiter'}-${chartData?.dasha.currentAntardasha || 'Saturn'}.`,
+      astrologicalAnalysis: activePlanets
+        .map((p) => `• ${p.symbol} ${p.name}: ${p.sign} (House ${p.house}, ${p.degree})`)
+        .join('\n'),
+      remediesPrescribed: [
+        'Chant Gayatri Mantra 108 times daily during sunrise',
+        'Offer Surya Arghya in a copper vessel facing East',
+        'Perform directional Ashta Parihar remedies aligned with your Lagna',
+      ],
+    });
+  };
+
   const handleGetDetailedReport = () => {
-    push(AppRoutes.kundliReportsScreen);
+    setReportModalOpen(true);
   };
 
   return (
@@ -453,13 +500,13 @@ export default function MyKundliScreen() {
           {
             icon: 'share_outlined',
             color: colors.goldAccent,
-            onPress: () => showSnackBar('Kundli chart link copied to clipboard', colors.surfaceVariant),
+            onPress: handleExportChartSummary,
             testID: 'myKundli.share',
           },
           {
             icon: 'download_outlined',
             color: colors.goldAccent,
-            onPress: () => showSnackBar('Vedic birth chart PDF saved to device!', colors.surfaceVariant),
+            onPress: handleExportChartSummary,
             testID: 'myKundli.download',
           },
         ]}
@@ -599,10 +646,27 @@ export default function MyKundliScreen() {
           <Text style={{ fontSize: 32 }}>📜</Text>
           <Text style={{ marginTop: 8, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Get Detailed Kundli Report</Text>
           <Text style={{ marginTop: 4, color: colors.textSecondary, fontSize: 13 }}>40+ pages of personalised Vedic analysis & pariharam</Text>
-          <ElevatedButton testID="myKundli.detailedReport" label="Get Detailed Report — ₹499" onPress={handleGetDetailedReport} bg="#713B32" fg="#FFFFFF" radius={100} paddingV={14} fontSize={14} fontWeight="700" style={{ marginTop: 16, alignSelf: 'stretch' }} />
+          <ElevatedButton
+            testID="myKundli.detailedReport"
+            label={isUserLoggedIn ? 'Get Detailed Report — ₹499' : '🔒 Sign In to Get Report — ₹499'}
+            onPress={handleGetDetailedReport}
+            bg="#713B32"
+            fg="#FFFFFF"
+            radius={100}
+            paddingV={14}
+            fontSize={14}
+            fontWeight="700"
+            style={{ marginTop: 16, alignSelf: 'stretch' }}
+          />
         </LinearGradient>
         <View style={{ height: Math.max(140, insets.bottom + 80) }} />
       </ScrollView>
+
+      <ServiceReportIntakeModal
+        visible={reportModalOpen}
+        config={detailedReportConfig}
+        onClose={() => setReportModalOpen(false)}
+      />
 
       <BottomSheet visible={planetSheet.visible} onClose={planetSheet.close} testID="myKundli.planetSheet">
         {planetSheet.value ? <PlanetDetailSheet planet={planetSheet.value} onClose={planetSheet.close} colors={colors} /> : null}

@@ -279,17 +279,26 @@ export async function deductServiceWallet(params: {
   serviceId?: string;
   serviceTitle: string;
   serviceType?: string;
-}): Promise<{ success: boolean; newBalance?: number; error?: string }> {
+  details?: any;
+}): Promise<{ success: boolean; newBalance?: number; reportContent?: string; error?: string }> {
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
     const res = await fetch(`${LIVE_BASE_URL}/api/deduct-service-wallet`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),
+      signal: controller.signal,
     });
+    clearTimeout(timer);
 
     if (res.ok) {
       const data = await res.json();
-      return { success: true, newBalance: data.newBalance };
+      return {
+        success: true,
+        newBalance: data.newBalance,
+        reportContent: data.reportContent,
+      };
     } else {
       const errData = await res.json().catch(() => ({}));
       return { success: false, error: errData.error || 'Deduction failed' };
@@ -298,3 +307,304 @@ export async function deductServiceWallet(params: {
     return { success: false, error: err.message };
   }
 }
+
+/* ============================================================================
+ * ASTROLOGER PORTAL LIVE FIRESTORE & CONSULTATION CONNECTIVITY HELPERS
+ * Mirrors website:
+ * - /astrologer-dashboard
+ * - /astrologer-dashboard/consultations
+ * - /astrologer-dashboard/earnings
+ * - /astrologer-dashboard/profile
+ * - /call/[roomID]
+ * ============================================================================ */
+
+function parseFirestoreVal(val: any): any {
+  if (!val || typeof val !== 'object') return val;
+  if ('stringValue' in val) return val.stringValue;
+  if ('integerValue' in val) return Number(val.integerValue);
+  if ('doubleValue' in val) return Number(val.doubleValue);
+  if ('booleanValue' in val) return Boolean(val.booleanValue);
+  if ('timestampValue' in val) return val.timestampValue;
+  if ('nullValue' in val) return null;
+  if ('arrayValue' in val) {
+    return (val.arrayValue?.values || []).map(parseFirestoreVal);
+  }
+  if ('mapValue' in val) {
+    const out: Record<string, any> = {};
+    const fields = val.mapValue?.fields || {};
+    Object.keys(fields).forEach((k) => {
+      out[k] = parseFirestoreVal(fields[k]);
+    });
+    return out;
+  }
+  return val;
+}
+
+function parseFirestoreDoc(docObj: any): Record<string, any> {
+  const fields = docObj?.fields || {};
+  const result: Record<string, any> = {};
+  Object.keys(fields).forEach((k) => {
+    result[k] = parseFirestoreVal(fields[k]);
+  });
+  if (docObj?.name) {
+    result.id = docObj.name.split('/').pop();
+  }
+  return result;
+}
+
+function toFirestoreValue(val: any): any {
+  if (val === null || val === undefined) return { nullValue: null };
+  if (typeof val === 'boolean') return { booleanValue: val };
+  if (typeof val === 'number') {
+    return Number.isInteger(val)
+      ? { integerValue: String(val) }
+      : { doubleValue: val };
+  }
+  if (Array.isArray(val)) {
+    return { arrayValue: { values: val.map(toFirestoreValue) } };
+  }
+  if (typeof val === 'object') {
+    const fields: Record<string, any> = {};
+    Object.keys(val).forEach((k) => {
+      fields[k] = toFirestoreValue(val[k]);
+    });
+    return { mapValue: { fields } };
+  }
+  return { stringValue: String(val) };
+}
+
+/**
+ * 8. Fetch Astrologer Profile from Firestore (`astrologers/{id}` or `candidates/{id}`)
+ */
+export async function fetchAstrologerProfileFromFirestore(
+  astrologerId: string
+): Promise<Record<string, any> | null> {
+  if (!astrologerId) return null;
+  try {
+    const res1 = await fetch(
+      `${FIRESTORE_BASE_URL}/astrologers/${encodeURIComponent(astrologerId)}?key=${FIREBASE_API_KEY}`
+    );
+    if (res1.ok) {
+      const docData = await res1.json();
+      return parseFirestoreDoc(docData);
+    }
+
+    const res2 = await fetch(
+      `${FIRESTORE_BASE_URL}/candidates/${encodeURIComponent(astrologerId)}?key=${FIREBASE_API_KEY}`
+    );
+    if (res2.ok) {
+      const docData = await res2.json();
+      return parseFirestoreDoc(docData);
+    }
+  } catch (err) {
+    console.warn('fetchAstrologerProfileFromFirestore error:', err);
+  }
+  return null;
+}
+
+/**
+ * 9. Patch Astrologer fields in Firestore (`astrologers/{id}` & `candidates/{id}`)
+ */
+export async function saveAstrologerProfileToFirestore(
+  astrologerId: string,
+  updates: Record<string, any>
+): Promise<boolean> {
+  if (!astrologerId) return false;
+  const keys = Object.keys(updates);
+  if (keys.length === 0) return true;
+
+  const maskQuery = keys
+    .map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`)
+    .join('&');
+  const fields: Record<string, any> = {};
+  keys.forEach((k) => {
+    fields[k] = toFirestoreValue(updates[k]);
+  });
+
+  try {
+    const res = await fetch(
+      `${FIRESTORE_BASE_URL}/astrologers/${encodeURIComponent(astrologerId)}?${maskQuery}&key=${FIREBASE_API_KEY}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields }),
+      }
+    );
+    return res.ok;
+  } catch (err) {
+    console.warn('saveAstrologerProfileToFirestore error:', err);
+    return false;
+  }
+}
+
+/**
+ * 10. Query all consultations for an Astrologer from Firestore (`consultations` collection)
+ */
+export async function fetchAstrologerConsultations(
+  astrologerId: string
+): Promise<Array<Record<string, any>>> {
+  if (!astrologerId) return [];
+  try {
+    const queryBody = {
+      structuredQuery: {
+        from: [{ collectionId: 'consultations' }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: 'astrologerId' },
+            op: 'EQUAL',
+            value: { stringValue: astrologerId },
+          },
+        },
+        limit: 60,
+      },
+    };
+
+    const res = await fetch(`${FIRESTORE_BASE_URL}:runQuery?key=${FIREBASE_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(queryBody),
+    });
+
+    if (!res.ok) return [];
+    const rows = await res.json();
+    if (!Array.isArray(rows)) return [];
+
+    const docs = rows
+      .filter((r) => r.document)
+      .map((r) => parseFirestoreDoc(r.document));
+
+    docs.sort((a, b) => {
+      const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tB - tA;
+    });
+
+    return docs;
+  } catch (err) {
+    console.warn('fetchAstrologerConsultations error:', err);
+    return [];
+  }
+}
+
+/**
+ * 11. Accept an incoming customer consultation request
+ * Calls `/api/accept-call` and updates Firestore `consultations/{id}` status to `'active'`
+ */
+export async function acceptConsultationCall(
+  consultationId: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!consultationId) return { success: false, error: 'Missing consultation ID' };
+  const acceptedAt = new Date().toISOString();
+
+  try {
+    // Update Firestore directly so customer's mobile/web client detects 'active' immediately
+    const patchRes = await fetch(
+      `${FIRESTORE_BASE_URL}/consultations/${encodeURIComponent(consultationId)}?updateMask.fieldPaths=status&updateMask.fieldPaths=acceptedAt&key=${FIREBASE_API_KEY}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            status: { stringValue: 'active' },
+            acceptedAt: { stringValue: acceptedAt },
+          },
+        }),
+      }
+    );
+
+    // Also notify backend /api/accept-call
+    fetch(`${LIVE_BASE_URL}/api/accept-call`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ consultationId }),
+    }).catch(() => {});
+
+    if (patchRes.ok) {
+      return { success: true };
+    }
+    return { success: false, error: 'Could not update consultation status' };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Network error accepting call' };
+  }
+}
+
+/**
+ * 12. Decline an incoming customer consultation request
+ */
+export async function declineConsultationCall(consultationId: string): Promise<boolean> {
+  if (!consultationId) return false;
+  try {
+    const res = await fetch(
+      `${FIRESTORE_BASE_URL}/consultations/${encodeURIComponent(consultationId)}?updateMask.fieldPaths=status&key=${FIREBASE_API_KEY}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            status: { stringValue: 'declined' },
+          },
+        }),
+      }
+    );
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 13. Fetch Customer Profile (`users/{customerId}`) & Generated Reports (`service_requests`)
+ * Used by Astrologers during an active consultation call (matches `/call/[roomID]` on website)
+ */
+export async function fetchCustomerProfileAndReports(customerId: string): Promise<{
+  customerDetails: Record<string, any> | null;
+  customerReports: Array<Record<string, any>>;
+}> {
+  if (!customerId) return { customerDetails: null, customerReports: [] };
+
+  let customerDetails: Record<string, any> | null = null;
+  let customerReports: Array<Record<string, any>> = [];
+
+  try {
+    const userRes = await fetch(
+      `${FIRESTORE_BASE_URL}/users/${encodeURIComponent(customerId)}?key=${FIREBASE_API_KEY}`
+    );
+    if (userRes.ok) {
+      const userDoc = await userRes.json();
+      customerDetails = parseFirestoreDoc(userDoc);
+    }
+  } catch {}
+
+  try {
+    const queryBody = {
+      structuredQuery: {
+        from: [{ collectionId: 'service_requests' }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: 'userId' },
+            op: 'EQUAL',
+            value: { stringValue: customerId },
+          },
+        },
+        limit: 30,
+      },
+    };
+    const repRes = await fetch(`${FIRESTORE_BASE_URL}:runQuery?key=${FIREBASE_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(queryBody),
+    });
+    if (repRes.ok) {
+      const rows = await repRes.json();
+      if (Array.isArray(rows)) {
+        customerReports = rows
+          .filter((r) => r.document)
+          .map((r) => parseFirestoreDoc(r.document))
+          .filter((r) => !r.status || r.status === 'completed' || r.status === 'ready');
+      }
+    }
+  } catch {}
+
+  return { customerDetails, customerReports };
+}
+

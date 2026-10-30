@@ -24,7 +24,7 @@ import { showSnackBar } from '@/components/overlays';
 import { lh, Text, TextInput } from '@/components/Text';
 import { API_ENDPOINTS } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
-import { AppRoutes, go, push } from '@/navigation/routes';
+import { AppRoutes, go, pop, push } from '@/navigation/routes';
 import { argb } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 
@@ -47,6 +47,23 @@ export default function SignInScreen() {
   const colors = useThemeColors();
   const setUser = useAuthStore((s) => s.setUser);
   const setPendingAuth = useAuthStore((s) => s.setPendingAuth);
+
+  const navigateAfterLogin = () => {
+    const redirect = useAuthStore.getState().postLoginRedirect;
+    if (redirect) {
+      useAuthStore.getState().setPostLoginRedirect(null);
+      if (redirect.popOnSuccess) {
+        pop();
+        return;
+      }
+      if (redirect.route) {
+        go(AppRoutes.homeDashboardScreen);
+        setTimeout(() => push(redirect.route, redirect.extra), 80);
+        return;
+      }
+    }
+    go(AppRoutes.homeDashboardScreen);
+  };
 
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
@@ -161,7 +178,7 @@ export default function SignInScreen() {
           };
           await setUser(mergedUser, data.token || `session_${mergedUser.uid}`);
           showSnackBar(`Welcome back, ${mergedUser.name || 'Seeker'}!`);
-          go(AppRoutes.homeDashboardScreen);
+          navigateAfterLogin();
         }
       } else {
         showSnackBar(data.error || 'Invalid OTP code. Try again.', '#CF4444');
@@ -180,7 +197,7 @@ export default function SignInScreen() {
           const parsed = JSON.parse(localProfileRaw);
           await setUser(parsed, `session_${fallbackUid}`);
           showSnackBar(`Welcome back, ${parsed.name || 'Seeker'}!`);
-          go(AppRoutes.homeDashboardScreen);
+          navigateAfterLogin();
         } else {
           setPendingAuth({
             uid: fallbackUid,
@@ -321,6 +338,91 @@ export default function SignInScreen() {
                 >
                   <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>
                     Continue as Guest →
+                  </Text>
+                </Pressable>
+
+                {/* Astrologer Portal Divider & Sign In Button */}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginTop: 18,
+                    marginBottom: 14,
+                  }}
+                >
+                  <View style={{ flex: 1, height: 1, backgroundColor: colors.divider }} />
+                  <Text
+                    style={{
+                      color: colors.textMuted,
+                      fontSize: 10.5,
+                      fontWeight: '800',
+                      letterSpacing: 1,
+                      textTransform: 'uppercase',
+                      marginHorizontal: 10,
+                    }}
+                  >
+                    Astrologer Partner Portal
+                  </Text>
+                  <View style={{ flex: 1, height: 1, backgroundColor: colors.divider }} />
+                </View>
+
+                <Pressable
+                  testID="signIn.astrologerLoginButton"
+                  onPress={() => push(AppRoutes.astrologerLoginScreen, phone ? { phone } : undefined)}
+                  style={{
+                    paddingVertical: 13,
+                    paddingHorizontal: 16,
+                    borderRadius: 14,
+                    borderWidth: 1.5,
+                    borderColor: colors.goldAccent,
+                    backgroundColor: colors.isLight
+                      ? 'rgba(201, 168, 76, 0.12)'
+                      : 'rgba(201, 168, 76, 0.14)',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <AppIcon name="auto_awesome" size={17} color={colors.goldAccent} />
+                  <Text
+                    style={{
+                      color: colors.isLight ? '#713B32' : colors.goldAccent,
+                      fontSize: 14,
+                      fontWeight: '800',
+                      marginLeft: 8,
+                    }}
+                  >
+                    Astrologer Sign In
+                  </Text>
+                  <AppIcon
+                    name="arrow_forward_ios_rounded"
+                    size={13}
+                    color={colors.isLight ? '#713B32' : colors.goldAccent}
+                    style={{ marginLeft: 6 }}
+                  />
+                </Pressable>
+
+                <Pressable
+                  testID="signIn.astrologerApplyLink"
+                  onPress={() => push(AppRoutes.astrologerApplyScreen, phone ? { phone } : undefined)}
+                  style={{
+                    marginTop: 10,
+                    paddingVertical: 4,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
+                    Not a registered astrologer yet?{' '}
+                    <Text
+                      style={{
+                        color: colors.goldAccent,
+                        fontWeight: '800',
+                        textDecorationLine: 'underline',
+                      }}
+                    >
+                      Apply to Join Panel →
+                    </Text>
                   </Text>
                 </Pressable>
 
