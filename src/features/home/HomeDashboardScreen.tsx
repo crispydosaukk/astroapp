@@ -45,13 +45,13 @@ const APP_HEADER_LANGUAGES: Array<{
   greetingSample: string;
   flagEmoji: string;
 }> = [
-  { code: 'Telugu', nativeName: 'తెలుగు', englishLabel: 'Telugu', greetingSample: 'నమస్కారం', flagEmoji: '☀️' },
-  { code: 'Hindi', nativeName: 'हिन्दी', englishLabel: 'Hindi', greetingSample: 'नमस्ते', flagEmoji: '🕉️' },
-  { code: 'English', nativeName: 'English', englishLabel: 'English', greetingSample: 'Namaste', flagEmoji: '✨' },
-  { code: 'Tamil', nativeName: 'தமிழ்', englishLabel: 'Tamil', greetingSample: 'வணக்கம்', flagEmoji: '🪷' },
-  { code: 'Kannada', nativeName: 'ಕನ್ನಡ', englishLabel: 'Kannada', greetingSample: 'ನಮಸ್ಕಾರ', flagEmoji: '🌿' },
-  { code: 'Malayalam', nativeName: 'മലയാളം', englishLabel: 'Malayalam', greetingSample: 'നമസ്കാരം', flagEmoji: '🌙' },
-];
+    { code: 'Telugu', nativeName: 'తెలుగు', englishLabel: 'Telugu', greetingSample: 'నమస్కారం', flagEmoji: '☀️' },
+    { code: 'Hindi', nativeName: 'हिन्दी', englishLabel: 'Hindi', greetingSample: 'नमस्ते', flagEmoji: '🕉️' },
+    { code: 'English', nativeName: 'English', englishLabel: 'English', greetingSample: 'Namaste', flagEmoji: '✨' },
+    { code: 'Tamil', nativeName: 'தமிழ்', englishLabel: 'Tamil', greetingSample: 'வணக்கம்', flagEmoji: '🪷' },
+    { code: 'Kannada', nativeName: 'ಕನ್ನಡ', englishLabel: 'Kannada', greetingSample: 'ನಮಸ್ಕಾರ', flagEmoji: '🌿' },
+    { code: 'Malayalam', nativeName: 'മലയാളം', englishLabel: 'Malayalam', greetingSample: 'നമസ്കാരം', flagEmoji: '🌙' },
+  ];
 
 function HomeHeader() {
   const colors = useThemeColors();
@@ -1828,7 +1828,7 @@ export default function HomeDashboardScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
-  const [realAstrologers, setRealAstrologers] = useState<LiveAstrologer[]>(DEFAULT_REAL_ASTROLOGERS);
+  const [realAstrologers, setRealAstrologers] = useState<LiveAstrologer[]>([]);
   const [aiAstrologers, setAiAstrologers] = useState<LiveAstrologer[]>(DEFAULT_AI_ASTROLOGERS);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -1838,13 +1838,15 @@ export default function HomeDashboardScreen() {
         fetchRealAstrologers(),
         fetchAiAstrologers(),
       ]);
-      if (realList && realList.length > 0) setRealAstrologers(realList);
+      if (realList) setRealAstrologers(realList);
       if (aiList && aiList.length > 0) setAiAstrologers(aiList);
-    } catch {}
+    } catch { }
   };
 
   useEffect(() => {
     loadData();
+    const poll = setInterval(loadData, 5000);
+    return () => clearInterval(poll);
   }, []);
 
   const onRefresh = async () => {

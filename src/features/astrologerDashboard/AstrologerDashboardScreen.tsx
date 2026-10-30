@@ -313,6 +313,7 @@ export default function AstrologerDashboardScreen() {
     setIsOnline(nextVal);
     showSnackBar(`You are now ${nextVal ? 'Online & Ready for Calls' : 'Offline'}`);
     await saveAstrologerProfileToFirestore(currentId, { isOnline: nextVal });
+    await AsyncStorage.removeItem('astroparihar_real_astrologers_cache');
   };
 
   const handleToggleWebsiteVisibility = async (nextVal: boolean) => {
@@ -344,6 +345,7 @@ export default function AstrologerDashboardScreen() {
       isPublished: nextVal,
       updatedAt: new Date().toISOString(),
     });
+    await AsyncStorage.removeItem('astroparihar_real_astrologers_cache');
   };
 
   const handleSaveProfileDetails = async () => {
@@ -362,9 +364,12 @@ export default function AstrologerDashboardScreen() {
         speciality: skillsArray[0] || 'Vedic Jyotish',
         languages: langsArray,
         experience: experienceText,
+        experienceYears: parseInt(experienceText.replace(/[^0-9]/g, ''), 10) || 12,
         amount: Number(pricePerMin) || 25,
         pricePerMin: Number(pricePerMin) || 25,
         profileImageUrl: avatarUrl,
+        photoURL: avatarUrl,
+        avatar: avatarUrl,
         city,
         education,
         certifications: certArray,
@@ -375,6 +380,9 @@ export default function AstrologerDashboardScreen() {
         isPublished: showOnWebsite,
         updatedAt: new Date().toISOString(),
       });
+
+      // Invalidate local astrologers directory cache so customer screens reflect changes immediately
+      await AsyncStorage.removeItem('astroparihar_real_astrologers_cache');
 
       // Also update local session cache
       const raw = await AsyncStorage.getItem(ASTRO_SESSION_KEY);
@@ -388,6 +396,8 @@ export default function AstrologerDashboardScreen() {
           experience: experienceText,
           languages: langsArray,
           bio: aboutBio,
+          avatar: avatarUrl,
+          profileImageUrl: avatarUrl,
           isOnline,
           showOnWebsite,
         })
@@ -412,7 +422,7 @@ export default function AstrologerDashboardScreen() {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.6,
+        quality: 0.55,
         base64: true,
       });
       if (!res.canceled && res.assets?.[0]) {
@@ -421,7 +431,15 @@ export default function AstrologerDashboardScreen() {
           ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`
           : asset.uri;
         setAvatarUrl(dataUrl);
-        showSnackBar('Profile photo selected! Tap "Save Profile" to publish.');
+        // Immediately persist new image to Firestore & clear customer directory cache
+        await saveAstrologerProfileToFirestore(currentId, {
+          profileImageUrl: dataUrl,
+          photoURL: dataUrl,
+          avatar: dataUrl,
+          updatedAt: new Date().toISOString(),
+        });
+        await AsyncStorage.removeItem('astroparihar_real_astrologers_cache');
+        showSnackBar('Profile photo updated & synced live to Astrologer Directory!');
       }
     } catch {
       showSnackBar('Failed to pick image.', AppColors.error);

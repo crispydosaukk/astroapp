@@ -39,6 +39,14 @@ export const API_ENDPOINTS = {
  */
 export function resolveMediaUrl(url?: string | null): string {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('data:') ||
+    url.startsWith('file://') ||
+    url.startsWith('blob:')
+  ) {
+    return url;
+  }
   return `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
 }

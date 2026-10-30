@@ -356,14 +356,37 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
               />
             </View>
 
-            {/* AI or Top Rated Pill Badge */}
+            {/* AI or Live Online/Offline Status Pill Badge */}
             {isAi ? (
               <View style={{ marginTop: 5, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: '#713B32', borderWidth: 0.5, borderColor: '#C9A84C' }}>
                 <Text style={{ textAlign: 'center', color: '#F0EAD6', fontSize: 8, fontWeight: '800' }}>🔮 AI GURU</Text>
               </View>
             ) : (
-              <View style={{ marginTop: 5, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: colors.isLight ? '#FEF3C7' : argb('26C9A84C'), borderWidth: 0.5, borderColor: colors.goldAccent }}>
-                <Text style={{ textAlign: 'center', color: colors.isLight ? '#B45309' : '#C9A84C', fontSize: 8, fontWeight: '800' }}>⭐ VERIFIED</Text>
+              <View
+                style={{
+                  marginTop: 5,
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 6,
+                  backgroundColor: data.isOnline
+                    ? colors.isLight
+                      ? '#DCFCE7'
+                      : argb('263DCB7A')
+                    : colors.surfaceVariant,
+                  borderWidth: 0.5,
+                  borderColor: data.isOnline ? '#3DCB7A' : colors.cardBorder,
+                }}
+              >
+                <Text
+                  style={{
+                    textAlign: 'center',
+                    color: data.isOnline ? (colors.isLight ? '#15803D' : '#3DCB7A') : colors.textMuted,
+                    fontSize: 8,
+                    fontWeight: '800',
+                  }}
+                >
+                  {data.isOnline ? '🟢 ONLINE' : '🔴 OFFLINE'}
+                </Text>
               </View>
             )}
           </View>
@@ -392,33 +415,45 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
               <AppIcon name="star_rounded" color={colors.goldAccent} size={13} />
               <Text style={{ marginLeft: 2, color: colors.goldAccent, fontSize: 11.5, fontWeight: '700' }}>
-                {String(data.rating)}
+                {String(data.rating || 'New')}
               </Text>
-              <Text style={{ marginLeft: 3, color: colors.textMuted, fontSize: 10.5 }}>
-                {`(${data.reviews})`}
-              </Text>
-              <Text style={{ marginHorizontal: 4, color: colors.textMuted, fontSize: 10 }}>•</Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 10.5, fontWeight: '600' }}>
-                {data.experience}
-              </Text>
+              {data.reviews && data.reviews !== '0' ? (
+                <Text style={{ marginLeft: 3, color: colors.textMuted, fontSize: 10.5 }}>
+                  {`(${data.reviews})`}
+                </Text>
+              ) : null}
+              {data.experience ? (
+                <>
+                  <Text style={{ marginHorizontal: 4, color: colors.textMuted, fontSize: 10 }}>•</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 10.5, fontWeight: '600' }}>
+                    {data.experience}
+                  </Text>
+                </>
+              ) : null}
             </View>
 
             {/* Languages */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
-              <AppIcon name="language_rounded" color={colors.textMuted} size={11} />
-              <Text numberOfLines={1} style={{ marginLeft: 3, flex: 1, color: colors.textMuted, fontSize: 10.5 }}>
-                {data.languages}
-              </Text>
-            </View>
+            {data.languages ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+                <AppIcon name="language_rounded" color={colors.textMuted} size={11} />
+                <Text numberOfLines={1} style={{ marginLeft: 3, flex: 1, color: colors.textMuted, fontSize: 10.5 }}>
+                  {data.languages}
+                </Text>
+              </View>
+            ) : null}
 
-            {/* Bottom Row: Sessions Count + Chat & Call CTAs */}
+            {/* Bottom Row: Sessions Count + Chat & Call CTAs (Disabled when Offline) */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
               <Text style={{ color: colors.textMuted, fontSize: 10 }}>
-                {`${data.consultations || '10k'}+ sessions`}
+                {data.consultations && data.consultations !== '0'
+                  ? `${data.consultations} sessions`
+                  : data.isOnline
+                  ? 'Available Now'
+                  : 'Currently Offline'}
               </Text>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
+              {!isAi && !data.isOnline ? (
                 <Pressable
-                  testID={`${id}.chat`}
+                  testID={`${id}.offlineProfile`}
                   onPress={open}
                   style={{
                     flexDirection: 'row',
@@ -426,35 +461,56 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
                     paddingHorizontal: 11,
                     paddingVertical: 5.5,
                     borderRadius: 100,
-                    backgroundColor: '#713B32',
-                  }}
-                >
-                  <AppIcon name={isAi ? 'auto_awesome_rounded' : 'chat_bubble_outline_rounded'} color="#FFFFFF" size={11} />
-                  <Text style={{ marginLeft: 3, color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>
-                    {isAi ? 'Chat AI' : 'Chat'}
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  testID={`${id}.call`}
-                  onPress={callAction}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingHorizontal: 11,
-                    paddingVertical: 5.5,
-                    borderRadius: 100,
-                    backgroundColor: colors.isLight ? 'rgba(201,168,76,0.18)' : 'rgba(255,255,255,0.08)',
+                    backgroundColor: colors.surfaceVariant,
                     borderWidth: 1,
-                    borderColor: colors.goldAccent,
+                    borderColor: colors.cardBorder,
                   }}
                 >
-                  <AppIcon name={isAi ? 'headset_mic_rounded' : 'call_rounded'} color={colors.goldAccent} size={11} />
-                  <Text style={{ marginLeft: 3, color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
-                    {isAi ? 'Voice AI' : 'Call'}
+                  <Text style={{ color: colors.textMuted, fontSize: 10.5, fontWeight: '700' }}>
+                    Offline • View Profile →
                   </Text>
                 </Pressable>
-              </View>
+              ) : (
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <Pressable
+                    testID={`${id}.chat`}
+                    onPress={open}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: 11,
+                      paddingVertical: 5.5,
+                      borderRadius: 100,
+                      backgroundColor: '#713B32',
+                    }}
+                  >
+                    <AppIcon name={isAi ? 'auto_awesome_rounded' : 'chat_bubble_outline_rounded'} color="#FFFFFF" size={11} />
+                    <Text style={{ marginLeft: 3, color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>
+                      {isAi ? 'Chat AI' : 'Chat'}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    testID={`${id}.call`}
+                    onPress={callAction}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: 11,
+                      paddingVertical: 5.5,
+                      borderRadius: 100,
+                      backgroundColor: colors.isLight ? 'rgba(201,168,76,0.18)' : 'rgba(255,255,255,0.08)',
+                      borderWidth: 1,
+                      borderColor: colors.goldAccent,
+                    }}
+                  >
+                    <AppIcon name={isAi ? 'headset_mic_rounded' : 'call_rounded'} color={colors.goldAccent} size={11} />
+                    <Text style={{ marginLeft: 3, color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
+                      {isAi ? 'Voice AI' : 'Call'}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -624,9 +680,7 @@ function matchesCategoryFilter(a: AstrologerData, selectedCategory: string): boo
 /* ------------------------------------------------------------------ screen */
 export default function LiveAstrologersScreen() {
   const [astrologerType, setAstrologerType] = useState<'real' | 'ai'>('real');
-  const [realAstrologers, setRealAstrologers] = useState<AstrologerData[]>(() =>
-    LIVE_ASTROLOGERS.map((a) => ({ ...a, isAi: false, category: getCategoryForAstrologer(a.specialty, a.category) }))
-  );
+  const [realAstrologers, setRealAstrologers] = useState<AstrologerData[]>([]);
   const [aiAstrologers, setAiAstrologers] = useState<AstrologerData[]>(() =>
     AI_ASTROLOGERS_DATA.map((a) => ({ ...a, isAi: true, category: getCategoryForAstrologer(a.specialty, a.category) }))
   );
@@ -643,23 +697,31 @@ export default function LiveAstrologersScreen() {
         fetchAiAstrologers(),
       ]);
 
-      if (realList && realList.length > 0) {
+      if (realList) {
         const liveMapped: AstrologerData[] = realList.map((a) => ({
           id: a.id,
           name: a.name,
           specialty: a.specialty,
-          title: a.semanticLabel || `${a.specialty} • ${a.experience}`,
+          title: [a.specialty, a.experience].filter(Boolean).join(' • '),
           experience: a.experience,
           rating: a.rating,
           reviews: a.reviews,
-          consultations: `${a.reviews}+`,
+          consultations: a.consultations || a.reviews,
           price: a.price,
-          isOnline: a.isOnline,
+          isOnline: Boolean(a.isOnline),
           languages: a.languages,
           imageUrl: a.imageUrl,
           semanticLabel: a.semanticLabel || a.name,
           category: getCategoryForAstrologer(a.specialty),
           isAi: false,
+          bio: a.bio || a.about,
+          education: a.education,
+          certifications: a.certifications,
+          learningSource: a.learningSource,
+          dailyHours: a.dailyHours,
+          city: a.city,
+          badge: a.badge,
+          status: a.status,
         }));
 
         setRealAstrologers(liveMapped);
@@ -693,6 +755,8 @@ export default function LiveAstrologersScreen() {
 
   useEffect(() => {
     fetchAstrologers();
+    const pollInterval = setInterval(fetchAstrologers, 4000);
+    return () => clearInterval(pollInterval);
   }, []);
 
   const activePool = astrologerType === 'ai' ? aiAstrologers : realAstrologers;

@@ -42,7 +42,13 @@ export function AppImage({
   }
 
   const resolvedUri = typeof uri === 'string' ? resolveMediaUrl(uri) : uri;
-  const isNetwork = typeof resolvedUri === 'string' && (resolvedUri.startsWith('http://') || resolvedUri.startsWith('https://'));
+  const isUriString =
+    typeof resolvedUri === 'string' &&
+    (resolvedUri.startsWith('http://') ||
+      resolvedUri.startsWith('https://') ||
+      resolvedUri.startsWith('data:') ||
+      resolvedUri.startsWith('file://') ||
+      resolvedUri.startsWith('blob:'));
   const contentFit: ImageContentFit = (fit ?? 'cover') as ImageContentFit;
   const box: StyleProp<ViewStyle> = [{ width, height, borderRadius: radius, overflow: 'hidden' }, style];
 
@@ -54,7 +60,7 @@ export function AppImage({
   } else {
     body = (
       <Image
-        source={isNetwork ? { uri: resolvedUri as string } : (resolvedUri as number)}
+        source={isUriString ? { uri: resolvedUri as string } : (resolvedUri as number)}
         style={{ width: '100%', height: '100%' }}
         contentFit={contentFit}
         contentPosition={contentPosition}

@@ -22,12 +22,24 @@ export interface LiveAstrologer {
   experience: string;
   rating: number;
   reviews: string;
+  consultations?: string;
   price: number;
   isOnline: boolean;
   isAi: boolean;
   imageUrl: string;
   languages: string;
   semanticLabel?: string;
+  bio?: string;
+  about?: string;
+  education?: string;
+  certifications?: string[];
+  learningSource?: string;
+  dailyHours?: string;
+  city?: string;
+  badge?: string;
+  status?: string;
+  showOnWebsite?: boolean;
+  isPublished?: boolean;
 }
 
 const STORAGE_INSIGHTS_KEY = 'astroparihar_cosmic_insights_cache';
@@ -404,17 +416,20 @@ export async function getDynamicCosmicInsights(): Promise<CosmicInsight[]> {
 async function fetchDirectFirestoreRealAstrologers(): Promise<LiveAstrologer[]> {
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4000);
+    const timer = setTimeout(() => controller.abort(), 4500);
     const res = await fetch(
-      'https://firestore.googleapis.com/v1/projects/astroparihar-85e2d/databases/(default)/documents/astrologers',
-      { signal: controller.signal }
+      `https://firestore.googleapis.com/v1/projects/astroparihar-85e2d/databases/(default)/documents/astrologers?pageSize=100&_t=${Date.now()}`,
+      {
+        signal: controller.signal,
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
+      }
     );
     clearTimeout(timer);
     if (!res.ok) return [];
     const json = await res.json();
     if (!Array.isArray(json.documents)) return [];
 
-    const result: LiveAstrologer[] = [];
+    const allVerified: LiveAstrologer[] = [];
     for (const doc of json.documents) {
       const id = doc.name ? doc.name.split('/').pop() : '';
       const f = doc.fields || {};
@@ -428,21 +443,55 @@ async function fetchDirectFirestoreRealAstrologers(): Promise<LiveAstrologer[]> 
         .join(' ')
         .trim();
 
-      let specialty = f.speciality?.stringValue || f.specialization?.stringValue || 'Vedic Astrology';
-      if (f.skills?.stringValue) {
-        specialty = f.skills.stringValue.split(',')[0].trim();
+      let skillsArr: string[] = [];
+      if (f.skills?.arrayValue?.values) {
+        skillsArr = f.skills.arrayValue.values.map((v: any) => v.stringValue).filter(Boolean);
+      } else if (f.skills?.stringValue) {
+        skillsArr = f.skills.stringValue.split(',').map((s: string) => s.trim()).filter(Boolean);
+      } else if (f.specialisations?.arrayValue?.values) {
+        skillsArr = f.specialisations.arrayValue.values.map((v: any) => v.stringValue).filter(Boolean);
+      } else if (f.speciality?.stringValue || f.specialization?.stringValue) {
+        skillsArr = [f.speciality?.stringValue || f.specialization?.stringValue];
       }
 
-      let expNum = f.experienceYears?.integerValue ? parseInt(f.experienceYears.integerValue, 10) : 12;
-      if (f.experience?.stringValue) {
+      const specialty = skillsArr.length > 0 ? skillsArr.join(', ') : '';
+
+      let expNum = f.experienceYears?.integerValue
+        ? parseInt(f.experienceYears.integerValue, 10)
+        : f.experienceYears?.doubleValue
+        ? Math.round(f.experienceYears.doubleValue)
+        : 0;
+      if (!expNum && f.experience?.stringValue) {
         const parsed = parseInt(f.experience.stringValue.replace(/[^0-9]/g, ''), 10);
         if (!isNaN(parsed) && parsed > 0) expNum = parsed;
       }
 
-      const isOnline = f.isOnline?.booleanValue !== undefined ? f.isOnline.booleanValue : true;
-      const price = f.amount?.integerValue ? Math.max(10, parseInt(f.amount.integerValue, 10)) : 25;
+      const isOnline = f.isOnline?.booleanValue === true;
+      const rawPrice =
+        f.amount?.integerValue ||
+        f.amount?.stringValue ||
+        f.pricePerMinute?.integerValue ||
+        f.pricePerMinute?.stringValue ||
+        f.price?.integerValue;
+      const price = rawPrice ? parseInt(String(rawPrice), 10) || 0 : 0;
 
-      let languages = 'English, Hindi';
+      const rating =
+        f.rating?.doubleValue ||
+        (f.rating?.integerValue ? parseFloat(f.rating.integerValue) : 0);
+
+      const reviewsCount =
+        f.reviewsCount?.integerValue ||
+        f.reviews?.integerValue ||
+        f.reviews?.stringValue ||
+        '0';
+
+      const totalConsultations =
+        f.totalConsultations?.integerValue ||
+        f.consultations?.integerValue ||
+        f.completedConsultations?.integerValue ||
+        '0';
+
+      let languages = '';
       if (f.languages?.stringValue) {
         languages = f.languages.stringValue;
       } else if (f.languages?.arrayValue?.values) {
@@ -456,51 +505,91 @@ async function fetchDirectFirestoreRealAstrologers(): Promise<LiveAstrologer[]> 
         f.profileImageUrl?.stringValue ||
         f.photoURL?.stringValue ||
         f.avatar?.stringValue ||
-        (cleanName.toLowerCase() === 'sharma'
-          ? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400'
-          : cleanName.toLowerCase().includes('raj')
-          ? 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&fit=crop'
-          : 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&fit=crop');
+        f.imageUrl?.stringValue ||
+        f.profilePic?.stringValue ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanName)}&background=713B32&color=fff&size=512`;
 
-      result.push({
+      const bio = f.bio?.stringValue || f.about?.stringValue || '';
+      const education = f.education?.stringValue || '';
+      const learningSource = f.learningSource?.stringValue || '';
+      const dailyHours = f.dailyHours?.stringValue || '';
+      const city = f.city?.stringValue || f.location?.stringValue || '';
+      const badge = f.badge?.stringValue || (status === 'probation' ? 'PROBATION' : 'VERIFIED');
+
+      let certifications: string[] = [];
+      if (f.certifications?.arrayValue?.values) {
+        certifications = f.certifications.arrayValue.values
+          .map((v: any) => v.stringValue)
+          .filter(Boolean);
+      } else if (f.certifications?.stringValue) {
+        certifications = f.certifications.stringValue
+          .split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean);
+      }
+
+      const showOnWebsite =
+        f.showOnWebsite?.booleanValue !== undefined
+          ? f.showOnWebsite.booleanValue
+          : f.isPublished?.booleanValue !== undefined
+          ? f.isPublished.booleanValue
+          : true;
+
+      allVerified.push({
         id: id || cleanName.toLowerCase(),
         name: cleanName,
         specialty,
-        experience: `${expNum}+ Yrs`,
-        rating: 4.95,
-        reviews: `${expNum * 80}+`,
+        experience: expNum > 0 ? `${expNum}+ Yrs` : '',
+        rating: rating > 0 ? Number(rating.toFixed(2)) : 0,
+        reviews: String(reviewsCount),
+        consultations: String(totalConsultations),
         price,
         isOnline,
         isAi: false,
-        imageUrl: photo,
+        imageUrl: resolveMediaUrl(photo),
         languages,
-        semanticLabel: `${cleanName} - Verified Vedic Astrologer`,
+        semanticLabel: `${cleanName} - Verified Astrologer`,
+        bio,
+        about: bio,
+        education,
+        certifications,
+        learningSource,
+        dailyHours,
+        city,
+        badge,
+        status,
+        showOnWebsite,
+        isPublished: showOnWebsite,
       });
     }
-    return result;
+
+    const published = allVerified.filter((a) => a.showOnWebsite !== false);
+    const list = published.length > 0 ? published : allVerified;
+    // Sort online astrologers first so live status changes immediately reflect at the top
+    return list.sort((a, b) => Number(b.isOnline) - Number(a.isOnline));
   } catch {
     return [];
   }
 }
 
 /**
- * Fetch strictly REAL human astrologers from backend onboarding + verified masters.
- * Never mixed with AI astrologers!
+ * Fetch strictly REAL human astrologers directly from live Firestore.
+ * Zero static fallback data — reflects live Online/Offline status and profile fields.
  */
 export async function fetchRealAstrologers(): Promise<LiveAstrologer[]> {
   try {
-    const cached = await AsyncStorage.getItem(STORAGE_REAL_ASTROLOGERS_KEY);
-    let parsedCache: LiveAstrologer[] | null = null;
-    if (cached) {
-      try {
-        parsedCache = JSON.parse(cached);
-      } catch {}
+    // 1. Direct Firestore REST dynamic sync first (instant reflection of Online/Offline & profile edits)
+    const directLive = await fetchDirectFirestoreRealAstrologers();
+    if (directLive.length > 0) {
+      await AsyncStorage.setItem(STORAGE_REAL_ASTROLOGERS_KEY, JSON.stringify(directLive));
+      return directLive;
     }
 
+    // 2. Fallback to Next.js API endpoint if direct Firestore call fails
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 3500);
-      const res = await fetch(`${API_ENDPOINTS.astrologers}?type=real`, {
+      const res = await fetch(`${API_ENDPOINTS.astrologers}?type=real&_t=${Date.now()}`, {
         signal: controller.signal,
       });
       clearTimeout(timer);
@@ -512,37 +601,23 @@ export async function fetchRealAstrologers(): Promise<LiveAstrologer[]> {
           ? data.astrologers.filter((a: any) => !a.isAi && !a.id?.startsWith('ai-'))
           : null;
 
-        if (list && list.length >= 3) {
+        if (list && list.length > 0) {
           const resolved = list.map((a: any) => ({
             ...a,
             isAi: false,
-            imageUrl: resolveMediaUrl(a.imageUrl),
+            isOnline: Boolean(a.isOnline),
+            imageUrl: resolveMediaUrl(a.profileImageUrl || a.imageUrl || a.photoURL || a.avatar),
           }));
           await AsyncStorage.setItem(STORAGE_REAL_ASTROLOGERS_KEY, JSON.stringify(resolved));
           return resolved;
         }
       }
     } catch {}
-
-    // Direct Firestore REST dynamic sync (ensures 1:1 parity with website live database)
-    const directLive = await fetchDirectFirestoreRealAstrologers();
-    if (directLive.length > 0) {
-      await AsyncStorage.setItem(STORAGE_REAL_ASTROLOGERS_KEY, JSON.stringify(directLive));
-      return directLive;
-    }
-
-    if (parsedCache && parsedCache.length > 0) {
-      return parsedCache.map((a: any) => ({
-        ...a,
-        isAi: false,
-        imageUrl: resolveMediaUrl(a.imageUrl),
-      }));
-    }
   } catch (err) {
     console.warn('Error fetching real astrologers:', err);
   }
 
-  return DEFAULT_REAL_ASTROLOGERS;
+  return [];
 }
 
 /**
