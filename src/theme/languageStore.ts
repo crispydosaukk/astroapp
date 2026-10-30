@@ -3273,6 +3273,738 @@ export const TRANSLATIONS: Record<AppLanguage, TranslationMap> = {
   }
 };
 
+const ASTROLOGER_PORTAL_TRANSLATIONS: Record<Exclude<AppLanguage, 'English'>, Record<string, string>> = {
+  Telugu: {
+    "Are you a Vedic Astrologer?": "మీరు వేద జ్యోతిష్యులా?",
+    "Astrologer Sign In": "జ్యోతిష్కుల సైన్ ఇన్",
+    "Sign In for Astrologers": "జ్యోతిష్కుల కోసం సైన్ ఇన్",
+    "Astrologer Portal": "జ్యోతిష్కుల పోర్టల్",
+    "Welcome to Astrologer Portal": "జ్యోతిష్కుల పోర్టల్‌కు స్వాగతం",
+    "OTP Verification": "OTP ధృవీకరణ",
+    "Enter Verification OTP": "ధృవీకరణ OTP నమోదు చేయండి",
+    "Enter your registered mobile number to receive a 4-digit verification code.": "4-అంకెల ధృవీకరణ కోడ్ పొందడానికి మీ నమోదిత మొబైల్ నంబర్‌ను నమోదు చేయండి.",
+    "Enter your registered mobile number to receive a 4-digit verification OTP": "4-అంకెల ధృవీకరణ OTP పొందడానికి మీ నమోదిత మొబైల్ నంబర్‌ను నమోదు చేయండి",
+    "Registered Mobile Number": "నమోదిత మొబైల్ నంబర్",
+    "Account Not Found — You are not a registered astrologer": "ఖాతా కనుగొనబడలేదు — మీరు నమోదిత జ్యోతిష్కులు కాదు",
+    "Mobile number is not registered as an astrologer on AstroParihar.": "ఈ మొబైల్ నంబర్ ఆస్ట్రోపరిహార్‌లో జ్యోతిష్కుడిగా నమోదు చేయబడలేదు.",
+    "Please enter a valid 10-digit registered mobile number.": "దయచేసి చెల్లుబాటు అయ్యే 10-అంకెల మొబైల్ నంబర్‌ను నమోదు చేయండి.",
+    "Apply to Join Panel": "ప్యానెల్‌లో చేరడానికి దరఖాస్తు చేయండి",
+    "Contact Admin": "అడ్మిన్‌ను సంప్రదించండి",
+    "Application Pending Approval": "దరఖాస్తు ఆమోదం కోసం వేచి ఉంది",
+    "Your application is currently under review by our Vedic board. You will be notified once approved.": "మీ దరఖాస్తు ప్రస్తుతం మా వేద బోర్డు పరిశీలనలో ఉంది. ఆమోదించబడిన వెంటనే మీకు తెలియజేయబడుతుంది.",
+    "Our Vedic panel typically reviews applications within 24–48 hours. Once approved, you can log in directly using this mobile number.": "మా వేద ప్యానెల్ సాధారణంగా 24–48 గంటల్లో దరఖాస్తులను సమీక్షిస్తుంది. ఆమోదం పొందిన తర్వాత మీరు ఈ మొబైల్ నంబర్‌తో లాగిన్ అవ్వవచ్చు.",
+    "Checking & Sending OTP...": "తనిఖీ చేసి OTP పంపుతోంది...",
+    "Send Verification OTP": "ధృవీకరణ OTP పంపండి",
+    "Not an onboarded astrologer yet?": "ఇంకా నమోదిత జ్యోతిష్కులు కాలేదా?",
+    "Apply to join panel (5-Step Vedic Assessment) →": "ప్యానెల్‌లో చేరడానికి దరఖాస్తు చేయండి (5-దశల వేద పరీక్ష) →",
+    "Resend Verification OTP": "ధృవీకరణ OTP మళ్ళీ పంపండి",
+    "Verifying...": "ధృవీకరిస్తోంది...",
+    "Verify & Enter Portal": "ధృవీకరించి పోర్టల్‌లోకి ప్రవేశించండి",
+    "← Edit mobile number": "← మొబైల్ నంబర్ మార్చండి",
+    "OTP Verified Successfully. Entering your Astrologer Portal...": "OTP విజయవంతంగా ధృవీకరించబడింది. జ్యోతిష్కుల పోర్టల్‌లోకి ప్రవేశిస్తోంది...",
+    "Astrologer Application": "జ్యోతిష్కుల దరఖాస్తు",
+    "App switching, copy-paste & external help are strictly monitored": "యాప్ మార్చడం, కాపీ-పేస్ట్ & బాహ్య సహాయం కఠినంగా పర్యవేక్షించబడతాయి",
+    "Assessment Terminated Due to Malpractice": "నిబంధనల ఉల్లంఘన కారణంగా పరీక్ష రద్దు చేయబడింది",
+    "Our AI Proctoring system recorded 3 integrity violations during your live assessment. AstroParihar maintains strict ethical standards for all panel astrologers.": "లైవ్ పరీక్ష సమయంలో మా AI నిఘా వ్యవస్థ 3 ఉల్లంఘనలను నమోదు చేసింది. ఆస్ట్రోపరిహార్ కఠినమైన నైతిక ప్రమాణాలను పాటిస్తుంది.",
+    "Return to Astrologer Portal": "జ్యోతిష్కుల పోర్టల్‌కు తిరిగి వెళ్ళండి",
+    "Enter 10-digit WhatsApp number": "10-అంకెల వాట్సాప్ నంబర్ నమోదు చేయండి",
+    "Aadhaar Card Details *": "ఆధార్ కార్డు వివరాలు *",
+    "✓ KYC Ready": "✓ KYC సిద్ధం",
+    "Mandatory": "తప్పనిసరి",
+    "Optional": "ఐచ్ఛికం",
+    "Aadhaar Card Number * (12 Digits)": "ఆధార్ కార్డు నంబర్ * (12 అంకెలు)",
+    "Upload Aadhaar Card (Front & Back Photo / PDF) *": "ఆధార్ కార్డు అప్‌లోడ్ చేయండి (ముందు & వెనుక ఫోటో / PDF) *",
+    "Tap to Upload Aadhaar Card": "ఆధార్ కార్డు అప్‌లోడ్ చేయడానికి ఇక్కడ నొక్కండి",
+    "Camera Photo, Gallery Image, or PDF (Max 5MB)": "కెమెరా ఫోటో, గ్యాలరీ చిత్రం లేదా PDF (గరిష్టం 5MB)",
+    "PAN Card Details *": "పాన్ కార్డు వివరాలు *",
+    "PAN Card Number * (10 Characters)": "పాన్ కార్డు నంబర్ * (10 అక్షరాలు)",
+    "Upload PAN Card (Clear Photo / PDF) *": "పాన్ కార్డు అప్‌లోడ్ చేయండి (స్పష్టమైన ఫోటో / PDF) *",
+    "Tap to Upload PAN Card": "పాన్ కార్డు అప్‌లోడ్ చేయడానికి ఇక్కడ నొక్కండి",
+    "Supporting Certificates & Experience Letters": "అదనపు సర్టిఫికెట్లు & అనుభవ పత్రాలు",
+    "Upload any additional astrology degrees, Gurukul certificates, awards, or prior platform experience letters.": "అదనపు జ్యోతిష డిగ్రీలు, గురుకుల సర్టిఫికెట్లు, అవార్డులు లేదా అనుభవ పత్రాలను అప్‌లోడ్ చేయండి.",
+    "Document Title / Certificate Name": "పత్రం శీర్షిక / సర్టిఫికెట్ పేరు",
+    "e.g., Jyotish Acharya Certificate - BHU": "ఉదా. జ్యోతిష ఆచార్య సర్టిఫికెట్ - BHU",
+    "Document Category": "పత్రం విభాగం",
+    "+ Choose File & Attach Document": "+ ఫైల్ ఎంచుకుని పత్రాన్ని జతచేయండి",
+    "Choose File & Attach Document": "ఫైల్ ఎంచుకుని పత్రాన్ని జతచేయండి",
+    "Preview": "ప్రివ్యూ",
+    "Remove": "తొలగించు",
+    "Select Specialisations...": "ప్రత్యేకతలను ఎంచుకోండి...",
+    "Specify Other Specialisation(s) *": "ఇతర ప్రత్యేకతలను పేర్కొనండి *",
+    "e.g., Ramal Shastra, Swar Vigyan, Ashtamangala": "ఉదా. రమల శాస్త్రం, స్వర విజ్ఞానం, అష్టమంగళ",
+    "Strongest Consultation Area *": "ప్రధాన సంప్రదింపుల రంగం *",
+    "Strongest Consultation Area": "ప్రధాన సంప్రదింపుల రంగం",
+    "Select Consultation Languages...": "సంప్రదింపుల భాషలను ఎంచుకోండి...",
+    "Specify Other Language(s) *": "ఇతర భాషలను పేర్కొనండి *",
+    "📚 Curated Pool": "📚 ప్రామాణిక బ్యాంక్",
+    "Curated Pool": "ప్రామాణిక బ్యాంక్",
+    "🤖 AI Dynamic Random": "🤖 AI డైనమిక్ ప్రశ్నలు",
+    "AI Dynamic Random": "AI డైనమిక్ ప్రశ్నలు",
+    "New AI Set": "కొత్త AI సెట్",
+    "Shuffle": "షఫుల్",
+    "Passing Cutoff": "ఉత్తీర్ణత శాతం",
+    "⚖️ Hide Weights": "⚖️ వెయిటేజీ దాచు",
+    "Hide Weights": "వెయిటేజీ దాచు",
+    "⚖️ Scoring Weights": "⚖️ మార్కుల వెయిటేజీ",
+    "Scoring Weights": "మార్కుల వెయిటేజీ",
+    "Generating dynamic Vedic Shastra questions...": "వేద శాస్త్ర ప్రశ్నలు రూపొందించబడుతున్నాయి...",
+    "Shastra Evaluation": "శాస్త్ర మూల్యాంకనం",
+    "Classical Explanation": "శాస్త్రీయ వివరణ",
+    "Generating...": "రూపొందిస్తోంది...",
+    "New AI Case": "కొత్త AI కేస్",
+    "CASE SCENARIO": "కేస్ వివరాలు",
+    "AI Technical & Ethics Viva Completed!": "AI సాంకేతిక & నైతిక ముఖాముఖి పూర్తయింది!",
+    "Application Status: In Process / Under Human Review": "దరఖాస్తు స్థితి: పరిశీలనలో ఉంది",
+    "Overall Composite AI Score": "మొత్తం AI స్కోరు",
+    "Queued for Manual Board Review": "బోర్డు సమీక్ష కోసం వేచి ఉంది",
+    "What happens next?": "తదుపరి ప్రక్రియ ఏమిటి?",
+    "Your KYC documents (Aadhaar & PAN), Theory Score, Kundali Case analysis, and AI Viva transcript have been queued in the Admin Recruitment Panel.": "మీ KYC పత్రాలు (ఆధార్ & పాన్), సిద్ధాంత పరీక్ష మార్కులు, కుండలి విశ్లేషణ మరియు AI ఇంటర్వ్యూ వివరాలు అడ్మిన్ ప్యానెల్‌లో నమోదు చేయబడ్డాయి.",
+    "Our senior Acharyas will verify your credentials and review your remedy recommendations within 24–48 hours.": "మా సీనియర్ ఆచార్యులు 24–48 గంటల్లో మీ అర్హతలను మరియు పరిహార సూచనలను పరిశీలిస్తారు.",
+    "Application Reference ID": "దరఖాస్తు రిఫరెన్స్ ID",
+    "Return to Astrologer Sign In": "జ్యోతిష్కుల సైన్ ఇన్‌కు తిరిగి వెళ్ళండి",
+    "Upload Aadhaar Card": "ఆధార్ కార్డు అప్‌లోడ్ చేయండి",
+    "Upload PAN Card": "పాన్ కార్డు అప్‌లోడ్ చేయండి",
+    "Upload Supporting Certificate": "సర్టిఫికెట్ అప్‌లోడ్ చేయండి",
+    "Choose how you would like to upload your clear document (Max 5MB):": "మీ పత్రాన్ని ఎలా అప్‌లోడ్ చేయాలో ఎంచుకోండి (గరిష్టం 5MB):",
+    "Take Photo with Camera": "కెమెరాతో ఫోటో తీయండి",
+    "Capture a clear photo of your original card/certificate": "మీ ఒరిజినల్ కార్డు/సర్టిఫికెట్ యొక్క స్పష్టమైన ఫోటో తీయండి",
+    "Choose from Photo Gallery": "ఫోటో గ్యాలరీ నుండి ఎంచుకోండి",
+    "Select an existing JPG, PNG, or WebP image": "JPG, PNG లేదా WebP చిత్రాన్ని ఎంచుకోండి",
+    "Browse PDF or Document File": "PDF లేదా డాక్యుమెంట్ ఫైల్ ఎంచుకోండి",
+    "Select a PDF document or scanned image from device files": "మీ ఫోన్ నుండి PDF లేదా స్కాన్ చేసిన ఫైల్‌ను ఎంచుకోండి",
+    "Primary Specialisations": "ప్రధాన ప్రత్యేకతలు",
+    "Select all astrological disciplines you practice:": "మీరు అభ్యసించే అన్ని జ్యోతిష విభాగాలను ఎంచుకోండి:",
+    "Consultation Languages": "సంప్రదింపుల భాషలు",
+    "Select all languages in which you can consult with clients:": "మీరు క్లయింట్లతో మాట్లాడగల అన్ని భాషలను ఎంచుకోండి:",
+    "Supporting Document Category": "సర్టిఫికెట్ విభాగం",
+    "Select Country Code": "దేశం కోడ్ ఎంచుకోండి",
+    "AI Proctor Alert": "AI పర్యవేక్షణ హెచ్చరిక",
+    "I Understand & Resume Assessment": "నేను అర్థం చేసుకున్నాను & పరీక్ష కొనసాగించు",
+    "PDF Document Attached": "PDF పత్రం జతచేయబడింది",
+    "Close Preview": "ప్రివ్యూ మూసివేయి",
+    "Vedic Astrology": "వేద జ్యోతిష్యం",
+    "KP Astrology": "KP జ్యోతిష్యం",
+    "Nadi Astrology": "నాడీ జ్యోతిష్యం",
+    "Lal Kitab": "లాల్ కితాబ్",
+    "Palmistry": "హస్తసాముద్రికం",
+    "Vastu": "వాస్తు శాస్త్రం",
+    "Face Reading": "ముఖ లక్షణ శాస్త్రం",
+    "Reiki": "రేకి హీలింగ్",
+    "Angel Reading": "ఏంజెల్ రీడింగ్",
+    "Prashna": "ప్రశ్న శాస్త్రం",
+    "Psychic Reading": "సైకిక్ రీడింగ్",
+    "Pendulum Dowsing": "పెండ్యులమ్ డౌసింగ్",
+    "Other": "ఇతర",
+    "Marriage & Relationships": "వివాహం & సంబంధాలు",
+    "Career & Business": "కెరీర్ & వ్యాపారం",
+    "Health & Medical Jyotish": "ఆరోగ్యం & వైద్య జ్యోతిష్యం",
+    "Wealth & Finance": "సంపద & ఆర్థికం",
+    "Progeny & Education": "సంతానం & విద్య",
+    "Astrology Certificate / Degree": "జ్యోతిష్య సర్టిఫికెట్ / డిగ్రీ",
+    "Experience Letter": "అనుభవ ధృవీకరణ పత్రం",
+    "Gurukul / Lineage Certificate": "గురుకుల / పరంపర సర్టిఫికెట్",
+    "Business / Registration Proof": "వ్యాపార / రిజిస్ట్రేషన్ రుజువు",
+    "Other Supporting Document": "ఇతర మద్దతు పత్రం",
+    "Hindi": "హిందీ",
+    "English": "ఇంగ్లీష్",
+    "Telugu": "తెలుగు",
+    "Tamil": "తమిళం",
+    "Kannada": "కన్నడ",
+    "Malayalam": "మలయాళం",
+    "Marathi": "మరాఠీ",
+    "Gujarati": "గుజరాతీ",
+    "Bengali": "బెంగాలీ",
+    "Punjabi": "పంజాబీ",
+    "Odia": "ఒడియా",
+    "Sanskrit": "సంస్కృతం",
+    "Thank you,": "ధన్యవాదాలు,"
+  },
+  Hindi: {
+    "Are you a Vedic Astrologer?": "क्या आप एक वैदिक ज्योतिषी हैं?",
+    "Astrologer Sign In": "ज्योतिषी साइन इन",
+    "Sign In for Astrologers": "ज्योतिषियों के लिए साइन इन",
+    "Astrologer Portal": "ज्योतिषी पोर्टल",
+    "Welcome to Astrologer Portal": "ज्योतिषी पोर्टल में आपका स्वागत है",
+    "OTP Verification": "ओटीपी सत्यापन",
+    "Enter Verification OTP": "सत्यापन ओटीपी दर्ज करें",
+    "Enter your registered mobile number to receive a 4-digit verification code.": "4-अंकीय सत्यापन कोड प्राप्त करने के लिए अपना पंजीकृत मोबाइल नंबर दर्ज करें।",
+    "Enter your registered mobile number to receive a 4-digit verification OTP": "4-अंकीय सत्यापन ओटीपी प्राप्त करने के लिए अपना पंजीकृत मोबाइल नंबर दर्ज करें",
+    "Registered Mobile Number": "पंजीकृत मोबाइल नंबर",
+    "Account Not Found — You are not a registered astrologer": "खाता नहीं मिला — आप पंजीकृत ज्योतिषी नहीं हैं",
+    "Mobile number is not registered as an astrologer on AstroParihar.": "यह मोबाइल नंबर एस्ट्रोपरीहार पर ज्योतिषी के रूप में पंजीकृत नहीं है।",
+    "Please enter a valid 10-digit registered mobile number.": "कृपया एक मान्य 10-अंकीय पंजीकृत मोबाइल नंबर दर्ज करें।",
+    "Apply to Join Panel": "पैनल में जुड़ने के लिए आवेदन करें",
+    "Contact Admin": "एडमिन से संपर्क करें",
+    "Application Pending Approval": "आवेदन स्वीकृति हेतु लंबित है",
+    "Your application is currently under review by our Vedic board. You will be notified once approved.": "आपका आवेदन वर्तमान में हमारे वैदिक बोर्ड द्वारा समीक्षाधीन है। स्वीकृत होने पर आपको सूचित किया जाएगा।",
+    "Our Vedic panel typically reviews applications within 24–48 hours. Once approved, you can log in directly using this mobile number.": "हमारा वैदिक पैनल सामान्यतः 24–48 घंटों में आवेदनों की समीक्षा करता है। स्वीकृत होने के बाद आप इसी मोबाइल नंबर से सीधे लॉग इन कर सकते हैं।",
+    "Checking & Sending OTP...": "जांच कर ओटीपी भेजा जा रहा है...",
+    "Send Verification OTP": "सत्यापन ओटीपी भेजें",
+    "Not an onboarded astrologer yet?": "क्या आप अभी तक पंजीकृत ज्योतिषी नहीं हैं?",
+    "Apply to join panel (5-Step Vedic Assessment) →": "पैनल से जुड़ने हेतु आवेदन करें (5-चरणीय वैदिक परीक्षा) →",
+    "Resend Verification OTP": "सत्यापन ओटीपी पुनः भेजें",
+    "Verifying...": "सत्यापित किया जा रहा है...",
+    "Verify & Enter Portal": "सत्यापित करें और पोर्टल में प्रवेश करें",
+    "← Edit mobile number": "← मोबाइल नंबर बदलें",
+    "OTP Verified Successfully. Entering your Astrologer Portal...": "ओटीपी सफलतापूर्वक सत्यापित हुआ। ज्योतिषी पोर्टल में प्रवेश हो रहा है...",
+    "Astrologer Application": "ज्योतिषी आवेदन",
+    "App switching, copy-paste & external help are strictly monitored": "ऐप बदलना, कॉपी-पेस्ट और बाहरी सहायता की कड़ी निगरानी की जा रही है",
+    "Assessment Terminated Due to Malpractice": "नियम उल्लंघन के कारण परीक्षा निरस्त की गई",
+    "Our AI Proctoring system recorded 3 integrity violations during your live assessment. AstroParihar maintains strict ethical standards for all panel astrologers.": "हमारी एआई प्रॉक्टरिंग प्रणाली ने आपकी लाइव परीक्षा के दौरान 3 नियम उल्लंघन दर्ज किए हैं। एस्ट्रोपरीहार सभी ज्योतिषियों के लिए उच्च नैतिक मानक रखता है।",
+    "Return to Astrologer Portal": "ज्योतिषी पोर्टल पर वापस जाएं",
+    "Enter 10-digit WhatsApp number": "10-अंकीय व्हाट्सएप नंबर दर्ज करें",
+    "Aadhaar Card Details *": "आधार कार्ड विवरण *",
+    "✓ KYC Ready": "✓ केवाईसी पूर्ण",
+    "Mandatory": "अनिवार्य",
+    "Optional": "वैकल्पिक",
+    "Aadhaar Card Number * (12 Digits)": "आधार कार्ड नंबर * (12 अंक)",
+    "Upload Aadhaar Card (Front & Back Photo / PDF) *": "आधार कार्ड अपलोड करें (आगे व पीछे की फोटो / PDF) *",
+    "Tap to Upload Aadhaar Card": "आधार कार्ड अपलोड करने के लिए टैप करें",
+    "Camera Photo, Gallery Image, or PDF (Max 5MB)": "कैमरा फोटो, गैलरी इमेज या PDF (अधिकतम 5MB)",
+    "PAN Card Details *": "पैन कार्ड विवरण *",
+    "PAN Card Number * (10 Characters)": "पैन कार्ड नंबर * (10 अक्षर)",
+    "Upload PAN Card (Clear Photo / PDF) *": "पैन कार्ड अपलोड करें (स्पष्ट फोटो / PDF) *",
+    "Tap to Upload PAN Card": "पैन कार्ड अपलोड करने के लिए टैप करें",
+    "Supporting Certificates & Experience Letters": "सहायक प्रमाणपत्र एवं अनुभव पत्र",
+    "Upload any additional astrology degrees, Gurukul certificates, awards, or prior platform experience letters.": "कोई भी अतिरिक्त ज्योतिष डिग्री, गुरुकुल प्रमाणपत्र, पुरस्कार या अनुभव पत्र अपलोड करें।",
+    "Document Title / Certificate Name": "दस्तावेज़ शीर्षक / प्रमाणपत्र का नाम",
+    "e.g., Jyotish Acharya Certificate - BHU": "उदा. ज्योतिष आचार्य प्रमाणपत्र - BHU",
+    "Document Category": "दस्तावेज़ श्रेणी",
+    "+ Choose File & Attach Document": "+ फ़ाइल चुनें और दस्तावेज़ जोड़ें",
+    "Choose File & Attach Document": "फ़ाइल चुनें और दस्तावेज़ जोड़ें",
+    "Preview": "पूर्वावलोकन",
+    "Remove": "हटाएं",
+    "Select Specialisations...": "विशेषज्ञता चुनें...",
+    "Specify Other Specialisation(s) *": "अन्य विशेषज्ञता लिखें *",
+    "e.g., Ramal Shastra, Swar Vigyan, Ashtamangala": "उदा. रमल शास्त्र, स्वर विज्ञान, अष्टमंगल",
+    "Strongest Consultation Area *": "सबसे मजबूत परामर्श क्षेत्र *",
+    "Strongest Consultation Area": "सबसे मजबूत परामर्श क्षेत्र",
+    "Select Consultation Languages...": "परामर्श भाषाएं चुनें...",
+    "Specify Other Language(s) *": "अन्य भाषाएं लिखें *",
+    "📚 Curated Pool": "📚 चयनित प्रश्न बैंक",
+    "Curated Pool": "चयनित प्रश्न बैंक",
+    "🤖 AI Dynamic Random": "🤖 एआई डायनामिक प्रश्न",
+    "AI Dynamic Random": "एआई डायनामिक प्रश्न",
+    "New AI Set": "नया एआई सेट",
+    "Shuffle": "बदलें",
+    "Passing Cutoff": "उत्तीर्ण कटऑफ",
+    "⚖️ Hide Weights": "⚖️ भारांक छिपाएं",
+    "Hide Weights": "भारांक छिपाएं",
+    "⚖️ Scoring Weights": "⚖️ अंक भारांक",
+    "Scoring Weights": "अंक भारांक",
+    "Generating dynamic Vedic Shastra questions...": "वैदिक शास्त्र प्रश्न तैयार किए जा रहे हैं...",
+    "Shastra Evaluation": "शास्त्र मूल्यांकन",
+    "Classical Explanation": "शास्त्रीय व्याख्या",
+    "Generating...": "तैयार हो रहा है...",
+    "New AI Case": "नया एआई केस",
+    "CASE SCENARIO": "केस विवरण",
+    "AI Technical & Ethics Viva Completed!": "एआई तकनीकी एवं नैतिक साक्षात्कार पूर्ण हुआ!",
+    "Application Status: In Process / Under Human Review": "आवेदन स्थिति: प्रक्रियाधीन / बोर्ड समीक्षाधीन",
+    "Overall Composite AI Score": "कुल समग्र एआई स्कोर",
+    "Queued for Manual Board Review": "बोर्ड समीक्षा हेतु कतारबद्ध",
+    "What happens next?": "आगे क्या होगा?",
+    "Your KYC documents (Aadhaar & PAN), Theory Score, Kundali Case analysis, and AI Viva transcript have been queued in the Admin Recruitment Panel.": "आपके केवाईसी दस्तावेज़ (आधार व पैन), सिद्धांत अंक, कुंडली केस विश्लेषण और एआई साक्षात्कार एडमिन भर्ती पैनल में दर्ज हो गए हैं।",
+    "Our senior Acharyas will verify your credentials and review your remedy recommendations within 24–48 hours.": "हमारे वरिष्ठ आचार्य 24–48 घंटों के भीतर आपके प्रमाणपत्रों और सात्विक उपायों की समीक्षा करेंगे।",
+    "Application Reference ID": "आवेदन संदर्भ संख्या",
+    "Return to Astrologer Sign In": "ज्योतिषी साइन इन पर वापस जाएं",
+    "Upload Aadhaar Card": "आधार कार्ड अपलोड करें",
+    "Upload PAN Card": "पैन कार्ड अपलोड करें",
+    "Upload Supporting Certificate": "सहायक प्रमाणपत्र अपलोड करें",
+    "Choose how you would like to upload your clear document (Max 5MB):": "अपना स्पष्ट दस्तावेज़ अपलोड करने का माध्यम चुनें (अधिकतम 5MB):",
+    "Take Photo with Camera": "कैमरे से फोटो लें",
+    "Capture a clear photo of your original card/certificate": "अपने मूल कार्ड/प्रमाणपत्र की स्पष्ट फोटो खींचें",
+    "Choose from Photo Gallery": "फोटो गैलरी से चुनें",
+    "Select an existing JPG, PNG, or WebP image": "मौजूदा JPG, PNG या WebP फोटो चुनें",
+    "Browse PDF or Document File": "PDF या दस्तावेज़ फ़ाइल चुनें",
+    "Select a PDF document or scanned image from device files": "डिवाइस से PDF दस्तावेज़ या स्कैन की गई फ़ाइल चुनें",
+    "Primary Specialisations": "मुख्य विशेषज्ञताएं",
+    "Select all astrological disciplines you practice:": "उन सभी ज्योतिष विधाओं को चुनें जिनका आप अभ्यास करते हैं:",
+    "Consultation Languages": "परामर्श भाषाएं",
+    "Select all languages in which you can consult with clients:": "वे सभी भाषाएं चुनें जिनमें आप जातकों को परामर्श दे सकते हैं:",
+    "Supporting Document Category": "सहायक दस्तावेज़ श्रेणी",
+    "Select Country Code": "देश कोड चुनें",
+    "AI Proctor Alert": "एआई प्रॉक्टर चेतावनी",
+    "I Understand & Resume Assessment": "मैं समझता हूँ और परीक्षा जारी रखें",
+    "PDF Document Attached": "PDF दस्तावेज़ संलग्न है",
+    "Close Preview": "पूर्वावलोकन बंद करें",
+    "Vedic Astrology": "वैदिक ज्योतिष",
+    "KP Astrology": "केपी ज्योतिष",
+    "Nadi Astrology": "नाड़ी ज्योतिष",
+    "Lal Kitab": "लाल किताब",
+    "Palmistry": "हस्तरेखा शास्त्र",
+    "Vastu": "वास्तु शास्त्र",
+    "Face Reading": "चेहरा पठन (समुद्र शास्त्र)",
+    "Reiki": "रेकी हीलिंग",
+    "Angel Reading": "एंजेल रीडिंग",
+    "Prashna": "प्रश्न कुंडली",
+    "Psychic Reading": "साइकिक रीडिंग",
+    "Pendulum Dowsing": "पेंडुलम डाउजिंग",
+    "Other": "अन्य",
+    "Marriage & Relationships": "विवाह एवं संबंध",
+    "Career & Business": "करियर एवं व्यापार",
+    "Health & Medical Jyotish": "स्वास्थ्य एवं मेडिकल ज्योतिष",
+    "Wealth & Finance": "धन एवं वित्त",
+    "Progeny & Education": "संतान एवं शिक्षा",
+    "Astrology Certificate / Degree": "ज्योतिष प्रमाणपत्र / डिग्री",
+    "Experience Letter": "अनुभव प्रमाण पत्र",
+    "Gurukul / Lineage Certificate": "गुरुकुल / परंपरा प्रमाणपत्र",
+    "Business / Registration Proof": "व्यापार / पंजीकरण प्रमाण",
+    "Other Supporting Document": "अन्य सहायक दस्तावेज़",
+    "Hindi": "हिन्दी",
+    "English": "अंग्रेज़ी",
+    "Telugu": "तेलुगु",
+    "Tamil": "तमिल",
+    "Kannada": "कन्नड़",
+    "Malayalam": "मलयालम",
+    "Marathi": "मराठी",
+    "Gujarati": "गुजराती",
+    "Bengali": "बंगाली",
+    "Punjabi": "पंजाबी",
+    "Odia": "ओड़िया",
+    "Sanskrit": "संस्कृत",
+    "Thank you,": "धन्यवाद,"
+  },
+  Tamil: {
+    "Are you a Vedic Astrologer?": "நீங்கள் வேத ஜோதிடரா?",
+    "Astrologer Sign In": "ஜோதிடர் உள்நுழைவு",
+    "Sign In for Astrologers": "ஜோதிடர்களுக்கான உள்நுழைவு",
+    "Astrologer Portal": "ஜோதிடர் போர்டல்",
+    "Welcome to Astrologer Portal": "ஜோதிடர் போர்டலுக்கு வரவேற்கிறோம்",
+    "OTP Verification": "OTP சரிபார்ப்பு",
+    "Enter Verification OTP": "சரிபார்ப்பு OTP-ஐ உள்ளிடவும்",
+    "Enter your registered mobile number to receive a 4-digit verification code.": "4-இலக்க சரிபார்ப்பு குறியீட்டைப் பெற உங்கள் பதிவுசெய்யப்பட்ட மொபைல் எண்ணை உள்ளிடவும்.",
+    "Enter your registered mobile number to receive a 4-digit verification OTP": "4-இலக்க சரிபார்ப்பு OTP-ஐ பெற உங்கள் பதிவுசெய்யப்பட்ட மொபைல் எண்ணை உள்ளிடவும்",
+    "Registered Mobile Number": "பதிவுசெய்யப்பட்ட மொபைல் எண்",
+    "Account Not Found — You are not a registered astrologer": "கணக்கு காணப்படவில்லை — நீங்கள் பதிவுசெய்யப்பட்ட ஜோதிடர் அல்ல",
+    "Mobile number is not registered as an astrologer on AstroParihar.": "இந்த மொபைல் எண் ஆஸ்ட்ரோபரிஹாரில் ஜோதிடராகப் பதிவு செய்யப்படவில்லை.",
+    "Please enter a valid 10-digit registered mobile number.": "சரியான 10-இலக்க மொபைல் எண்ணை உள்ளிடவும்.",
+    "Apply to Join Panel": "குழுவில் இணைய விண்ணப்பிக்கவும்",
+    "Contact Admin": "நிர்வாகியைத் தொடர்பு கொள்ள",
+    "Application Pending Approval": "விண்ணப்பம் ஒப்புதலுக்காக காத்திருக்கிறது",
+    "Your application is currently under review by our Vedic board. You will be notified once approved.": "உங்கள் விண்ணப்பம் எங்கள் வேத வாரியத்தின் பரிசீலனையில் உள்ளது. ஒப்புதல் அளித்தவுடன் தெரிவிக்கப்படும்.",
+    "Our Vedic panel typically reviews applications within 24–48 hours. Once approved, you can log in directly using this mobile number.": "எங்கள் வேத குழு 24–48 மணி நேரத்திற்குள் விண்ணப்பங்களை பரிசீலிக்கும். ஒப்புதல் பெற்றவுடன் இதே மொபைல் எண் மூலம் உள்நுழையலாம்.",
+    "Checking & Sending OTP...": "சரிபார்த்து OTP அனுப்பப்படுகிறது...",
+    "Send Verification OTP": "சரிபார்ப்பு OTP அனுப்புக",
+    "Not an onboarded astrologer yet?": "இன்னும் பதிவுசெய்யப்பட்ட ஜோதிடராக இணையவில்லையா?",
+    "Apply to join panel (5-Step Vedic Assessment) →": "குழுவில் இணைய விண்ணப்பிக்கவும் (5-படி வேதத் தேர்வு) →",
+    "Resend Verification OTP": "OTP-ஐ மீண்டும் அனுப்புக",
+    "Verifying...": "சரிபார்க்கப்படுகிறது...",
+    "Verify & Enter Portal": "சரிபார்த்து போர்டலில் நுழையவும்",
+    "← Edit mobile number": "← மொபைல் எண்ணை மாற்றவும்",
+    "OTP Verified Successfully. Entering your Astrologer Portal...": "OTP வெற்றிகரமாக சரிபார்க்கப்பட்டது. ஜோதிடர் போர்டலுக்குள் நுழைகிறது...",
+    "Astrologer Application": "ஜோதிடர் விண்ணப்பம்",
+    "App switching, copy-paste & external help are strictly monitored": "ஆப் மாற்றுதல், நகலெடுத்தல் மற்றும் வெளி உதவி தீவிரமாக கண்காணிக்கப்படுகிறது",
+    "Assessment Terminated Due to Malpractice": "விதிமீறல் காரணமாக தேர்வு ரத்து செய்யப்பட்டது",
+    "Our AI Proctoring system recorded 3 integrity violations during your live assessment. AstroParihar maintains strict ethical standards for all panel astrologers.": "உங்கள் நேரடித் தேர்வின் போது 3 விதிமீறல்கள் கண்டறியப்பட்டன. ஆஸ்ட்ரோபரிஹார் கடுமையான நெறிமுறைகளைப் பின்பற்றுகிறது.",
+    "Return to Astrologer Portal": "ஜோதிடர் போர்டலுக்குத் திரும்புக",
+    "Enter 10-digit WhatsApp number": "10-இலக்க வாட்ஸ்அப் எண்ணை உள்ளிடவும்",
+    "Aadhaar Card Details *": "ஆதார் அட்டை விவரங்கள் *",
+    "✓ KYC Ready": "✓ KYC தயார்",
+    "Mandatory": "கட்டாயம்",
+    "Optional": "விருப்பத்தேர்வு",
+    "Aadhaar Card Number * (12 Digits)": "ஆதார் அட்டை எண் * (12 இலக்கங்கள்)",
+    "Upload Aadhaar Card (Front & Back Photo / PDF) *": "ஆதார் அட்டையை பதிவேற்றவும் (முன் & பின் புகைப்படம் / PDF) *",
+    "Tap to Upload Aadhaar Card": "ஆதார் அட்டையை பதிவேற்ற தட்டவும்",
+    "Camera Photo, Gallery Image, or PDF (Max 5MB)": "கேமரா புகைப்படம், கேலரி படம் அல்லது PDF (அதிகபட்சம் 5MB)",
+    "PAN Card Details *": "பான் அட்டை விவரங்கள் *",
+    "PAN Card Number * (10 Characters)": "பான் அட்டை எண் * (10 எழுத்துகள்)",
+    "Upload PAN Card (Clear Photo / PDF) *": "பான் அட்டையை பதிவேற்றவும் (தெளிவான புகைப்படம் / PDF) *",
+    "Tap to Upload PAN Card": "பான் அட்டையை பதிவேற்ற தட்டவும்",
+    "Supporting Certificates & Experience Letters": "கூடுதல் சான்றிதழ்கள் & அனுபவக் கடிதங்கள்",
+    "Upload any additional astrology degrees, Gurukul certificates, awards, or prior platform experience letters.": "கூடுதல் ஜோதிட பட்டங்கள், குருகுல சான்றிதழ்கள், விருதுகள் அல்லது அனுபவக் கடிதங்களை பதிவேற்றவும்.",
+    "Document Title / Certificate Name": "ஆவணத் தலைப்பு / சான்றிதழ் பெயர்",
+    "e.g., Jyotish Acharya Certificate - BHU": "எ.கா. ஜோதிட ஆச்சார்யா சான்றிதழ் - BHU",
+    "Document Category": "ஆவண வகை",
+    "+ Choose File & Attach Document": "+ கோப்பைத் தேர்ந்தெடுத்து இணைக்கவும்",
+    "Choose File & Attach Document": "கோப்பைத் தேர்ந்தெடுத்து இணைக்கவும்",
+    "Preview": "முன்னோட்டம்",
+    "Remove": "நீக்கு",
+    "Select Specialisations...": "சிறப்புத் துறைகளைத் தேர்ந்தெடுக்கவும்...",
+    "Specify Other Specialisation(s) *": "மற்ற சிறப்புத் துறைகளைக் குறிப்பிடவும் *",
+    "e.g., Ramal Shastra, Swar Vigyan, Ashtamangala": "எ.கா. ரமல சாஸ்திரம், ஸ்வர விக்ஞானம், அஷ்டமங்கலம்",
+    "Strongest Consultation Area *": "முதன்மை ஆலோசனைத் துறை *",
+    "Strongest Consultation Area": "முதன்மை ஆலோசனைத் துறை",
+    "Select Consultation Languages...": "ஆலோசனை மொழிகளைத் தேர்ந்தெடுக்கவும்...",
+    "Specify Other Language(s) *": "மற்ற மொழிகளைக் குறிப்பிடவும் *",
+    "📚 Curated Pool": "📚 தேர்ந்தெடுக்கப்பட்ட தொகுப்பு",
+    "Curated Pool": "தேர்ந்தெடுக்கப்பட்ட தொகுப்பு",
+    "🤖 AI Dynamic Random": "🤖 AI டைனமிக் கேள்விகள்",
+    "AI Dynamic Random": "AI டைனமிக் கேள்விகள்",
+    "New AI Set": "புதிய AI தொகுப்பு",
+    "Shuffle": "மாற்றுக",
+    "Passing Cutoff": "தேர்ச்சி மதிப்பெண்",
+    "⚖️ Hide Weights": "⚖️ மதிப்பெண் பகிர்வை மறை",
+    "Hide Weights": "மதிப்பெண் பகிர்வை மறை",
+    "⚖️ Scoring Weights": "⚖️ மதிப்பெண் பகிர்வு",
+    "Scoring Weights": "மதிப்பெண் பகிர்வு",
+    "Generating dynamic Vedic Shastra questions...": "வேத சாஸ்திர கேள்விகள் உருவாக்கப்படுகின்றன...",
+    "Shastra Evaluation": "சாஸ்திர மதிப்பீடு",
+    "Classical Explanation": "சாஸ்திர விளக்கம்",
+    "Generating...": "உருவாக்கப்படுகிறது...",
+    "New AI Case": "புதிய AI கேஸ்",
+    "CASE SCENARIO": "ஜாதக விவரம்",
+    "AI Technical & Ethics Viva Completed!": "AI தொழில்நுட்ப & நெறிமுறை நேர்காணல் முடிந்தது!",
+    "Application Status: In Process / Under Human Review": "விண்ணப்ப நிலை: பரிசீலனையில் உள்ளது",
+    "Overall Composite AI Score": "மொத்த AI மதிப்பெண்",
+    "Queued for Manual Board Review": "வாரிய ஆய்வுக்கு வரிசையில் உள்ளது",
+    "What happens next?": "அடுத்து என்ன நடக்கும்?",
+    "Your KYC documents (Aadhaar & PAN), Theory Score, Kundali Case analysis, and AI Viva transcript have been queued in the Admin Recruitment Panel.": "உங்கள் KYC ஆவணங்கள் (ஆதார் & பான்), தேர்வு மதிப்பெண், ஜாதக ஆய்வு மற்றும் AI நேர்காணல் விவரங்கள் நிர்வாகப் குழுவிற்கு அனுப்பப்பட்டுள்ளன.",
+    "Our senior Acharyas will verify your credentials and review your remedy recommendations within 24–48 hours.": "எங்கள் மூத்த ஆச்சார்யர்கள் 24–48 மணி நேரத்திற்குள் உங்கள் சான்றிதழ்கள் மற்றும் பரிகாரங்களை ஆய்வு செய்வார்கள்.",
+    "Application Reference ID": "விண்ணப்ப குறிப்பு எண்",
+    "Return to Astrologer Sign In": "ஜோதிடர் உள்நுழைவுக்குத் திரும்புக",
+    "Upload Aadhaar Card": "ஆதார் அட்டையை பதிவேற்றவும்",
+    "Upload PAN Card": "பான் அட்டையை பதிவேற்றவும்",
+    "Upload Supporting Certificate": "சான்றிதழைப் பதிவேற்றவும்",
+    "Choose how you would like to upload your clear document (Max 5MB):": "உங்கள் ஆவணத்தை எவ்வாறு பதிவேற்ற விரும்புகிறீர்கள் என்பதைத் தேர்ந்தெடுக்கவும் (அதிகபட்சம் 5MB):",
+    "Take Photo with Camera": "கேமரா மூலம் புகைப்படம் எடுக்கவும்",
+    "Capture a clear photo of your original card/certificate": "உங்கள் அசல் அட்டை/சான்றிதழின் தெளிவான புகைப்படத்தை எடுக்கவும்",
+    "Choose from Photo Gallery": "புகைப்பட கேலரியில் இருந்து தேர்ந்தெடுக்கவும்",
+    "Select an existing JPG, PNG, or WebP image": "JPG, PNG அல்லது WebP படத்தைத் தேர்ந்தெடுக்கவும்",
+    "Browse PDF or Document File": "PDF அல்லது ஆவணக் கோப்பைத் தேர்ந்தெடுக்கவும்",
+    "Select a PDF document or scanned image from device files": "உங்கள் சாதனத்திலிருந்து PDF அல்லது ஸ்கேன் செய்யப்பட்ட கோப்பைத் தேர்ந்தெடுக்கவும்",
+    "Primary Specialisations": "முதன்மை சிறப்புத் துறைகள்",
+    "Select all astrological disciplines you practice:": "நீங்கள் பயிற்சி செய்யும் அனைத்து ஜோதிடத் துறைகளையும் தேர்ந்தெடுக்கவும்:",
+    "Consultation Languages": "ஆலோசனை மொழிகள்",
+    "Select all languages in which you can consult with clients:": "வாடிக்கையாளர்களுடன் பேசக்கூடிய அனைத்து மொழிகளையும் தேர்ந்தெடுக்கவும்:",
+    "Supporting Document Category": "ஆவண வகை",
+    "Select Country Code": "நாட்டின் குறியீட்டைத் தேர்ந்தெடுக்கவும்",
+    "AI Proctor Alert": "AI கண்காணிப்பு எச்சரிக்கை",
+    "I Understand & Resume Assessment": "புரிந்துகொண்டேன் & தேர்வைத் தொடரவும்",
+    "PDF Document Attached": "PDF ஆவணம் இணைக்கப்பட்டுள்ளது",
+    "Close Preview": "முன்னோட்டத்தை மூடு",
+    "Vedic Astrology": "வேத ஜோதிடம்",
+    "KP Astrology": "கே.பி. ஜோதிடம்",
+    "Nadi Astrology": "நாடி ஜோதிடம்",
+    "Lal Kitab": "லால் கிதாப்",
+    "Palmistry": "கைரேகை சாஸ்திரம்",
+    "Vastu": "வாஸ்து சாஸ்திரம்",
+    "Face Reading": "முக லட்சண சாஸ்திரம்",
+    "Reiki": "ரெய்கி ஹீலிங்",
+    "Angel Reading": "ஏஞ்சல் ரீடிங்",
+    "Prashna": "பிரசன்ன ஜோதிடம்",
+    "Psychic Reading": "சைக்கிக் ரீடிங்",
+    "Pendulum Dowsing": "பெண்டுலம் டவுசிங்",
+    "Other": "மற்றவை",
+    "Marriage & Relationships": "திருமணம் & உறவுகள்",
+    "Career & Business": "தொழில் & வியாபாரம்",
+    "Health & Medical Jyotish": "ஆரோக்கியம் & மருத்துவ ஜோதிடம்",
+    "Wealth & Finance": "செல்வம் & நிதி",
+    "Progeny & Education": "புத்திர பாக்கியம் & கல்வி",
+    "Astrology Certificate / Degree": "ஜோதிட சான்றிதழ் / பட்டம்",
+    "Experience Letter": "அனுபவ சான்றிதழ்",
+    "Gurukul / Lineage Certificate": "குருகுலம் / பாரம்பரிய சான்றிதழ்",
+    "Business / Registration Proof": "தொழில் / பதிவு சான்று",
+    "Other Supporting Document": "பிற துணை ஆவணம்",
+    "Hindi": "இந்தி",
+    "English": "ஆங்கிலம்",
+    "Telugu": "தெலுங்கு",
+    "Tamil": "தமிழ்",
+    "Kannada": "கன்னடம்",
+    "Malayalam": "மலையாளம்",
+    "Marathi": "மராத்தி",
+    "Gujarati": "குஜராத்தி",
+    "Bengali": "பெங்காலி",
+    "Punjabi": "பஞ்சாபி",
+    "Odia": "ஒடியா",
+    "Sanskrit": "சமஸ்கிருதம்",
+    "Thank you,": "நன்றி,"
+  },
+  Kannada: {
+    "Are you a Vedic Astrologer?": "ನೀವು ವೈದಿಕ ಜ್ಯೋತಿಷಿಯೇ?",
+    "Astrologer Sign In": "ಜ್ಯೋತಿಷಿ ಸೈನ್ ಇನ್",
+    "Sign In for Astrologers": "ಜ್ಯೋತಿಷಿಗಳಿಗಾಗಿ ಸೈನ್ ಇನ್",
+    "Astrologer Portal": "ಜ್ಯೋತಿಷಿ ಪೋರ್ಟಲ್",
+    "Welcome to Astrologer Portal": "ಜ್ಯೋತಿಷಿ ಪೋರ್ಟಲ್‌ಗೆ ಸುಸ್ವಾಗತ",
+    "OTP Verification": "OTP ಪರಿಶೀಲನೆ",
+    "Enter Verification OTP": "ಪರಿಶೀಲನಾ OTP ನಮೂದಿಸಿ",
+    "Enter your registered mobile number to receive a 4-digit verification code.": "4-ಅಂಕಿಯ ಪರಿಶೀಲನಾ ಕೋಡ್ ಪಡೆಯಲು ನಿಮ್ಮ ನೋಂದಾಯಿತ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ.",
+    "Enter your registered mobile number to receive a 4-digit verification OTP": "4-ಅಂಕಿಯ ಪರಿಶೀಲನಾ OTP ಪಡೆಯಲು ನಿಮ್ಮ ನೋಂದಾಯಿತ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ",
+    "Registered Mobile Number": "ನೋಂದಾಯಿತ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ",
+    "Account Not Found — You are not a registered astrologer": "ಖಾತೆ ಕಂಡುಬಂದಿಲ್ಲ — ನೀವು ನೋಂದಾಯಿತ ಜ್ಯೋತಿಷಿಯಲ್ಲ",
+    "Mobile number is not registered as an astrologer on AstroParihar.": "ಈ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯು ಆಸ್ಟ್ರೋಪರಿಹಾರ್‌ನಲ್ಲಿ ಜ್ಯೋತಿಷಿಯಾಗಿ ನೋಂದಾಯಿಸಲ್ಪಟ್ಟಿಲ್ಲ.",
+    "Please enter a valid 10-digit registered mobile number.": "ದಯವಿಟ್ಟು ಮಾನ್ಯವಾದ 10-ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ.",
+    "Apply to Join Panel": "ಪ್ಯಾನೆಲ್ ಸೇರಲು ಅರ್ಜಿ ಸಲ್ಲಿಸಿ",
+    "Contact Admin": "ಅಡ್ಮಿನ್ ಸಂಪರ್ಕಿಸಿ",
+    "Application Pending Approval": "ಅರ್ಜಿಯು ಅನುಮೋದನೆಗಾಗಿ ಬಾಕಿಯಿದೆ",
+    "Your application is currently under review by our Vedic board. You will be notified once approved.": "ನಿಮ್ಮ ಅರ್ಜಿಯು ಪ್ರಸ್ತುತ ನಮ್ಮ ವೈದಿಕ ಮಂಡಳಿಯ ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ. ಅನುಮೋದನೆಯಾದ ತಕ್ಷಣ ನಿಮಗೆ ತಿಳಿಸಲಾಗುವುದು.",
+    "Our Vedic panel typically reviews applications within 24–48 hours. Once approved, you can log in directly using this mobile number.": "ನಮ್ಮ ವೈದಿಕ ಮಂಡಳಿಯು ಸಾಮಾನ್ಯವಾಗಿ 24–48 ಗಂಟೆಗಳೊಳಗೆ ಅರ್ಜಿಗಳನ್ನು ಪರಿಶೀಲಿಸುತ್ತದೆ. ಅನುಮೋದನೆಯಾದ ನಂತರ ಈ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯಿಂದ ನೇರವಾಗಿ ಲಾಗಿನ್ ಆಗಬಹುದು.",
+    "Checking & Sending OTP...": "ಪರಿಶೀಲಿಸಿ OTP ಕಳುಹಿಸಲಾಗುತ್ತಿದೆ...",
+    "Send Verification OTP": "ಪರಿಶೀಲನಾ OTP ಕಳುಹಿಸಿ",
+    "Not an onboarded astrologer yet?": "ಇನ್ನೂ ನೋಂದಾಯಿತ ಜ್ಯೋತಿಷಿಯಾಗಿಲ್ಲವೇ?",
+    "Apply to join panel (5-Step Vedic Assessment) →": "ಪ್ಯಾನೆಲ್ ಸೇರಲು ಅರ್ಜಿ ಸಲ್ಲಿಸಿ (5-ಹಂತದ ವೈದಿಕ ಪರೀಕ್ಷೆ) →",
+    "Resend Verification OTP": "ಪರಿಶೀಲನಾ OTP ಮರುಕಳುಹಿಸಿ",
+    "Verifying...": "ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ...",
+    "Verify & Enter Portal": "ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಪೋರ್ಟಲ್ ಪ್ರವೇಶಿಸಿ",
+    "← Edit mobile number": "← ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಬದಲಿಸಿ",
+    "OTP Verified Successfully. Entering your Astrologer Portal...": "OTP ಯಶಸ್ವಿಯಾಗಿ ಪರಿಶೀಲಿಸಲಾಗಿದೆ. ಜ್ಯೋತಿಷಿ ಪೋರ್ಟಲ್ ಪ್ರವೇಶಿಸಲಾಗುತ್ತಿದೆ...",
+    "Astrologer Application": "ಜ್ಯೋತಿಷಿ ಅರ್ಜಿ",
+    "App switching, copy-paste & external help are strictly monitored": "ಆ್ಯಪ್ ಬದಲಾವಣೆ, ಕಾಪಿ-ಪೇಸ್ಟ್ ಮತ್ತು ಬಾಹ್ಯ ಸಹಾಯವನ್ನು ಕಟ್ಟುನಿಟ್ಟಾಗಿ ಗಮನಿಸಲಾಗುತ್ತದೆ",
+    "Assessment Terminated Due to Malpractice": "ನಿಯಮ ಉಲ್ಲಂಘನೆಯಿಂದಾಗಿ ಪರೀಕ್ಷೆಯನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ",
+    "Our AI Proctoring system recorded 3 integrity violations during your live assessment. AstroParihar maintains strict ethical standards for all panel astrologers.": "ನಿಮ್ಮ ಲೈವ್ ಪರೀಕ್ಷೆಯ ಸಮಯದಲ್ಲಿ ನಮ್ಮ AI ಮೇಲ್ವಿಚಾರಣಾ ವ್ಯವಸ್ಥೆಯು 3 ನಿಯಮ ಉಲ್ಲಂಘನೆಗಳನ್ನು ದಾಖಲಿಸಿದೆ. ಆಸ್ಟ್ರೋಪರಿಹಾರ್ ಕಟ್ಟುನಿಟ್ಟಾದ ನೈತಿಕ ಮಾನದಂಡಗಳನ್ನು ಪಾಲಿಸುತ್ತದೆ.",
+    "Return to Astrologer Portal": "ಜ್ಯೋತಿಷಿ ಪೋರ್ಟಲ್‌ಗೆ ಹಿಂತಿರುಗಿ",
+    "Enter 10-digit WhatsApp number": "10-ಅಂಕಿಯ ವಾಟ್ಸಾಪ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ",
+    "Aadhaar Card Details *": "ಆಧಾರ್ ಕಾರ್ಡ್ ವಿವರಗಳು *",
+    "✓ KYC Ready": "✓ KYC ಸಿದ್ಧವಾಗಿದೆ",
+    "Mandatory": "ಕಡ್ಡಾಯ",
+    "Optional": "ಐಚ್ಛಿಕ",
+    "Aadhaar Card Number * (12 Digits)": "ಆಧಾರ್ ಕಾರ್ಡ್ ಸಂಖ್ಯೆ * (12 ಅಂಕಿಗಳು)",
+    "Upload Aadhaar Card (Front & Back Photo / PDF) *": "ಆಧಾರ್ ಕಾರ್ಡ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ (ಮುಂಭಾಗ & ಹಿಂಭಾಗದ ಫೋಟೋ / PDF) *",
+    "Tap to Upload Aadhaar Card": "ಆಧಾರ್ ಕಾರ್ಡ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಲು ಇಲ್ಲಿ ಒತ್ತಿರಿ",
+    "Camera Photo, Gallery Image, or PDF (Max 5MB)": "ಕ್ಯಾಮೆರಾ ಫೋಟೋ, ಗ್ಯಾಲರಿ ಚಿತ್ರ ಅಥವಾ PDF (ಗರಿಷ್ಠ 5MB)",
+    "PAN Card Details *": "ಪ್ಯಾನ್ ಕಾರ್ಡ್ ವಿವರಗಳು *",
+    "PAN Card Number * (10 Characters)": "ಪ್ಯಾನ್ ಕಾರ್ಡ್ ಸಂಖ್ಯೆ * (10 ಅಕ್ಷರಗಳು)",
+    "Upload PAN Card (Clear Photo / PDF) *": "ಪ್ಯಾನ್ ಕಾರ್ಡ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ (ಸ್ಪಷ್ಟ ಫೋಟೋ / PDF) *",
+    "Tap to Upload PAN Card": "ಪ್ಯಾನ್ ಕಾರ್ಡ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಲು ಇಲ್ಲಿ ಒತ್ತಿರಿ",
+    "Supporting Certificates & Experience Letters": "ಪೂರಕ ಪ್ರಮಾಣಪತ್ರಗಳು & ಅನುಭವ ಪತ್ರಗಳು",
+    "Upload any additional astrology degrees, Gurukul certificates, awards, or prior platform experience letters.": "ಯಾವುದೇ ಹೆಚ್ಚುವರಿ ಜ್ಯೋತಿಷ್ಯ ಪದವಿ, ಗುರುಕುಲ ಪ್ರಮಾಣಪತ್ರ, ಪ್ರಶಸ್ತಿ ಅಥವಾ ಅನುಭವ ಪತ್ರಗಳನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.",
+    "Document Title / Certificate Name": "ದಾಖಲೆಯ ಶೀರ್ಷಿಕೆ / ಪ್ರಮಾಣಪತ್ರದ ಹೆಸರು",
+    "e.g., Jyotish Acharya Certificate - BHU": "ಉದಾ. ಜ್ಯೋತಿಷ ಆಚಾರ್ಯ ಪ್ರಮಾಣಪತ್ರ - BHU",
+    "Document Category": "ದಾಖಲೆಯ ವರ್ಗ",
+    "+ Choose File & Attach Document": "+ ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ ಮತ್ತು ದಾಖಲೆ ಲಗತ್ತಿಸಿ",
+    "Choose File & Attach Document": "ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ ಮತ್ತು ದಾಖಲೆ ಲಗತ್ತಿಸಿ",
+    "Preview": "ಮುನ್ನೋಟ",
+    "Remove": "ತೆಗೆದುಹಾಕಿ",
+    "Select Specialisations...": "ವಿಶೇಷತೆಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ...",
+    "Specify Other Specialisation(s) *": "ಇತರ ವಿಶೇಷತೆಗಳನ್ನು ನಮೂದಿಸಿ *",
+    "e.g., Ramal Shastra, Swar Vigyan, Ashtamangala": "ಉದಾ. ರಮಲ ಶಾಸ್ತ್ರ, ಸ್ವರ ವಿಜ್ಞಾನ, ಅಷ್ಟಮಂಗಳ",
+    "Strongest Consultation Area *": "ಪ್ರಮುಖ ಸಮಾಲೋಚನಾ ಕ್ಷೇತ್ರ *",
+    "Strongest Consultation Area": "ಪ್ರಮುಖ ಸಮಾಲೋಚನಾ ಕ್ಷೇತ್ರ",
+    "Select Consultation Languages...": "ಸಮಾಲೋಚನಾ ಭಾಷೆಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ...",
+    "Specify Other Language(s) *": "ಇತರ ಭಾಷೆಗಳನ್ನು ನಮೂದಿಸಿ *",
+    "📚 Curated Pool": "📚 ಪ್ರಮಾಣಿತ ಪ್ರಶ್ನೆ ಬ್ಯಾಂಕ್",
+    "Curated Pool": "ಪ್ರಮಾಣಿತ ಪ್ರಶ್ನೆ ಬ್ಯಾಂಕ್",
+    "🤖 AI Dynamic Random": "🤖 AI ಡೈನಾಮಿಕ್ ಪ್ರಶ್ನೆಗಳು",
+    "AI Dynamic Random": "AI ಡೈನಾಮಿಕ್ ಪ್ರಶ್ನೆಗಳು",
+    "New AI Set": "ಹೊಸ AI ಸೆಟ್",
+    "Shuffle": "ಬದಲಿಸಿ",
+    "Passing Cutoff": "ಉತ್ತೀರ್ಣ ಕಟ್‌ಆಫ್",
+    "⚖️ Hide Weights": "⚖️ ಅಂಕ ಹಂಚಿಕೆ ಮರೆಮಾಡಿ",
+    "Hide Weights": "ಅಂಕ ಹಂಚಿಕೆ ಮರೆಮಾಡಿ",
+    "⚖️ Scoring Weights": "⚖️ ಅಂಕಗಳ ಹಂಚಿಕೆ",
+    "Scoring Weights": "ಅಂಕಗಳ ಹಂಚಿಕೆ",
+    "Generating dynamic Vedic Shastra questions...": "ವೈದಿಕ ಶಾಸ್ತ್ರ ಪ್ರಶ್ನೆಗಳನ್ನು ರಚಿಸಲಾಗುತ್ತಿದೆ...",
+    "Shastra Evaluation": "ಶಾಸ್ತ್ರ ಮೌಲ್ಯಮಾಪನ",
+    "Classical Explanation": "ಶಾಸ್ತ್ರೀಯ ವಿವರಣೆ",
+    "Generating...": "ರಚಿಸಲಾಗುತ್ತಿದೆ...",
+    "New AI Case": "ಹೊಸ AI ಕೇಸ್",
+    "CASE SCENARIO": "ಕೇಸ್ ವಿವರ",
+    "AI Technical & Ethics Viva Completed!": "AI ತಾಂತ್ರಿಕ ಮತ್ತು ನೈತಿಕ ಸಂದರ್ಶನ ಪೂರ್ಣಗೊಂಡಿದೆ!",
+    "Application Status: In Process / Under Human Review": "ಅರ್ಜಿ ಸ್ಥಿತಿ: ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ",
+    "Overall Composite AI Score": "ಒಟ್ಟು ಸಮಗ್ರ AI ಅಂಕ",
+    "Queued for Manual Board Review": "ಮಂಡಳಿಯ ಪರಿಶೀಲನೆಗೆ ಕಾಯುತ್ತಿದೆ",
+    "What happens next?": "ಮುಂದೇನಾಗುತ್ತದೆ?",
+    "Your KYC documents (Aadhaar & PAN), Theory Score, Kundali Case analysis, and AI Viva transcript have been queued in the Admin Recruitment Panel.": "ನಿಮ್ಮ KYC ದಾಖಲೆಗಳು (ಆಧಾರ್ & ಪ್ಯಾನ್), ಸಿದ್ಧಾಂತ ಅಂಕ, ಕುಂಡಲಿ ಕೇಸ್ ವಿಶ್ಲೇಷಣೆ ಮತ್ತು AI ಸಂದರ್ಶನದ ವಿವರಗಳನ್ನು ಅಡ್ಮಿನ್ ಪ್ಯಾನೆಲ್‌ನಲ್ಲಿ ದಾಖಲಿಸಲಾಗಿದೆ.",
+    "Our senior Acharyas will verify your credentials and review your remedy recommendations within 24–48 hours.": "ನಮ್ಮ ಹಿರಿಯ ಆಚಾರ್ಯರು 24–48 ಗಂಟೆಗಳೊಳಗೆ ನಿಮ್ಮ ದಾಖಲೆಗಳು ಮತ್ತು ಸಾತ್ವಿಕ ಪರಿಹಾರಗಳನ್ನು ಪರಿಶೀಲಿಸುತ್ತಾರೆ.",
+    "Application Reference ID": "ಅರ್ಜಿ ಉಲ್ಲೇಖ ಸಂಖ್ಯೆ",
+    "Return to Astrologer Sign In": "ಜ್ಯೋತಿಷಿ ಸೈನ್ ಇನ್‌ಗೆ ಹಿಂತಿರುಗಿ",
+    "Upload Aadhaar Card": "ಆಧಾರ್ ಕಾರ್ಡ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
+    "Upload PAN Card": "ಪ್ಯಾನ್ ಕಾರ್ಡ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
+    "Upload Supporting Certificate": "ಪ್ರಮಾಣಪತ್ರ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
+    "Choose how you would like to upload your clear document (Max 5MB):": "ನಿಮ್ಮ ಸ್ಪಷ್ಟ ದಾಖಲೆಯನ್ನು ಹೇಗೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಬೇಕೆಂದು ಆಯ್ಕೆಮಾಡಿ (ಗರಿಷ್ಠ 5MB):",
+    "Take Photo with Camera": "ಕ್ಯಾಮೆರಾದಿಂದ ಫೋಟೋ ತೆಗೆಯಿರಿ",
+    "Capture a clear photo of your original card/certificate": "ನಿಮ್ಮ ಮೂಲ ಕಾರ್ಡ್/ಪ್ರಮಾಣಪತ್ರದ ಸ್ಪಷ್ಟ ಫೋಟೋ ತೆಗೆಯಿರಿ",
+    "Choose from Photo Gallery": "ಫೋಟೋ ಗ್ಯಾಲರಿಯಿಂದ ಆಯ್ಕೆಮಾಡಿ",
+    "Select an existing JPG, PNG, or WebP image": "JPG, PNG ಅಥವಾ WebP ಚಿತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    "Browse PDF or Document File": "PDF ಅಥವಾ ಡಾಕ್ಯುಮೆಂಟ್ ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ",
+    "Select a PDF document or scanned image from device files": "ನಿಮ್ಮ ಸಾಧನದಿಂದ PDF ಅಥವಾ ಸ್ಕ್ಯಾನ್ ಮಾಡಿದ ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ",
+    "Primary Specialisations": "ಪ್ರಮುಖ ವಿಶೇಷತೆಗಳು",
+    "Select all astrological disciplines you practice:": "ನೀವು ಅಭ್ಯಾಸ ಮಾಡುವ ಎಲ್ಲಾ ಜ್ಯೋತಿಷ್ಯ ವಿಭಾಗಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ:",
+    "Consultation Languages": "ಸಮಾಲೋಚನಾ ಭಾಷೆಗಳು",
+    "Select all languages in which you can consult with clients:": "ನೀವು ಕ್ಲೈಂಟ್‌ಗಳೊಂದಿಗೆ ಮಾತನಾಡಬಲ್ಲ ಎಲ್ಲಾ ಭಾಷೆಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ:",
+    "Supporting Document Category": "ಪೂರಕ ದಾಖಲೆ ವರ್ಗ",
+    "Select Country Code": "ದೇಶದ ಕೋಡ್ ಆಯ್ಕೆಮಾಡಿ",
+    "AI Proctor Alert": "AI ಮೇಲ್ವಿಚಾರಣಾ ಎಚ್ಚರಿಕೆ",
+    "I Understand & Resume Assessment": "ನಾನು ಅರ್ಥಮಾಡಿಕೊಂಡಿದ್ದೇನೆ & ಪರೀಕ್ಷೆ ಮುಂದುವರಿಸಿ",
+    "PDF Document Attached": "PDF ದಾಖಲೆ ಲಗತ್ತಿಸಲಾಗಿದೆ",
+    "Close Preview": "ಮುನ್ನೋಟ ಮುಚ್ಚಿ",
+    "Vedic Astrology": "ವೈದಿಕ ಜ್ಯೋತಿಷ್ಯ",
+    "KP Astrology": "ಕೆಪಿ ಜ್ಯೋತಿಷ್ಯ",
+    "Nadi Astrology": "ನಾಡಿ ಜ್ಯೋತಿಷ್ಯ",
+    "Lal Kitab": "ಲಾಲ್ ಕಿತಾಬ್",
+    "Palmistry": "ಹಸ್ತಸಾಮುದ್ರಿಕ",
+    "Vastu": "ವಾಸ್ತು ಶಾಸ್ತ್ರ",
+    "Face Reading": "ಮುಖ ಲಕ್ಷಣ ಶಾಸ್ತ್ರ",
+    "Reiki": "ರೇಕಿ ಹೀಲಿಂಗ್",
+    "Angel Reading": "ಏಂಜೆಲ್ ರೀಡಿಂಗ್",
+    "Prashna": "ಪ್ರಶ್ನ ಶಾಸ್ತ್ರ",
+    "Psychic Reading": "ಸೈಕಿಕ್ ರೀಡಿಂಗ್",
+    "Pendulum Dowsing": "ಪೆಂಡುಲಮ್ ಡೌಸಿಂಗ್",
+    "Other": "ಇತರೆ",
+    "Marriage & Relationships": "ವಿವಾಹ & ಸಂಬಂಧಗಳು",
+    "Career & Business": "ವೃತ್ತಿ & ವ್ಯವಹಾರ",
+    "Health & Medical Jyotish": "ಆರೋಗ್ಯ & ವೈದ್ಯಕೀಯ ಜ್ಯೋತಿಷ್ಯ",
+    "Wealth & Finance": "ಸಂಪತ್ತು & ಹಣಕಾಸು",
+    "Progeny & Education": "ಸಂತಾನ & ಶಿಕ್ಷಣ",
+    "Astrology Certificate / Degree": "ಜ್ಯೋತಿಷ್ಯ ಪ್ರಮಾಣಪತ್ರ / ಪದವಿ",
+    "Experience Letter": "ಅನುಭವ ಪತ್ರ",
+    "Gurukul / Lineage Certificate": "ಗುರುಕುಲ / ಪರಂಪರೆ ಪ್ರಮಾಣಪತ್ರ",
+    "Business / Registration Proof": "ವ್ಯವಹಾರ / ನೋಂದಣಿ ಪುರಾವೆ",
+    "Other Supporting Document": "ಇತರ ಪೂರಕ ದಾಖಲೆ",
+    "Hindi": "ಹಿಂದಿ",
+    "English": "ಇಂಗ್ಲಿಷ್",
+    "Telugu": "ತೆಲುಗು",
+    "Tamil": "ತಮಿಳು",
+    "Kannada": "ಕನ್ನಡ",
+    "Malayalam": "ಮಲಯಾಳಂ",
+    "Marathi": "ಮರಾಠಿ",
+    "Gujarati": "ಗುಜರಾತಿ",
+    "Bengali": "ಬೆಂಗಾಲಿ",
+    "Punjabi": "ಪಂಜಾಬಿ",
+    "Odia": "ಒಡಿಯಾ",
+    "Sanskrit": "ಸಂಸ್ಕೃತ",
+    "Thank you,": "ಧನ್ಯವಾದಗಳು,"
+  },
+  Malayalam: {
+    "Are you a Vedic Astrologer?": "നിങ്ങൾ ഒരു വേദ ജ്യോതിഷിയാണോ?",
+    "Astrologer Sign In": "ജ്യോതിഷി സൈൻ ഇൻ",
+    "Sign In for Astrologers": "ജ്യോതിഷികൾക്കായുള്ള സൈൻ ഇൻ",
+    "Astrologer Portal": "ജ്യോതിഷി പോർട്ടൽ",
+    "Welcome to Astrologer Portal": "ജ്യോതിഷി പോർട്ടലിലേക്ക് സ്വാഗതം",
+    "OTP Verification": "OTP പരിശോധന",
+    "Enter Verification OTP": "പരിശോധനാ OTP നൽകുക",
+    "Enter your registered mobile number to receive a 4-digit verification code.": "4-അക്ക പരിശോധനാ കോഡ് ലഭിക്കാൻ നിങ്ങളുടെ രജിസ്റ്റർ ചെയ്ത മൊബൈൽ നമ്പർ നൽകുക.",
+    "Enter your registered mobile number to receive a 4-digit verification OTP": "4-അക്ക പരിശോധനാ OTP ലഭിക്കാൻ നിങ്ങളുടെ രജിസ്റ്റർ ചെയ്ത മൊബൈൽ നമ്പർ നൽകുക",
+    "Registered Mobile Number": "രജിസ്റ്റർ ചെയ്ത മൊബൈൽ നമ്പർ",
+    "Account Not Found — You are not a registered astrologer": "അക്കൗണ്ട് കണ്ടെത്തിയില്ല — നിങ്ങൾ രജിസ്റ്റർ ചെയ്ത ജ്യോതിഷിയല്ല",
+    "Mobile number is not registered as an astrologer on AstroParihar.": "ഈ മൊബൈൽ നമ്പർ ആസ്ട്രോപരിഹാറിൽ ജ്യോതിഷിയായി രജിസ്റ്റർ ചെയ്തിട്ടില്ല.",
+    "Please enter a valid 10-digit registered mobile number.": "ദയവായി സാധുവായ 10-അക്ക മൊബൈൽ നമ്പർ നൽകുക.",
+    "Apply to Join Panel": "പാനലിൽ ചേരാൻ അപേക്ഷിക്കുക",
+    "Contact Admin": "അഡ്മിനെ ബന്ധപ്പെടുക",
+    "Application Pending Approval": "അപേക്ഷ അംഗീകാരത്തിനായി കാത്തിരിക്കുന്നു",
+    "Your application is currently under review by our Vedic board. You will be notified once approved.": "നിങ്ങളുടെ അപേക്ഷ നിലവിൽ ഞങ്ങളുടെ വേദ ബോർഡിന്റെ പരിഗണനയിലാണ്. അംഗീകരിച്ചാലുടൻ അറിയിക്കുന്നതാണ്.",
+    "Our Vedic panel typically reviews applications within 24–48 hours. Once approved, you can log in directly using this mobile number.": "ഞങ്ങളുടെ വേദ പാനൽ 24–48 മണിക്കൂറിനുള്ളിൽ അപേക്ഷകൾ പരിശോധിക്കുന്നു. അംഗീകാരം ലഭിച്ചാൽ ഈ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് നേരിട്ട് ലോഗിൻ ചെയ്യാം.",
+    "Checking & Sending OTP...": "പരിശോധിച്ച് OTP അയയ്ക്കുന്നു...",
+    "Send Verification OTP": "പരിശോധനാ OTP അയയ്ക്കുക",
+    "Not an onboarded astrologer yet?": "ഇതുവരെ രജിസ്റ്റർ ചെയ്ത ജ്യോതിഷിയല്ലേ?",
+    "Apply to join panel (5-Step Vedic Assessment) →": "പാനലിൽ ചേരാൻ അപേക്ഷിക്കുക (5-ഘട്ട വേദ പരീക്ഷ) →",
+    "Resend Verification OTP": "OTP വീണ്ടും അയയ്ക്കുക",
+    "Verifying...": "പരിശോധിക്കുന്നു...",
+    "Verify & Enter Portal": "പരിശോധിച്ച് പോർട്ടലിൽ പ്രവേശിക്കുക",
+    "← Edit mobile number": "← മൊബൈൽ നമ്പർ മാറ്റുക",
+    "OTP Verified Successfully. Entering your Astrologer Portal...": "OTP വിജയകരമായി സ്ഥിരീകരിച്ചു. ജ്യോതിഷി പോർട്ടലിലേക്ക് പ്രവേശിക്കുന്നു...",
+    "Astrologer Application": "ജ്യോതിഷി അപേക്ഷ",
+    "App switching, copy-paste & external help are strictly monitored": "ആപ്പ് മാറ്റൽ, കോപ്പി-പേസ്റ്റ്, ബാഹ്യ സഹായം എന്നിവ കർശനമായി നിരീക്ഷിക്കപ്പെടുന്നു",
+    "Assessment Terminated Due to Malpractice": "നിയമലംഘനം കാരണം പരീക്ഷ റദ്ദാക്കി",
+    "Our AI Proctoring system recorded 3 integrity violations during your live assessment. AstroParihar maintains strict ethical standards for all panel astrologers.": "ലൈവ് പരീക്ഷയ്ക്കിടെ ഞങ്ങളുടെ AI നിരീക്ഷണ സംവിധാനം 3 നിയമലംഘനങ്ങൾ രേഖപ്പെടുത്തി. ആസ്ട്രോപരിഹാർ കർശനമായ ധാർമ്മിക നിലവാരം പുലർത്തുന്നു.",
+    "Return to Astrologer Portal": "ജ്യോതിഷി പോർട്ടലിലേക്ക് മടങ്ങുക",
+    "Enter 10-digit WhatsApp number": "10-അക്ക വാട്ട്‌സ്ആപ്പ് നമ്പർ നൽകുക",
+    "Aadhaar Card Details *": "ആധാർ കാർഡ് വിവരങ്ങൾ *",
+    "✓ KYC Ready": "✓ KYC തയ്യാർ",
+    "Mandatory": "നിർബന്ധം",
+    "Optional": "ഐച്ഛികം",
+    "Aadhaar Card Number * (12 Digits)": "ആധാർ കാർഡ് നമ്പർ * (12 അക്കങ്ങൾ)",
+    "Upload Aadhaar Card (Front & Back Photo / PDF) *": "ആധാർ കാർഡ് അപ്‌ലോഡ് ചെയ്യുക (മുന്നിലും പിന്നിലുമുള്ള ഫോട്ടോ / PDF) *",
+    "Tap to Upload Aadhaar Card": "ആധാർ കാർഡ് അപ്‌ലോഡ് ചെയ്യാൻ ടാപ്പ് ചെയ്യുക",
+    "Camera Photo, Gallery Image, or PDF (Max 5MB)": "ക്യാമറ ഫോട്ടോ, ഗാലറി ചിത്രം അല്ലെങ്കിൽ PDF (പരമാവധി 5MB)",
+    "PAN Card Details *": "പാൻ കാർഡ് വിവരങ്ങൾ *",
+    "PAN Card Number * (10 Characters)": "പാൻ കാർഡ് നമ്പർ * (10 അക്ഷരങ്ങൾ)",
+    "Upload PAN Card (Clear Photo / PDF) *": "പാൻ കാർഡ് അപ്‌ലോഡ് ചെയ്യുക (വ്യക്തമായ ഫോട്ടോ / PDF) *",
+    "Tap to Upload PAN Card": "പാൻ കാർഡ് അപ്‌ലോഡ് ചെയ്യാൻ ടാപ്പ് ചെയ്യുക",
+    "Supporting Certificates & Experience Letters": "അനുബന്ധ സർട്ടിഫിക്കറ്റുകളും പരിചയ സമ്പത്ത് രേഖകളും",
+    "Upload any additional astrology degrees, Gurukul certificates, awards, or prior platform experience letters.": "കൂടുതൽ ജ്യോതിഷ ബിരുദങ്ങൾ, ഗുരുകുല സർട്ടിഫിക്കറ്റുകൾ, അവാർഡുകൾ അല്ലെങ്കിൽ പരിചയ പത്രങ്ങൾ അപ്‌ലോഡ് ചെയ്യുക.",
+    "Document Title / Certificate Name": "രേഖയുടെ പേര് / സർട്ടിഫിക്കറ്റ് പേര്",
+    "e.g., Jyotish Acharya Certificate - BHU": "ഉദാ. ജ്യോതിഷ ആചാര്യ സർട്ടിഫിക്കറ്റ് - BHU",
+    "Document Category": "രേഖയുടെ വിഭാഗം",
+    "+ Choose File & Attach Document": "+ ഫയൽ തിരഞ്ഞെടുത്ത് രേഖ ചേർക്കുക",
+    "Choose File & Attach Document": "ഫയൽ തിരഞ്ഞെടുത്ത് രേഖ ചേർക്കുക",
+    "Preview": "പ്രിവ്യൂ",
+    "Remove": "നീക്കം ചെയ്യുക",
+    "Select Specialisations...": "സവിശേഷതകൾ തിരഞ്ഞെടുക്കുക...",
+    "Specify Other Specialisation(s) *": "മറ്റ് സവിശേഷതകൾ വ്യക്തമാക്കുക *",
+    "e.g., Ramal Shastra, Swar Vigyan, Ashtamangala": "ഉദാ. രമല ശാസ്ത്രം, സ്വര വിജ്ഞാനം, അഷ്ടമംഗല പ്രശ്നം",
+    "Strongest Consultation Area *": "പ്രധാന കൺസൾട്ടേഷൻ മേഖല *",
+    "Strongest Consultation Area": "പ്രധാന കൺസൾട്ടേഷൻ മേഖല",
+    "Select Consultation Languages...": "കൺസൾട്ടേഷൻ ഭാഷകൾ തിരഞ്ഞെടുക്കുക...",
+    "Specify Other Language(s) *": "മറ്റ് ഭാഷകൾ വ്യക്തമാക്കുക *",
+    "📚 Curated Pool": "📚 തിരഞ്ഞെടുത്ത ചോദ്യ ശേഖരം",
+    "Curated Pool": "തിരഞ്ഞെടുത്ത ചോദ്യ ശേഖരം",
+    "🤖 AI Dynamic Random": "🤖 AI ഡൈനാമിക് ചോദ്യങ്ങൾ",
+    "AI Dynamic Random": "AI ഡൈനാമിക് ചോദ്യങ്ങൾ",
+    "New AI Set": "പുതിയ AI സെറ്റ്",
+    "Shuffle": "മാറ്റുക",
+    "Passing Cutoff": "വിജയ കട്ട്ഓഫ്",
+    "⚖️ Hide Weights": "⚖️ മാർക്ക് വിഹിതം മറയ്ക്കുക",
+    "Hide Weights": "മാർക്ക് വിഹിതം മറയ്ക്കുക",
+    "⚖️ Scoring Weights": "⚖️ മാർക്ക് വിഹിതം",
+    "Scoring Weights": "മാർക്ക് വിഹിതം",
+    "Generating dynamic Vedic Shastra questions...": "വേദ ശാസ്ത്ര ചോദ്യങ്ങൾ തയ്യാറാക്കുന്നു...",
+    "Shastra Evaluation": "ശാസ്ത്ര മൂല്യനിർണ്ണയം",
+    "Classical Explanation": "ശാസ്ത്രീയ വിശദീകരണം",
+    "Generating...": "തയ്യാറാക്കുന്നു...",
+    "New AI Case": "പുതിയ AI കേസ്",
+    "CASE SCENARIO": "കേസ് വിവരണം",
+    "AI Technical & Ethics Viva Completed!": "AI സാങ്കേതിക & ധാർമ്മിക അഭിമുഖം പൂർത്തിയായി!",
+    "Application Status: In Process / Under Human Review": "അപേക്ഷാ നില: പരിശോധനയിലാണ്",
+    "Overall Composite AI Score": "ആകെ AI സ്കോർ",
+    "Queued for Manual Board Review": "ബോർഡ് പരിശോധനയ്ക്കായി കാത്തിരിക്കുന്നു",
+    "What happens next?": "അടുത്തതായി എന്ത് സംഭവിക്കും?",
+    "Your KYC documents (Aadhaar & PAN), Theory Score, Kundali Case analysis, and AI Viva transcript have been queued in the Admin Recruitment Panel.": "നിങ്ങളുടെ KYC രേഖകൾ (ആധാർ & പാൻ), സിദ്ധാന്ത പരീക്ഷാ സ്കോർ, കുണ്ഡലി വിശകലനം, AI അഭിമുഖ വിവരങ്ങൾ എന്നിവ അഡ്മിൻ പാനലിൽ രേഖപ്പെടുത്തിയിട്ടുണ്ട്.",
+    "Our senior Acharyas will verify your credentials and review your remedy recommendations within 24–48 hours.": "ഞങ്ങളുടെ മുതിർന്ന ആചാര്യന്മാർ 24–48 മണിക്കൂറിനുള്ളിൽ നിങ്ങളുടെ യോഗ്യതകളും പരിഹാര നിർദ്ദേശങ്ങളും പരിശോധിക്കും.",
+    "Application Reference ID": "അപേക്ഷാ റഫറൻസ് ID",
+    "Return to Astrologer Sign In": "ജ്യോതിഷി സൈൻ ഇന്നിലേക്ക് മടങ്ങുക",
+    "Upload Aadhaar Card": "ആധാർ കാർഡ് അപ്‌ലോഡ് ചെയ്യുക",
+    "Upload PAN Card": "പാൻ കാർഡ് അപ്‌ലോഡ് ചെയ്യുക",
+    "Upload Supporting Certificate": "സർട്ടിഫിക്കറ്റ് അപ്‌ലോഡ് ചെയ്യുക",
+    "Choose how you would like to upload your clear document (Max 5MB):": "നിങ്ങളുടെ രേഖ എങ്ങനെ അപ്‌ലോഡ് ചെയ്യണമെന്ന് തിരഞ്ഞെടുക്കുക (പരമാവധി 5MB):",
+    "Take Photo with Camera": "ക്യാമറ ഉപയോഗിച്ച് ഫോട്ടോ എടുക്കുക",
+    "Capture a clear photo of your original card/certificate": "നിങ്ങളുടെ ഒറിജിനൽ കാർഡിന്റെ/സർട്ടിഫിക്കറ്റിന്റെ വ്യക്തമായ ഫോട്ടോ എടുക്കുക",
+    "Choose from Photo Gallery": "ഫോട്ടോ ഗാലറിയിൽ നിന്ന് തിരഞ്ഞെടുക്കുക",
+    "Select an existing JPG, PNG, or WebP image": "JPG, PNG അല്ലെങ്കിൽ WebP ചിത്രം തിരഞ്ഞെടുക്കുക",
+    "Browse PDF or Document File": "PDF അല്ലെങ്കിൽ ഡോക്യുമെന്റ് ഫയൽ തിരഞ്ഞെടുക്കുക",
+    "Select a PDF document or scanned image from device files": "നിങ്ങളുടെ ഫോണിൽ നിന്ന് PDF അല്ലെങ്കിൽ സ്കാൻ ചെയ്ത ഫയൽ തിരഞ്ഞെടുക്കുക",
+    "Primary Specialisations": "പ്രധാന സവിശേഷതകൾ",
+    "Select all astrological disciplines you practice:": "നിങ്ങൾ പരിശീലിക്കുന്ന എല്ലാ ജ്യോതിഷ ശാഖകളും തിരഞ്ഞെടുക്കുക:",
+    "Consultation Languages": "കൺസൾട്ടേഷൻ ഭാഷകൾ",
+    "Select all languages in which you can consult with clients:": "ക്ലയന്റുകളുമായി സംസാരിക്കാൻ കഴിയുന്ന എല്ലാ ഭാഷകളും തിരഞ്ഞെടുക്കുക:",
+    "Supporting Document Category": "രേഖയുടെ വിഭാഗം",
+    "Select Country Code": "രാജ്യ കോഡ് തിരഞ്ഞെടുക്കുക",
+    "AI Proctor Alert": "AI നിരീക്ഷണ മുന്നറിയിപ്പ്",
+    "I Understand & Resume Assessment": "ഞാൻ മനസ്സിലാക്കുന്നു & പരീക്ഷ തുടരുക",
+    "PDF Document Attached": "PDF രേഖ ചേർത്തിട്ടുണ്ട്",
+    "Close Preview": "പ്രിവ്യൂ അടയ്ക്കുക",
+    "Vedic Astrology": "വേദ ജ്യോതിഷം",
+    "KP Astrology": "കെ.പി. ജ്യോതിഷം",
+    "Nadi Astrology": "നാഡി ജ്യോതിഷം",
+    "Lal Kitab": "ലാൽ കിതാബ്",
+    "Palmistry": "ഹസ്തരേഖാ ശാസ്ത്രം",
+    "Vastu": "വാസ്തു ശാസ്ത്രം",
+    "Face Reading": "മുഖ ലക്ഷണ ശാസ്ത്രം",
+    "Reiki": "റെയ്കി ഹീലിംഗ്",
+    "Angel Reading": "ഏഞ്ചൽ റീഡിംഗ്",
+    "Prashna": "പ്രശ്ന ജ്യോതിഷം",
+    "Psychic Reading": "സൈക്കിക് റീഡിംഗ്",
+    "Pendulum Dowsing": "പെൻഡുലം ഡൗസിംഗ്",
+    "Other": "മറ്റുള്ളവ",
+    "Marriage & Relationships": "വിവാഹവും ബന്ധങ്ങളും",
+    "Career & Business": "തൊഴിലും ബിസിനസ്സും",
+    "Health & Medical Jyotish": "ആരോഗ്യവും വൈദ്യ ജ്യോതിഷവും",
+    "Wealth & Finance": "സമ്പത്തും ധനകാര്യവും",
+    "Progeny & Education": "സന്താനവും വിദ്യാഭ്യാസവും",
+    "Astrology Certificate / Degree": "ജ്യോതിഷ സർട്ടിഫിക്കറ്റ് / ബിരുദം",
+    "Experience Letter": "പരിചയ സമ്പത്ത് സർട്ടിഫിക്കറ്റ്",
+    "Gurukul / Lineage Certificate": "ഗുരുകുല / പരമ്പര സർട്ടിഫിക്കറ്റ്",
+    "Business / Registration Proof": "ബിസിനസ്സ് / രജിസ്ട്രേഷൻ തെളിവ്",
+    "Other Supporting Document": "മറ്റ് അനുബന്ധ രേഖ",
+    "Hindi": "ഹിന്ദി",
+    "English": "ഇംഗ്ലീഷ്",
+    "Telugu": "തെലുങ്ക്",
+    "Tamil": "തമിഴ്",
+    "Kannada": "കന്നഡ",
+    "Malayalam": "മലയാളം",
+    "Marathi": "മറാഠി",
+    "Gujarati": "ഗുജറാത്തി",
+    "Bengali": "ബംഗാളി",
+    "Punjabi": "പഞ്ചാബി",
+    "Odia": "ഒഡിയ",
+    "Sanskrit": "സംസ്കൃതം",
+    "Thank you,": "നന്ദി,"
+  }
+};
+
+(Object.keys(ASTROLOGER_PORTAL_TRANSLATIONS) as Array<Exclude<AppLanguage, 'English'>>).forEach((langKey) => {
+  Object.assign(TRANSLATIONS[langKey], ASTROLOGER_PORTAL_TRANSLATIONS[langKey]);
+});
+
 export function translateStringWithDict(text: string, lang: AppLanguage): string {
   if (!text || typeof text !== 'string') return text;
   if (lang === 'English') return text;
@@ -3426,6 +4158,311 @@ export function translateStringWithDict(text: string, lang: AppLanguage): string
     const event = sunMoonMatch[2].trim();
     const trEvent = map[event] || event;
     return `${leadWs}${timeVal} ${trEvent}${trailWs}`;
+  }
+
+  // I. Tag chip with trailing " ×" (e.g., "Vedic Astrology ×")
+  if (trimmed.endsWith(' ×')) {
+    const baseTag = trimmed.slice(0, -2).trim();
+    const trTag = translateStringWithDict(baseTag, lang);
+    if (trTag !== baseTag) {
+      return `${leadWs}${trTag} ×${trailWs}`;
+    }
+  }
+
+  // J. Numbered item (e.g., "1. Jyotish Certificate", "Q1 • Bhavas & Houses")
+  const numDotMatch = trimmed.match(/^(\d+\.)\s+(.*)$/);
+  if (numDotMatch) {
+    const numPrefix = numDotMatch[1];
+    const restText = numDotMatch[2].trim();
+    const trRest = translateStringWithDict(restText, lang);
+    if (trRest !== restText) {
+      return `${leadWs}${numPrefix} ${trRest}${trailWs}`;
+    }
+  }
+
+  // K. "Verification code sent to +919876543210"
+  const otpSentMatch = trimmed.match(/^Verification code sent to\s+(.*)$/i);
+  if (otpSentMatch) {
+    const ph = otpSentMatch[1];
+    if (lang === 'Telugu') return `${leadWs}${ph} కు ధృవీకరణ కోడ్ పంపబడింది${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}${ph} पर सत्यापन कोड भेजा गया${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}${ph} எண்ணிற்கு சரிபார்ப்பு குறியீடு அனுப்பப்பட்டது${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}${ph} ಗೆ ಪರಿಶೀಲನಾ ಕೋಡ್ ಕಳುಹಿಸಲಾಗಿದೆ${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}${ph} എന്ന നമ്പറിലേക്ക് പരിശോധനാ കോഡ് അയച്ചു${trailWs}`;
+  }
+
+  // L. "WhatsApp Synced: +91 9876543210"
+  const waSyncMatch = trimmed.match(/^WhatsApp Synced:\s*(.*)$/i);
+  if (waSyncMatch) {
+    const ph = waSyncMatch[1];
+    if (lang === 'Telugu') return `${leadWs}వాట్సాప్ సింక్ చేయబడింది: ${ph}${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}व्हाट्सएप सिंक किया गया: ${ph}${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}வாட்ஸ்அப் இணைக்கப்பட்டது: ${ph}${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}ವಾಟ್ಸಾಪ್ ಸಿಂಕ್ ಆಗಿದೆ: ${ph}${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}വാട്ട്‌സ്ആപ്പ് സമന്വയിപ്പിച്ചു: ${ph}${trailWs}`;
+  }
+
+  // M. "2 Specialisation(s) Selected"
+  const specCountMatch = trimmed.match(/^(\d+)\s+Specialisation\(s\)\s+Selected$/i);
+  if (specCountMatch) {
+    const cnt = specCountMatch[1];
+    if (lang === 'Telugu') return `${leadWs}${cnt} ప్రత్యేకతలు ఎంచుకోబడ్డాయి${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}${cnt} विशेषज्ञताएं चुनी गईं${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}${cnt} சிறப்புத் துறைகள் தேர்ந்தெடுக்கப்பட்டன${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}${cnt} ವಿಶೇಷತೆಗಳನ್ನು ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}${cnt} സവിശേഷതകൾ തിരഞ്ഞെടുത്തു${trailWs}`;
+  }
+
+  // N. "2 Language(s): Hindi, English"
+  const langCountMatch = trimmed.match(/^(\d+)\s+Language\(s\):\s*(.*)$/i);
+  if (langCountMatch) {
+    const cnt = langCountMatch[1];
+    const langsList = langCountMatch[2]
+      .split(',')
+      .map((l) => translateStringWithDict(l.trim(), lang))
+      .join(', ');
+    if (lang === 'Telugu') return `${leadWs}${cnt} భాషలు: ${langsList}${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}${cnt} भाषाएं: ${langsList}${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}${cnt} மொழிகள்: ${langsList}${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}${cnt} ಭಾಷೆಗಳು: ${langsList}${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}${cnt} ഭാഷകൾ: ${langsList}${trailWs}`;
+  }
+
+  // O. "Done (2 Selected)"
+  const doneSelectedMatch = trimmed.match(/^Done\s*\((\d+)\s+Selected\)$/i);
+  if (doneSelectedMatch) {
+    const cnt = doneSelectedMatch[1];
+    if (lang === 'Telugu') return `${leadWs}పూర్తయింది (${cnt} ఎంచుకోబడ్డాయి)${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}पूर्ण (${cnt} चयनित)${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}முடிந்தது (${cnt} தேர்ந்தெடுக்கப்பட்டது)${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}ಪೂರ್ಣಗೊಂಡಿದೆ (${cnt} ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ)${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}പൂർത്തിയായി (${cnt} തിരഞ്ഞെടുത്തു)${trailWs}`;
+  }
+
+  // P. "5 Qs"
+  const qsMatch = trimmed.match(/^(\d+)\s*Qs$/i);
+  if (qsMatch) {
+    const cnt = qsMatch[1];
+    if (lang === 'Telugu') return `${leadWs}${cnt} ప్రశ్నలు${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}${cnt} प्रश्न${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}${cnt} கேள்விகள்${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}${cnt} ಪ್ರಶ್ನೆಗಳು${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}${cnt} ചോദ്യങ്ങൾ${trailWs}`;
+  }
+
+  // Q. "✓ Uploaded (180 KB)"
+  const uploadedKbMatch = trimmed.match(/^✓\s*Uploaded\s*\((.+)\)$/i);
+  if (uploadedKbMatch) {
+    const sz = uploadedKbMatch[1];
+    if (lang === 'Telugu') return `${leadWs}✓ అప్‌లోడ్ అయింది (${sz})${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}✓ अपलोड पूर्ण (${sz})${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}✓ பதிவேற்றப்பட்டது (${sz})${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}✓ ಅಪ್‌ಲೋಡ್ ಆಗಿದೆ (${sz})${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}✓ അപ്‌ലോഡ് ചെയ്തു (${sz})${trailWs}`;
+  }
+
+  // R. "Attached Supporting Documents (2)"
+  const attachedDocsMatch = trimmed.match(/^Attached Supporting Documents\s*\((\d+)\)$/i);
+  if (attachedDocsMatch) {
+    const cnt = attachedDocsMatch[1];
+    if (lang === 'Telugu') return `${leadWs}జతచేసిన పత్రాలు (${cnt})${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}संलग्न सहायक दस्तावेज़ (${cnt})${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}இணைக்கப்பட்ட ஆவணங்கள் (${cnt})${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}ಲಗತ್ತಿಸಲಾದ ದಾಖಲೆಗಳು (${cnt})${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}ചേർത്ത അനുബന്ധ രേഖകൾ (${cnt})${trailWs}`;
+  }
+
+  // S. "Round 1 / 3"
+  const roundMatch = trimmed.match(/^Round\s+(\d+)\s*\/\s*(\d+)$/i);
+  if (roundMatch) {
+    const r1 = roundMatch[1];
+    const r2 = roundMatch[2];
+    if (lang === 'Telugu') return `${leadWs}రౌండ్ ${r1} / ${r2}${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}चरण ${r1} / ${r2}${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}சுற்று ${r1} / ${r2}${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}ಸುತ್ತು ${r1} / ${r2}${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}റൗണ്ട് ${r1} / ${r2}${trailWs}`;
+  }
+
+  // T. "0 chars (min 20 required)"
+  const charsReqMatch = trimmed.match(/^(\d+)\s+chars\s+\(min\s+(\d+)\s+required\)$/i);
+  if (charsReqMatch) {
+    const c1 = charsReqMatch[1];
+    const c2 = charsReqMatch[2];
+    if (lang === 'Telugu') return `${leadWs}${c1} అక్షరాలు (కనీసం ${c2} అవసరం)${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}${c1} अक्षर (न्यूनतम ${c2} आवश्यक)${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}${c1} எழுத்துகள் (குறைந்தது ${c2} தேவை)${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}${c1} ಅಕ್ಷರಗಳು (ಕನಿಷ್ಠ ${c2} ಅಗತ್ಯ)${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}${c1} അക്ഷരങ്ങൾ (കുറഞ്ഞത് ${c2} ആവശ്യമാണ്)${trailWs}`;
+  }
+
+  // U. "Composite Weightage: Theory (35%) • Kundali Case (25%) • AI Viva (40%)"
+  const weightMatch = trimmed.match(/^Composite Weightage:\s*Theory\s*\((\d+%)\)\s*•\s*Kundali Case\s*\((\d+%)\)\s*•\s*AI Viva\s*\((\d+%)\)$/i);
+  if (weightMatch) {
+    const [, w1, w2, w3] = weightMatch;
+    if (lang === 'Telugu') return `${leadWs}మార్కుల వెయిటేజీ: సిద్ధాంతం (${w1}) • కుండలి కేస్ (${w2}) • AI ముఖాముఖి (${w3})${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}कुल भारांक: सिद्धांत (${w1}) • कुंडली केस (${w2}) • एआई साक्षात्कार (${w3})${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}மதிப்பெண் பகிர்வு: கோட்பாடு (${w1}) • ஜாதக ஆய்வு (${w2}) • AI நேர்காணல் (${w3})${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}ಅಂಕಗಳ ಹಂಚಿಕೆ: ಸಿದ್ಧಾಂತ (${w1}) • ಕುಂಡಲಿ ಕೇಸ್ (${w2}) • AI ಸಂದರ್ಶನ (${w3})${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}മാർക്ക് വിഹിതം: സിദ്ധാന്തം (${w1}) • കുണ്ഡലി കേസ് (${w2}) • AI അഭിമുഖം (${w3})${trailWs}`;
+  }
+
+  // V. "Theory (35%)" / "Kundali (25%)" / "AI Viva (40%)"
+  const colWeightMatch = trimmed.match(/^(Theory|Kundali|AI Viva)\s*\((\d+%)\)$/i);
+  if (colWeightMatch) {
+    const kind = colWeightMatch[1].toLowerCase();
+    const pct = colWeightMatch[2];
+    const labels: Record<string, Record<string, string>> = {
+      theory: { Telugu: 'సిద్ధాంతం', Hindi: 'सिद्धांत', Tamil: 'கோட்பாடு', Kannada: 'ಸಿದ್ಧಾಂತ', Malayalam: 'സിദ്ധാന്തം' },
+      kundali: { Telugu: 'కుండలి', Hindi: 'कुंडली', Tamil: 'ஜாதகம்', Kannada: 'ಕುಂಡಲಿ', Malayalam: 'കുണ്ഡലി' },
+      'ai viva': { Telugu: 'AI ముఖాముఖి', Hindi: 'एआई साक्षात्कार', Tamil: 'AI நேர்காணல்', Kannada: 'AI ಸಂದರ್ಶನ', Malayalam: 'AI അഭിമുഖം' },
+    };
+    const trLabel = labels[kind]?.[lang];
+    if (trLabel) return `${leadWs}${trLabel} (${pct})${trailWs}`;
+  }
+
+  // W. "Once approved, you will receive a confirmation on +91 9876543210 and can log in directly via Astrologer Sign In."
+  const onceApprovedMatch = trimmed.match(/^Once approved, you will receive a confirmation on\s+(.+)\s+and can log in directly via Astrologer Sign In\.$/i);
+  if (onceApprovedMatch) {
+    const ph = onceApprovedMatch[1];
+    if (lang === 'Telugu') return `${leadWs}ఆమోదించబడిన తర్వాత, ${ph} కు నిర్ధారణ సందేశం వస్తుంది మరియు మీరు నేరుగా జ్యోతిష్కుల సైన్ ఇన్ ద్వారా లాగిన్ అవ్వవచ్చు.${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}स्वीकृत होने के बाद, आपको ${ph} पर पुष्टि प्राप्त होगी और आप सीधे ज्योतिषी साइन इन से लॉग इन कर सकेंगे।${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}ஒப்புதல் அளிக்கப்பட்டதும், ${ph} எண்ணிற்கு தகவல் வரும், மேலும் நீங்கள் நேரடியாக ஜோதிடர் உள்நுழைவு மூலம் உள்நுழையலாம்.${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}ಅನುಮೋದನೆಯಾದ ನಂತರ, ${ph} ಗೆ ದೃಢೀಕರಣ ಸಂದೇಶ ಬರುತ್ತದೆ ಮತ್ತು ನೀವು ನೇರವಾಗಿ ಜ್ಯೋತಿಷಿ ಸೈನ್ ಇನ್ ಮೂಲಕ ಲಾಗಿನ್ ಆಗಬಹುದು.${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}അംഗീകാരം ലഭിച്ചുകഴിഞ്ഞാൽ, ${ph} എന്ന നമ്പറിൽ സ്ഥിരീകരണം ലഭിക്കും, തുടർന്ന് ജ്യോതിഷി സൈൻ ഇൻ വഴി നേരിട്ട് ലോഗിൻ ചെയ്യാം.${trailWs}`;
+  }
+
+  // X. "Q1 • Topic", "AI Vedic Examiner • Topic", "Live Question #1 • Topic"
+  const qTopicMatch = trimmed.match(/^Q(\d+)\s*•\s*(.+)$/i);
+  if (qTopicMatch) {
+    const qNum = qTopicMatch[1];
+    const topic = translateStringWithDict(qTopicMatch[2].trim(), lang);
+    const qPrefix: Record<string, string> = {
+      Telugu: 'ప్రశ్న',
+      Hindi: 'प्रश्न',
+      Tamil: 'கேள்வி',
+      Kannada: 'ಪ್ರಶ್ನೆ',
+      Malayalam: 'ചോദ്യം',
+    };
+    return `${leadWs}${qPrefix[lang] || 'Q'}${qNum} • ${topic}${trailWs}`;
+  }
+
+  const examinerMatch = trimmed.match(/^AI Vedic Examiner\s*•\s*(.+)$/i);
+  if (examinerMatch) {
+    const topic = translateStringWithDict(examinerMatch[1].trim(), lang);
+    const exPrefix: Record<string, string> = {
+      Telugu: 'AI వైదిక పరీక్షకులు',
+      Hindi: 'एआई वैदिक परीक्षक',
+      Tamil: 'AI வேத தேர்வாளர்',
+      Kannada: 'AI ವೈದಿಕ ಪರೀಕ್ಷಕರು',
+      Malayalam: 'AI വൈദിക പരീക്ഷകൻ',
+    };
+    return `${leadWs}${exPrefix[lang] || 'AI Vedic Examiner'} • ${topic}${trailWs}`;
+  }
+
+  const liveQMatch = trimmed.match(/^Live Question #(\d+)\s*•\s*(.+)$/i);
+  if (liveQMatch) {
+    const qNum = liveQMatch[1];
+    const topic = translateStringWithDict(liveQMatch[2].trim(), lang);
+    const livePrefix: Record<string, string> = {
+      Telugu: 'లైవ్ ప్రశ్న',
+      Hindi: 'लाइव प्रश्न',
+      Tamil: 'நேரலை கேள்வி',
+      Kannada: 'ಲೈವ್ ಪ್ರಶ್ನೆ',
+      Malayalam: 'ലൈവ് ചോദ്യം',
+    };
+    return `${leadWs}${livePrefix[lang] || 'Live Question'} #${qNum} • ${topic}${trailWs}`;
+  }
+
+  // Y. "Theory Score: 80% — Passed Cutoff!" or "Theory Score: 60% (Cutoff: 75%)"
+  const theoryScoreMatch = trimmed.match(/^Theory Score:\s*(\d+%)\s*(.*)$/i);
+  if (theoryScoreMatch) {
+    const sc = theoryScoreMatch[1];
+    const suffix = theoryScoreMatch[2].trim();
+    const isPassed = suffix.includes('Passed');
+    const cutoffVal = suffix.match(/(\d+%)/)?.[1] || '75%';
+    if (lang === 'Telugu') {
+      return `${leadWs}సిద్ధాంత స్కోరు: ${sc} ${isPassed ? '— కటాఫ్ ఉత్తీర్ణత!' : `(కటాఫ్: ${cutoffVal})`}${trailWs}`;
+    }
+    if (lang === 'Hindi') {
+      return `${leadWs}सिद्धांत स्कोर: ${sc} ${isPassed ? '— कटऑफ उत्तीर्ण!' : `(कटऑफ: ${cutoffVal})`}${trailWs}`;
+    }
+    if (lang === 'Tamil') {
+      return `${leadWs}கோட்பாடு மதிப்பெண்: ${sc} ${isPassed ? '— தேர்ச்சி!' : `(தேர்ச்சி வரம்பு: ${cutoffVal})`}${trailWs}`;
+    }
+    if (lang === 'Kannada') {
+      return `${leadWs}ಸಿದ್ಧಾಂತ ಅಂಕ: ${sc} ${isPassed ? '— ಕಟ್‌ಆಫ್ ಉತ್ತೀರ್ಣ!' : `(ಕಟ್‌ಆಫ್: ${cutoffVal})`}${trailWs}`;
+    }
+    if (lang === 'Malayalam') {
+      return `${leadWs}സിദ്ധാന്ത സ്കോർ: ${sc} ${isPassed ? '— കട്ട്ഓഫ് വിജയിച്ചു!' : `(കട്ട്ഓഫ്: ${cutoffVal})`}${trailWs}`;
+    }
+  }
+
+  // Z. "AI Score: 85/100" & "AI Viva Score: 85% • Composite Score: 82%" & "✓ Qualified (≥75% Cutoff)"
+  const aiScoreMatch = trimmed.match(/^AI Score:\s*(.+)$/i);
+  if (aiScoreMatch) {
+    const val = aiScoreMatch[1];
+    const lbl: Record<string, string> = {
+      Telugu: 'AI స్కోరు',
+      Hindi: 'एआई स्कोर',
+      Tamil: 'AI மதிப்பெண்',
+      Kannada: 'AI ಅಂಕ',
+      Malayalam: 'AI സ്കോർ',
+    };
+    return `${leadWs}${lbl[lang] || 'AI Score'}: ${val}${trailWs}`;
+  }
+
+  const vivaCompMatch = trimmed.match(/^AI Viva Score:\s*(\d+%)\s*•\s*Composite Score:\s*(\d+%)$/i);
+  if (vivaCompMatch) {
+    const [, v1, v2] = vivaCompMatch;
+    if (lang === 'Telugu') return `${leadWs}AI ముఖాముఖి స్కోరు: ${v1} • మొత్తం స్కోరు: ${v2}${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}एआई साक्षात्कार स्कोर: ${v1} • कुल स्कोर: ${v2}${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}AI நேர்காணல் மதிப்பெண்: ${v1} • மொத்த மதிப்பெண்: ${v2}${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}AI ಸಂದರ್ಶನ ಅಂಕ: ${v1} • ಒಟ್ಟು ಅಂಕ: ${v2}${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}AI അഭിമുഖ സ്കോർ: ${v1} • ആകെ സ്കോർ: ${v2}${trailWs}`;
+  }
+
+  const qualCutoffMatch = trimmed.match(/^✓\s*Qualified\s*\(≥(\d+%)\s*Cutoff\)$/i);
+  if (qualCutoffMatch) {
+    const pct = qualCutoffMatch[1];
+    if (lang === 'Telugu') return `${leadWs}✓ అర్హత సాధించారు (≥${pct} కటాఫ్)${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}✓ उत्तीर्ण (≥${pct} कटऑफ)${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}✓ தகுதி பெற்றது (≥${pct} வரம்பு)${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}✓ ಅರ್ಹತೆ ಪಡೆದಿದೆ (≥${pct} ಕಟ್‌ಆಫ್)${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}✓ യോഗ്യത നേടി (≥${pct} കട്ട്ഓഫ്)${trailWs}`;
+  }
+
+  const readySubMatch = trimmed.match(/^✓\s*Ready for Submission\s*•\s*(.+)$/i);
+  if (readySubMatch) {
+    const sz = readySubMatch[1];
+    if (lang === 'Telugu') return `${leadWs}✓ సమర్పణకు సిద్ధం • ${sz}${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}✓ जमा करने के लिए तैयार • ${sz}${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}✓ சமர்ப்பிக்கத் தயார் • ${sz}${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}✓ ಸಲ್ಲಿಕೆಗೆ ಸಿದ್ಧ • ${sz}${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}✓ സമർപ്പിക്കാൻ തയ്യാർ • ${sz}${trailWs}`;
+  }
+
+  const namasteMatch = trimmed.match(/^Namaste,\s*(.+)\s+Ji!\s*🙏$/i);
+  if (namasteMatch) {
+    const nm = namasteMatch[1];
+    if (lang === 'Telugu') return `${leadWs}నమస్తే, ${nm} గారు! 🙏${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}नमस्ते, ${nm} जी! 🙏${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}வணக்கம், ${nm} ஜி! 🙏${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}ನಮಸ್ತೆ, ${nm} ಜೀ! 🙏${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}നമസ്തേ, ${nm} ജീ! 🙏${trailWs}`;
+  }
+
+  const statusBadgeMatch = trimmed.match(/^Status:\s*(.+)$/i);
+  if (statusBadgeMatch) {
+    const st = translateStringWithDict(statusBadgeMatch[1].trim(), lang);
+    const stLbl: Record<string, string> = {
+      Telugu: 'స్థితి',
+      Hindi: 'स्थिति',
+      Tamil: 'நிலை',
+      Kannada: 'ಸ್ಥಿತಿ',
+      Malayalam: 'നില',
+    };
+    return `${leadWs}${stLbl[lang] || 'Status'}: ${st}${trailWs}`;
   }
 
   // 7. Punctuation stripped match

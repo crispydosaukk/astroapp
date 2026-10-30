@@ -3,7 +3,7 @@
  * Used in the 5-step Astrologer Onboarding & Screening Portal (/apply).
  */
 
-export type SupportedLanguage = 'en' | 'hi' | 'te' | 'ta' | 'kn';
+export type SupportedLanguage = 'en' | 'hi' | 'te' | 'ta' | 'kn' | 'ml';
 
 export const SUPPORTED_APPLY_LANGUAGES: { code: SupportedLanguage; label: string; nativeLabel: string }[] = [
   { code: 'en', label: 'English', nativeLabel: 'English' },
@@ -11,6 +11,7 @@ export const SUPPORTED_APPLY_LANGUAGES: { code: SupportedLanguage; label: string
   { code: 'te', label: 'Telugu', nativeLabel: 'తెలుగు' },
   { code: 'ta', label: 'Tamil', nativeLabel: 'தமிழ்' },
   { code: 'kn', label: 'Kannada', nativeLabel: 'ಕನ್ನಡ' },
+  { code: 'ml', label: 'Malayalam', nativeLabel: 'മലയാളം' },
 ];
 
 export const SPECIALISATION_OPTIONS = [
@@ -847,6 +848,13 @@ export const getInitialInterviewQuestion = (candidateName: string, lang: string)
       text: `ನಮಸ್ಕಾರ ${nameLabel} 🙏! ಆಸ್ಟ್ರೋಪರಿಹಾರ್ ಜ್ಯೋತಿಷಿ ಆಯ್ಕೆ ಪ್ರಕ್ರಿಯೆಗೆ ಸುಸ್ವಾಗತ. ಮೊದಲ ಪ್ರಶ್ನೆ: ವ್ಯಾಪಾರ ನಷ್ಟ ಮತ್ತು ಕೌಟುಂಬಿಕ ಕಲಹದಿಂದ ತೀವ್ರ ದುಃಖದಲ್ಲಿರುವ ಕ್ಲೈಂಟ್ ನಿಮ್ಮ ಬಳಿ ಬಂದಾಗ, ಅವರಲ್ಲಿ ಭಯ ಹುಟ್ಟಿಸದೆ ಶಾಂತಿಯುತವಾಗಿ ಪ್ರಾಯೋಗಿಕ ವೈದಿಕ ಮಾರ್ಗದರ್ಶನವನ್ನು ಹೇಗೆ ನೀಡುತ್ತೀರಿ?`,
     };
   }
+  if (l === 'ml' || l === 'malayalam') {
+    return {
+      role: 'ai' as const,
+      topic: 'ക്ലയന്റ് കൺസൾട്ടേഷൻ & സഹാനുഭൂതി',
+      text: `നമസ്കാരം ${nameLabel} 🙏! ആസ്ട്രോപരിഹാർ ജ്യോതിഷി തിരഞ്ഞെടുപ്പ് പ്രക്രിയയിലേക്ക് സ്വാഗതം. ആദ്യ ചോദ്യം: കടുത്ത വ്യാപാര നഷ്ടവും കുടുംബ പ്രശ്നങ്ങളുമായി കടുത്ത മാനസിക വിഷമത്തിൽ ഒരു ക്ലയന്റ് നിങ്ങളുടെ അടുക്കൽ വരുമ്പോൾ, അവരിൽ ഭയം ഉണ്ടാക്കാതെ ശാന്തമായി സാത്വിക വേദ ജ്യോതിഷ മാർഗ്ഗനിർദ്ദേശം എങ്ങനെ നൽകും?`,
+    };
+  }
   return {
     role: 'ai' as const,
     topic: 'Client Consulting & Empathy',
@@ -1402,6 +1410,97 @@ export const APPLY_TRANSLATIONS: Record<SupportedLanguage, ApplyTranslation> = {
     tabViolationsLabel: 'ಟ್ಯಾಬ್ ಉಲ್ಲಂಘನೆಗಳು:',
     btnBack: 'ಹಿಂದೆ',
   },
+  ml: {
+    portalTitle: 'ആസ്ട്രോപരിഹാർ ഓൺബോർഡിംഗ് പോർട്ടൽ',
+    portalBadge: 'സ്ഥിരീകരിച്ച ജ്യോതിഷികളുടെ ശൃംഖല',
+    portalSubtitle: 'ജ്യോതിഷികളുടെ യോഗ്യതാ പരിശോധന, വേദ സിദ്ധാന്ത പരീക്ഷ & AI അഭിമുഖം',
+    securityEncrypted: 'സുരക്ഷിത സമർപ്പണം · Gmail SMTP & Firestore സമന്വയം',
+    langSelectLabel: 'പരീക്ഷാ & അപേക്ഷാ ഭാഷ തിരഞ്ഞെടുക്കുക',
+    langSelectDesc: 'എല്ലാ ചോദ്യങ്ങളും കുണ്ഡലി കേസ് സ്റ്റഡിയും AI അഭിമുഖവും നിങ്ങൾ തിരഞ്ഞെടുക്കുന്ന ഭാഷയിലായിരിക്കും.',
+    step1Title: '1. പ്രൊഫൈൽ & KYC',
+    step1Desc: 'വ്യക്തിഗത & യോഗ്യതാ വിവരങ്ങൾ',
+    step2Title: '2. വേദ സിദ്ധാന്തം',
+    step2Desc: 'ജ്യോതിഷ ചോദ്യങ്ങൾ',
+    step3Title: '3. കുണ്ഡലി കേസ്',
+    step3Desc: 'ബ്ലൈൻഡ് ചാർട്ട് വിശകലനം',
+    step4Title: '4. AI അഭിമുഖം',
+    step4Desc: 'വാചാ & ധാർമ്മിക പരീക്ഷ',
+    step5Title: '5. പൂർത്തിയായി',
+    step5Desc: 'അപേക്ഷാ നില',
+    personalInfoSection: '1. വ്യക്തിഗത & ബന്ധപ്പെടാനുള്ള വിവരങ്ങൾ',
+    credentialsSection: '2. ജ്യോതിഷ വിദ്യാഭ്യാസ യോഗ്യതകളും ബിരുദങ്ങളും',
+    kycSection: '3. തിരിച്ചറിയൽ രേഖ & KYC പരിശോധന (ആധാർ & പാൻ നിർബന്ധം)',
+    practiceSection: '4. ജ്യോതിഷ പരിചയവും പ്രത്യേകതകളും',
+    fullNameLabel: 'പൂർണ്ണ നാമം (തിരിച്ചറിയൽ കാർഡ് പ്രകാരം) *',
+    fullNamePlaceholder: 'ഉദാ. ആചാര്യ രാകേഷ് ശർമ്മ',
+    phoneLabel: 'ഫോൺ നമ്പർ *',
+    whatsappLabel: 'വാട്ട്‌സ്ആപ്പ് നമ്പർ *',
+    sameAsPhone: 'വാട്ട്‌സ്ആപ്പ് നമ്പറും ഫോൺ നമ്പറും ഒന്നുതന്നെയാണ്',
+    emailLabel: 'ഇമെയിൽ വിലാസം *',
+    locationLabel: 'നഗരവും സംസ്ഥാനവും *',
+    locationPlaceholder: 'ഉദാ. കൊച്ചി, കേരളം',
+    experienceLabel: 'ആകെ ജ്യോതിഷ പരിചയം *',
+    specialisationLabel: 'പ്രധാന സവിശേഷത *',
+    specialisationHelp: 'ബാധകമായവയെല്ലാം തിരഞ്ഞെടുക്കുക',
+    languagesLabel: 'കൺസൾട്ടേഷൻ ഭാഷകൾ *',
+    languagesHelp: 'ബാധകമായവയെല്ലാം തിരഞ്ഞെടുക്കുക',
+    otherLangPlaceholder: 'ഉദാ. ഒഡിയ, ആസാമീസ്, പഞ്ചാബി...',
+    learningBgLabel: 'ജ്യോതിഷ പാരമ്പര്യം / ഗുരുകുലം / സർവ്വകലാശാല *',
+    learningBgPlaceholder: 'ഉദാ. പരമ്പരാഗത ഗുരുകുലം, ICAS, BHU',
+    certDetailsLabel: 'സർട്ടിഫിക്കറ്റ് / ബിരുദ വിവരങ്ങൾ (ഐച്ഛികം)',
+    certDetailsPlaceholder: 'ഉദാ. ജ്യോതിഷ പ്രവീണ, ജ്യോതിഷ വിശാരദ, ആചാര്യ',
+    bioLabel: 'പ്രൊഫഷണൽ പരിചയവും കൺസൾട്ടേഷൻ രീതിയും',
+    bioPlaceholder: 'നിങ്ങളുടെ ജ്യോതിഷ വിശകലന ശൈലിയും സാത്വിക പരിഹാര രീതിയും വിവരിക്കുക...',
+    btnStartAssessment: 'വേദ സിദ്ധാന്ത പരീക്ഷയിലേക്ക് തുടരുക →',
+    theoryHeader: 'വേദ ജ്യോതിഷ സിദ്ധാന്ത പരീക്ഷ',
+    theorySubtitle: 'ശാസ്ത്രീയ ജ്യോതിഷ തത്വങ്ങൾ, വർഗ്ഗ ചക്രങ്ങൾ, ദശാ വിശകലനം, ധാർമ്മിക മൂല്യങ്ങൾ എന്നിവയുടെ വിലയിരുത്തൽ.',
+    questionSourceLabel: 'ചോദ്യ ഉറവിടം:',
+    curatedModeOn: 'തിരഞ്ഞെടുത്ത ചോദ്യ ശേഖരം [ഓൺ]',
+    aiModeOff: 'AI ഡൈനാമിക് മോഡ് [ഓൺ]',
+    questionsCountLabel: 'ചോദ്യങ്ങളുടെ എണ്ണം:',
+    explanationLabel: 'ശാസ്ത്രീയ വിശദീകരണം:',
+    btnGradeAssessment: 'എന്റെ പരീക്ഷ വിലയിരുത്തുക',
+    btnProceedToChart: 'കുണ്ഡലി കേസ് സ്റ്റഡിയിലേക്ക് തുടരുക →',
+    scoreText: 'സ്കോർ:',
+    passText: 'വിജയിച്ചു',
+    reviewText: 'പുനഃപരിശോധന ആവശ്യമാണ്',
+    answeredCount: 'ഉത്തരം നൽകി',
+    caseHeader: 'ബ്ലൈൻഡ് കുണ്ഡലി കേസ് സ്റ്റഡി',
+    caseSubtitle: 'താഴെ നൽകിയിരിക്കുന്ന ഗ്രഹനില വിശകലനം ചെയ്ത് നിങ്ങളുടെ നിഗമനങ്ങളും സാത്വിക പരിഹാരങ്ങളും എഴുതുക.',
+    caseBadgeCustom: 'കസ്റ്റം ബാങ്ക്',
+    caseBadgeAi: 'AI ഡൈനാമിക് കേസ്',
+    clientQueryLabel: 'ക്ലയന്റിന്റെ ചോദ്യവും പ്രശ്നവും:',
+    lagnaLabel: 'ലഗ്നം (Lagna)',
+    moonSignLabel: 'ജന്മ രാശി (Moon Sign)',
+    dashaLabel: 'നിലവിലെ മഹാദശ',
+    keyPlacementsLabel: 'പ്രധാന ഗ്രഹ നിലകൾ',
+    analysisSectionTitle: 'നിങ്ങളുടെ ജ്യോതിഷ വിശകലനവും സാത്വിക പരിഹാരങ്ങളും',
+    analysisLabel: '1. കുണ്ഡലി വിശകലനവും ശാസ്ത്രീയ യുക്തിയും * (കുറഞ്ഞത് 40 അക്ഷരങ്ങൾ)',
+    analysisPlaceholder: 'ലഗ്നാധിപ ബലം, നവാംശം (D9), ദശാ-ഗോചര സമന്വയം, പരിഹാര സമയം എന്നിവ വിശദീകരിക്കുക...',
+    remediesLabel: '2. നിർദ്ദേശിക്കുന്ന സാത്വിക പരിഹാരങ്ങൾ * (കുറഞ്ഞത് 25 അക്ഷരങ്ങൾ)',
+    remediesPlaceholder: 'ഭയപ്പെടുത്താത്ത സാത്വിക പരിഹാരങ്ങൾ: മന്ത്രങ്ങൾ, സ്തോത്രങ്ങൾ, ദാനം, ധാർമ്മിക ജീവിതശൈലി എന്നിവ നിർദ്ദേശിക്കുക...',
+    btnProceedToInterview: 'കേസ് സ്റ്റഡി സമർപ്പിച്ച് AI അഭിമുഖത്തിലേക്ക് തുടരുക →',
+    btnBackToTheory: '← സിദ്ധാന്ത പരീക്ഷയിലേക്ക് മടങ്ങുക',
+    btnRegenerateCase: 'പുതിയ AI കേസ് സൃഷ്ടിക്കുക',
+    interviewHeader: 'ലൈവ് AI സാങ്കേതിക & ധാർമ്മിക അഭിമുഖം',
+    interviewSubtitle: 'ക്ലയന്റ് കൺസൾട്ടേഷൻ സഹാനുഭൂതി, പരിഹാര ധാർമ്മികത, ഗ്രഹനില സമന്വയം എന്നിവയിലുള്ള 3 ചോദ്യങ്ങളുടെ പരീക്ഷ.',
+    interviewTopicLabel: 'മൂല്യനിർണ്ണയ വിഷയം:',
+    interviewAnswerPlaceholder: 'നിങ്ങളുടെ ജ്യോതിഷ ഉത്തരം വിശദമായി ടൈപ്പ് ചെയ്യുക (കുറഞ്ഞത് 20 അക്ഷരങ്ങൾ)...',
+    btnSendAnswer: 'ഉത്തരം സമർപ്പിക്കുക',
+    btnNextQuestion: 'അടുത്ത ചോദ്യം →',
+    btnFinalSubmit: 'അഭിമുഖം പൂർത്തിയാക്കി അപേക്ഷ സമർപ്പിക്കുക ✓',
+    examinerLabel: 'ആസ്ട്രോപരിഹാർ സീനിയർ ബോർഡ് എക്സാമിനർ',
+    candidateLabel: 'നിങ്ങൾ (അപേക്ഷക ജ്യോതിഷി)',
+    generatingResponse: 'ശാസ്ത്രീയ വേദ നിയമങ്ങൾ അനുസരിച്ച് നിങ്ങളുടെ ഉത്തരം വിലയിരുത്തുന്നു...',
+    submissionTitle: 'അപേക്ഷയും പരീക്ഷയും വിജയകരമായി സമർപ്പിച്ചു!',
+    submissionDesc: 'നിങ്ങളുടെ വിവരങ്ങൾ, സിദ്ധാന്ത പരീക്ഷാ സ്കോർ, കുണ്ഡലി കേസ് വിശകലനം, AI അഭിമുഖ ഉത്തരങ്ങൾ എന്നിവ സുരക്ഷിതമായി രേഖപ്പെടുത്തി.',
+    appRefLabel: 'അപേക്ഷാ റഫറൻസ് നമ്പർ (Application Ref ID)',
+    nextStepsNotice: 'ഞങ്ങളുടെ പരിശോധനാ ബോർഡ് 24-48 മണിക്കൂറിനുള്ളിൽ നിങ്ങളുടെ അപേക്ഷ പരിശോധിക്കും. ഇമെയിൽ, വാട്ട്‌സ്ആപ്പ് വഴി വിവരം അറിയിക്കും.',
+    btnReturnHome: 'ഹോം പേജിലേക്ക് മടങ്ങുക',
+    proctorActive: 'AI പരീക്ഷാ സുരക്ഷാ നിരീക്ഷണം സജീവമാണ്',
+    tabViolationsLabel: 'ടാബ് ലംഘനങ്ങൾ:',
+    btnBack: 'മടങ്ങുക',
+  },
 };
 
 export type ApplyLanguageCode = SupportedLanguage;
@@ -1462,6 +1561,18 @@ export const getLocalizedKundaliCase = (lang: SupportedLanguage = 'en') => {
         '10ನೇ ಭಾವದಲ್ಲಿ (ವೃಷಭ) ಸೂರ್ಯ + ಬುಧ + ರಾಹು ಯುತಿ; 7ನೇ ಭಾವದಲ್ಲಿ (ಕುಂಭ) ಚಂದ್ರನೊಂದಿಗೆ ಶನಿ; 4ನೇ ಭಾವದಲ್ಲಿ (ವೃಶ್ಚಿಕ) ಯೋಗಕಾರಕ ಮಂಗಳ.',
       clientQuestion:
         'ಜಾತಕನು (ವಯಸ್ಸು 34) ವೃತ್ತಿಯಲ್ಲಿ ಹಠಾತ್ ರಾಜಕೀಯ ಮತ್ತು ಸ್ಥಗಿತವನ್ನು ಎದುರಿಸುತ್ತಿದ್ದಾನೆ. ಸಾಡೇ ಸಾತಿಯಿಂದ ಭವಿಷ್ಯ ಹಾಳಾಗುವುದೇ ಎಂಬ ಭಯದಲ್ಲಿದ್ದಾನೆ. ನಿಮ್ಮ ಶಾಸ್ತ್ರೀಯ ವಿಶ್ಲೇಷಣೆ ಮತ್ತು ಸಾತ್ವಿಕ ಪರಿಹಾರಗಳೇನು?',
+    };
+  }
+  if (lang === 'ml') {
+    return {
+      title: 'കേസ് #108: പെട്ടെന്നുള്ള തൊഴിൽ തടസ്സവും ഏഴരശ്ശനിയും',
+      lagna: 'ചിങ്ങം ലഗ്നം (മകം നക്ഷത്രം)',
+      moonSign: 'കുംഭം രാശി (ചതയം നക്ഷത്രം)',
+      dasha: 'രാഹു മഹാദശ — ശനി അന്തർദശ (6 മാസം ബാക്കി)',
+      placements:
+        '10-ാം ഭാവത്തിൽ (ഇടവം) സൂര്യൻ + ബുധൻ + രാഹു യോഗം; 7-ാം ഭാവത്തിൽ (കുംഭം) ചന്ദ്രനോടൊപ്പം ശനി; 4-ാം ഭാവത്തിൽ (വൃശ്ചികം) യോഗകാരകനായ ചൊവ്വ.',
+      clientQuestion:
+        'ജാതകൻ (വയസ്സ് 34) ഉയർന്ന ഐടി പദവിയിൽ പെട്ടെന്നുള്ള തൊഴിൽ തടസ്സങ്ങൾ നേരിടുന്നു. ഏഴരശ്ശനി തന്റെ കരിയർ തകർക്കുമോ എന്ന് ഭയപ്പെടുന്നു. നിങ്ങളുടെ ശാസ്ത്രീയ വിശകലനവും സാത്വിക പരിഹാരങ്ങളും എന്തൊക്കെയാണ്?',
     };
   }
   return {
@@ -1535,9 +1646,24 @@ export const getLocalizedInterviewQuestions = (
           'ಅಷ್ಟಕೂಟ ಮಿಲನದಲ್ಲಿ ನಾಡಿ ದೋಷವಿದ್ದರೂ ರಾಶ್ಯಾಧಿಪತಿ ಮೈತ್ರಿ ಮತ್ತು ನವಾಂಶ ಬಲ ಉತ್ತಮವಾಗಿದ್ದರೆ ನಿಮ್ಮ ಸಲಹೆ ಏನು?',
       },
       {
-        topic: 'ಜ್ಯోತಿಷ್ಯ ನೀತಿ ಸಂಹಿತೆ',
+        topic: 'ಜ್ಯೋತಿಷ್ಯ ನೀತಿ ಸಂಹಿತೆ',
         question:
           '8ನೇ ಭಾವದ ದಶೆಯಿಂದ ಆರೋಗ್ಯದ ಬಗ್ಗೆ ಭಯಭೀತರಾದ ಜಾತಕರಿಗೆ ಒಬ್ಬ ನೈತಿಕ ಜ್ಯೋತಿಷಿಯಾಗಿ ನೀವು ಹೇಗೆ ಮಾರ್ಗದರ್ಶನ ನೀಡುತ್ತೀರಿ?',
+      },
+    ];
+  }
+  if (lang === 'ml') {
+    return [
+      { topic: first.topic, question: first.text },
+      {
+        topic: 'ജാതക പൊരുത്തവും നാഡി ദോഷവും',
+        question:
+          'അഷ്ടകൂട പൊരുത്തത്തിൽ നാഡി ദോഷം കാണുന്നുണ്ടെങ്കിലും രാശ്യാധിപ മൈത്രിയും നവാംശ ബലവും മികച്ചതാണെങ്കിൽ നിങ്ങൾ എന്ത് ഉപദേശം നൽകും?',
+      },
+      {
+        topic: 'ജ്യോതിഷ ധാർമ്മികത',
+        question:
+          '8-ാം ഭാവ ദശ കണ്ട് ആരോഗ്യത്തെയോ ആയുസ്സിനെയോ കുറിച്ച് ഭയപ്പെടുന്ന ക്ലയന്റിന് ഒരു ധാർമ്മിക ജ്യോതിഷിയെന്ന നിലയിൽ നിങ്ങൾ എങ്ങനെ ആത്മവിശ്വാസം നൽകും?',
       },
     ];
   }

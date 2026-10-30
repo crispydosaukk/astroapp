@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "backgroundColor": "#080D1A",
+    "backgroundColor": "#FAF9F6",
     "icon": "./assets/images/app_logo_emblem.png",
     "newArchEnabled": true,
     "ios": { "supportsTablet": false, "bundleIdentifier": "com.example.astroparihar", "icon": "./assets/images/app_logo_emblem.png" },
@@ -28,7 +28,7 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      ["expo-splash-screen", { "backgroundColor": "#080D1A" }],
+      ["expo-splash-screen", { "backgroundColor": "#FAF9F6" }],
       "@react-native-community/datetimepicker",
       [
         "expo-location",

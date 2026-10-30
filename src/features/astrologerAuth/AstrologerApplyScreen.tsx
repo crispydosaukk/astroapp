@@ -56,6 +56,7 @@ import {
 import { LOCAL_APPLICATIONS_KEY } from '@/features/astrologerAuth/AstrologerLoginScreen';
 import { AppRoutes, go, pop, useExtra } from '@/navigation/routes';
 import { AppColors, withAlpha } from '@/theme/colors';
+import { AppLanguage, useLanguageStore } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
 
 const PHONE_CODES = [
@@ -75,13 +76,23 @@ const STRONGEST_AREAS = [
   'Progeny & Education',
 ];
 
-const LANGUAGE_OPTIONS: Array<{ code: ApplyLanguageCode; label: string }> = [
-  { code: 'en', label: '🇬🇧 English' },
-  { code: 'hi', label: '🇮🇳 हिंदी (Hindi)' },
-  { code: 'te', label: '🇮🇳 తెలుగు (Telugu)' },
-  { code: 'ta', label: '🇮🇳 தமிழ் (Tamil)' },
-  { code: 'kn', label: '🇮🇳 ಕನ್ನಡ (Kannada)' },
+const LANGUAGE_OPTIONS: Array<{ code: ApplyLanguageCode; appLang: AppLanguage; label: string }> = [
+  { code: 'en', appLang: 'English', label: '🇬🇧 English' },
+  { code: 'hi', appLang: 'Hindi', label: '🇮🇳 हिंदी (Hindi)' },
+  { code: 'te', appLang: 'Telugu', label: '🇮🇳 తెలుగు (Telugu)' },
+  { code: 'ta', appLang: 'Tamil', label: '🇮🇳 தமிழ் (Tamil)' },
+  { code: 'kn', appLang: 'Kannada', label: '🇮🇳 ಕನ್ನಡ (Kannada)' },
+  { code: 'ml', appLang: 'Malayalam', label: '🇮🇳 മലയാളം (Malayalam)' },
 ];
+
+const APP_LANG_TO_CODE: Record<AppLanguage, ApplyLanguageCode> = {
+  English: 'en',
+  Hindi: 'hi',
+  Telugu: 'te',
+  Tamil: 'ta',
+  Kannada: 'kn',
+  Malayalam: 'ml',
+};
 
 interface UploadedDoc {
   uri: string;
@@ -113,10 +124,21 @@ export default function AstrologerApplyScreen() {
   const colors = useThemeColors();
   const extra = useExtra<{ phone?: string }>();
 
-  // Language & Step State
-  const [selectedLanguage, setSelectedLanguage] = useState<ApplyLanguageCode>('en');
+  // Language & Step State (Synced two-way with global useLanguageStore)
+  const globalLang = useLanguageStore((s) => s.selectedLanguage);
+  const setGlobalLanguage = useLanguageStore((s) => s.setLanguage);
+  const [selectedLanguage, setSelectedLanguage] = useState<ApplyLanguageCode>(
+    () => APP_LANG_TO_CODE[globalLang] || 'en'
+  );
   const [showLanguageSheet, setShowLanguageSheet] = useState(false);
   const t = APPLY_TRANSLATIONS[selectedLanguage] || APPLY_TRANSLATIONS.en;
+
+  useEffect(() => {
+    const mapped = APP_LANG_TO_CODE[globalLang] || 'en';
+    if (mapped !== selectedLanguage) {
+      setSelectedLanguage(mapped);
+    }
+  }, [globalLang]);
 
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const scrollRef = useRef<ScrollView>(null);
@@ -924,7 +946,7 @@ export default function AstrologerApplyScreen() {
                 }}
               >
                 <Text style={{ color: AppColors.success, fontSize: 10, fontWeight: '800' }}>
-                  ✓ Uploaded ({doc.sizeKB} KB)
+                  {`✓ Uploaded (${doc.sizeKB} KB)`}
                 </Text>
               </View>
               <Pressable onPress={() => setPreviewDoc(doc)}>
@@ -1000,52 +1022,12 @@ export default function AstrologerApplyScreen() {
           ref={scrollRef}
           contentContainerStyle={{
             paddingHorizontal: 16,
-            paddingTop: 8,
+            paddingTop: 10,
             paddingBottom: insets.bottom + 36,
           }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Hero Header Banner */}
-          <View
-            style={[
-              styles.heroHeader,
-              {
-                backgroundColor: colors.isLight ? '#2C1410' : colors.surface,
-                borderColor: withAlpha(colors.goldAccent, 80),
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.heroPill,
-                {
-                  backgroundColor: withAlpha(colors.goldAccent, 35),
-                  borderColor: withAlpha(colors.goldAccent, 95),
-                },
-              ]}
-            >
-              <AppIcon name="verified" size={13} color={colors.goldAccent} />
-              <Text
-                style={{
-                  color: colors.goldAccent,
-                  fontSize: 10,
-                  fontWeight: '800',
-                  letterSpacing: 0.7,
-                  marginLeft: 5,
-                }}
-              >
-                {t.portalBadge}
-              </Text>
-            </View>
-            <Text style={{ color: '#F7EFE4', fontSize: 19, fontWeight: '800', marginTop: 10 }}>
-              {t.portalTitle}
-            </Text>
-            <Text style={{ color: 'rgba(247,239,228,0.8)', marginTop: 4, ...lh(12, 1.45) }}>
-              {t.portalSubtitle}
-            </Text>
-          </View>
-
           {/* 5-Step Progress Stepper */}
           <ScrollView
             horizontal
@@ -1250,12 +1232,57 @@ export default function AstrologerApplyScreen() {
                 { backgroundColor: colors.surface, borderColor: colors.cardBorder },
               ]}
             >
-              <Text style={{ color: colors.textPrimary, fontSize: 19, fontWeight: '800' }}>
-                {t.step1Title}
-              </Text>
-              <Text style={{ color: colors.textSecondary, marginTop: 4, ...lh(12.5, 1.4) }}>
-                {t.step1Desc}
-              </Text>
+              {/* Clean Welcome Heading inside Card */}
+              <View style={{ alignItems: 'center', marginBottom: 8 }}>
+                <View
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 16,
+                    backgroundColor: withAlpha(AppColors.primary, colors.isLight ? 18 : 50),
+                    borderWidth: 1.5,
+                    borderColor: withAlpha(colors.goldAccent, 85),
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <AppIcon name="auto_awesome" size={22} color={colors.goldAccent} />
+                </View>
+                <Text
+                  style={{
+                    color: colors.goldAccent,
+                    fontSize: 10.5,
+                    fontWeight: '800',
+                    letterSpacing: 1,
+                    textTransform: 'uppercase',
+                    marginTop: 10,
+                    textAlign: 'center',
+                  }}
+                >
+                  {t.portalBadge}
+                </Text>
+                <Text
+                  style={{
+                    color: colors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: '800',
+                    textAlign: 'center',
+                    marginTop: 4,
+                  }}
+                >
+                  {t.portalTitle}
+                </Text>
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    textAlign: 'center',
+                    marginTop: 4,
+                    ...lh(12.5, 1.4),
+                  }}
+                >
+                  {t.portalSubtitle}
+                </Text>
+              </View>
 
               {/* Section 1: Personal & Contact Details */}
               <View style={[styles.subSectionHeader, { borderBottomColor: colors.divider }]}>
@@ -1263,16 +1290,16 @@ export default function AstrologerApplyScreen() {
                   <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>1</Text>
                 </View>
                 <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '800', marginLeft: 8 }}>
-                  Personal & Contact Details
+                  {t.personalInfoSection.replace(/^\d+\.\s*/, '')}
                 </Text>
               </View>
 
-              <FieldLabel label="Full Name (as per KYC) *" colors={colors} />
+              <FieldLabel label={t.fullNameLabel} colors={colors} />
               <TextInput
                 testID="astrologerApply.nameInput"
                 value={name}
                 onChangeText={setName}
-                placeholder="e.g., Acharya Vishwanath Shastri"
+                placeholder={t.fullNamePlaceholder}
                 placeholderTextColor={colors.textMuted}
                 style={[
                   styles.textInput,
@@ -1284,7 +1311,7 @@ export default function AstrologerApplyScreen() {
                 ]}
               />
 
-              <FieldLabel label="Email Address *" colors={colors} />
+              <FieldLabel label={t.emailLabel} colors={colors} />
               <TextInput
                 testID="astrologerApply.emailInput"
                 value={email}
@@ -1303,7 +1330,7 @@ export default function AstrologerApplyScreen() {
                 ]}
               />
 
-              <FieldLabel label="Calling Phone Number *" colors={colors} />
+              <FieldLabel label={t.phoneLabel} colors={colors} />
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Pressable
                   onPress={() => setShowPhoneCodeSheet('phone')}
@@ -1341,7 +1368,7 @@ export default function AstrologerApplyScreen() {
               </View>
 
               {/* WhatsApp Same as Calling Checkbox */}
-              <FieldLabel label="WhatsApp Number *" colors={colors} />
+              <FieldLabel label={t.whatsappLabel} colors={colors} />
               <Pressable
                 onPress={() => setWhatsappSameAsPhone(!whatsappSameAsPhone)}
                 style={[
@@ -1366,7 +1393,7 @@ export default function AstrologerApplyScreen() {
                   ) : null}
                 </View>
                 <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600', flex: 1 }}>
-                  My WhatsApp number is the same as my Calling Number
+                  {t.sameAsPhone}
                 </Text>
               </Pressable>
 
@@ -1389,7 +1416,7 @@ export default function AstrologerApplyScreen() {
                       marginLeft: 8,
                     }}
                   >
-                    WhatsApp Synced: {phoneCode} {phone || '••••••••••'}
+                    {`WhatsApp Synced: ${phoneCode} ${phone || '••••••••••'}`}
                   </Text>
                 </View>
               ) : (
@@ -1435,16 +1462,16 @@ export default function AstrologerApplyScreen() {
                   <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>2</Text>
                 </View>
                 <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '800', marginLeft: 8 }}>
-                  Qualifications & Mandatory KYC Uploads
+                  {t.credentialsSection.replace(/^\d+\.\s*/, '')}
                 </Text>
               </View>
 
-              <FieldLabel label="Astrological Qualification / Lineage (Guru / Institute) *" colors={colors} />
+              <FieldLabel label={t.learningBgLabel} colors={colors} />
               <TextInput
                 testID="astrologerApply.qualificationInput"
                 value={qualification}
                 onChangeText={setQualification}
-                placeholder="e.g., Jyotish Acharya - BHU, ICAS, or Parampara"
+                placeholder={t.learningBgPlaceholder}
                 placeholderTextColor={colors.textMuted}
                 style={[
                   styles.textInput,
@@ -1456,11 +1483,11 @@ export default function AstrologerApplyScreen() {
                 ]}
               />
 
-              <FieldLabel label="Highest Certification / Degree Title" colors={colors} />
+              <FieldLabel label={t.certDetailsLabel} colors={colors} />
               <TextInput
                 value={certificationTitle}
                 onChangeText={setCertificationTitle}
-                placeholder="e.g., Gold Medalist, PhD in Vastu & Jyotish"
+                placeholder={t.certDetailsPlaceholder}
                 placeholderTextColor={colors.textMuted}
                 style={[
                   styles.textInput,
@@ -1780,7 +1807,7 @@ export default function AstrologerApplyScreen() {
                         textTransform: 'uppercase',
                       }}
                     >
-                      Attached Supporting Documents ({supportingDocs.length})
+                      {`Attached Supporting Documents (${supportingDocs.length})`}
                     </Text>
                     {supportingDocs.map((doc, idx) => {
                       const isImg =
@@ -1865,11 +1892,11 @@ export default function AstrologerApplyScreen() {
                   <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>3</Text>
                 </View>
                 <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '800', marginLeft: 8 }}>
-                  Practice, Specialisations & Languages
+                  {t.practiceSection.replace(/^\d+\.\s*/, '')}
                 </Text>
               </View>
 
-              <FieldLabel label="Primary Specialisations (Select Multiple) *" colors={colors} />
+              <FieldLabel label={t.specialisationLabel} colors={colors} />
               <Pressable
                 onPress={() => setShowSpecsSheet(true)}
                 style={[
@@ -1909,7 +1936,7 @@ export default function AstrologerApplyScreen() {
                           fontWeight: '700',
                         }}
                       >
-                        {spec} ×
+                        {`${spec} ×`}
                       </Text>
                     </Pressable>
                   ))}
@@ -1955,7 +1982,7 @@ export default function AstrologerApplyScreen() {
 
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={{ flex: 1 }}>
-                  <FieldLabel label="Total Experience (Years) *" colors={colors} />
+                  <FieldLabel label={t.experienceLabel} colors={colors} />
                   <TextInput
                     testID="astrologerApply.experienceInput"
                     value={experience}
@@ -1974,12 +2001,12 @@ export default function AstrologerApplyScreen() {
                   />
                 </View>
                 <View style={{ flex: 1.3 }}>
-                  <FieldLabel label="Current City & State *" colors={colors} />
+                  <FieldLabel label={t.locationLabel} colors={colors} />
                   <TextInput
                     testID="astrologerApply.cityInput"
                     value={city}
                     onChangeText={setCity}
-                    placeholder="e.g., Varanasi, UP"
+                    placeholder={t.locationPlaceholder}
                     placeholderTextColor={colors.textMuted}
                     style={[
                       styles.textInput,
@@ -1993,7 +2020,7 @@ export default function AstrologerApplyScreen() {
                 </View>
               </View>
 
-              <FieldLabel label="Consultation Languages (Select Multiple) *" colors={colors} />
+              <FieldLabel label={t.languagesLabel} colors={colors} />
               <Pressable
                 onPress={() => setShowLangsSheet(true)}
                 style={[
@@ -2033,7 +2060,7 @@ export default function AstrologerApplyScreen() {
                           fontWeight: '700',
                         }}
                       >
-                        {lang} ×
+                        {`${lang} ×`}
                       </Text>
                     </Pressable>
                   ))}
@@ -2046,7 +2073,7 @@ export default function AstrologerApplyScreen() {
                   <TextInput
                     value={otherLangText}
                     onChangeText={setOtherLangText}
-                    placeholder="e.g., Assamese, Maithili, Nepali, French"
+                    placeholder={t.otherLangPlaceholder}
                     placeholderTextColor={colors.textMuted}
                     style={[
                       styles.textInput,
@@ -2060,12 +2087,12 @@ export default function AstrologerApplyScreen() {
                 </View>
               ) : null}
 
-              <FieldLabel label="Brief Professional Bio & Remedy Philosophy *" colors={colors} />
+              <FieldLabel label={t.bioLabel} colors={colors} />
               <TextInput
                 testID="astrologerApply.bioInput"
                 value={bio}
                 onChangeText={setBio}
-                placeholder="Describe your Vedic lineage, consultation methodology, and approach to Sattvic Parihar remedies..."
+                placeholder={t.bioPlaceholder}
                 placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={4}
@@ -2200,7 +2227,7 @@ export default function AstrologerApplyScreen() {
                             fontWeight: '800',
                           }}
                         >
-                          {cnt} Qs
+                          {`${cnt} Qs`}
                         </Text>
                       </Pressable>
                     ))}
@@ -2261,7 +2288,7 @@ export default function AstrologerApplyScreen() {
                           textDecorationLine: 'underline',
                         }}
                       >
-                        ⚖️ {showCriteriaBreakdown ? 'Hide Weights' : 'Scoring Weights'}
+                        {`⚖️ ${showCriteriaBreakdown ? 'Hide Weights' : 'Scoring Weights'}`}
                       </Text>
                     </Pressable>
                   </View>
@@ -2298,7 +2325,7 @@ export default function AstrologerApplyScreen() {
                         ))}
                       </View>
                       <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 4 }}>
-                        Composite Weightage: Theory ({weights.theory}%) • Kundali Case ({weights.kundali}%) • AI Viva ({weights.interview}%)
+                        {`Composite Weightage: Theory (${weights.theory}%) • Kundali Case (${weights.kundali}%) • AI Viva (${weights.interview}%)`}
                       </Text>
                     </View>
                   ) : null}
@@ -2356,7 +2383,7 @@ export default function AstrologerApplyScreen() {
                                 textTransform: 'uppercase',
                               }}
                             >
-                              Q{idx + 1} • {topicText}
+                              {`Q${idx + 1} • ${topicText}`}
                             </Text>
                           </View>
                           <Text style={{ color: colors.textMuted, fontSize: 10.5, fontWeight: '600' }}>
@@ -2513,10 +2540,11 @@ export default function AstrologerApplyScreen() {
                         flex: 1,
                       }}
                     >
-                      Theory Score: {theoryScore}%{' '}
-                      {theoryScore >= passingThreshold
-                        ? '— Passed Cutoff!'
-                        : `(Cutoff: ${passingThreshold}%)`}
+                      {`Theory Score: ${theoryScore}% ${
+                        theoryScore >= passingThreshold
+                          ? '— Passed Cutoff!'
+                          : `(Cutoff: ${passingThreshold}%)`
+                      }`}
                     </Text>
                   </View>
                 ) : null}
@@ -2658,7 +2686,7 @@ export default function AstrologerApplyScreen() {
                 style={[
                   styles.caseScenarioCard,
                   {
-                    backgroundColor: colors.isLight ? '#2C1410' : colors.surfaceVariant,
+                    backgroundColor: colors.surfaceVariant,
                     borderColor: withAlpha(colors.goldAccent, 95),
                   },
                 ]}
@@ -2678,7 +2706,7 @@ export default function AstrologerApplyScreen() {
                   </View>
                   <Text
                     style={{
-                      color: '#FDE68A',
+                      color: colors.textPrimary,
                       fontSize: 13.5,
                       fontWeight: '800',
                       marginLeft: 8,
@@ -2691,24 +2719,24 @@ export default function AstrologerApplyScreen() {
 
                 <View style={{ gap: 8 }}>
                   {[
-                    { label: 'Lagna (Ascendant)', val: activeKundaliCase.lagna },
-                    { label: 'Moon Sign (Rashi)', val: activeKundaliCase.moonSign },
-                    { label: 'Current Mahadasha', val: activeKundaliCase.dasha },
-                    { label: 'Key Planetary Placements', val: activeKundaliCase.placements },
+                    { label: t.lagnaLabel, val: activeKundaliCase.lagna },
+                    { label: t.moonSignLabel, val: activeKundaliCase.moonSign },
+                    { label: t.dashaLabel, val: activeKundaliCase.dasha },
+                    { label: t.keyPlacementsLabel, val: activeKundaliCase.placements },
                   ].map((item) => (
                     <View
                       key={item.label}
                       style={{
-                        backgroundColor: 'rgba(255,255,255,0.06)',
+                        backgroundColor: colors.surface,
                         borderRadius: 12,
                         padding: 10,
                         borderWidth: 1,
-                        borderColor: 'rgba(201,168,76,0.22)',
+                        borderColor: colors.cardBorder,
                       }}
                     >
                       <Text
                         style={{
-                          color: 'rgba(253,230,138,0.7)',
+                          color: colors.goldAccent,
                           fontSize: 10,
                           fontWeight: '800',
                           textTransform: 'uppercase',
@@ -2718,7 +2746,7 @@ export default function AstrologerApplyScreen() {
                       </Text>
                       <Text
                         style={{
-                          color: '#FFFFFF',
+                          color: colors.textPrimary,
                           fontSize: 12.5,
                           fontWeight: '600',
                           marginTop: 2,
@@ -2733,26 +2761,26 @@ export default function AstrologerApplyScreen() {
                 <View
                   style={{
                     marginTop: 10,
-                    backgroundColor: 'rgba(201, 168, 76, 0.16)',
+                    backgroundColor: withAlpha(colors.goldAccent, 22),
                     borderRadius: 12,
                     padding: 12,
                     borderWidth: 1,
-                    borderColor: 'rgba(201, 168, 76, 0.4)',
+                    borderColor: withAlpha(colors.goldAccent, 95),
                   }}
                 >
                   <Text
                     style={{
-                      color: '#FDE68A',
+                      color: colors.isLight ? AppColors.primary : colors.goldAccent,
                       fontSize: 10.5,
                       fontWeight: '800',
                       textTransform: 'uppercase',
                     }}
                   >
-                    Client&apos;s Question & Dilemma:
+                    {t.clientQueryLabel}
                   </Text>
                   <Text
                     style={{
-                      color: '#FFFBEB',
+                      color: colors.textPrimary,
                       fontWeight: '600',
                       marginTop: 4,
                       ...lh(12.5, 1.45),
@@ -2763,12 +2791,12 @@ export default function AstrologerApplyScreen() {
                 </View>
               </View>
 
-              <FieldLabel label={`1. ${t.analysisLabel}`} colors={colors} />
+              <FieldLabel label={t.analysisLabel} colors={colors} />
               <TextInput
                 testID="astrologerApply.kundaliAnalysisInput"
                 value={kundaliAnalysis}
                 onChangeText={setKundaliAnalysis}
-                placeholder="Explain the role of the 10th house planets, Saturn's aspect, Dasha sandhi, and timing of career recovery..."
+                placeholder={t.analysisPlaceholder}
                 placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={4}
@@ -2782,12 +2810,12 @@ export default function AstrologerApplyScreen() {
                 ]}
               />
 
-              <FieldLabel label={`2. ${t.remediesLabel}`} colors={colors} />
+              <FieldLabel label={t.remediesLabel} colors={colors} />
               <TextInput
                 testID="astrologerApply.kundaliRemediesInput"
                 value={kundaliRemedies}
                 onChangeText={setKundaliRemedies}
-                placeholder="Suggest practical, non-fear-inducing Vedic Parihar remedies (Mantras, Daan, Karma correction)..."
+                placeholder={t.remediesPlaceholder}
                 placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={3}
@@ -2880,7 +2908,7 @@ export default function AstrologerApplyScreen() {
                     </Text>
                   </View>
                   <Text style={{ color: colors.textMuted, fontSize: 10.5, marginTop: 3 }}>
-                    Round {Math.min(interviewRound + 1, 3)} / 3
+                    {`Round ${Math.min(interviewRound + 1, 3)} / 3`}
                   </Text>
                 </View>
               </View>
@@ -2916,7 +2944,7 @@ export default function AstrologerApplyScreen() {
                           marginBottom: 3,
                         }}
                       >
-                        AI Vedic Examiner • {item.topic}
+                        {`AI Vedic Examiner • ${item.topic}`}
                       </Text>
                       <Text style={{ color: colors.textPrimary, fontSize: 13 }}>
                         {item.question}
@@ -2942,7 +2970,7 @@ export default function AstrologerApplyScreen() {
                         }}
                       >
                         <Text style={{ color: '#FDE68A', fontSize: 10.5, fontWeight: '800' }}>
-                          AI Score: {item.score}/100
+                          {`AI Score: ${item.score}/100`}
                         </Text>
                         <Text
                           numberOfLines={1}
@@ -2991,7 +3019,7 @@ export default function AstrologerApplyScreen() {
                           textTransform: 'uppercase',
                         }}
                       >
-                        Live Question #{interviewRound + 1} • {currentInterviewQuestion.topic}
+                        {`Live Question #${interviewRound + 1} • ${currentInterviewQuestion.topic}`}
                       </Text>
                     </View>
                     <Text
@@ -3014,7 +3042,7 @@ export default function AstrologerApplyScreen() {
                     testID="astrologerApply.interviewAnswerInput"
                     value={currentAnswer}
                     onChangeText={setCurrentAnswer}
-                    placeholder="Type your astrological explanation here (minimum 20 characters)..."
+                    placeholder={t.interviewAnswerPlaceholder}
                     placeholderTextColor={colors.textMuted}
                     multiline
                     numberOfLines={3}
@@ -3036,7 +3064,7 @@ export default function AstrologerApplyScreen() {
                     }}
                   >
                     <Text style={{ color: colors.textMuted, fontSize: 11 }}>
-                      {currentAnswer.trim().length} chars (min 20 required)
+                      {`${currentAnswer.trim().length} chars (min 20 required)`}
                     </Text>
                     <ElevatedButton
                       testID="astrologerApply.sendInterviewAnswerBtn"
@@ -3082,7 +3110,7 @@ export default function AstrologerApplyScreen() {
                       marginTop: 4,
                     }}
                   >
-                    AI Viva Score: {interviewAvgScore}% • Composite Score: {overallCompositeScore}%
+                    {`AI Viva Score: ${interviewAvgScore}% • Composite Score: ${overallCompositeScore}%`}
                   </Text>
 
                   <ElevatedButton
@@ -3181,14 +3209,14 @@ export default function AstrologerApplyScreen() {
                 style={[
                   styles.compositeCard,
                   {
-                    backgroundColor: colors.isLight ? '#2C1410' : colors.surfaceVariant,
+                    backgroundColor: colors.surfaceVariant,
                     borderColor: withAlpha(colors.goldAccent, 95),
                   },
                 ]}
               >
                 <Text
                   style={{
-                    color: 'rgba(253,230,138,0.75)',
+                    color: colors.textSecondary,
                     fontSize: 10.5,
                     fontWeight: '800',
                     textTransform: 'uppercase',
@@ -3199,7 +3227,7 @@ export default function AstrologerApplyScreen() {
                 </Text>
                 <Text
                   style={{
-                    color: '#FDE68A',
+                    color: colors.goldAccent,
                     fontSize: 38,
                     fontWeight: '800',
                     marginTop: 4,
@@ -3215,13 +3243,13 @@ export default function AstrologerApplyScreen() {
                     borderRadius: 100,
                     backgroundColor:
                       overallCompositeScore >= passingThreshold
-                        ? 'rgba(45, 158, 107, 0.25)'
-                        : 'rgba(212, 130, 26, 0.25)',
+                        ? 'rgba(45, 158, 107, 0.2)'
+                        : 'rgba(212, 130, 26, 0.2)',
                   }}
                 >
                   <Text
                     style={{
-                      color: overallCompositeScore >= passingThreshold ? '#4ADE80' : '#FCD34D',
+                      color: overallCompositeScore >= passingThreshold ? AppColors.success : AppColors.warning,
                       fontSize: 11,
                       fontWeight: '800',
                     }}
@@ -3238,7 +3266,7 @@ export default function AstrologerApplyScreen() {
                     marginTop: 16,
                     paddingTop: 14,
                     borderTopWidth: 1,
-                    borderTopColor: 'rgba(201,168,76,0.25)',
+                    borderTopColor: colors.divider,
                     width: '100%',
                   }}
                 >
@@ -3253,16 +3281,16 @@ export default function AstrologerApplyScreen() {
                         { flex: 1, alignItems: 'center' },
                         idx < 2 && {
                           borderRightWidth: 1,
-                          borderRightColor: 'rgba(201,168,76,0.2)',
+                          borderRightColor: colors.divider,
                         },
                       ]}
                     >
-                      <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>
+                      <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
                         {col.val}
                       </Text>
                       <Text
                         style={{
-                          color: 'rgba(253,230,138,0.7)',
+                          color: colors.textSecondary,
                           fontSize: 10,
                           marginTop: 2,
                         }}
@@ -3360,12 +3388,11 @@ export default function AstrologerApplyScreen() {
       >
         <SheetContainer style={{ padding: 20 }}>
           <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800', marginTop: 8 }}>
-            Upload{' '}
             {uploadTarget === 'aadhaar'
-              ? 'Aadhaar Card'
+              ? 'Upload Aadhaar Card'
               : uploadTarget === 'pan'
-              ? 'PAN Card'
-              : 'Supporting Certificate'}
+              ? 'Upload PAN Card'
+              : 'Upload Supporting Certificate'}
           </Text>
           <Text style={{ color: colors.textSecondary, fontSize: 12.5, marginTop: 4 }}>
             Choose how you would like to upload your clear document (Max 5MB):
@@ -3460,13 +3487,14 @@ export default function AstrologerApplyScreen() {
       >
         <SheetContainer style={{ padding: 20 }}>
           <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800', marginBottom: 12 }}>
-            Select Assessment Language
+            {t.langSelectLabel}
           </Text>
           {LANGUAGE_OPTIONS.map((lang) => (
             <Pressable
               key={lang.code}
               onPress={() => {
                 setSelectedLanguage(lang.code);
+                setGlobalLanguage(lang.appLang);
                 setShowLanguageSheet(false);
               }}
               style={[
@@ -3733,7 +3761,7 @@ export default function AstrologerApplyScreen() {
               {previewDoc.name}
             </Text>
             <Text style={{ color: AppColors.success, fontSize: 11.5, fontWeight: '700', marginTop: 4 }}>
-              ✓ Ready for Submission • {previewDoc.sizeKB} KB
+              {`✓ Ready for Submission • ${previewDoc.sizeKB} KB`}
             </Text>
             {previewDoc.mimeType.startsWith('image/') ||
             (previewDoc.dataUrl && previewDoc.dataUrl.startsWith('data:image/')) ? (
@@ -3766,7 +3794,7 @@ export default function AstrologerApplyScreen() {
                   PDF Document Attached
                 </Text>
                 <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
-                  Encoded as Base64 ({previewDoc.sizeKB} KB) for Vedic Verification Board review.
+                  {`Encoded as Base64 (${previewDoc.sizeKB} KB) for Vedic Verification Board review.`}
                 </Text>
               </View>
             )}

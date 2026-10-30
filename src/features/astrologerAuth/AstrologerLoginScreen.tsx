@@ -13,7 +13,6 @@
  *    persists `astro_verified_session` and navigates to `AstrologerDashboardScreen`.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -24,19 +23,37 @@ import {
   ScrollView,
   StyleSheet,
   TextInput as RNTextInput,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton } from '@/components/common';
-import { Dialog, showSnackBar } from '@/components/overlays';
+import { BottomSheet, Dialog, SheetContainer, showSnackBar } from '@/components/overlays';
 import { lh, Text, TextInput } from '@/components/Text';
 import { API_ENDPOINTS } from '@/config/api';
 import { AppRoutes, go, pop, push, useExtra } from '@/navigation/routes';
 import { AppColors, withAlpha } from '@/theme/colors';
+import { AppLanguage, useLanguageStore } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
+
+const LANG_CODE_MAP: Record<AppLanguage, string> = {
+  English: 'EN',
+  Hindi: 'HI',
+  Telugu: 'TE',
+  Tamil: 'TA',
+  Kannada: 'KN',
+  Malayalam: 'ML',
+};
+
+const PORTAL_LANGUAGE_OPTIONS: Array<{ code: AppLanguage; label: string }> = [
+  { code: 'English', label: 'English' },
+  { code: 'Hindi', label: 'हिन्दी (Hindi)' },
+  { code: 'Telugu', label: 'తెలుగు (Telugu)' },
+  { code: 'Tamil', label: 'தமிழ் (Tamil)' },
+  { code: 'Kannada', label: 'ಕನ್ನಡ (Kannada)' },
+  { code: 'Malayalam', label: 'മലയാളം (Malayalam)' },
+];
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'India', flag: '🇮🇳' },
@@ -55,7 +72,6 @@ export const LOCAL_APPLICATIONS_KEY = 'astroparihar_local_astrologer_application
 type ErrorType = 'not_registered' | 'pending_approval' | 'general' | null;
 
 export default function AstrologerLoginScreen() {
-  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const extra = useExtra<{ phone?: string }>();
@@ -72,6 +88,9 @@ export default function AstrologerLoginScreen() {
   const [timer, setTimer] = useState(0);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [astrologerName, setAstrologerName] = useState('Acharya');
+  const [showLanguageSheet, setShowLanguageSheet] = useState(false);
+  const globalLanguage = useLanguageStore((s) => s.selectedLanguage);
+  const setGlobalLanguage = useLanguageStore((s) => s.setLanguage);
 
   const otpRefs = [
     useRef<RNTextInput>(null),
@@ -286,6 +305,37 @@ export default function AstrologerLoginScreen() {
         title="Astrologer Portal"
         onBack={pop}
         testIDPrefix="astrologerLogin.appBar"
+        actions={[
+          <Pressable
+            key="lang"
+            testID="astrologerLogin.languageBtn"
+            onPress={() => setShowLanguageSheet(true)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 100,
+              borderWidth: 1,
+              marginRight: 8,
+              backgroundColor: colors.surfaceVariant,
+              borderColor: colors.cardBorder,
+            }}
+          >
+            <AppIcon name="translate" size={14} color={colors.goldAccent} />
+            <Text
+              style={{
+                color: colors.textPrimary,
+                fontSize: 11.5,
+                fontWeight: '700',
+                marginLeft: 4,
+              }}
+            >
+              {LANG_CODE_MAP[globalLanguage] || 'EN'}
+            </Text>
+            <AppIcon name="arrow_drop_down_rounded" size={16} color={colors.goldAccent} />
+          </Pressable>,
+        ]}
       />
 
       <KeyboardAvoidingView
@@ -294,94 +344,15 @@ export default function AstrologerLoginScreen() {
       >
         <ScrollView
           contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 8,
-            paddingBottom: insets.bottom + 32,
+            paddingHorizontal: 22,
+            paddingTop: 16,
+            paddingBottom: insets.bottom + 28,
             flexGrow: 1,
+            justifyContent: 'center',
           }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Hero Branding Banner */}
-          <View
-            style={[
-              styles.heroBanner,
-              {
-                backgroundColor: colors.isLight ? '#2C1410' : colors.surface,
-                borderColor: withAlpha(colors.goldAccent, 80),
-              },
-            ]}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View
-                style={[
-                  styles.verifiedPill,
-                  {
-                    backgroundColor: withAlpha(colors.goldAccent, 35),
-                    borderColor: withAlpha(colors.goldAccent, 90),
-                  },
-                ]}
-              >
-                <AppIcon name="auto_awesome" size={12} color={colors.goldAccent} />
-                <Text
-                  style={{
-                    color: colors.goldAccent,
-                    fontSize: 10,
-                    fontWeight: '800',
-                    letterSpacing: 1,
-                    marginLeft: 5,
-                  }}
-                >
-                  VERIFIED VEDIC PLATFORM
-                </Text>
-              </View>
-              <View style={{ width: Math.min(width * 0.24, 92), height: 34 }}>
-                <Image
-                  source={require('@/../assets/images/app_logo.png')}
-                  style={{ width: '100%', height: '100%' }}
-                  contentFit="contain"
-                />
-              </View>
-            </View>
-
-            <Text style={{ color: '#F7EFE4', fontSize: 22, fontWeight: '800', marginTop: 14 }}>
-              Welcome to the{' '}
-              <Text style={{ color: colors.goldAccent, fontWeight: '800' }}>Astrologer Portal</Text>
-            </Text>
-            <Text style={{ color: 'rgba(247,239,228,0.78)', marginTop: 6, ...lh(12.5, 1.45) }}>
-              Access your live consultation queue, interactive Kundli desk, remedies, and real-time earnings dashboard.
-            </Text>
-
-            {/* Platform Trust Metrics Strip */}
-            <View
-              style={[
-                styles.statsRow,
-                { borderTopColor: 'rgba(201,168,76,0.22)' },
-              ]}
-            >
-              {[
-                { num: '500+', label: 'Astrologers' },
-                { num: '4.9★', label: 'App Rating' },
-                { num: '18L+', label: 'Reports' },
-              ].map((s, idx) => (
-                <View
-                  key={s.label}
-                  style={[
-                    styles.statItem,
-                    idx < 2 && { borderRightWidth: 1, borderRightColor: 'rgba(201,168,76,0.18)' },
-                  ]}
-                >
-                  <Text style={{ color: colors.goldAccent, fontSize: 15, fontWeight: '800' }}>
-                    {s.num}
-                  </Text>
-                  <Text style={{ color: 'rgba(247,239,228,0.68)', fontSize: 10.5, marginTop: 2 }}>
-                    {s.label}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
           {/* Main Auth Card */}
           <View
             style={[
@@ -393,39 +364,51 @@ export default function AstrologerLoginScreen() {
             ]}
           >
             {/* Card Header */}
-            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+            <View style={{ alignItems: 'center', marginBottom: 22 }}>
               <View
                 style={[
                   styles.iconCircle,
                   {
-                    backgroundColor: withAlpha(AppColors.primary, colors.isLight ? 24 : 60),
-                    borderColor: withAlpha(colors.goldAccent, 90),
+                    backgroundColor: withAlpha(AppColors.primary, colors.isLight ? 18 : 50),
+                    borderColor: withAlpha(colors.goldAccent, 85),
                   },
                 ]}
               >
-                <AppIcon name="auto_awesome" size={24} color={colors.goldAccent} />
+                <AppIcon name="auto_awesome" size={22} color={colors.goldAccent} />
               </View>
               <Text
                 style={{
-                  color: colors.textPrimary,
-                  fontSize: 21,
+                  color: colors.goldAccent,
+                  fontSize: 11,
                   fontWeight: '800',
-                  textAlign: 'center',
+                  letterSpacing: 1.2,
+                  textTransform: 'uppercase',
                   marginTop: 12,
                 }}
               >
-                {step === 'phone' ? 'Astrologer Sign In' : 'Enter Verification OTP'}
+                {step === 'phone' ? 'Welcome to Astrologer Portal' : 'OTP Verification'}
+              </Text>
+              <Text
+                style={{
+                  color: colors.textPrimary,
+                  fontSize: 22,
+                  fontWeight: '800',
+                  textAlign: 'center',
+                  marginTop: 4,
+                }}
+              >
+                {step === 'phone' ? 'Sign In for Astrologers' : 'Enter Verification OTP'}
               </Text>
               <Text
                 style={{
                   color: colors.textSecondary,
                   textAlign: 'center',
                   marginTop: 6,
-                  ...lh(13, 1.4),
+                  ...lh(13, 1.45),
                 }}
               >
                 {step === 'phone'
-                  ? 'Enter your registered mobile number to receive a 4-digit verification OTP'
+                  ? 'Enter your registered mobile number to receive a 4-digit verification code.'
                   : `Verification code sent to ${fullPhoneNumber}`}
               </Text>
             </View>
@@ -676,7 +659,7 @@ export default function AstrologerLoginScreen() {
                                   textTransform: 'uppercase',
                                 }}
                               >
-                                Status: {applicationStatus}
+                                {`Status: ${applicationStatus}`}
                               </Text>
                             </View>
                           ) : null}
@@ -946,7 +929,7 @@ export default function AstrologerLoginScreen() {
               textAlign: 'center',
             }}
           >
-            Namaste, {astrologerName} Ji! 🙏
+            {`Namaste, ${astrologerName} Ji! 🙏`}
           </Text>
           <Text
             style={{
@@ -960,6 +943,41 @@ export default function AstrologerLoginScreen() {
           </Text>
         </View>
       </Dialog>
+
+      {/* Language Selector Bottom Sheet */}
+      <BottomSheet
+        visible={showLanguageSheet}
+        onClose={() => setShowLanguageSheet(false)}
+      >
+        <SheetContainer style={{ padding: 20 }}>
+          <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800', marginBottom: 12 }}>
+            Select Language
+          </Text>
+          {PORTAL_LANGUAGE_OPTIONS.map((lang) => (
+            <Pressable
+              key={lang.code}
+              onPress={() => {
+                setGlobalLanguage(lang.code);
+                setShowLanguageSheet(false);
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: 13,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.divider,
+              }}
+            >
+              <Text style={{ color: colors.textPrimary, fontSize: 14.5, fontWeight: '700', flex: 1 }}>
+                {lang.label}
+              </Text>
+              {globalLanguage === lang.code ? (
+                <AppIcon name="check_circle" size={20} color={colors.goldAccent} />
+              ) : null}
+            </Pressable>
+          ))}
+        </SheetContainer>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -967,30 +985,6 @@ export default function AstrologerLoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  heroBanner: {
-    borderRadius: 22,
-    borderWidth: 1,
-    padding: 20,
-    marginBottom: 18,
-  },
-  verifiedPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 100,
-    borderWidth: 1,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    marginTop: 18,
-    paddingTop: 14,
-    borderTopWidth: 1,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
   },
   card: {
     borderRadius: 24,
