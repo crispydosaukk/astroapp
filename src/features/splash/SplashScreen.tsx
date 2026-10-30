@@ -2,7 +2,6 @@ import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, useWindowDimensions, View } from 'react-native';
-import { Text } from '@/components/Text';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, go } from '@/navigation/routes';
 import { withAlpha } from '@/theme/colors';
@@ -109,10 +108,10 @@ export default function SplashScreen() {
   });
 
   // Calculate balanced proportions with comfortable margins on any screen size
-  const wheelSize = Math.min(width * 0.76, height * 0.38, 290);
+  const wheelSize = Math.min(width * 0.78, height * 0.42, 300);
   const emblemSize = wheelSize * 0.334;
-  const logoWidth = Math.min(width * 0.54, 210);
-  const logoHeight = logoWidth * 0.44;
+  const logoWidth = Math.min(width * 0.68, 260);
+  const logoHeight = logoWidth * (231 / 423);
 
   return (
     <View
@@ -136,25 +135,13 @@ export default function SplashScreen() {
           width: '100%',
         }}
       >
-        {/* Top: AstroParihar Branding Logo */}
-        <View style={{ width: logoWidth, height: logoHeight, marginBottom: 16 }}>
-          <Image
-            source={require('@/../assets/images/app_logo.png')}
-            style={{ width: '100%', height: '100%' }}
-            contentFit="contain"
-            priority="high"
-            accessibilityLabel="AstroParihar Logo"
-          />
-        </View>
-
-        {/* Center: Animated Rotating Ashta Parihar Wheel with Constant Center Emblem */}
+        {/* Top/Center: Animated Rotating Ashta Parihar Wheel with Constant Center Emblem */}
         <View
           style={{
             width: wheelSize,
             height: wheelSize,
             alignItems: 'center',
             justifyContent: 'center',
-            marginVertical: 14,
           }}
         >
           {/* Ambient Glowing Aura behind the wheel */}
@@ -220,21 +207,15 @@ export default function SplashScreen() {
           </View>
         </View>
 
-        {/* Bottom: Sacred Sanskrit Inscription & Vedic Tagline */}
-        <View style={{ marginTop: 18, alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-            <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.goldAccent }} />
-            <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '800', letterSpacing: 2 }}>
-              ASHTADIGBANDHANA
-            </Text>
-            <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.goldAccent }} />
-          </View>
-          <Text style={{ color: colors.textSecondary, fontSize: 12.5, fontWeight: '600', letterSpacing: 0.5, textAlign: 'center' }}>
-            ॥ आठों दिशाओं की रक्षा • सम्पूर्ण अष्टदिग्बन्धन ॥
-          </Text>
-          <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 11, fontWeight: '500', letterSpacing: 0.3 }}>
-            Ancient Vedic Wisdom • Luminous Guidance
-          </Text>
+        {/* Below the Wheel: AstroParihar Text-Only Logo (Hand emblem removed) */}
+        <View style={{ width: logoWidth, height: logoHeight, marginTop: 24, alignItems: 'center', justifyContent: 'center' }}>
+          <Image
+            source={require('@/../assets/images/app_logo_text.png')}
+            style={{ width: '100%', height: '100%' }}
+            contentFit="contain"
+            priority="high"
+            accessibilityLabel="AstroParihar Text Logo"
+          />
         </View>
       </Animated.View>
     </View>
