@@ -89,52 +89,6 @@ export const DEFAULT_COSMIC_INSIGHTS: CosmicInsight[] = [
   },
 ];
 
-export const DEFAULT_REAL_ASTROLOGERS: LiveAstrologer[] = [
-  {
-    id: '8No3bTeCRKRdQ2c1AVXi9ZGvSGc2',
-    name: 'Sharma',
-    specialty: 'Numerology & Vedic Astrology',
-    experience: '12+ Yrs',
-    rating: 4.95,
-    reviews: '0.9k',
-    price: 20,
-    isOnline: true,
-    isAi: false,
-    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
-    languages: 'English',
-    semanticLabel: 'Sharma - Verified Vedic & Numerology Astrologer',
-  },
-  {
-    id: 'AaQbqgvOUOMifZi4Sg0YUxJvBDJ2',
-    name: 'Raj Vishwa',
-    specialty: 'Vastu & Numerology',
-    experience: '20+ Yrs',
-    rating: 4.95,
-    reviews: '1.2k',
-    price: 25,
-    isOnline: false,
-    isAi: false,
-    imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&fit=crop',
-    languages: 'English, Telugu, Tamil, Hindi',
-    semanticLabel: 'Raj Vishwa - Verified Vastu & Vedic Astrologer',
-  },
-  {
-    id: 'ast-1789887155087',
-    name: 'Sandy',
-    specialty: 'Vedic Jyotish',
-    experience: '12+ Yrs',
-    rating: 4.92,
-    reviews: '0.8k',
-    price: 25,
-    isOnline: true,
-    isAi: false,
-    imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&fit=crop',
-    languages: 'English, Telugu',
-    semanticLabel: 'Sandy - Verified Vedic Jyotish Astrologer',
-  },
-];
-
-
 export const DEFAULT_AI_ASTROLOGERS: LiveAstrologer[] = [
   {
     id: 'ai-acharya-devavrat',
@@ -193,8 +147,6 @@ export const DEFAULT_AI_ASTROLOGERS: LiveAstrologer[] = [
     semanticLabel: 'Vedic Kundli Prodigy & Financial Strategist',
   },
 ];
-
-export const DEFAULT_HOME_ASTROLOGERS: LiveAstrologer[] = DEFAULT_REAL_ASTROLOGERS;
 
 export interface DynamicPromotion {
   id: string;

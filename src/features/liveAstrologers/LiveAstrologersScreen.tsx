@@ -17,7 +17,7 @@ import { AppImage } from '@/components/AppImage';
 import { ElevatedButton, Switch } from '@/components/common';
 import { BottomSheet } from '@/components/overlays';
 import { Text, TextInput } from '@/components/Text';
-import { AstrologerData, LIVE_ASTROLOGERS } from '@/data/astrologers';
+import { AstrologerData } from '@/data/astrologers';
 import { useAuthStore } from '@/features/auth/authStore';
 import { fetchAiAstrologers, fetchRealAstrologers } from '@/services/homeDataService';
 import { generateZegoRoomId } from '@/services/zegoService';

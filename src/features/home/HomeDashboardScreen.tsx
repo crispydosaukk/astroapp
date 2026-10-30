@@ -17,7 +17,6 @@ import { AppRoutes, push } from '@/navigation/routes';
 import { AppLanguage, useLanguageStore } from '@/theme/languageStore';
 import {
   CosmicInsight,
-  DEFAULT_REAL_ASTROLOGERS,
   DEFAULT_AI_ASTROLOGERS,
   DynamicPromotion,
   fetchAiAstrologers,
@@ -1023,7 +1022,7 @@ function PersonalisedRecs({
 }) {
   const colors = useThemeColors();
   const topAi = aiAstrologers[0] || DEFAULT_AI_ASTROLOGERS[0];
-  const topReal = realAstrologers[0] || DEFAULT_REAL_ASTROLOGERS[0];
+  const topReal = realAstrologers[0];
 
   const dynamicRecs = [
     {
@@ -1037,17 +1036,21 @@ function PersonalisedRecs({
       tagTextLight: '#7C5205',
       onPress: () => push(AppRoutes.aiChatScreen, { astrologerId: topAi.id, astrologerName: topAi.name, avatarUrl: topAi.imageUrl }),
     },
-    {
-      emoji: '👨‍🔮',
-      title: `Live Consultation: ${topReal.name}`,
-      subtitle: `${topReal.specialty} • ${topReal.experience} • ₹${topReal.price}/min`,
-      tag: 'Live Now',
-      tagColor: '#2D9E6B',
-      tagBgLight: '#ECFDF5',
-      tagBorderLight: '#A7F3D0',
-      tagTextLight: '#047857',
-      onPress: () => push(AppRoutes.liveAstrologersScreen),
-    },
+    ...(topReal
+      ? [
+          {
+            emoji: '👨‍🔮',
+            title: `Live Consultation: ${topReal.name}`,
+            subtitle: `${topReal.specialty} • ${topReal.experience} • ₹${topReal.price}/min`,
+            tag: topReal.isOnline ? 'Live Now' : 'Verified Guru',
+            tagColor: '#2D9E6B',
+            tagBgLight: '#ECFDF5',
+            tagBorderLight: '#A7F3D0',
+            tagTextLight: '#047857',
+            onPress: () => push(AppRoutes.astrologerDetailScreen, topReal),
+          },
+        ]
+      : []),
     {
       emoji: '🪐',
       title: 'Your Saturn Period is Approaching',
@@ -1153,8 +1156,8 @@ function PersonalisedRecs({
 /* -------------------------------------------- RealAstrologersCarouselWidget */
 function RealAstrologersCarousel({ realAstrologers = [] }: { realAstrologers?: LiveAstrologer[] }) {
   const colors = useThemeColors();
-  const displayList = realAstrologers && realAstrologers.length > 0 ? realAstrologers : DEFAULT_REAL_ASTROLOGERS;
-  const onlineCount = displayList.filter((a) => a.isOnline).length || 28;
+  const displayList = realAstrologers || [];
+  const onlineCount = displayList.filter((a) => a.isOnline).length;
 
   return (
     <View>
@@ -1205,7 +1208,7 @@ function RealAstrologersCarousel({ realAstrologers = [] }: { realAstrologers?: L
             <Pressable
               key={a.id || a.name}
               testID={`home.realAstrologer.${a.id || a.name}`}
-              onPress={() => push(AppRoutes.liveAstrologersScreen)}
+              onPress={() => push(AppRoutes.astrologerDetailScreen, a)}
               style={{
                 width: 300,
                 height: 124,

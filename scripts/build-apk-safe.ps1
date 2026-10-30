@@ -26,12 +26,10 @@ cmd.exe /c "gradlew.bat assembleRelease --no-daemon --max-workers=1 --gradle-use
 $apkSource = "C:\Users\PC\Desktop\astroparihar-app\android\app\build\outputs\apk\release\app-release.apk"
 $apkDesktop = "C:\Users\PC\Desktop\AstroParihar-Latest.apk"
 $apkProjectLatest = "C:\Users\PC\Desktop\astroparihar-app\AstroParihar-Latest.apk"
-$apkProjectV1 = "C:\Users\PC\Desktop\astroparihar-app\AstroParihar-v1.0.0.apk"
 
 if (Test-Path $apkSource) {
     Copy-Item -Path $apkSource -Destination $apkDesktop -Force
     Copy-Item -Path $apkSource -Destination $apkProjectLatest -Force
-    Copy-Item -Path $apkSource -Destination $apkProjectV1 -Force
     $sizeMB = [math]::Round((Get-Item $apkDesktop).Length / 1MB, 2)
     Write-Host "`n[3/3] SUCCESS! Release APK generated successfully ($sizeMB MB):" -ForegroundColor Green
     Write-Host "  -> Desktop: $apkDesktop" -ForegroundColor Yellow

@@ -40,7 +40,6 @@ import { speakAstrologerText, stopAstrologerSpeech } from '@/services/speechServ
 import { AppColors, argb, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 import { useController } from '@/utils/anim';
-import { SOURCE_INERT } from '@/utils/sourceInert';
 
 type Astro = { id?: string; name: string; title?: string; imageUrl: string; semanticLabel?: string; price?: number; isAi?: boolean; [k: string]: unknown };
 type Msg = { text: string; isSystem: boolean; isUser?: boolean; time: string };
