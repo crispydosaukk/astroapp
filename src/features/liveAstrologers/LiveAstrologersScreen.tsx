@@ -449,69 +449,55 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
               </View>
             ) : null}
 
-            {/* Bottom Row: Status Indicator & Balanced CTAs */}
+            {/* Bottom Row: Balanced Action CTAs */}
             <View
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                justifyContent: 'space-between',
+                gap: 8,
                 marginTop: 8,
-                paddingTop: 7,
+                paddingTop: 8,
                 borderTopWidth: 0.5,
                 borderTopColor: colors.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
               }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: 3,
-                    backgroundColor: isAi || data.isOnline ? '#16A34A' : '#9CA3AF',
-                    marginRight: 4,
-                  }}
-                />
-                <Text style={{ color: isAi || data.isOnline ? (colors.isLight ? '#15803D' : '#3DCB7A') : colors.textMuted, fontSize: 10.5, fontWeight: '600' }}>
-                  {isAi ? 'Instant 24/7' : data.isOnline ? (data.consultations ? `${data.consultations} orders` : 'Available') : 'Offline'}
-                </Text>
-              </View>
-
               {!isAi && !data.isOnline ? (
                 <Pressable
                   testID={`${id}.offlineProfile`}
                   onPress={open}
                   style={{
+                    flex: 1,
                     flexDirection: 'row',
                     alignItems: 'center',
-                    paddingHorizontal: 12,
-                    paddingVertical: 5,
+                    justifyContent: 'center',
+                    paddingVertical: 7,
                     borderRadius: 100,
                     backgroundColor: colors.surfaceVariant,
                     borderWidth: 1,
                     borderColor: colors.cardBorder,
                   }}
                 >
-                  <Text style={{ color: colors.textMuted, fontSize: 10.5, fontWeight: '700' }}>
+                  <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '700' }}>
                     View Profile →
                   </Text>
                 </Pressable>
               ) : (
-                <View style={{ flexDirection: 'row', gap: 6 }}>
+                <>
                   <Pressable
                     testID={`${id}.chat`}
                     onPress={open}
                     style={{
+                      flex: 1,
                       flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      paddingHorizontal: 12,
-                      paddingVertical: 5.5,
+                      paddingVertical: 6.5,
                       borderRadius: 100,
                       backgroundColor: '#713B32',
                     }}
                   >
-                    <AppIcon name={isAi ? 'auto_awesome_rounded' : 'chat_bubble_outline_rounded'} color="#FFFFFF" size={11} />
-                    <Text style={{ marginLeft: 3, color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>
+                    <AppIcon name={isAi ? 'auto_awesome_rounded' : 'chat_bubble_outline_rounded'} color="#FFFFFF" size={12} />
+                    <Text style={{ marginLeft: 4, color: '#FFFFFF', fontSize: 11.5, fontWeight: '700' }}>
                       {isAi ? 'Chat AI' : 'Chat'}
                     </Text>
                   </Pressable>
@@ -520,23 +506,23 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
                     testID={`${id}.call`}
                     onPress={callAction}
                     style={{
+                      flex: 1,
                       flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      paddingHorizontal: 12,
-                      paddingVertical: 5.5,
+                      paddingVertical: 6.5,
                       borderRadius: 100,
                       backgroundColor: colors.isLight ? '#FDF8F0' : argb('1AF0EAD6'),
                       borderWidth: 1,
                       borderColor: colors.isLight ? '#C9A84C' : argb('40C9A84C'),
                     }}
                   >
-                    <AppIcon name={isAi ? 'headset_mic_rounded' : 'call_rounded'} color={colors.isLight ? '#8B5E0D' : colors.goldAccent} size={11} />
-                    <Text style={{ marginLeft: 3, color: colors.isLight ? '#8B5E0D' : colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
+                    <AppIcon name={isAi ? 'headset_mic_rounded' : 'call_rounded'} color={colors.isLight ? '#8B5E0D' : colors.goldAccent} size={12} />
+                    <Text style={{ marginLeft: 4, color: colors.isLight ? '#8B5E0D' : colors.goldAccent, fontSize: 11.5, fontWeight: '700' }}>
                       {isAi ? 'Voice AI' : 'Call'}
                     </Text>
                   </Pressable>
-                </View>
+                </>
               )}
             </View>
           </View>

@@ -76,7 +76,7 @@ export default function AstrologerDashboardScreen() {
   const [astrologerName, setAstrologerName] = useState<string>('Acharya Vishwanath');
   const [email, setEmail] = useState<string>('acharya@astroparihar.com');
   const [phone, setPhone] = useState<string>('+91 9876543210');
-  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [isOnline, setIsOnline] = useState<boolean>(false);
   const [showOnWebsite, setShowOnWebsite] = useState<boolean>(true);
 
   // Probation & Full-Time Approval States

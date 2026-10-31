@@ -7,7 +7,7 @@
  * - Unified professional Vedic theme with high-contrast text and zero visual clutter.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Linking,
@@ -24,7 +24,7 @@ import { ElevatedButton } from '@/components/common';
 import { BottomSheet, showSnackBar } from '@/components/overlays';
 import { FamilyProfileSwitcherModal } from '@/components/FamilyProfileSwitcherModal';
 import { LocationSearchInput } from '@/components/LocationSearchInput';
-import { formatTimeOfDay, pickDate, pickTime } from '@/components/pickers';
+import { formatDobToDDMMYYYY, formatTimeOfDay, parseDobToDate, pickDate, pickTime } from '@/components/pickers';
 import { Text, TextInput } from '@/components/Text';
 import { API_ENDPOINTS } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
@@ -253,11 +253,18 @@ export const DEFAULT_PROFILE_CONFIG: DynamicProfileConfig = {
 
 function formatDisplayDob(dobString: string): string {
   if (!dobString || dobString === 'Not specified' || dobString === 'Sign in to view') return dobString || 'Not specified';
-  const m = dobString.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (m) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const monthName = months[parseInt(m[2], 10) - 1] || m[2];
-    return `${parseInt(m[3], 10)} ${monthName} ${m[1]}`;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  // DD/MM/YYYY or DD-MM-YYYY
+  const dmy = dobString.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmy) {
+    const monthName = months[parseInt(dmy[2], 10) - 1] || dmy[2];
+    return `${parseInt(dmy[1], 10)} ${monthName} ${dmy[3]}`;
+  }
+  // YYYY-MM-DD
+  const ymd = dobString.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (ymd) {
+    const monthName = months[parseInt(ymd[2], 10) - 1] || ymd[2];
+    return `${parseInt(ymd[3], 10)} ${monthName} ${ymd[1]}`;
   }
   return dobString;
 }
@@ -408,6 +415,7 @@ export default function ProfileScreen() {
   const [editDob, setEditDob] = useState('');
   const [editTob, setEditTob] = useState('');
   const [editPob, setEditPob] = useState('');
+  const editScrollRef = useRef<ScrollView>(null);
 
   // 1. Fetch live dynamic profile configuration from Admin Dashboard API
   const fetchDynamicProfileConfig = async () => {
@@ -579,7 +587,8 @@ export default function ProfileScreen() {
   const openEditModal = () => {
     setEditName(activeProfile?.name?.trim() || (profileData.name !== 'Guest' && profileData.name !== 'Seeker' ? profileData.name : authUser?.name || ''));
     setEditEmail(profileData.email !== 'Sign in to sync your profile' ? profileData.email : authUser?.phone || '');
-    setEditDob(activeProfile?.dob || (profileData.dob !== 'Not specified' && profileData.dob !== 'Sign in to view' ? profileData.dob : authUser?.dob || ''));
+    const rawDob = activeProfile?.dob || (profileData.dob !== 'Not specified' && profileData.dob !== 'Sign in to view' ? profileData.dob : authUser?.dob || '');
+    setEditDob(formatDobToDDMMYYYY(rawDob));
     setEditTob(activeProfile?.time || (profileData.tob !== 'Not specified' && profileData.tob !== 'Sign in to view' ? profileData.tob : authUser?.tob || ''));
     setEditPob(activeProfile?.place || (profileData.pob !== 'Not specified' && profileData.pob !== 'Sign in to view' ? profileData.pob : authUser?.pob || ''));
     setEditSheetOpen(true);
@@ -587,16 +596,13 @@ export default function ProfileScreen() {
 
   const handlePickEditDob = async () => {
     try {
-      const initialDate = editDob ? new Date(editDob) : new Date(1995, 9, 15);
+      const initialDate = parseDobToDate(editDob);
       const chosen = await pickDate({
-        value: isNaN(initialDate.getTime()) ? new Date(1995, 9, 15) : initialDate,
+        value: initialDate,
         maximumDate: new Date(),
       });
       if (chosen) {
-        const y = chosen.getFullYear();
-        const m = String(chosen.getMonth() + 1).padStart(2, '0');
-        const d = String(chosen.getDate()).padStart(2, '0');
-        setEditDob(`${y}-${m}-${d}`);
+        setEditDob(formatDobToDDMMYYYY(chosen));
       }
     } catch {}
   };
@@ -613,10 +619,11 @@ export default function ProfileScreen() {
   };
 
   const saveProfileEdits = async () => {
+    const formattedDob = formatDobToDDMMYYYY(editDob);
     const updated = {
       name: editName.trim() || profileData.name,
       email: editEmail.trim() || profileData.email,
-      dob: editDob.trim() || (profileData.dob !== 'Not specified' ? profileData.dob : ''),
+      dob: formattedDob || (profileData.dob !== 'Not specified' ? profileData.dob : ''),
       tob: editTob.trim() || (profileData.tob !== 'Not specified' ? profileData.tob : ''),
       pob: editPob.trim() || (profileData.pob !== 'Not specified' ? profileData.pob : ''),
     };
@@ -1570,12 +1577,14 @@ export default function ProfileScreen() {
 
           {/* Scrollable Form Body with Keyboard Handling */}
           <ScrollView
+            ref={editScrollRef}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
               paddingHorizontal: 24,
               paddingTop: 16,
-              paddingBottom: Math.max(insets.bottom + 24, 48),
+              paddingBottom: 360,
             }}
           >
             {/* Full Name */}
@@ -1650,7 +1659,7 @@ export default function ProfileScreen() {
             <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
-                  {config.editDobLabel || 'Date of Birth'}
+                  {config.editDobLabel || 'Date of Birth (DD/MM/YYYY)'}
                 </Text>
                 <Pressable
                   onPress={handlePickEditDob}
@@ -1667,7 +1676,7 @@ export default function ProfileScreen() {
                 >
                   <AppIcon name="calendar_today" size={17} color={colors.goldAccent} style={{ marginRight: 8 }} />
                   <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700', flex: 1 }}>
-                    {editDob || 'Select Date'}
+                    {editDob || 'DD/MM/YYYY'}
                   </Text>
                 </Pressable>
               </View>
@@ -1703,6 +1712,11 @@ export default function ProfileScreen() {
               onChangeText={setEditPob}
               label={config.editPobLabel || 'Place of Birth (City, State, Country)'}
               placeholder="Search city or Google Maps place..."
+              onFocus={() => {
+                setTimeout(() => {
+                  editScrollRef.current?.scrollToEnd({ animated: true });
+                }, 200);
+              }}
             />
 
             {/* Save Button */}

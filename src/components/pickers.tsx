@@ -71,3 +71,73 @@ export function formatTimeOfDay(d: Date) {
   const hh = h % 12 === 0 ? 12 : h % 12;
   return `${hh}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
 }
+
+/**
+ * Safely parses any date string (DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, or ISO) into a valid Date object.
+ */
+export function parseDobToDate(dobStr?: string | null): Date {
+  if (!dobStr) return new Date(1995, 9, 15);
+  const clean = dobStr.trim();
+  // Check DD/MM/YYYY or DD-MM-YYYY
+  const dmy = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmy) {
+    const day = parseInt(dmy[1], 10);
+    const month = parseInt(dmy[2], 10) - 1;
+    const year = parseInt(dmy[3], 10);
+    const d = new Date(year, month, day);
+    if (!isNaN(d.getTime())) return d;
+  }
+  // Check YYYY-MM-DD or YYYY/MM/DD
+  const ymd = clean.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (ymd) {
+    const year = parseInt(ymd[1], 10);
+    const month = parseInt(ymd[2], 10) - 1;
+    const day = parseInt(ymd[3], 10);
+    const d = new Date(year, month, day);
+    if (!isNaN(d.getTime())) return d;
+  }
+  const fallback = new Date(clean);
+  return isNaN(fallback.getTime()) ? new Date(1995, 9, 15) : fallback;
+}
+
+/**
+ * Formats any Date object or raw date string into standard DD/MM/YYYY format.
+ */
+export function formatDobToDDMMYYYY(val?: Date | string | null): string {
+  if (!val) return '';
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return '';
+    const d = String(val.getDate()).padStart(2, '0');
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    const y = val.getFullYear();
+    return `${d}/${m}/${y}`;
+  }
+  const clean = val.trim();
+  if (!clean || clean === 'Not specified' || clean === 'Sign in to view') return clean;
+  // If already standard DD/MM/YYYY
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(clean)) return clean;
+  // If DD-MM-YYYY or DD/M/YYYY
+  const dmy = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmy) {
+    const d = dmy[1].padStart(2, '0');
+    const m = dmy[2].padStart(2, '0');
+    const y = dmy[3];
+    return `${d}/${m}/${y}`;
+  }
+  // If YYYY-MM-DD or YYYY/MM/DD
+  const ymd = clean.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (ymd) {
+    const y = ymd[1];
+    const m = ymd[2].padStart(2, '0');
+    const d = ymd[3].padStart(2, '0');
+    return `${d}/${m}/${y}`;
+  }
+  const parsed = new Date(clean);
+  if (!isNaN(parsed.getTime())) {
+    const d = String(parsed.getDate()).padStart(2, '0');
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const y = parsed.getFullYear();
+    return `${d}/${m}/${y}`;
+  }
+  return clean;
+}

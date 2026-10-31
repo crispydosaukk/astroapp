@@ -97,6 +97,7 @@ interface LocationSearchInputProps {
   required?: boolean;
   style?: StyleProp<ViewStyle>;
   showPopularChips?: boolean;
+  onFocus?: () => void;
 }
 
 export function LocationSearchInput({
@@ -108,6 +109,7 @@ export function LocationSearchInput({
   required = false,
   style,
   showPopularChips = true,
+  onFocus,
 }: LocationSearchInputProps) {
   const colors = useThemeColors();
   const [query, setQuery] = useState(value || '');
@@ -261,6 +263,7 @@ export function LocationSearchInput({
           onFocus={() => {
             setIsFocused(true);
             if (predictions.length > 0) setShowDropdown(true);
+            onFocus?.();
           }}
           onBlur={() => {
             setIsFocused(false);

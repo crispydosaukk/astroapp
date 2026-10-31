@@ -546,8 +546,7 @@ export default function AstrologerApplyScreen() {
       return;
     }
 
-    setStep(2);
-    scrollToTop();
+    submitFinalApplication();
   };
 
   /* ==================== STEP 2: VEDIC THEORY HANDLERS ==================== */
@@ -1028,80 +1027,42 @@ export default function AstrologerApplyScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* 5-Step Progress Stepper */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8, paddingVertical: 6, marginBottom: 10 }}
+          {/* Direct 1-Step Onboarding Application Header */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: colors.surface,
+              borderWidth: 1.5,
+              borderColor: colors.goldAccent,
+              borderRadius: 14,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              marginBottom: 12,
+            }}
           >
-            {[
-              { num: 1, label: t.step1Title },
-              { num: 2, label: t.step2Title },
-              { num: 3, label: t.step3Title },
-              { num: 4, label: t.step4Title },
-              { num: 5, label: t.step5Title },
-            ].map((s) => {
-              const isActive = step === s.num;
-              const isDone = step > s.num;
-              return (
-                <View
-                  key={s.num}
-                  style={[
-                    styles.stepChip,
-                    {
-                      backgroundColor: isActive
-                        ? AppColors.primary
-                        : isDone
-                        ? 'rgba(45, 158, 107, 0.14)'
-                        : colors.surface,
-                      borderColor: isActive
-                        ? colors.goldAccent
-                        : isDone
-                        ? AppColors.success
-                        : colors.cardBorder,
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.stepDot,
-                      {
-                        backgroundColor: isActive
-                          ? colors.goldAccent
-                          : isDone
-                          ? AppColors.success
-                          : colors.surfaceVariant,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={{
-                        color: isActive ? '#1A1A2E' : isDone ? '#FFFFFF' : colors.textSecondary,
-                        fontSize: 10.5,
-                        fontWeight: '800',
-                      }}
-                    >
-                      {isDone ? '✓' : s.num}
-                    </Text>
-                  </View>
-                  <Text
-                    style={{
-                      color: isActive
-                        ? '#FFFFFF'
-                        : isDone
-                        ? AppColors.success
-                        : colors.textSecondary,
-                      fontSize: 12,
-                      fontWeight: '700',
-                      marginLeft: 6,
-                    }}
-                  >
-                    {s.label.replace(/^\d+\.\s*/, '')}
-                  </Text>
-                </View>
-              );
-            })}
-          </ScrollView>
+            <View
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                backgroundColor: withAlpha(colors.goldAccent, 25),
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 12,
+              }}
+            >
+              <AppIcon name="how_to_reg" size={20} color={colors.goldAccent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.textPrimary, fontSize: 13.5, fontWeight: '800' }}>
+                Astrologer Onboarding Application
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 2 }}>
+                1-Step direct credential submission & administrative approval
+              </Text>
+            </View>
+          </View>
 
           {/* Live AI Anti-Cheating Proctor Bar (Steps 2–4) */}
           {step >= 2 && step <= 4 && !isTerminated ? (
@@ -2108,9 +2069,11 @@ export default function AstrologerApplyScreen() {
 
               <ElevatedButton
                 testID="astrologerApply.step1ContinueBtn"
-                label={t.btnStartAssessment}
+                label={submittingFinal ? 'Submitting Application...' : (t.btnStartAssessment || 'Submit Application')}
                 onPress={handleStep1Submit}
-                icon="arrow_forward"
+                loading={submittingFinal}
+                disabled={submittingFinal}
+                icon="check_circle"
                 style={{ marginTop: 22 }}
                 paddingV={16}
                 fontSize={15}
@@ -3204,13 +3167,14 @@ export default function AstrologerApplyScreen() {
                 {t.submissionDesc}
               </Text>
 
-              {/* Composite Score Card */}
+              {/* Submitted Profile Summary Card */}
               <View
                 style={[
                   styles.compositeCard,
                   {
                     backgroundColor: colors.surfaceVariant,
                     borderColor: withAlpha(colors.goldAccent, 95),
+                    padding: 16,
                   },
                 ]}
               >
@@ -3223,82 +3187,53 @@ export default function AstrologerApplyScreen() {
                     letterSpacing: 1,
                   }}
                 >
-                  Overall Composite AI Score
+                  Onboarding Request Status
                 </Text>
                 <Text
                   style={{
-                    color: colors.goldAccent,
-                    fontSize: 38,
+                    color: AppColors.warning,
+                    fontSize: 24,
                     fontWeight: '800',
                     marginTop: 4,
                   }}
                 >
-                  {overallCompositeScore}%
+                  Pending Admin Review
                 </Text>
-                <View
-                  style={{
-                    marginTop: 6,
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                    borderRadius: 100,
-                    backgroundColor:
-                      overallCompositeScore >= passingThreshold
-                        ? 'rgba(45, 158, 107, 0.2)'
-                        : 'rgba(212, 130, 26, 0.2)',
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: overallCompositeScore >= passingThreshold ? AppColors.success : AppColors.warning,
-                      fontSize: 11,
-                      fontWeight: '800',
-                    }}
-                  >
-                    {overallCompositeScore >= passingThreshold
-                      ? `✓ Qualified (≥${passingThreshold}% Cutoff)`
-                      : 'Queued for Manual Board Review'}
-                  </Text>
-                </View>
 
                 <View
                   style={{
                     flexDirection: 'row',
-                    marginTop: 16,
-                    paddingTop: 14,
+                    marginTop: 14,
+                    paddingTop: 12,
                     borderTopWidth: 1,
                     borderTopColor: colors.divider,
                     width: '100%',
                   }}
                 >
-                  {[
-                    { label: `Theory (${weights.theory}%)`, val: `${theoryScore}%` },
-                    { label: `Kundali (${weights.kundali}%)`, val: `${kundaliEval?.score || 0}%` },
-                    { label: `AI Viva (${weights.interview}%)`, val: `${interviewAvgScore}%` },
-                  ].map((col, idx) => (
-                    <View
-                      key={col.label}
-                      style={[
-                        { flex: 1, alignItems: 'center' },
-                        idx < 2 && {
-                          borderRightWidth: 1,
-                          borderRightColor: colors.divider,
-                        },
-                      ]}
-                    >
-                      <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
-                        {col.val}
-                      </Text>
-                      <Text
-                        style={{
-                          color: colors.textSecondary,
-                          fontSize: 10,
-                          marginTop: 2,
-                        }}
-                      >
-                        {col.label}
-                      </Text>
-                    </View>
-                  ))}
+                  <View style={{ flex: 1, alignItems: 'center', borderRightWidth: 1, borderRightColor: colors.divider }}>
+                    <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '800' }}>
+                      {aadhaarDoc ? '✓ Attached' : 'Provided'}
+                    </Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 10, marginTop: 2 }}>
+                      Aadhaar KYC
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1, alignItems: 'center', borderRightWidth: 1, borderRightColor: colors.divider }}>
+                    <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '800' }}>
+                      {panDoc ? '✓ Attached' : 'Provided'}
+                    </Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 10, marginTop: 2 }}>
+                      PAN KYC
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '800' }}>
+                      {supportingDocs.length} Uploaded
+                    </Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 10, marginTop: 2 }}>
+                      Certificates
+                    </Text>
+                  </View>
                 </View>
               </View>
 
@@ -3323,9 +3258,9 @@ export default function AstrologerApplyScreen() {
                   What happens next?
                 </Text>
                 {[
-                  'Your KYC documents (Aadhaar & PAN), Theory Score, Kundali Case analysis, and AI Viva transcript have been queued in the Admin Recruitment Panel.',
-                  'Our senior Acharyas will verify your credentials and review your remedy recommendations within 24–48 hours.',
-                  `Once approved, you will receive a confirmation on ${phoneCode} ${phone} and can log in directly via Astrologer Sign In.`,
+                  'Your credentials, identity documents (Aadhaar & PAN), and certificates have been submitted directly to the Admin Panel.',
+                  'The administrator will review your application and documents, then accept or decline your onboarding request.',
+                  `Once accepted, your account is onboarded (offline by default). You can then sign in directly with ${phoneCode} ${phone}, update your profile, and toggle online in your dashboard.`,
                 ].map((txt, idx) => (
                   <View
                     key={idx}

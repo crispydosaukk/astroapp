@@ -9,7 +9,7 @@ import {
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton, OutlinedButton } from '@/components/common';
 import { BottomSheet, SheetContainer, showSnackBar } from '@/components/overlays';
-import { formatTimeOfDay, pickDate, pickTime } from '@/components/pickers';
+import { formatDobToDDMMYYYY, formatTimeOfDay, parseDobToDate, pickDate, pickTime } from '@/components/pickers';
 import { LocationSearchInput } from '@/components/LocationSearchInput';
 import { Text, TextInput } from '@/components/Text';
 import {
@@ -63,7 +63,7 @@ export function FamilyProfileSwitcherModal({
   const [formName, setFormName] = useState('');
   const [formType, setFormType] = useState('Myself');
   const [formGender, setFormGender] = useState('Male');
-  const [formDob, setFormDob] = useState('1995-10-15');
+  const [formDob, setFormDob] = useState('15/10/1995');
   const [formTime, setFormTime] = useState('12:00 PM');
   const [formPlace, setFormPlace] = useState('New Delhi, India');
   const [formSetAsActive, setFormSetAsActive] = useState(true);
@@ -73,7 +73,7 @@ export function FamilyProfileSwitcherModal({
     setFormName('');
     setFormType('Child');
     setFormGender('Male');
-    setFormDob('2005-06-15');
+    setFormDob('15/06/2005');
     setFormTime('10:30 AM');
     setFormPlace('New Delhi, India');
     setFormSetAsActive(true);
@@ -90,7 +90,7 @@ export function FamilyProfileSwitcherModal({
     setFormName(profile.name);
     setFormType(profile.type || 'Myself');
     setFormGender(profile.gender || 'Male');
-    setFormDob(profile.dob || '1995-10-15');
+    setFormDob(formatDobToDDMMYYYY(profile.dob) || '15/10/1995');
     setFormTime(profile.time || '12:00 PM');
     setFormPlace(profile.place || 'New Delhi, India');
     setFormSetAsActive(profile.active);
@@ -112,16 +112,13 @@ export function FamilyProfileSwitcherModal({
 
   const handlePickDate = async () => {
     try {
-      const initialDate = formDob ? new Date(formDob) : new Date(1995, 9, 15);
+      const initialDate = parseDobToDate(formDob);
       const chosen = await pickDate({
-        value: isNaN(initialDate.getTime()) ? new Date(1995, 9, 15) : initialDate,
+        value: initialDate,
         maximumDate: new Date(),
       });
       if (chosen) {
-        const y = chosen.getFullYear();
-        const m = String(chosen.getMonth() + 1).padStart(2, '0');
-        const d = String(chosen.getDate()).padStart(2, '0');
-        setFormDob(`${y}-${m}-${d}`);
+        setFormDob(formatDobToDDMMYYYY(chosen));
       }
     } catch {}
   };
@@ -339,7 +336,7 @@ export function FamilyProfileSwitcherModal({
                         numberOfLines={1}
                         style={{ color: colors.textSecondary, fontSize: 12, marginTop: 4 }}
                       >
-                        📅 {p.dob} • ⏰ {p.time}
+                        📅 {formatDobToDDMMYYYY(p.dob)} • ⏰ {p.time}
                       </Text>
                       <Text
                         numberOfLines={1}
@@ -427,7 +424,8 @@ export function FamilyProfileSwitcherModal({
           <ScrollView
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingTop: 14, paddingBottom: 40 }}
+            keyboardDismissMode="on-drag"
+            contentContainerStyle={{ paddingTop: 14, paddingBottom: 320 }}
           >
             {/* Relationship Chips */}
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
@@ -522,7 +520,7 @@ export function FamilyProfileSwitcherModal({
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                  Date of Birth *
+                  Date of Birth (DD/MM/YYYY) *
                 </Text>
                 <Pressable
                   onPress={handlePickDate}
@@ -544,7 +542,7 @@ export function FamilyProfileSwitcherModal({
                       flex: 1,
                     }}
                   >
-                    {formDob || 'Select Date'}
+                    {formDob || 'DD/MM/YYYY'}
                   </Text>
                 </Pressable>
               </View>

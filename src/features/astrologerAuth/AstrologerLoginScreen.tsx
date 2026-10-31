@@ -69,7 +69,7 @@ const COUNTRY_CODES = [
 export const ASTRO_SESSION_KEY = 'astro_verified_session';
 export const LOCAL_APPLICATIONS_KEY = 'astroparihar_local_astrologer_applications';
 
-type ErrorType = 'not_registered' | 'pending_approval' | 'general' | null;
+type ErrorType = 'not_registered' | 'pending_approval' | 'rejected' | 'general' | null;
 
 export default function AstrologerLoginScreen() {
   const insets = useSafeAreaInsets();
@@ -169,9 +169,16 @@ export default function AstrologerLoginScreen() {
           setError(data.error || 'Mobile number is not registered as an astrologer on AstroParihar.');
         }
       } else if (data.registered === true && data.approved === false) {
-        setErrorType('pending_approval');
-        setApplicationStatus(data.status || 'Under Review');
-        setError(data.error || 'Your application is currently under review by our Vedic board.');
+        const dStatus = String(data.status || '').toLowerCase();
+        if (dStatus.includes('reject') || dStatus.includes('decline')) {
+          setErrorType('rejected');
+          setApplicationStatus('Rejected');
+          setError(data.error || 'Your application has been declined by the administrative committee. Please contact admin support.');
+        } else {
+          setErrorType('pending_approval');
+          setApplicationStatus(data.status || 'Under Review');
+          setError(data.error || 'Your application is currently under review by our team.');
+        }
       } else {
         setErrorType('general');
         setError(data.error || 'Failed to send OTP. Please try again.');
@@ -180,11 +187,16 @@ export default function AstrologerLoginScreen() {
       console.warn('[AstrologerLogin] send-otp network fallback:', err?.message);
       const localApp = await checkLocalApplications(cleanDigits);
       if (localApp) {
-        setErrorType('pending_approval');
-        setApplicationStatus(localApp.status || 'Under Review');
-        setError(
-          'Your application is currently under review by our Vedic board. You will be notified once approved.'
-        );
+        const lStatus = String(localApp.status || '').toLowerCase();
+        if (lStatus.includes('reject') || lStatus.includes('decline')) {
+          setErrorType('rejected');
+          setApplicationStatus('Rejected');
+          setError('Your application has been declined by the administrative committee. Please contact admin support.');
+        } else {
+          setErrorType('pending_approval');
+          setApplicationStatus(localApp.status || 'Under Review');
+          setError('Your application is currently under review by our team. You will be able to log in once approved.');
+        }
       } else {
         setErrorType('not_registered');
         setError('Mobile number is not registered as an astrologer on AstroParihar.');
@@ -563,7 +575,7 @@ export default function AstrologerLoginScreen() {
                               { backgroundColor: AppColors.primary },
                             ]}
                           >
-                            <AppIcon name="assignment_ind" size={15} color="#FFFFFF" />
+                            <AppIcon name="how_to_reg" size={15} color="#FFFFFF" />
                             <Text style={{ color: '#FFFFFF', fontSize: 12.5, fontWeight: '700', marginLeft: 6 }}>
                               Apply to Join Panel
                             </Text>
@@ -717,6 +729,90 @@ export default function AstrologerLoginScreen() {
                   </View>
                 ) : null}
 
+                {error && errorType === 'rejected' ? (
+                  <View
+                    testID="astrologerLogin.rejectedBanner"
+                    style={[
+                      styles.statusCard,
+                      {
+                        backgroundColor: colors.isLight ? '#FEF2F2' : 'rgba(220, 38, 38, 0.15)',
+                        borderColor: colors.isLight ? '#FCA5A5' : 'rgba(220, 38, 38, 0.5)',
+                      },
+                    ]}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                      <View
+                        style={[
+                          styles.statusIconBox,
+                          {
+                            backgroundColor: colors.isLight ? '#FEE2E2' : 'rgba(220, 38, 38, 0.25)',
+                          },
+                        ]}
+                      >
+                        <AppIcon name="cancel" size={20} color="#DC2626" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text
+                          style={{
+                            color: colors.isLight ? '#991B1B' : '#FCA5A5',
+                            fontSize: 14,
+                            fontWeight: '800',
+                          }}
+                        >
+                          Application Rejected
+                        </Text>
+                        <Text
+                          style={{
+                            color: colors.isLight ? '#B91C1C' : '#FECACA',
+                            marginTop: 4,
+                            ...lh(12.5, 1.45),
+                          }}
+                        >
+                          {error}
+                        </Text>
+                        <Text
+                          style={{
+                            color: colors.isLight ? '#991B1B' : 'rgba(252, 165, 165, 0.8)',
+                            marginTop: 6,
+                            ...lh(11.5, 1.4),
+                          }}
+                        >
+                          Your astrologer application was reviewed and declined by the administrative committee. If you feel this was in error, please contact admin support.
+                        </Text>
+
+                        <View style={{ flexDirection: 'row', marginTop: 12 }}>
+                          <Pressable
+                            onPress={openContactAdmin}
+                            style={[
+                              styles.bannerSecondaryBtn,
+                              {
+                                backgroundColor: colors.surface,
+                                borderColor: colors.isLight ? '#FCA5A5' : 'rgba(252, 165, 165, 0.4)',
+                              },
+                            ]}
+                          >
+                            <AppIcon
+                              name="mail_outline"
+                              size={15}
+                              color={colors.isLight ? '#991B1B' : '#FCA5A5'}
+                            />
+                            <Text
+                              style={{
+                                color: colors.isLight ? '#991B1B' : '#FCA5A5',
+                                fontSize: 12.5,
+                                fontWeight: '700',
+                                marginLeft: 6,
+                              }}
+                            >
+                              Contact Admin Support
+                            </Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                ) : null}
+
                 {error && errorType === 'general' ? (
                   <View
                     style={[
@@ -785,7 +881,7 @@ export default function AstrologerLoginScreen() {
                         marginLeft: 8,
                       }}
                     >
-                      Apply to join panel (5-Step Vedic Assessment) →
+                      Apply to Join Astrologer Panel →
                     </Text>
                   </Pressable>
                 </View>
