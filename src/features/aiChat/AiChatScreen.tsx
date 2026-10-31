@@ -22,6 +22,7 @@ import { AppImage } from '@/components/AppImage';
 import { lh, Text, TextInput } from '@/components/Text';
 import { AppRoutes, go, push } from '@/navigation/routes';
 import { useAuthStore } from '@/features/auth/authStore';
+import { useBirthProfileStore } from '@/services/birthProfileStore';
 import { useCurrencyStore } from '@/services/currencyStore';
 import {
   deductWalletBalance,
@@ -703,7 +704,14 @@ export default function AiChatScreen() {
     };
   }, []);
 
-  // Load saved birth profile
+  const activeProfile = useBirthProfileStore((s) => s.activeProfile);
+  const loadProfiles = useBirthProfileStore((s) => s.loadProfiles);
+
+  useEffect(() => {
+    loadProfiles();
+  }, []);
+
+  // Load saved birth profile as fallback
   useEffect(() => {
     AsyncStorage.getItem('astroparihar_user_birth_details').then((stored) => {
       if (stored) {
@@ -714,6 +722,25 @@ export default function AiChatScreen() {
       }
     });
   }, []);
+
+  const effectiveUserInfo = useMemo(() => {
+    if (activeProfile) {
+      return {
+        name: activeProfile.name,
+        relationship: activeProfile.type,
+        dob: activeProfile.dob,
+        time: activeProfile.time,
+        tob: activeProfile.time,
+        place: activeProfile.place,
+        pob: activeProfile.place,
+        gender: activeProfile.gender,
+        nakshatra: activeProfile.nakshatra,
+        sign: activeProfile.sign || activeProfile.zodiac,
+        moonSign: activeProfile.moonSign,
+      };
+    }
+    return userProfile;
+  }, [activeProfile, userProfile]);
 
   const { currencyCode, currencySymbol, formatPrice, getPromptCost, getRechargeOptions } = useCurrencyStore();
   const promptCost = getPromptCost();
@@ -765,7 +792,7 @@ export default function AiChatScreen() {
 
   // Set initial welcome message when language or astrologer changes
   useEffect(() => {
-    const userName = authUser?.name || userProfile?.name || 'Guest';
+    const userName = activeProfile?.name?.trim() || authUser?.name?.trim() || userProfile?.name?.trim() || 'Guest';
     const welcome = getWelcomeMessage(selectedLanguage, userName, selectedAstrologer.name);
     setMessages([
       {
@@ -776,7 +803,7 @@ export default function AiChatScreen() {
         modelUsed: selectedAstrologer.name,
       },
     ]);
-  }, [selectedLanguage, selectedAstrologer, userProfile?.name, authUser?.name]);
+  }, [selectedLanguage, selectedAstrologer, activeProfile?.name, userProfile?.name, authUser?.name]);
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -835,7 +862,7 @@ export default function AiChatScreen() {
         language: selectedLanguage,
         astrologerId: selectedAstrologer.id,
         modelPreference: selectedModel,
-        userInfo: userProfile,
+        userInfo: effectiveUserInfo,
       });
 
       if (!mounted.current) return;
@@ -969,7 +996,7 @@ export default function AiChatScreen() {
               style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.28)', borderWidth: 1, borderColor: '#C9A84C', marginLeft: 6 }}
             >
               <Text style={{ fontSize: 11, color: '#FFD700', fontWeight: '800' }}>
-                💳 ₹{walletBalance}
+                💳 {formatPrice(walletBalance)}
               </Text>
             </Pressable>
           </View>
@@ -1010,10 +1037,10 @@ export default function AiChatScreen() {
               style={{
                 fontSize: 13,
                 fontWeight: '800',
-                color: walletBalance < 5 ? '#CF4444' : '#8B1A1A',
+                color: walletBalance < promptCost.costINR ? '#CF4444' : '#8B1A1A',
               }}
             >
-              ₹{walletBalance}
+              {formatPrice(walletBalance)}
             </Text>
           </Pressable>
 
@@ -1030,7 +1057,7 @@ export default function AiChatScreen() {
               }}
             >
               <Text style={{ fontSize: 11, fontWeight: '700', color: '#C9A84C' }}>
-                ⚡ ₹5 / prompt
+                ⚡ {promptCost.label} / prompt
               </Text>
             </View>
             <Pressable
@@ -1172,7 +1199,7 @@ export default function AiChatScreen() {
                   Sign In Required to Consult
                 </Text>
                 <Text style={{ color: '#5A4A3A', fontSize: 11, marginTop: 2 }}>
-                  Please sign in or register to chat with AI Astrologers. Each prompt costs ₹5.
+                  Please sign in or register to chat with AI Astrologers. Each prompt costs {promptCost.label}.
                 </Text>
               </View>
             </View>
@@ -1193,7 +1220,7 @@ export default function AiChatScreen() {
               </Text>
             </Pressable>
           </View>
-        ) : walletBalance < 5 && (
+        ) : walletBalance < promptCost.costINR && (
           <View
             style={{
               marginHorizontal: 10,
@@ -1209,10 +1236,10 @@ export default function AiChatScreen() {
               <AppIcon name="warning_amber_rounded" size={17} color="#E53E3E" style={{ marginRight: 6, marginTop: 1 }} />
               <View style={{ flex: 1 }}>
                 <Text style={{ color: '#C53030', fontSize: 12, fontWeight: '700' }}>
-                  Low Wallet Balance (Available: ₹{walletBalance})
+                  Low Wallet Balance (Available: {formatPrice(walletBalance)})
                 </Text>
                 <Text style={{ color: '#9B2C2C', fontSize: 11, marginTop: 1 }}>
-                  Each prompt requires ₹5. Please recharge your wallet to continue chatting.
+                  Each prompt requires {promptCost.label}. Please recharge your wallet to continue chatting.
                 </Text>
               </View>
             </View>

@@ -452,7 +452,7 @@ export default function AstrologerDetailScreen() {
       return;
     }
     if (!isSufficient) {
-      setRechargeMsg(`Minimum ₹${minBalance} (5 mins) required. Please top up your wallet.`);
+      setRechargeMsg(`Minimum ${formatPrice(minBalance)} (5 mins) required. Please top up your wallet.`);
       return;
     }
     sheet.close();
@@ -468,13 +468,13 @@ export default function AstrologerDetailScreen() {
   const consultTypes = useMemo(() => {
     if (!price) return [];
     return [
-      { icon: '📞', type: 'Live Voice Call (5 min)', duration: '5 min', price: `₹${price * 5}` },
-      { icon: '📞', type: 'Live Voice Call (15 min)', duration: '15 min', price: `₹${price * 15}` },
-      { icon: '📹', type: 'Live Video Call (15 min)', duration: '15 min', price: `₹${price * 15}` },
-      { icon: '📹', type: 'Live Video Call (30 min)', duration: '30 min', price: `₹${price * 30}` },
-      { icon: '📋', type: 'Extended Consultation (60 min)', duration: '60 min', price: `₹${price * 60}` },
+      { icon: '📞', type: 'Live Voice Call (5 min)', duration: '5 min', price: formatPrice(price * 5) },
+      { icon: '📞', type: 'Live Voice Call (15 min)', duration: '15 min', price: formatPrice(price * 15) },
+      { icon: '📹', type: 'Live Video Call (15 min)', duration: '15 min', price: formatPrice(price * 15) },
+      { icon: '📹', type: 'Live Video Call (30 min)', duration: '30 min', price: formatPrice(price * 30) },
+      { icon: '📋', type: 'Extended Consultation (60 min)', duration: '60 min', price: formatPrice(price * 60) },
     ];
-  }, [price]);
+  }, [price, formatPrice]);
 
   const glassBtn = {
     margin: 8,
@@ -938,7 +938,7 @@ export default function AstrologerDetailScreen() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.goldAccent, fontSize: 18, fontWeight: '800' }}>{`₹${price}/min`}</Text>
+              <Text style={{ color: colors.goldAccent, fontSize: 18, fontWeight: '800' }}>{formatRate(price)}</Text>
               <Text style={{ color: isOnline ? '#3DCB7A' : '#CF4444', fontSize: 11, fontWeight: '700' }}>
                 {isOnline ? '🟢 Online • Instant Connect' : '🔴 Currently Offline'}
               </Text>
@@ -1039,7 +1039,7 @@ export default function AstrologerDetailScreen() {
                 Instant 1-on-1 Consultation
               </Text>
               <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 12.5 }}>
-                {`with ${data.name} • ₹${price}/min`}
+                {`with ${data.name} • ${formatRate(price)}`}
               </Text>
 
               {/* Mode Selector */}
@@ -1129,18 +1129,18 @@ export default function AstrologerDetailScreen() {
                 }}
               >
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={{ color: colors.goldAccent, fontSize: 14, fontWeight: '800' }}>{`₹${selectedTotalCost}`}</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: 10.5 }}>{`${selectedDuration}m × ₹${price}/m`}</Text>
+                  <Text style={{ color: colors.goldAccent, fontSize: 14, fontWeight: '800' }}>{formatPrice(selectedTotalCost)}</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 10.5 }}>{`${selectedDuration}m × ${formatRate(price)}`}</Text>
                 </View>
                 <View style={{ width: 1, height: 28, backgroundColor: colors.divider }} />
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={{ color: '#FFB347', fontSize: 14, fontWeight: '800' }}>{`₹${minBalance}`}</Text>
+                  <Text style={{ color: '#FFB347', fontSize: 14, fontWeight: '800' }}>{formatPrice(minBalance)}</Text>
                   <Text style={{ color: colors.textMuted, fontSize: 10.5 }}>Min 5 min</Text>
                 </View>
                 <View style={{ width: 1, height: 28, backgroundColor: colors.divider }} />
                 <View style={{ alignItems: 'center' }}>
                   <Text style={{ color: isSufficient ? '#3DCB7A' : '#CF4444', fontSize: 14, fontWeight: '800' }}>
-                    {`₹${walletBalance}`}
+                    {formatPrice(walletBalance)}
                   </Text>
                   <Text style={{ color: colors.textMuted, fontSize: 10.5 }}>Your Wallet</Text>
                 </View>

@@ -19,6 +19,11 @@ export interface ConsultationBookingParams {
   customerId: string;
   customerName: string;
   customerPhone?: string;
+  customerDob?: string;
+  customerTob?: string;
+  customerPob?: string;
+  customerGender?: string;
+  customerRelation?: string;
   type: 'voice' | 'video' | 'chat';
   price: number;
   roomID?: string;
@@ -54,6 +59,11 @@ export async function createConsultationBooking(
       customerId: { stringValue: params.customerId },
       customerName: { stringValue: params.customerName || 'Customer' },
       customerPhone: { stringValue: params.customerPhone || '' },
+      customerDob: { stringValue: params.customerDob || '' },
+      customerTob: { stringValue: params.customerTob || '' },
+      customerPob: { stringValue: params.customerPob || '' },
+      customerGender: { stringValue: params.customerGender || '' },
+      customerRelation: { stringValue: params.customerRelation || 'Myself' },
       roomID: { stringValue: roomID },
       type: { stringValue: params.type === 'video' ? 'video' : 'call' },
       price: { integerValue: String(Math.round(params.price || 45)) },

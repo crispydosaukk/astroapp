@@ -24,6 +24,7 @@ import { RadialGlow } from '@/components/common';
 import { Dialog, showSnackBar } from '@/components/overlays';
 import { Text, TextInput } from '@/components/Text';
 import { useAuthStore } from '@/features/auth/authStore';
+import { useBirthProfileStore } from '@/services/birthProfileStore';
 import { AppRoutes, go, push, useExtra } from '@/navigation/routes';
 import { submitConsultationReview } from '@/services/reviewService';
 import { deductWalletBalance, getWalletBalance, subscribeWallet } from '@/services/walletService';
@@ -277,12 +278,19 @@ export default function ConsultationScreen() {
       // Create live Firestore booking and wait for astrologer acceptance
       try {
         setConnectionStatusText(`Sending request to ${astro.name}...`);
+        const activeProfile = useBirthProfileStore.getState().activeProfile;
+        const customerName = activeProfile?.name?.trim() || authUser?.name?.trim() || 'Customer';
         const bookingRes = await createConsultationBooking({
           astrologerId: String((astro as any).id || (astro as any).uid || 'astrologer_live'),
           astrologerName: astro.name,
           customerId: authUser?.uid || 'anonymous_user',
-          customerName: authUser?.name || 'Customer',
+          customerName,
           customerPhone: authUser?.phone || '',
+          customerDob: activeProfile?.dob || (authUser as any)?.dob || '',
+          customerTob: activeProfile?.time || (authUser as any)?.tob || '',
+          customerPob: activeProfile?.place || (authUser as any)?.pob || '',
+          customerGender: activeProfile?.gender || (authUser as any)?.gender || '',
+          customerRelation: activeProfile?.type || 'Myself',
           type: isVideo ? 'video' : 'voice',
           price: ratePerMin,
           roomID,
