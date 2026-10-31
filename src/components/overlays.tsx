@@ -2,7 +2,7 @@
  * Modal primitives replacing Flutter's showModalBottomSheet, showDialog and ScaffoldMessenger SnackBar.
  */
 import React, { useEffect, useState } from 'react';
-import { Dimensions, KeyboardAvoidingView, Modal, Platform, Pressable, StyleProp, Text as RNText, View, ViewStyle } from 'react-native';
+import { Dimensions, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, StyleProp, Text as RNText, View, ViewStyle } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
@@ -26,9 +26,25 @@ export function BottomSheet({
   maxHeightRatio?: number; backgroundColor?: string; testID?: string;
 }) {
   const [mounted, setMounted] = useState(visible);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const insets = useSafeAreaInsets();
   const y = useSharedValue(SCREEN_H);
   const barrier = useSharedValue(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -62,14 +78,14 @@ export function BottomSheet({
         </Animated.View>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ width: '100%', justifyContent: 'flex-end' }}
+          style={{ width: '100%', justifyContent: 'flex-end', paddingBottom: keyboardHeight }}
         >
           <Animated.View
             testID={testID}
             style={[
               {
                 width: '100%',
-                maxHeight: SCREEN_H * maxHeightRatio,
+                maxHeight: Math.max(260, SCREEN_H * maxHeightRatio - keyboardHeight),
                 backgroundColor,
               },
               sheetStyle,

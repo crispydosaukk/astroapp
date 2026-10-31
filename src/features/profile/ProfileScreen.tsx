@@ -1584,7 +1584,7 @@ export default function ProfileScreen() {
             contentContainerStyle={{
               paddingHorizontal: 24,
               paddingTop: 16,
-              paddingBottom: 360,
+              paddingBottom: Math.max(insets.bottom + 24, 48),
             }}
           >
             {/* Full Name */}
@@ -1712,11 +1712,6 @@ export default function ProfileScreen() {
               onChangeText={setEditPob}
               label={config.editPobLabel || 'Place of Birth (City, State, Country)'}
               placeholder="Search city or Google Maps place..."
-              onFocus={() => {
-                setTimeout(() => {
-                  editScrollRef.current?.scrollToEnd({ animated: true });
-                }, 200);
-              }}
             />
 
             {/* Save Button */}

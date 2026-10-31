@@ -21,7 +21,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AnimatedBox } from '@/components/AnimatedBox';
 import { AppIcon } from '@/components/AppIcon';
 import { AppImage } from '@/components/AppImage';
-import { RadialGlow } from '@/components/common';
 import { Dialog, showSnackBar } from '@/components/overlays';
 import { formatDobToDDMMYYYY } from '@/components/pickers';
 import { Text, TextInput } from '@/components/Text';
@@ -678,10 +677,11 @@ export default function ConsultationScreen() {
     <View style={{ flex: 1, backgroundColor: '#140604' }} testID="consultation.screen">
       {/* Sacred Vedic Cosmic Background (Images 2 & 3 Fix) */}
       <LinearGradient
-        colors={['#1F0C08', '#2D120B', '#140604']}
+        colors={['#160805', '#260F0A', '#120503']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       />
-      <RadialGlow colors={['rgba(201,168,76,0.18)', 'rgba(113,59,50,0.14)', 'rgba(0,0,0,0)']} r="130%" />
 
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -780,6 +780,32 @@ export default function ConsultationScreen() {
 
           {/* Middle Main View: Kundli Chart OR Astrologer Stream */}
           <View style={{ flex: 1, justifyContent: 'center' }}>
+            {!connected && (
+              <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+                <View
+                  style={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 36,
+                    backgroundColor: 'rgba(201, 168, 76, 0.15)',
+                    borderWidth: 1.5,
+                    borderColor: '#C9A84C',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 16,
+                  }}
+                >
+                  <AppIcon name="phone_in_talk" size={32} color="#FFD700" />
+                </View>
+                <Text style={{ color: '#F0EAD6', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
+                  Connecting to {astro.name}...
+                </Text>
+                <Text style={{ color: '#D4C5A9', fontSize: 12, textAlign: 'center', marginTop: 6, lineHeight: 18 }}>
+                  Establishing secure Vedic consultation session & computing Janam Kundli
+                </Text>
+              </View>
+            )}
+
             {connected && !isChatOpen && (
               callTab === 'chart' ? (
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 4 }}>
@@ -927,7 +953,17 @@ export default function ConsultationScreen() {
                 /* Astrologer Voice Stream View */
                 <View style={{ alignItems: 'center', paddingHorizontal: 20 }}>
                   <Animated.View style={[{ width: 140, height: 140, alignItems: 'center', justifyContent: 'center' }, pulseStyle]}>
-                    <RadialGlow colors={[withAlpha(AppColors.primary, 80), withAlpha(AppColors.primary, 20), 'rgba(0,0,0,0)']} />
+                    <View
+                      style={{
+                        position: 'absolute',
+                        width: 130,
+                        height: 130,
+                        borderRadius: 65,
+                        backgroundColor: 'rgba(201, 168, 76, 0.16)',
+                        borderWidth: 1.5,
+                        borderColor: 'rgba(201, 168, 76, 0.35)',
+                      }}
+                    />
                     <Avatar uri={astro.imageUrl} size={100} border={2.5} />
                   </Animated.View>
 
@@ -991,6 +1027,28 @@ export default function ConsultationScreen() {
                           {isVideo ? 'Open In-App Video Stream' : 'Live In-App Voice Call Stream'}
                         </Text>
                       </LinearGradient>
+                    </Pressable>
+
+                    {/* Quick Access to Kundli Birth Chart */}
+                    <Pressable
+                      onPress={() => setCallTab('chart')}
+                      style={{
+                        marginTop: 10,
+                        paddingVertical: 10,
+                        paddingHorizontal: 16,
+                        borderRadius: 12,
+                        backgroundColor: 'rgba(201, 168, 76, 0.15)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(201, 168, 76, 0.35)',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <AppIcon name="auto_awesome" size={15} color="#FFD700" style={{ marginRight: 6 }} />
+                      <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '700' }}>
+                        View Full Kundli & Birth Chart ↗
+                      </Text>
                     </Pressable>
                   </View>
                 </View>

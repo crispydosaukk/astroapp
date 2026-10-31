@@ -117,14 +117,15 @@ export function LocationSearchInput({
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const isFocusedRef = useRef(false);
   const debounceTimer = useRef<any>(null);
 
   // Only synchronize from outside if the input is not currently actively focused
   useEffect(() => {
-    if (!isFocused && value !== query) {
+    if (!isFocusedRef.current && value !== query) {
       setQuery(value || '');
     }
-  }, [value, isFocused]);
+  }, [value]);
 
   const searchLocations = (text: string) => {
     setQuery(text);
@@ -261,17 +262,16 @@ export function LocationSearchInput({
           value={query}
           onChangeText={searchLocations}
           onFocus={() => {
+            isFocusedRef.current = true;
             setIsFocused(true);
             if (predictions.length > 0) setShowDropdown(true);
             onFocus?.();
           }}
           onBlur={() => {
+            isFocusedRef.current = false;
             setIsFocused(false);
             // Delay closing dropdown slightly so press event on suggestion triggers
             setTimeout(() => setShowDropdown(false), 250);
-            if (query.trim()) {
-              onChangeText(query.trim());
-            }
           }}
           placeholder={placeholder}
           placeholderTextColor={colors.textMuted}

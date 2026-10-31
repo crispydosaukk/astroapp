@@ -157,12 +157,35 @@ export function Switch({
 export function RadialGlow({
   colors, stops, cx = '50%', cy = '50%', r = '50%', style,
 }: { colors: string[]; stops?: number[]; cx?: string; cy?: string; r?: string; style?: StyleProp<ViewStyle> }) {
-  const id = React.useId().replace(/:/g, '');
+  const id = React.useId().replace(/[^a-zA-Z0-9]/g, '') || 'radialGlow';
+
+  const parseCoord = (v?: string | number, fallback = 0.5): number => {
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') {
+      const num = parseFloat(v);
+      if (!isNaN(num)) return v.endsWith('%') ? num / 100 : num;
+    }
+    return fallback;
+  };
+
+  const parsedCx = parseCoord(cx, 0.5);
+  const parsedCy = parseCoord(cy, 0.5);
+  const parsedR = parseCoord(r, 0.5);
+
   return (
     <View pointerEvents="none" style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, style]}>
       <Svg width="100%" height="100%">
         <Defs>
-          <RadialGradient id={id} cx={cx} cy={cy} rx={r} ry={r} fx={cx} fy={cy} gradientUnits="objectBoundingBox">
+          <RadialGradient
+            id={id}
+            cx={parsedCx}
+            cy={parsedCy}
+            rx={parsedR}
+            ry={parsedR}
+            fx={parsedCx}
+            fy={parsedCy}
+            gradientUnits="objectBoundingBox"
+          >
             {colors.map((c, i) => (
               <Stop key={i} offset={stops ? stops[i] : i / Math.max(1, colors.length - 1)} stopColor={c} />
             ))}
