@@ -168,6 +168,99 @@ function InCallKundliChart({
   );
 }
 
+const ZODIAC_SIGNS = [
+  'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
+];
+
+const SOUTH_GRID = [
+  { sign: 'Pisces', short: 'Pis', row: 0, col: 0 },
+  { sign: 'Aries', short: 'Ari', row: 0, col: 1 },
+  { sign: 'Taurus', short: 'Tau', row: 0, col: 2 },
+  { sign: 'Gemini', short: 'Gem', row: 0, col: 3 },
+  { sign: 'Cancer', short: 'Can', row: 1, col: 3 },
+  { sign: 'Leo', short: 'Leo', row: 2, col: 3 },
+  { sign: 'Virgo', short: 'Vir', row: 3, col: 3 },
+  { sign: 'Libra', short: 'Lib', row: 3, col: 2 },
+  { sign: 'Scorpio', short: 'Sco', row: 3, col: 1 },
+  { sign: 'Sagittarius', short: 'Sag', row: 3, col: 0 },
+  { sign: 'Capricorn', short: 'Cap', row: 2, col: 0 },
+  { sign: 'Aquarius', short: 'Aqu', row: 1, col: 0 },
+];
+
+function InCallSouthIndianChart({
+  planets,
+  ascendantSign = 'Scorpio',
+}: {
+  planets: Array<{ symbol: string; house: number; color: string; sign?: string }>;
+  ascendantSign?: string;
+}) {
+  const S = 220;
+  const C = S / 4; // 55px per cell
+  const stroke = 'rgba(201, 168, 76, 0.45)';
+  const ascIdx = Math.max(0, ZODIAC_SIGNS.findIndex((s) => s.toLowerCase() === ascendantSign.toLowerCase()));
+
+  return (
+    <View style={{ width: S, height: S, alignSelf: 'center', marginVertical: 6 }}>
+      <Svg width={S} height={S}>
+        <Rect x={0} y={0} width={S} height={S} fill="rgba(30,12,9,0.92)" stroke={stroke} strokeWidth={1.5} rx={8} />
+
+        {SOUTH_GRID.map((item) => {
+          const x = item.col * C;
+          const y = item.row * C;
+          const signIdx = ZODIAC_SIGNS.findIndex((s) => s.toLowerCase() === item.sign.toLowerCase());
+          const houseNum = ((signIdx - ascIdx + 12) % 12) + 1;
+          const isAsc = signIdx === ascIdx;
+
+          const cellPlanets = planets.filter((p) => {
+            if (p.sign && p.sign.toLowerCase() === item.sign.toLowerCase()) return true;
+            return p.house === houseNum;
+          });
+
+          return (
+            <React.Fragment key={item.sign}>
+              <Rect
+                x={x}
+                y={y}
+                width={C}
+                height={C}
+                fill={isAsc ? 'rgba(201,168,76,0.18)' : 'transparent'}
+                stroke={stroke}
+                strokeWidth={1}
+              />
+              {isAsc && (
+                <Line x1={x} y1={y + C} x2={x + C} y2={y} stroke="#FFD700" strokeWidth={1} strokeDasharray="2,2" />
+              )}
+              <SvgText x={x + 4} y={y + 11} fontSize={8} fontWeight="700" fill={isAsc ? '#FFD700' : 'rgba(201,168,76,0.7)'}>
+                {item.short}
+              </SvgText>
+              {isAsc && (
+                <SvgText x={x + C - 4} y={y + 11} fontSize={7.5} fontWeight="800" textAnchor="end" fill="#FFD700">
+                  ASC
+                </SvgText>
+              )}
+              {cellPlanets.length > 0 && (
+                <SvgText x={x + C / 2} y={y + 26} fontSize={10} fontWeight="800" textAnchor="middle" fill={cellPlanets[0].color}>
+                  {cellPlanets.map((p) => p.symbol).join('')}
+                </SvgText>
+              )}
+            </React.Fragment>
+          );
+        })}
+
+        {/* Center 2x2 Chamber */}
+        <Rect x={C} y={C} width={C * 2} height={C * 2} fill="#140604" stroke="rgba(201,168,76,0.6)" strokeWidth={1} />
+        <SvgText x={S / 2} y={S / 2 - 8} fontSize={10} fontWeight="800" textAnchor="middle" fill="#FFD700">
+          ✦ D1 LAGNA ✦
+        </SvgText>
+        <SvgText x={S / 2} y={S / 2 + 8} fontSize={9} fontWeight="700" textAnchor="middle" fill="#F0EAD6">
+          {ascendantSign}
+        </SvgText>
+      </Svg>
+    </View>
+  );
+}
+
 export default function ConsultationScreen() {
   const colors = useThemeColors();
   const extra = useExtra<{ type?: string; astrologer?: Astro; roomID?: string }>();
@@ -185,6 +278,7 @@ export default function ConsultationScreen() {
 
   const [chartData, setChartData] = useState<KundliChartData | null>(null);
   const [callTab, setCallTab] = useState<'chart' | 'stream'>('chart');
+  const [inCallChartFormat, setInCallChartFormat] = useState<'north' | 'south'>('north');
 
   // Load Devotee Birth Chart for the Call Screen
   useEffect(() => {
@@ -735,8 +829,69 @@ export default function ConsultationScreen() {
                     </View>
                   </View>
 
-                  {/* North Indian Janam Kundli SVG Chart */}
-                  <InCallKundliChart planets={activePlanets} />
+                  {/* Chart Format Switcher: North Indian vs South Indian */}
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      marginHorizontal: 16,
+                      marginTop: 8,
+                      marginBottom: 2,
+                      padding: 2,
+                      borderRadius: 10,
+                      backgroundColor: 'rgba(20, 8, 5, 0.9)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(201, 168, 76, 0.25)',
+                    }}
+                  >
+                    <Pressable
+                      onPress={() => setInCallChartFormat('north')}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 4.5,
+                        borderRadius: 8,
+                        alignItems: 'center',
+                        backgroundColor: inCallChartFormat === 'north' ? '#713B32' : 'transparent',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: '700',
+                          color: inCallChartFormat === 'north' ? '#FFD700' : '#A0A8C0',
+                        }}
+                      >
+                        🏛 North Indian
+                      </Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => setInCallChartFormat('south')}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 4.5,
+                        borderRadius: 8,
+                        alignItems: 'center',
+                        backgroundColor: inCallChartFormat === 'south' ? '#713B32' : 'transparent',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: '700',
+                          color: inCallChartFormat === 'south' ? '#FFD700' : '#A0A8C0',
+                        }}
+                      >
+                        🛕 South Indian
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  {/* Janam Kundli SVG Chart (North or South Indian) */}
+                  {inCallChartFormat === 'north' ? (
+                    <InCallKundliChart planets={activePlanets} />
+                  ) : (
+                    <InCallSouthIndianChart planets={activePlanets} ascendantSign={devoteeLagna} />
+                  )}
 
                   {/* Planetary Positions Horizontal Chips */}
                   <ScrollView

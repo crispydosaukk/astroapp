@@ -1,332 +1,183 @@
 /**
- * Kundli & Service Reports Screen
- * Complete parity with AstroParihar web & mobile:
- * - Covers ALL Services, Remedies, Panchang, and Mahadasha Paid PDF Reports
- * - Sign-in validation: If user is not signed in, show sign-in prompt; direct reports are protected
- * - Real-time wallet balance verification & deduction
- * - Instant view & high-res download / share for all reports
- * - No spinning loop or stuck processing states
+ * Mahadasha Paid PDF Reports & Guides Screen
+ * Complete parity with AstroParihar Website:
+ * - Only the 4 official website Mahadasha Guides:
+ *   1. Rahu Mahadasha Stabilisation Guide (₹499 / $9.99)
+ *   2. Rahu Mahadasha Survival Guide (₹999 / $19.99)
+ *   3. Sani Mahadasha Stabilisation Guide (₹499 / $9.99)
+ *   4. Sani Mahadasha Survival Guide (₹999 / $19.99)
+ * - Sign-in validation & protected access
+ * - Real-time wallet balance verification & instant purchase deduction
+ * - Full interactive in-app chapter reader with classical mantras & instructions
+ * - High-res PDF download / share
  */
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  Share,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton, OutlinedButton } from '@/components/common';
-import { BottomSheet, showSnackBar } from '@/components/overlays';
-import {
-  ReportIntakeConfig,
-  ServiceReportIntakeModal,
-} from '@/components/ServiceReportIntakeModal';
+import { showSnackBar } from '@/components/overlays';
 import { TabBar, TabPager } from '@/components/Tabs';
 import { Text } from '@/components/Text';
-import { useAuthStore } from '@/features/auth/authStore';
-import { useCurrencyStore } from '@/services/currencyStore';
-import { AppRoutes, pop, push } from '@/navigation/routes';
 import {
-  KundliReportItem,
-  getUserReports,
-  downloadOrShareReport,
-} from '@/services/reportService';
+  getPurchasedGuideIds,
+  MAHADASHA_GUIDES,
+  MahadashaGuide,
+  markGuidePurchased,
+} from '@/data/mahadashaGuidesData';
+import { useAuthStore } from '@/features/auth/authStore';
+import { AppRoutes, pop, push } from '@/navigation/routes';
+import { useCurrencyStore } from '@/services/currencyStore';
 import { withAlpha } from '@/theme/colors';
-import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
 
-const REPORT_LANGUAGES = [
-  { id: 'en', label: 'English' },
-  { id: 'hi', label: 'हिंदी (Hindi)' },
-  { id: 'te', label: 'తెలుగు (Telugu)' },
-  { id: 'ta', label: 'தமிழ் (Tamil)' },
-  { id: 'kn', label: 'ಕನ್ನಡ (Kannada)' },
-  { id: 'mr', label: 'मराठी (Marathi)' },
-  { id: 'gu', label: 'ગુજરાતી (Gujarati)' },
-];
-
-const CATALOG = [
-  // --- Remedies Reports ---
-  {
-    id: 'cat_rem_ashta',
-    emoji: '🕉️',
-    title: 'Ashta Parihar 48-Day Protocol Report',
-    desc: 'Complete 8-direction Vedic remedial protocol: Mantra, Yantra, Homa, Devata Upasana, Gemstone, Rudraksha, Vastu, Dana',
-    price: 499,
-    priceDisplay: '₹499',
-    pages: '40 pages (PDF)',
-    color: '#713B32',
-    category: 'remedies',
-  },
-  {
-    id: 'cat_rem_lalkitab',
-    emoji: '📖',
-    title: 'Lal Kitab Customized Upaay Dossier',
-    desc: 'Custom 43-day non-stop planetary karma adjustments, debt removal & protection remedies',
-    price: 399,
-    priceDisplay: '₹399',
-    pages: '36 pages (PDF)',
-    color: '#E65100',
-    category: 'remedies',
-  },
-  {
-    id: 'cat_rem_ishta',
-    emoji: '✨',
-    title: 'Personal Ishta Devata & Mantra Sadhana Report',
-    desc: '12th from Karakamsa Navamsha analysis, exact Beej Mantras, Mala counts & Japa rules',
-    price: 299,
-    priceDisplay: '₹299',
-    pages: '28 pages (PDF)',
-    color: '#9370DB',
-    category: 'remedies',
-  },
-  {
-    id: 'cat_rem_vastu',
-    emoji: '🏠',
-    title: '16-Zone Vastu Parihar Architectural Report',
-    desc: 'Auspicious directions, 16-zone spatial balance, non-demolition remedies & Yantras',
-    price: 399,
-    priceDisplay: '₹399',
-    pages: '36 pages (PDF)',
-    color: '#81C784',
-    category: 'remedies',
-  },
-
-  // --- Services & Life Reports ---
-  {
-    id: 'cat_1',
-    emoji: '📜',
-    title: 'Comprehensive Life Kundli Report',
-    desc: 'Complete birth chart analysis, 12 Bhavas, 10-year predictions & planetary remedies',
-    price: 499,
-    priceDisplay: '₹499',
-    pages: '48 pages (PDF)',
-    color: '#9370DB',
-    category: 'services',
-  },
-  {
-    id: 'cat_2',
-    emoji: '💼',
-    title: 'Career & Wealth Blueprint Report',
-    desc: '10th House Karma, promotion timings, business vs job suitability & Dhana Yogas',
-    price: 349,
-    priceDisplay: '₹349',
-    pages: '32 pages (PDF)',
-    color: '#FFD700',
-    category: 'services',
-  },
-  {
-    id: 'cat_3',
-    emoji: '❤️',
-    title: 'Marriage & Love Compatibility Report',
-    desc: '36 Guna Milan, 7th house aspects, spouse characteristics & Manglik remedies',
-    price: 349,
-    priceDisplay: '₹349',
-    pages: '28 pages (PDF)',
-    color: '#FF6B6B',
-    category: 'services',
-  },
-  {
-    id: 'cat_4',
-    emoji: '🌟',
-    title: 'Annual Dasha & Transit Report 2026-2027',
-    desc: 'Month-by-month Antardasha planetary shifts and transit alignments',
-    price: 249,
-    priceDisplay: '₹249',
-    pages: '20 pages (PDF)',
-    color: '#4FC3F7',
-    category: 'services',
-  },
-  {
-    id: 'cat_5',
-    emoji: '🏥',
-    title: 'Health & Ayurvedic Dosha Report',
-    desc: 'Vata-Pitta-Kapha balance, 6th house afflictions & Ayurvedic healing therapies',
-    price: 299,
-    priceDisplay: '₹299',
-    pages: '24 pages (PDF)',
-    color: '#81C784',
-    category: 'services',
-  },
-
-  // --- Panchang & Muhurat Reports ---
-  {
-    id: 'cat_pan_almanac',
-    emoji: '📅',
-    title: 'Annual Shubh Muhurat & Timings Almanac',
-    desc: 'Complete annual schedule for Vivah, Griha Pravesh, Vahan, Vyapar & Abhijit windows',
-    price: 299,
-    priceDisplay: '₹299',
-    pages: '30 pages (PDF)',
-    color: '#4FC3F7',
-    category: 'panchang',
-  },
-  {
-    id: 'cat_pan_monthly',
-    emoji: '🌙',
-    title: 'Monthly Panchang & Tithi Almanac Dossier',
-    desc: 'Tithi, Nakshatra, Yoga, Karana, Choghadiya & Rahu Kaal precautions almanac',
-    price: 199,
-    priceDisplay: '₹199',
-    pages: '25 pages (PDF)',
-    color: '#FFB347',
-    category: 'panchang',
-  },
-
-  // --- Mahadasha Paid PDF Dossiers ---
-  {
-    id: 'cat_rahu_stab',
-    emoji: '🛡️',
-    title: 'Rahu Mahadasha Stabilisation Guide',
-    desc: 'Harmonize intense Rahu transit with exact mantras, diet rules & silver talisman (PDF Dossier)',
-    price: 499,
-    priceDisplay: '₹499',
-    pages: '36 pages (PDF)',
-    color: '#713B32',
-    category: 'mahadasha',
-  },
-  {
-    id: 'cat_rahu_surv',
-    emoji: '🔥',
-    title: 'Rahu Mahadasha Survival Guide',
-    desc: 'Tactical survival & protective mantras for full 18-year Rahu cycle (PDF Dossier)',
-    price: 999,
-    priceDisplay: '₹999',
-    pages: '48 pages (PDF)',
-    color: '#E65100',
-    category: 'mahadasha',
-  },
-  {
-    id: 'cat_sani_stab',
-    emoji: '🪐',
-    title: 'Sani Mahadasha Stabilisation Guide',
-    desc: 'Saturn discipline, endurance & remedies for Sade Sati / Dhayya (PDF Dossier)',
-    price: 499,
-    priceDisplay: '₹499',
-    pages: '36 pages (PDF)',
-    color: '#1A3D5C',
-    category: 'mahadasha',
-  },
-  {
-    id: 'cat_sani_surv',
-    emoji: '⚡',
-    title: 'Sani Mahadasha Survival Guide',
-    desc: 'Navigating Saturn trials, karmic mastery & planetary harmony (PDF Dossier)',
-    price: 999,
-    priceDisplay: '₹999',
-    pages: '52 pages (PDF)',
-    color: '#4A148C',
-    category: 'mahadasha',
-  },
-];
-
-export function StatCard({ value, label, color, colors }: { value: string; label: string; color: string; colors: any }) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        paddingVertical: 14,
-        borderRadius: 16,
-        backgroundColor: withAlpha(color, colors.isLight ? 20 : 25),
-        borderWidth: 1,
-        borderColor: withAlpha(color, 60),
-        alignItems: 'center',
-      }}
-    >
-      <Text style={{ color, fontSize: 20, fontWeight: '800' }}>{value}</Text>
-      <Text style={{ color: colors.textMuted, fontSize: 11 }}>{label}</Text>
-    </View>
-  );
-}
-
-export function MiniChip({ text, color }: { text: string; color: string }) {
-  return (
-    <View style={{ marginRight: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: withAlpha(color, 25) }}>
-      <Text style={{ color, fontSize: 10, fontWeight: '700' }}>{text}</Text>
-    </View>
-  );
-}
+const STORAGE_WALLET_BALANCE = 'astroparihar_wallet_balance';
 
 export default function KundliReportsScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authUser = useAuthStore((s) => s.user);
-  const setPostLoginRedirect = useAuthStore((s) => s.setPostLoginRedirect);
   const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
 
-  const [tab, setTab] = useState(0);
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('English');
-  const [reports, setReports] = useState<KundliReportItem[]>([]);
-  const [loadingReports, setLoadingReports] = useState(true);
-  const [selectedReport, setSelectedReport] = useState<KundliReportItem | null>(null);
-  const [intakeConfig, setIntakeConfig] = useState<ReportIntakeConfig | null>(null);
-  const formatPrice = useCurrencyStore((s) => s.formatPrice);
+  const { currencyCode, formatPrice, convertPrice } = useCurrencyStore();
 
-  const loadReports = async () => {
-    if (!isUserLoggedIn) {
-      setReports([]);
-      setLoadingReports(false);
-      return;
-    }
-    setLoadingReports(true);
+  const [tab, setTab] = useState(1); // Default to 'Mahadasha Guides' tab
+  const [purchasedIds, setPurchasedIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [walletBalance, setWalletBalance] = useState(0);
+
+  // Active guide for preview or in-app reading
+  const [viewingGuide, setViewingGuide] = useState<MahadashaGuide | null>(null);
+  const [activeChapterIndex, setActiveChapterIndex] = useState(0);
+  const [isReaderOpen, setIsReaderOpen] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+
+  const guidesList: MahadashaGuide[] = Object.values(MAHADASHA_GUIDES);
+
+  const loadUserDataAndPurchases = async () => {
+    setLoading(true);
     try {
-      const list = await getUserReports(authUser?.uid || authUser?.phone);
-      setReports(list);
+      const uKey = authUser?.uid || authUser?.phone || 'guest';
+      const bought = await getPurchasedGuideIds(uKey);
+      setPurchasedIds(bought);
+
+      // Load wallet balance from local storage / user
+      const rawBal = await AsyncStorage.getItem(STORAGE_WALLET_BALANCE);
+      if (rawBal) {
+        setWalletBalance(parseFloat(rawBal) || 0);
+      } else if ((authUser as any)?.walletBalance !== undefined) {
+        setWalletBalance(Number((authUser as any).walletBalance) || 0);
+      } else {
+        setWalletBalance(0);
+      }
     } catch {
-      setReports([]);
+      setPurchasedIds([]);
     } finally {
-      setLoadingReports(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadReports();
+    loadUserDataAndPurchases();
   }, [isUserLoggedIn, authUser?.uid, authUser?.phone]);
 
-  const handleBuyReport = (item: typeof CATALOG[0]) => {
-    const lower = item.title.toLowerCase();
-    const mode =
-      item.id === 'cat_rem_ashta'
-        ? 'parihara_plan'
-        : item.id === 'cat_rem_vastu' || lower.includes('vastu')
-        ? 'vastu'
-        : item.category === 'remedies'
-        ? 'remedy'
-        : item.category === 'mahadasha'
-        ? 'mahadasha'
-        : 'service';
+  const handleBuyOrUnlock = async (guide: MahadashaGuide) => {
+    if (!isUserLoggedIn) {
+      Alert.alert(
+        'Sign In Required',
+        'Please sign in to your AstroParihar account to purchase and access this Mahadasha Guide.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Sign In',
+            onPress: () => {
+              useAuthStore.getState().setPostLoginRedirect({ route: '', popOnSuccess: true });
+              push(AppRoutes.signInScreen);
+            },
+          },
+        ]
+      );
+      return;
+    }
 
-    setIntakeConfig({
-      mode,
-      title: item.title,
-      subtitle: `${item.pages} • ${item.desc}`,
-      price: item.price,
-      priceUSD: Number((item.price * 0.012).toFixed(2)),
-      serviceId: item.id,
-      remedyName: item.title,
-      category: item.category as any,
-      defaultLanguage: selectedLanguage,
-    });
-  };
+    const priceRequired = currencyCode === 'USD' ? guide.priceUSD : guide.price;
+    const currentBal = walletBalance;
 
-  const handleDownload = async (rep: KundliReportItem) => {
-    showSnackBar(`Preparing "${rep.title}.pdf" (${rep.language || selectedLanguage})...`, colors.surfaceVariant);
-    const shared = await downloadOrShareReport(rep);
-    if (shared) {
-      showSnackBar(`"${rep.title}" exported successfully!`, colors.surfaceVariant);
+    if (currentBal < priceRequired) {
+      const needed = Math.max(0, priceRequired - currentBal);
+      Alert.alert(
+        'Insufficient Wallet Balance',
+        `Available balance: ${formatPrice(currentBal)}\nRequired: ${formatPrice(priceRequired)}\n\nYou need ${formatPrice(needed)} more to unlock this guide. Would you like to recharge your wallet now?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Recharge Wallet',
+            onPress: () => push(AppRoutes.walletScreen),
+          },
+        ]
+      );
+      return;
+    }
+
+    // Process Purchase
+    setIsPurchasing(true);
+    try {
+      const newBal = Math.max(0, currentBal - priceRequired);
+      setWalletBalance(newBal);
+      await AsyncStorage.setItem(STORAGE_WALLET_BALANCE, String(newBal));
+
+      const uKey = authUser?.uid || authUser?.phone || 'user';
+      await markGuidePurchased(guide.id, uKey);
+
+      setPurchasedIds((prev) => [...prev, guide.id]);
+      showSnackBar(`Successfully unlocked "${guide.title}"!`, '#2D9E6B');
+
+      // Open in-app reader immediately
+      setViewingGuide(guide);
+      setActiveChapterIndex(0);
+      setIsReaderOpen(true);
+    } catch {
+      showSnackBar('Failed to complete purchase. Please try again.', '#CF4444');
+    } finally {
+      setIsPurchasing(false);
     }
   };
 
-  const filteredCatalog = CATALOG.filter((c) => {
-    if (categoryFilter === 'all') return true;
-    return c.category === categoryFilter;
-  });
+  const handleOpenReader = (guide: MahadashaGuide) => {
+    setViewingGuide(guide);
+    setActiveChapterIndex(0);
+    setIsReaderOpen(true);
+  };
+
+  const handleDownloadPdf = async (guide: MahadashaGuide) => {
+    try {
+      showSnackBar(`Preparing "${guide.pdfTitle}"...`);
+      await Share.share({
+        title: guide.title,
+        message: `${guide.title}\n${guide.subtitle}\n\nOfficial PDF Guide: ${guide.pdfUrl}`,
+        url: guide.pdfUrl,
+      });
+    } catch {
+      showSnackBar('Could not share PDF.', '#CF4444');
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="kundliReports.screen">
       <AppBar
-        title={t('profile.kundliReports', 'Kundli & Service Reports')}
+        title="Mahadasha PDF Guides"
         onBack={pop}
         testIDPrefix="kundliReports"
         backgroundColor={colors.background}
@@ -334,7 +185,7 @@ export default function KundliReportsScreen() {
         bottom={
           <TabBar
             testIDPrefix="kundliReports.tab"
-            tabs={['My Reports', 'Get Reports']}
+            tabs={['My Purchased Guides', 'Official Guides (4)']}
             index={tab}
             onChange={setTab}
             indicatorStyle="underline"
@@ -347,71 +198,43 @@ export default function KundliReportsScreen() {
         }
       />
 
-      {/* Multi-Language Selector Bar */}
+      {/* Wallet Balance Strip */}
       <View
         style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 20,
           paddingVertical: 10,
           backgroundColor: colors.isLight ? '#FFFDF9' : colors.surfaceVariant,
           borderBottomWidth: 1,
           borderBottomColor: colors.cardBorder,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 6 }}>
-          <AppIcon name="language" color={colors.goldAccent} size={15} />
-          <Text style={{ marginLeft: 6, color: colors.textPrimary, fontSize: 11.5, fontWeight: '700' }}>
-            Report Generation Language:
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <AppIcon name="account_balance_wallet_outlined" color={colors.goldAccent} size={16} />
+          <Text style={{ marginLeft: 6, color: colors.textPrimary, fontSize: 12.5, fontWeight: '700' }}>
+            Wallet Balance: {formatPrice(walletBalance)}
           </Text>
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+        <Pressable
+          onPress={() => push(AppRoutes.walletScreen)}
+          style={{
+            paddingHorizontal: 12,
+            paddingVertical: 4,
+            borderRadius: 100,
+            backgroundColor: withAlpha(colors.goldAccent, 25),
+            borderWidth: 1,
+            borderColor: withAlpha(colors.goldAccent, 80),
+          }}
         >
-          {REPORT_LANGUAGES.map((lang) => {
-            const isSel = selectedLanguage === lang.label;
-            return (
-              <Pressable
-                key={lang.id}
-                onPress={() => setSelectedLanguage(lang.label)}
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 5,
-                  borderRadius: 16,
-                  backgroundColor: isSel
-                    ? colors.isLight
-                      ? '#713B32'
-                      : colors.goldAccent
-                    : colors.surface,
-                  borderWidth: 1,
-                  borderColor: isSel
-                    ? colors.isLight
-                      ? '#713B32'
-                      : colors.goldAccent
-                    : colors.cardBorder,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: isSel ? '800' : '500',
-                    color: isSel
-                      ? colors.isLight
-                        ? '#FFFFFF'
-                        : '#000000'
-                      : colors.textSecondary,
-                  }}
-                >
-                  {lang.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+          <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '800' }}>+ Add Money</Text>
+        </Pressable>
       </View>
 
       <TabPager index={tab} onChange={setTab}>
         {[
-          /* Tab 0: My Reports */
+          /* Tab 0: My Purchased Guides */
           <ScrollView
             key="mine"
             contentContainerStyle={{
@@ -420,7 +243,6 @@ export default function KundliReportsScreen() {
               paddingBottom: Math.max(150, insets.bottom + 90),
             }}
           >
-            {/* If user is not authenticated, show sign-in prompt; direct reports are protected */}
             {!isUserLoggedIn ? (
               <View
                 style={{
@@ -431,76 +253,29 @@ export default function KundliReportsScreen() {
                   borderWidth: 1,
                   borderColor: withAlpha(colors.goldAccent, 60),
                   alignItems: 'center',
-                  shadowColor: '#000',
-                  shadowOpacity: colors.isLight ? 0.05 : 0.2,
-                  shadowRadius: 10,
-                  elevation: 3,
                 }}
               >
-                <View
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 20,
-                    backgroundColor: withAlpha(colors.goldAccent, 20),
-                    borderWidth: 1,
-                    borderColor: withAlpha(colors.goldAccent, 50),
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <AppIcon name="lock" color={colors.goldAccent} size={30} />
-                </View>
-
-                <Text
-                  style={{
-                    marginTop: 16,
-                    color: colors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: '800',
-                    textAlign: 'center',
-                  }}
-                >
-                  Please Sign In to View Your Reports
+                <AppIcon name="lock" color={colors.goldAccent} size={32} />
+                <Text style={{ marginTop: 14, color: colors.textPrimary, fontSize: 17, fontWeight: '800' }}>
+                  Please Sign In to Access Your Purchased Guides
                 </Text>
-
-                <Text
-                  style={{
-                    marginTop: 8,
-                    color: colors.textSecondary,
-                    fontSize: 12.5,
-                    lineHeight: 18,
-                    textAlign: 'center',
-                  }}
-                >
-                  Access all your personalized Vedic chart analysis, remedy reports, and unlocked Mahadasha guides in one place.
+                <Text style={{ marginTop: 6, color: colors.textSecondary, fontSize: 12, textAlign: 'center' }}>
+                  Sign in to view and download your unlocked Rahu and Sani Mahadasha survival guides.
                 </Text>
-
                 <ElevatedButton
-                  label="Sign In to Your Account"
+                  label="Sign In"
                   icon="login"
-                  onPress={() => {
-                    setPostLoginRedirect({ route: '', popOnSuccess: true });
-                    push(AppRoutes.signInScreen);
-                  }}
+                  onPress={() => push(AppRoutes.signInScreen)}
                   bg="#713B32"
                   fg="#FFFFFF"
                   radius={100}
-                  paddingV={13}
-                  paddingH={24}
-                  fontSize={14}
-                  fontWeight="700"
-                  style={{ marginTop: 20, width: '100%' }}
+                  paddingV={12}
+                  paddingH={28}
+                  fontSize={13}
+                  style={{ marginTop: 16 }}
                 />
               </View>
-            ) : loadingReports ? (
-              <View style={{ paddingVertical: 60, alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={colors.goldAccent} />
-                <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 13 }}>
-                  Loading your Vedic reports...
-                </Text>
-              </View>
-            ) : reports.length === 0 ? (
+            ) : purchasedIds.length === 0 ? (
               <View
                 style={{
                   marginTop: 20,
@@ -512,15 +287,15 @@ export default function KundliReportsScreen() {
                   alignItems: 'center',
                 }}
               >
-                <AppIcon name="description_outlined" color={colors.textMuted} size={48} />
+                <AppIcon name="menu_book" color={colors.textMuted} size={44} />
                 <Text style={{ marginTop: 12, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>
-                  No Reports Found
+                  No Unlocked Guides Yet
                 </Text>
-                <Text style={{ marginTop: 6, color: colors.textSecondary, fontSize: 12, textAlign: 'center' }}>
-                  You haven&apos;t generated any reports yet. Explore remedies, kundli matching, or browse our catalog below.
+                <Text style={{ marginTop: 6, color: colors.textSecondary, fontSize: 12, textAlign: 'center', lineHeight: 17 }}>
+                  You have not purchased any Mahadasha PDF guides yet. Explore our 4 official guides below to master Rahu and Sani cycles.
                 </Text>
                 <ElevatedButton
-                  label="Explore Reports Catalog"
+                  label="View Official Guides"
                   onPress={() => setTab(1)}
                   bg="#713B32"
                   fg="#FFFFFF"
@@ -532,509 +307,514 @@ export default function KundliReportsScreen() {
                 />
               </View>
             ) : (
-              <>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <StatCard value={String(reports.length)} label="Total Reports" color="#9370DB" colors={colors} />
-                  <StatCard value={String(reports.filter((r) => r.status === 'Ready').length)} label="Ready" color="#2D9E6B" colors={colors} />
-                  <StatCard value={String(reports.filter((r) => r.status === 'Processing').length)} label="Processing" color="#D4821A" colors={colors} />
-                </View>
-
-                <View style={{ height: 18 }} />
-
-                {reports.map((r) => (
-                  <Pressable
-                    key={r.id || r.title}
-                    onPress={() => setSelectedReport(r)}
+              guidesList
+                .filter((g) => purchasedIds.includes(g.id))
+                .map((guide) => (
+                  <View
+                    key={guide.id}
                     style={{
-                      marginBottom: 14,
-                      padding: 16,
+                      marginBottom: 16,
+                      padding: 18,
                       borderRadius: 20,
                       backgroundColor: colors.surface,
-                      borderWidth: 1,
-                      borderColor: colors.cardBorder,
-                      flexDirection: 'row',
-                      alignItems: 'center',
+                      borderWidth: 1.5,
+                      borderColor: withAlpha(guide.color, 80),
                       shadowColor: '#000',
-                      shadowOpacity: colors.isLight ? 0.04 : 0.2,
+                      shadowOpacity: 0.1,
                       shadowRadius: 8,
                       elevation: 2,
                     }}
                   >
-                    <View
-                      style={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: 16,
-                        backgroundColor: withAlpha(r.color, colors.isLight ? 25 : 30),
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Text style={{ fontSize: 24 }}>{r.emoji}</Text>
-                    </View>
-
-                    <View style={{ flex: 1, marginLeft: 14 }}>
-                      <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>{r.title}</Text>
-                      <Text style={{ marginTop: 2, color: colors.textMuted, fontSize: 11 }}>{r.subtitle}</Text>
-                      <View style={{ marginTop: 6, flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
-                        <MiniChip text={r.pages} color={colors.textMuted} />
-                        {r.language && <MiniChip text={r.language} color={colors.goldAccent} />}
-                        <MiniChip text={r.date} color={colors.textMuted} />
-                        <MiniChip text="Ready" color="#2D9E6B" />
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 28 }}>{guide.emoji}</Text>
+                      <View style={{ marginLeft: 12, flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text numberOfLines={1} style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '800', flex: 1 }}>
+                            {guide.title}
+                          </Text>
+                          <View
+                            style={{
+                              paddingHorizontal: 7,
+                              paddingVertical: 2,
+                              borderRadius: 6,
+                              backgroundColor: withAlpha('#2D9E6B', 20),
+                              borderWidth: 1,
+                              borderColor: '#2D9E6B',
+                            }}
+                          >
+                            <Text style={{ color: '#2D9E6B', fontSize: 10, fontWeight: '800' }}>UNLOCKED</Text>
+                          </View>
+                        </View>
+                        <Text numberOfLines={2} style={{ marginTop: 4, color: colors.textSecondary, fontSize: 11.5, lineHeight: 16 }}>
+                          {guide.subtitle}
+                        </Text>
                       </View>
                     </View>
 
-                    <View style={{ marginLeft: 8, flexDirection: 'row', gap: 6 }}>
-                      {/* View Report Button */}
+                    <View style={{ marginTop: 14, flexDirection: 'row', gap: 10 }}>
                       <Pressable
-                        onPress={() => setSelectedReport(r)}
-                        accessibilityLabel="View Report"
+                        onPress={() => handleOpenReader(guide)}
                         style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 10,
-                          backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 25 : 35),
-                          borderWidth: 1,
-                          borderColor: withAlpha(colors.goldAccent, 60),
+                          flex: 1,
+                          flexDirection: 'row',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          paddingVertical: 9,
+                          borderRadius: 100,
+                          backgroundColor: '#713B32',
                         }}
                       >
-                        <AppIcon name="visibility_outlined" color={colors.goldAccent} size={18} />
+                        <AppIcon name="menu_book" color="#FFFFFF" size={14} />
+                        <Text style={{ marginLeft: 6, color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>
+                          Read Online
+                        </Text>
                       </Pressable>
 
-                      {/* Download / Share Report Button */}
                       <Pressable
-                        onPress={() => handleDownload(r)}
-                        accessibilityLabel="Download Report"
+                        onPress={() => handleDownloadPdf(guide)}
                         style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 10,
-                          backgroundColor: withAlpha(colors.textSecondary, colors.isLight ? 15 : 25),
-                          borderWidth: 1,
-                          borderColor: colors.cardBorder,
+                          flex: 1,
+                          flexDirection: 'row',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          paddingVertical: 9,
+                          borderRadius: 100,
+                          backgroundColor: colors.surfaceVariant,
+                          borderWidth: 1,
+                          borderColor: colors.cardBorder,
                         }}
                       >
-                        <AppIcon name="download_outlined" color={colors.textPrimary} size={18} />
+                        <AppIcon name="download" color={colors.goldAccent} size={14} />
+                        <Text style={{ marginLeft: 6, color: colors.goldAccent, fontSize: 12, fontWeight: '700' }}>
+                          Download PDF
+                        </Text>
                       </Pressable>
                     </View>
-                  </Pressable>
-                ))}
-              </>
+                  </View>
+                ))
             )}
           </ScrollView>,
 
-          /* Tab 1: Get Reports */
+          /* Tab 1: The 4 Official Website Mahadasha Guides */
           <ScrollView
-            key="get"
+            key="catalog"
             contentContainerStyle={{
               paddingHorizontal: 20,
               paddingTop: 16,
               paddingBottom: Math.max(150, insets.bottom + 90),
             }}
           >
-            {/* Category Filter for Catalog */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 14, gap: 8 }}
+            {/* Header Banner */}
+            <View
+              style={{
+                marginBottom: 16,
+                padding: 16,
+                borderRadius: 18,
+                backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 15 : 22),
+                borderWidth: 1,
+                borderColor: withAlpha(colors.goldAccent, 60),
+              }}
             >
-              {[
-                { id: 'all', label: 'All Reports' },
-                { id: 'remedies', label: 'Remedies Reports' },
-                { id: 'services', label: 'Services & Kundli' },
-                { id: 'panchang', label: 'Panchang & Muhurat' },
-                { id: 'mahadasha', label: 'Mahadasha PDFs' },
-              ].map((f) => {
-                const isSel = categoryFilter === f.id;
-                return (
-                  <Pressable
-                    key={f.id}
-                    onPress={() => setCategoryFilter(f.id)}
-                    style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 16,
-                      backgroundColor: isSel
-                        ? colors.isLight
-                          ? '#713B32'
-                          : colors.goldAccent
-                        : colors.surface,
-                      borderWidth: 1,
-                      borderColor: isSel
-                        ? colors.isLight
-                          ? '#713B32'
-                          : colors.goldAccent
-                        : colors.cardBorder,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 11.5,
-                        fontWeight: isSel ? '700' : '500',
-                        color: isSel
-                          ? colors.isLight
-                            ? '#FFFFFF'
-                            : '#000000'
-                          : colors.textSecondary,
-                      }}
-                    >
-                      {f.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+              <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '800' }}>
+                ✦ SACRED MAHADASHA REMEDIAL BLUEPRINTS
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 11.5, marginTop: 4, lineHeight: 16 }}>
+                Exhaustive PDF dossiers with authentic Sanskrit Beej Mantras, 48-day rituals, dietary Vata protocols & protective talismans.
+              </Text>
+            </View>
 
-            {filteredCatalog.map((c) => (
-              <View
-                key={c.id}
-                style={{
-                  marginBottom: 14,
-                  padding: 16,
-                  borderRadius: 20,
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.cardBorder,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  shadowColor: '#000',
-                  shadowOpacity: colors.isLight ? 0.04 : 0.2,
-                  shadowRadius: 8,
-                }}
-              >
+            {guidesList.map((guide) => {
+              const isUnlocked = purchasedIds.includes(guide.id);
+              const displayPrice =
+                currencyCode === 'USD' ? `$${guide.priceUSD}` : `₹${guide.price}`;
+
+              return (
                 <View
+                  key={guide.id}
                   style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: 16,
-                    backgroundColor: withAlpha(c.color, colors.isLight ? 25 : 30),
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    marginBottom: 18,
+                    borderRadius: 22,
+                    backgroundColor: colors.surface,
+                    borderWidth: 1.5,
+                    borderColor: isUnlocked ? '#2D9E6B' : colors.cardBorder,
+                    overflow: 'hidden',
+                    shadowColor: '#000',
+                    shadowOpacity: colors.isLight ? 0.05 : 0.25,
+                    shadowRadius: 8,
+                    elevation: 3,
                   }}
                 >
-                  <Text style={{ fontSize: 24 }}>{c.emoji}</Text>
-                </View>
-                <View style={{ flex: 1, marginLeft: 14 }}>
-                  <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>{c.title}</Text>
-                  <Text style={{ marginTop: 2, color: colors.textMuted, fontSize: 11, lineHeight: 15 }}>{c.desc}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 }}>
-                    <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600' }}>{c.pages}</Text>
-                    <View style={{ paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, backgroundColor: withAlpha(c.color, 20) }}>
-                      <Text style={{ fontSize: 9.5, fontWeight: '700', color: c.color }}>{c.category.toUpperCase()}</Text>
+                  <View style={{ padding: 18 }}>
+                    {/* Badge & Price Header */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <View
+                        style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 8,
+                          backgroundColor: withAlpha(guide.color, 25),
+                          borderWidth: 1,
+                          borderColor: withAlpha(guide.color, 70),
+                        }}
+                      >
+                        <Text style={{ color: guide.color, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>
+                          {guide.badge.toUpperCase()}
+                        </Text>
+                      </View>
+
+                      {isUnlocked ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 100,
+                            backgroundColor: withAlpha('#2D9E6B', 20),
+                            borderWidth: 1,
+                            borderColor: '#2D9E6B',
+                          }}
+                        >
+                          <Text style={{ color: '#2D9E6B', fontSize: 11, fontWeight: '800' }}>UNLOCKED ✓</Text>
+                        </View>
+                      ) : (
+                        <Text style={{ color: colors.goldAccent, fontSize: 17, fontWeight: '800' }}>
+                          {displayPrice}
+                        </Text>
+                      )}
+                    </View>
+
+                    {/* Title & Subtitle */}
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                      <Text style={{ fontSize: 26, marginRight: 10 }}>{guide.emoji}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
+                          {guide.title}
+                        </Text>
+                        <Text style={{ marginTop: 4, color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
+                          {guide.subtitle}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Preview Topics */}
+                    <View
+                      style={{
+                        marginTop: 14,
+                        padding: 12,
+                        borderRadius: 14,
+                        backgroundColor: colors.surfaceVariant,
+                        borderWidth: 1,
+                        borderColor: colors.cardBorder,
+                      }}
+                    >
+                      <Text style={{ color: colors.textPrimary, fontSize: 11.5, fontWeight: '700', marginBottom: 6 }}>
+                        📖 Included in this Guide:
+                      </Text>
+                      {guide.previewTopics.map((topic, tIdx) => (
+                        <Text key={tIdx} style={{ color: colors.textSecondary, fontSize: 11, lineHeight: 16, marginBottom: 2 }}>
+                          • {topic}
+                        </Text>
+                      ))}
+                    </View>
+
+                    {/* Action Button */}
+                    <View style={{ marginTop: 16, flexDirection: 'row', gap: 10 }}>
+                      {isUnlocked ? (
+                        <>
+                          <Pressable
+                            onPress={() => handleOpenReader(guide)}
+                            style={{
+                              flex: 1,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              paddingVertical: 11,
+                              borderRadius: 100,
+                              backgroundColor: '#713B32',
+                            }}
+                          >
+                            <AppIcon name="menu_book" color="#FFFFFF" size={15} />
+                            <Text style={{ marginLeft: 6, color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>
+                              Read Chapters Online
+                            </Text>
+                          </Pressable>
+
+                          <Pressable
+                            onPress={() => handleDownloadPdf(guide)}
+                            style={{
+                              width: 44,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: 22,
+                              backgroundColor: colors.surfaceVariant,
+                              borderWidth: 1,
+                              borderColor: colors.cardBorder,
+                            }}
+                          >
+                            <AppIcon name="download" color={colors.goldAccent} size={18} />
+                          </Pressable>
+                        </>
+                      ) : (
+                        <Pressable
+                          onPress={() => handleBuyOrUnlock(guide)}
+                          disabled={isPurchasing}
+                          style={{
+                            flex: 1,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            paddingVertical: 12,
+                            borderRadius: 100,
+                            backgroundColor: colors.isLight ? '#713B32' : colors.goldAccent,
+                          }}
+                        >
+                          {isPurchasing ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                          ) : (
+                            <>
+                              <AppIcon
+                                name="lock_open"
+                                color={colors.isLight ? '#FFFFFF' : '#000000'}
+                                size={15}
+                              />
+                              <Text
+                                style={{
+                                  marginLeft: 6,
+                                  color: colors.isLight ? '#FFFFFF' : '#000000',
+                                  fontSize: 13,
+                                  fontWeight: '800',
+                                }}
+                              >
+                                Unlock Full Guide ({displayPrice})
+                              </Text>
+                            </>
+                          )}
+                        </Pressable>
+                      )}
                     </View>
                   </View>
                 </View>
-                <View style={{ marginLeft: 10, alignItems: 'flex-end' }}>
-                  <Text style={{ color: colors.goldAccent, fontSize: 16, fontWeight: '800' }}>{formatPrice(c.price)}</Text>
-                  <Pressable
-                    onPress={() => handleBuyReport(c)}
-                    style={{
-                      marginTop: 6,
-                      paddingHorizontal: 14,
-                      paddingVertical: 7,
-                      borderRadius: 100,
-                      backgroundColor: colors.isLight ? '#713B32' : colors.goldAccent,
-                    }}
-                  >
-                    <Text style={{ color: colors.isLight ? '#FFFFFF' : '#000000', fontSize: 12, fontWeight: '700' }}>Buy</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </ScrollView>,
         ]}
       </TabPager>
 
-      {/* Comprehensive Report Preview BottomSheet Modal */}
-      <BottomSheet visible={!!selectedReport} onClose={() => setSelectedReport(null)} testID="kundliReports.detailSheet">
-        {selectedReport ? (
-          <View
-            style={{
-              padding: 24,
-              backgroundColor: colors.surface,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              maxHeight: 620,
-            }}
-          >
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ fontSize: 32 }}>{selectedReport.emoji}</Text>
-                <View style={{ marginLeft: 12, flex: 1 }}>
-                  <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800' }}>{selectedReport.title}</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: 12 }}>{selectedReport.subtitle}</Text>
-                </View>
-                <Pressable onPress={() => setSelectedReport(null)} style={{ padding: 4 }}>
-                  <AppIcon name="close_rounded" color={colors.textMuted} size={22} />
-                </Pressable>
+      {/* Interactive In-App Mahadasha Reader Modal */}
+      <Modal
+        visible={isReaderOpen && !!viewingGuide}
+        animationType="slide"
+        onRequestClose={() => setIsReaderOpen(false)}
+      >
+        {viewingGuide ? (
+          <View style={{ flex: 1, backgroundColor: colors.background }}>
+            {/* Reader Header */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 20,
+                paddingTop: Math.max(16, insets.top + 8),
+                paddingBottom: 14,
+                backgroundColor: colors.surface,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.cardBorder,
+              }}
+            >
+              <Pressable onPress={() => setIsReaderOpen(false)} hitSlop={8} style={{ padding: 4 }}>
+                <AppIcon name="arrow_back" color={colors.textPrimary} size={22} />
+              </Pressable>
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <Text numberOfLines={1} style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '800' }}>
+                  {viewingGuide.title}
+                </Text>
+                <Text numberOfLines={1} style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '600' }}>
+                  Chapter {activeChapterIndex + 1} of {viewingGuide.chapters.length}
+                </Text>
               </View>
+              <Pressable
+                onPress={() => handleDownloadPdf(viewingGuide)}
+                hitSlop={8}
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 5,
+                  borderRadius: 14,
+                  backgroundColor: withAlpha(colors.goldAccent, 20),
+                  borderWidth: 1,
+                  borderColor: withAlpha(colors.goldAccent, 50),
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}
+              >
+                <AppIcon name="download" color={colors.goldAccent} size={14} />
+                <Text style={{ marginLeft: 4, color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
+                  PDF
+                </Text>
+              </Pressable>
+            </View>
 
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 }}>
-                <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: withAlpha(colors.goldAccent, 25) }}>
-                  <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
-                    Language: {selectedReport.language || selectedLanguage}
-                  </Text>
-                </View>
-                <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: colors.surfaceVariant }}>
-                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>
-                    {selectedReport.pages} • {selectedReport.size}
-                  </Text>
-                </View>
-                <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: withAlpha('#2D9E6B', 20) }}>
-                  <Text style={{ color: '#2D9E6B', fontSize: 11, fontWeight: '700' }}>
-                    Status: Ready
-                  </Text>
-                </View>
-              </View>
-
-              <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: 14 }} />
-
-              {/* Birth / Property Coordinates Badge Row */}
-              {(selectedReport.details?.dob || selectedReport.details?.pob || selectedReport.details?.propertyType) && (
-                <View
-                  style={{
-                    marginBottom: 12,
-                    padding: 12,
-                    borderRadius: 12,
-                    backgroundColor: withAlpha(colors.goldAccent, 14),
-                    borderWidth: 1,
-                    borderColor: withAlpha(colors.goldAccent, 45),
-                  }}
-                >
-                  <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '800', marginBottom: 4 }}>
-                    📋 BIRTH & CONSULTATION COORDINATES
-                  </Text>
-                  <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '600' }}>
-                    {selectedReport.details?.userName || authUser?.name || 'Seeker'}
-                    {selectedReport.details?.dob ? ` • Born: ${selectedReport.details.dob}` : ''}
-                    {selectedReport.details?.tob ? ` (${selectedReport.details.tob})` : ''}
-                  </Text>
-                  {selectedReport.details?.pob && (
-                    <Text style={{ color: colors.textSecondary, fontSize: 11.5, marginTop: 2 }}>
-                      📍 Location: {selectedReport.details.pob}
-                    </Text>
-                  )}
-                  {selectedReport.details?.primaryConcern && (
-                    <Text style={{ color: colors.textSecondary, fontSize: 11.5, marginTop: 2 }}>
-                      🎯 Sankalpa / Focus: {selectedReport.details.primaryConcern}
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 20 }}>
-                {selectedReport.summary}
-              </Text>
-
-              {/* Complete 8-Fold Parihara Plan Section (Website Parity) */}
-              {Array.isArray(selectedReport.details?.eightFoldRemedies) && (
-                <View style={{ marginTop: 14, gap: 8 }}>
-                  <Text style={{ color: colors.textPrimary, fontSize: 13.5, fontWeight: '800' }}>
-                    🕉️ 8-Directional Ashta-Digbandhana Remedies:
-                  </Text>
-                  {selectedReport.details.eightFoldRemedies.map((rem: any, idx: number) => (
-                    <View
-                      key={idx}
+            {/* Chapter Horizontal Selector Bar */}
+            <View style={{ backgroundColor: colors.surfaceVariant, borderBottomWidth: 1, borderBottomColor: colors.cardBorder }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}
+              >
+                {viewingGuide.chapters.map((ch, idx) => {
+                  const isSel = activeChapterIndex === idx;
+                  return (
+                    <Pressable
+                      key={ch.id}
+                      onPress={() => setActiveChapterIndex(idx)}
                       style={{
-                        padding: 12,
-                        borderRadius: 12,
-                        backgroundColor: colors.surfaceVariant,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 16,
+                        backgroundColor: isSel
+                          ? colors.isLight
+                            ? '#713B32'
+                            : colors.goldAccent
+                          : colors.surface,
                         borderWidth: 1,
-                        borderColor: colors.cardBorder,
+                        borderColor: isSel
+                          ? colors.isLight
+                            ? '#713B32'
+                            : colors.goldAccent
+                          : colors.cardBorder,
                       }}
                     >
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text style={{ color: colors.textPrimary, fontSize: 12.5, fontWeight: '800', flex: 1 }}>
-                          {rem.title}
+                      <Text
+                        style={{
+                          fontSize: 11.5,
+                          fontWeight: isSel ? '800' : '600',
+                          color: isSel
+                            ? colors.isLight
+                              ? '#FFFFFF'
+                              : '#000000'
+                            : colors.textSecondary,
+                        }}
+                      >
+                        Ch. {idx + 1}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Chapter Content Body */}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingHorizontal: 20,
+                paddingTop: 18,
+                paddingBottom: Math.max(60, insets.bottom + 40),
+              }}
+            >
+              {viewingGuide.chapters[activeChapterIndex] && (
+                <>
+                  <Text style={{ color: colors.goldAccent, fontSize: 12, fontWeight: '800', letterSpacing: 0.5 }}>
+                    CHAPTER {activeChapterIndex + 1}
+                  </Text>
+                  <Text style={{ marginTop: 4, color: colors.textPrimary, fontSize: 18, fontWeight: '800', lineHeight: 24 }}>
+                    {viewingGuide.chapters[activeChapterIndex].title}
+                  </Text>
+                  <Text style={{ marginTop: 6, color: colors.textSecondary, fontSize: 13, fontStyle: 'italic', lineHeight: 18 }}>
+                    {viewingGuide.chapters[activeChapterIndex].summary}
+                  </Text>
+
+                  <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: 16 }} />
+
+                  {viewingGuide.chapters[activeChapterIndex].sections.map((sec, sIdx) => (
+                    <View key={sIdx} style={{ marginBottom: 20 }}>
+                      <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700', marginBottom: 8 }}>
+                        {sec.heading}
+                      </Text>
+
+                      {sec.paragraphs.map((para, pIdx) => (
+                        <Text key={pIdx} style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 21, marginBottom: 8 }}>
+                          {para}
                         </Text>
+                      ))}
+
+                      {sec.bulletPoints && (
+                        <View style={{ marginTop: 4, marginBottom: 8, paddingLeft: 6 }}>
+                          {sec.bulletPoints.map((bp, bpIdx) => (
+                            <Text key={bpIdx} style={{ color: colors.textPrimary, fontSize: 12.5, lineHeight: 19, marginBottom: 4 }}>
+                              • {bp}
+                            </Text>
+                          ))}
+                        </View>
+                      )}
+
+                      {sec.mantra && (
                         <View
                           style={{
-                            paddingHorizontal: 8,
-                            paddingVertical: 2,
-                            borderRadius: 8,
-                            backgroundColor: withAlpha(colors.goldAccent, 22),
+                            marginTop: 10,
+                            padding: 16,
+                            borderRadius: 16,
+                            backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 15 : 20),
+                            borderWidth: 1.5,
+                            borderColor: withAlpha(colors.goldAccent, 60),
                           }}
                         >
-                          <Text style={{ color: colors.goldAccent, fontSize: 10, fontWeight: '700' }}>
-                            🧭 {rem.direction}
+                          <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '800', marginBottom: 4 }}>
+                            🕉️ CONSECRATED SANSKRIT MANTRA
+                          </Text>
+                          <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700', fontStyle: 'italic', lineHeight: 24 }}>
+                            {sec.mantra.sanskrit}
+                          </Text>
+                          <Text style={{ marginTop: 6, color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
+                            Meaning: {sec.mantra.translation}
+                          </Text>
+                          <Text style={{ marginTop: 4, color: colors.goldAccent, fontSize: 11, fontWeight: '600' }}>
+                            Instructions: {sec.mantra.instructions}
                           </Text>
                         </View>
-                      </View>
-                      {rem.deity && (
-                        <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
-                          Deity: {rem.deity}
-                        </Text>
                       )}
-                      {rem.mantra && (
-                        <Text style={{ color: colors.textPrimary, fontSize: 11.5, fontStyle: 'italic', marginTop: 4 }}>
-                          {rem.mantra}
-                        </Text>
-                      )}
-                      <Text style={{ color: colors.textSecondary, fontSize: 11.5, lineHeight: 16, marginTop: 4 }}>
-                        {rem.prescription || rem.specificPrescription}
-                      </Text>
                     </View>
                   ))}
 
-                  {selectedReport.details?.sankalpaProtocol && (
-                    <View
-                      style={{
-                        marginTop: 6,
-                        padding: 12,
-                        borderRadius: 12,
-                        backgroundColor: withAlpha('#2D9E6B', 14),
-                        borderWidth: 1,
-                        borderColor: withAlpha('#2D9E6B', 50),
-                      }}
-                    >
-                      <Text style={{ color: '#2D9E6B', fontSize: 12.5, fontWeight: '800', marginBottom: 4 }}>
-                        🪔 48-Day Mandala Sankalpa Protocol:
-                      </Text>
-                      <Text style={{ color: colors.textSecondary, fontSize: 11.5, lineHeight: 17 }}>
-                        • Morning: {selectedReport.details.sankalpaProtocol.morningRoutine}{'\n'}
-                        • Evening: {selectedReport.details.sankalpaProtocol.eveningRoutine}{'\n'}
-                        • Rules: {selectedReport.details.sankalpaProtocol.dietaryRules}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
+                  {/* Next / Prev Chapter Controls */}
+                  <View style={{ marginTop: 24, flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+                    {activeChapterIndex > 0 ? (
+                      <OutlinedButton
+                        label={`← Chapter ${activeChapterIndex}`}
+                        onPress={() => setActiveChapterIndex((p) => p - 1)}
+                        color={colors.textSecondary}
+                        radius={100}
+                        paddingV={10}
+                        style={{ flex: 1 }}
+                      />
+                    ) : <View style={{ flex: 1 }} />}
 
-              {/* Vastu Room-by-Room Spatial Audit Section (Website Parity) */}
-              {Array.isArray(selectedReport.details?.roomAudits) && (
-                <View style={{ marginTop: 14, gap: 8 }}>
-                  <Text style={{ color: colors.textPrimary, fontSize: 13.5, fontWeight: '800' }}>
-                    🏠 Room-by-Room Vastu Spatial Audit:
-                  </Text>
-                  {selectedReport.details.roomAudits.map((rm: any, idx: number) => (
-                    <View
-                      key={idx}
-                      style={{
-                        padding: 12,
-                        borderRadius: 12,
-                        backgroundColor: colors.surfaceVariant,
-                        borderWidth: 1,
-                        borderColor: colors.cardBorder,
-                      }}
-                    >
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text style={{ color: colors.textPrimary, fontSize: 12.5, fontWeight: '800' }}>
-                          {rm.room} ({rm.direction})
-                        </Text>
-                        <Text style={{ color: colors.goldAccent, fontSize: 10.5, fontWeight: '700' }}>
-                          {rm.status}
-                        </Text>
-                      </View>
-                      <Text style={{ color: colors.textSecondary, fontSize: 11.5, lineHeight: 16, marginTop: 4 }}>
-                        {rm.remedy}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
+                    {activeChapterIndex < viewingGuide.chapters.length - 1 ? (
+                      <ElevatedButton
+                        label={`Chapter ${activeChapterIndex + 2} →`}
+                        onPress={() => setActiveChapterIndex((p) => p + 1)}
+                        bg="#713B32"
+                        fg="#FFFFFF"
+                        radius={100}
+                        paddingV={10}
+                        style={{ flex: 1 }}
+                      />
+                    ) : (
+                      <ElevatedButton
+                        label="Finish Reading ✓"
+                        onPress={() => setIsReaderOpen(false)}
+                        bg="#2D9E6B"
+                        fg="#FFFFFF"
+                        radius={100}
+                        paddingV={10}
+                        style={{ flex: 1 }}
+                      />
+                    )}
+                  </View>
+                </>
               )}
-
-              {/* Astrological Analysis */}
-              {selectedReport.astrologicalAnalysis && (
-                <View style={{ marginTop: 14, padding: 14, borderRadius: 14, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder }}>
-                  <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '800', marginBottom: 6 }}>
-                    Cosmic Analysis & Ephemeris Insights:
-                  </Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18 }}>
-                    {selectedReport.astrologicalAnalysis}
-                  </Text>
-                </View>
-              )}
-
-              {/* Specific Remedy Details if Present */}
-              {selectedReport.details?.mantra && (
-                <View style={{ marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: withAlpha(colors.goldAccent, 15), borderWidth: 1, borderColor: withAlpha(colors.goldAccent, 40) }}>
-                  <Text style={{ color: colors.goldAccent, fontSize: 12, fontWeight: '800', marginBottom: 2 }}>
-                    Consecrated Vedic Mantra:
-                  </Text>
-                  <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700', fontStyle: 'italic', lineHeight: 20 }}>
-                    {selectedReport.details.mantra}
-                  </Text>
-                  {selectedReport.details.direction && (
-                    <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 11 }}>
-                      Direction: {selectedReport.details.direction} • Deity: {selectedReport.details.deity || 'Devata'}
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              {/* Materials Required & Precautions for Remedy Reports */}
-              {Array.isArray(selectedReport.details?.materialsRequired) && (
-                <View style={{ marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder }}>
-                  <Text style={{ color: colors.textPrimary, fontSize: 12.5, fontWeight: '800', marginBottom: 4 }}>
-                    🪔 Sacred Materials Required (Puja Samagri):
-                  </Text>
-                  {selectedReport.details.materialsRequired.map((mat: string, idx: number) => (
-                    <Text key={idx} style={{ color: colors.textSecondary, fontSize: 11.5, lineHeight: 17 }}>
-                      • {mat}
-                    </Text>
-                  ))}
-                </View>
-              )}
-
-              {/* Prescribed Directional Pariharam */}
-              {selectedReport.remediesPrescribed && selectedReport.remediesPrescribed.length > 0 && (
-                <View style={{ marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: withAlpha('#713B32', colors.isLight ? 12 : 25), borderWidth: 1, borderColor: withAlpha('#713B32', 40) }}>
-                  <Text style={{ color: colors.isLight ? '#713B32' : colors.goldAccent, fontSize: 13, fontWeight: '800', marginBottom: 6 }}>
-                    Prescribed Directional Vedic Pariharam:
-                  </Text>
-                  {selectedReport.remediesPrescribed.map((rem, idx) => (
-                    <Text key={idx} style={{ color: colors.textPrimary, fontSize: 12, lineHeight: 18, marginBottom: 4 }}>
-                      • {rem}
-                    </Text>
-                  ))}
-                </View>
-              )}
-
-              {/* Action Buttons */}
-              <View style={{ marginTop: 20, flexDirection: 'row', gap: 10, paddingBottom: 16 }}>
-                <OutlinedButton
-                  label="Close"
-                  onPress={() => setSelectedReport(null)}
-                  color={colors.textSecondary}
-                  radius={12}
-                  paddingV={10}
-                  style={{ flex: 1 }}
-                />
-                <ElevatedButton
-                  label="Download / Share PDF"
-                  icon="share_outlined"
-                  onPress={() => {
-                    handleDownload(selectedReport);
-                  }}
-                  bg="#713B32"
-                  fg="#FFFFFF"
-                  radius={12}
-                  paddingV={10}
-                  style={{ flex: 1.3 }}
-                />
-              </View>
             </ScrollView>
           </View>
         ) : null}
-      </BottomSheet>
-
-      <ServiceReportIntakeModal
-        visible={!!intakeConfig}
-        config={intakeConfig}
-        onClose={() => setIntakeConfig(null)}
-        onSuccess={async (newRep) => {
-          setIntakeConfig(null);
-          await loadReports();
-          setTab(0);
-          setSelectedReport(newRep);
-        }}
-      />
+      </Modal>
     </View>
   );
 }

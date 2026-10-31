@@ -33,12 +33,49 @@ const API_BASE = API_ENDPOINTS.auth;
 const COUNTRY_CODES = [
   { code: '+91', country: 'India', flag: '🇮🇳' },
   { code: '+1', country: 'USA / Canada', flag: '🇺🇸' },
-  { code: '+44', country: 'UK', flag: '🇬🇧' },
-  { code: '+971', country: 'UAE', flag: '🇦🇪' },
+  { code: '+44', country: 'United Kingdom', flag: '🇬🇧' },
+  { code: '+971', country: 'United Arab Emirates', flag: '🇦🇪' },
   { code: '+61', country: 'Australia', flag: '🇦🇺' },
   { code: '+65', country: 'Singapore', flag: '🇸🇬' },
   { code: '+977', country: 'Nepal', flag: '🇳🇵' },
   { code: '+60', country: 'Malaysia', flag: '🇲🇾' },
+  { code: '+966', country: 'Saudi Arabia', flag: '🇸🇦' },
+  { code: '+974', country: 'Qatar', flag: '🇶🇦' },
+  { code: '+965', country: 'Kuwait', flag: '🇰🇼' },
+  { code: '+968', country: 'Oman', flag: '🇴🇲' },
+  { code: '+973', country: 'Bahrain', flag: '🇧🇭' },
+  { code: '+94', country: 'Sri Lanka', flag: '🇱🇰' },
+  { code: '+880', country: 'Bangladesh', flag: '🇧🇩' },
+  { code: '+49', country: 'Germany', flag: '🇩🇪' },
+  { code: '+33', country: 'France', flag: '🇫🇷' },
+  { code: '+39', country: 'Italy', flag: '🇮🇹' },
+  { code: '+34', country: 'Spain', flag: '🇪🇸' },
+  { code: '+41', country: 'Switzerland', flag: '🇨🇭' },
+  { code: '+31', country: 'Netherlands', flag: '🇳🇱' },
+  { code: '+46', country: 'Sweden', flag: '🇸🇪' },
+  { code: '+47', country: 'Norway', flag: '🇳🇴' },
+  { code: '+45', country: 'Denmark', flag: '🇩🇰' },
+  { code: '+353', country: 'Ireland', flag: '🇮🇪' },
+  { code: '+64', country: 'New Zealand', flag: '🇳🇿' },
+  { code: '+27', country: 'South Africa', flag: '🇿🇦' },
+  { code: '+81', country: 'Japan', flag: '🇯🇵' },
+  { code: '+82', country: 'South Korea', flag: '🇰🇷' },
+  { code: '+852', country: 'Hong Kong', flag: '🇭🇰' },
+  { code: '+62', country: 'Indonesia', flag: '🇮🇩' },
+  { code: '+66', country: 'Thailand', flag: '🇹🇭' },
+  { code: '+63', country: 'Philippines', flag: '🇵🇭' },
+  { code: '+230', country: 'Mauritius', flag: '🇲🇺' },
+  { code: '+254', country: 'Kenya', flag: '🇰🇪' },
+  { code: '+55', country: 'Brazil', flag: '🇧🇷' },
+  { code: '+52', country: 'Mexico', flag: '🇲🇽' },
+  { code: '+20', country: 'Egypt', flag: '🇪🇬' },
+  { code: '+90', country: 'Turkey', flag: '🇹🇷' },
+  { code: '+30', country: 'Greece', flag: '🇬🇷' },
+  { code: '+351', country: 'Portugal', flag: '🇵🇹' },
+  { code: '+43', country: 'Austria', flag: '🇦🇹' },
+  { code: '+32', country: 'Belgium', flag: '🇧🇪' },
+  { code: '+48', country: 'Poland', flag: '🇵🇱' },
+  { code: '+7', country: 'Russia / Kazakhstan', flag: '🇷🇺' },
 ];
 
 export default function SignInScreen() {
@@ -71,6 +108,7 @@ export default function SignInScreen() {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [showCountryModal, setShowCountryModal] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
   const [countdown, setCountdown] = useState(30);
   const [canResend, setCanResend] = useState(false);
 
@@ -284,13 +322,51 @@ export default function SignInScreen() {
                 {/* Country Code Dropdown */}
                 {showCountryModal && (
                   <View style={[styles.countryDropdown, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
-                    <ScrollView style={{ maxHeight: 160 }} nestedScrollEnabled>
-                      {COUNTRY_CODES.map((item) => (
+                    <View
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderBottomWidth: 1,
+                        borderBottomColor: colors.cardBorder,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <AppIcon name="search" color={colors.goldAccent} size={16} />
+                      <TextInput
+                        value={countrySearch}
+                        onChangeText={setCountrySearch}
+                        placeholder="Search country or code..."
+                        placeholderTextColor={colors.textMuted}
+                        style={{
+                          flex: 1,
+                          marginLeft: 8,
+                          color: colors.textPrimary,
+                          fontSize: 13,
+                          paddingVertical: 4,
+                        }}
+                      />
+                      {countrySearch ? (
+                        <Pressable onPress={() => setCountrySearch('')}>
+                          <AppIcon name="close" color={colors.textMuted} size={14} />
+                        </Pressable>
+                      ) : null}
+                    </View>
+                    <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+                      {COUNTRY_CODES.filter((item) => {
+                        if (!countrySearch.trim()) return true;
+                        const q = countrySearch.trim().toLowerCase();
+                        return (
+                          item.country.toLowerCase().includes(q) ||
+                          item.code.toLowerCase().includes(q)
+                        );
+                      }).map((item) => (
                         <Pressable
-                          key={item.code}
+                          key={item.code + item.country}
                           onPress={() => {
                             setSelectedCountry(item);
                             setShowCountryModal(false);
+                            setCountrySearch('');
                           }}
                           style={[styles.countryOption, { borderBottomColor: colors.cardBorder }]}
                         >
@@ -567,8 +643,8 @@ const styles = StyleSheet.create({
   countrySelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
     borderRightWidth: 1,
     borderRightColor: argb('26C9A84C'),
     backgroundColor: argb('14FFFFFF'),

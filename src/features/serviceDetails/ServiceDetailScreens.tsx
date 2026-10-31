@@ -577,83 +577,135 @@ export function SpiritualGuidanceScreen() {
 export function AstrologyReportsScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const formatPrice = useCurrencyStore((s) => s.formatPrice);
-  const authUser = useAuthStore((s) => s.user);
-  const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
   const a = '#4FC3F7';
-  const [activeReportConfig, setActiveReportConfig] = useState<ReportIntakeConfig | null>(null);
 
-  const reports = [
-    { name: 'Comprehensive Birth Chart Report', pages: '40+ pages', price: 499, desc: 'Complete analysis of all 12 houses, 9 planets, Dasha periods, and life predictions.', icon: 'auto_stories_rounded', color: '#9370DB', popular: true },
-    { name: 'Career & Finance Report', pages: '25+ pages', price: 349, desc: 'Detailed career path analysis, promotion timings, and wealth accumulation periods.', icon: 'work_rounded', color: '#FFD700', popular: false },
-    { name: 'Marriage Compatibility Report', pages: '30+ pages', price: 399, desc: 'Complete Kundli Milan with 36 Guna matching, Mangal Dosha analysis, and marriage timing.', icon: 'favorite_rounded', color: '#FF6B6B', popular: true },
-    { name: 'Annual Horoscope Report', pages: '35+ pages', price: 449, desc: 'Month-by-month predictions for the coming year covering all life areas.', icon: 'calendar_month_rounded', color: '#4FC3F7', popular: false },
-    { name: 'Numerology Life Report', pages: '20+ pages', price: 299, desc: 'Complete numerological analysis of your name, birth date, and destiny numbers.', icon: 'tag_rounded', color: '#FFB347', popular: false },
-    { name: 'Child Astrology Report', pages: '28+ pages', price: 379, desc: "Comprehensive analysis of your child's talents, education path, and life journey.", icon: 'child_care_rounded', color: '#81C784', popular: false },
+  const mahadashaGuides = [
+    {
+      id: 'rahu-stabilisation',
+      name: 'Rahu Mahadasha Stabilisation Guide',
+      pages: '36 pages (PDF)',
+      price: 499,
+      desc: 'Harmonize intense Rahu transit with exact mantras, diet rules & silver talisman (PDF Dossier).',
+      icon: 'shield_outlined',
+      color: '#713B32',
+      badge: 'Stabilisation Module',
+    },
+    {
+      id: 'rahu-survival',
+      name: 'Rahu Mahadasha Survival Guide',
+      pages: '48 pages (PDF)',
+      price: 999,
+      desc: 'Tactical survival strategies, spiritual shield and karmic remedies for 18-year cycle.',
+      icon: 'local_fire_department_rounded',
+      color: '#E65100',
+      badge: 'Complete Protocol',
+    },
+    {
+      id: 'sani-stabilisation',
+      name: 'Sani Mahadasha Stabilisation Guide',
+      pages: '36 pages (PDF)',
+      price: 499,
+      desc: 'Saturn discipline, endurance & remedies for Sade Sati / Dhayya (PDF Dossier).',
+      icon: 'spa_rounded',
+      color: '#1A3D5C',
+      badge: 'Saturn Pacification',
+    },
+    {
+      id: 'sani-survival',
+      name: 'Sani Mahadasha Survival Guide',
+      pages: '52 pages (PDF)',
+      price: 999,
+      desc: 'Mastering Saturn 19-year Dasha trials, major Sade Sati shifts & long-term legacy.',
+      icon: 'bolt_rounded',
+      color: '#4A148C',
+      badge: '19-Year Master Guide',
+    },
   ];
 
-  const handleGetReport = (reportItem: typeof reports[0]) => {
-    setActiveReportConfig({
-      mode: 'service',
-      title: reportItem.name,
-      subtitle: `${reportItem.pages} • ${reportItem.desc}`,
-      price: reportItem.price,
-      priceUSD: Number((reportItem.price * 0.012).toFixed(2)),
-      category: 'services',
-    });
-  };
-
   return (
-    <ServiceLayout title="Astrology Reports" testID="astrologyReports">
-      <ServiceHeroCard title="Astrology Reports" subtitle="Detailed PDF reports by expert astrologers" imageUrl="https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800&auto=format&fit=crop" semanticLabel="Detailed astrological charts and reports spread on a desk with a pen and cosmic symbols" accent={a} icon="description_rounded" />
-      <Intro>Our expert astrologers prepare detailed, personalised PDF reports that provide deep insights into every aspect of your life. Each report is hand-crafted based on your exact birth details.</Intro>
-      <SectionTitle title="Available Reports" accent={a} />
-      {reports.map((r, i) => (
-        <View key={r.name} style={{ marginHorizontal: 16, marginBottom: 12, padding: 16, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: r.popular ? withAlpha(r.color, 100) : colors.cardBorder }}>
+    <ServiceLayout title="Mahadasha PDF Guides" testID="astrologyReports">
+      <ServiceHeroCard
+        title="Mahadasha PDF Guides"
+        subtitle="Official Rahu & Sani Remedial Dossiers"
+        imageUrl="https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800&auto=format&fit=crop"
+        semanticLabel="Detailed astrological charts and reports spread on a desk with a pen and cosmic symbols"
+        accent={a}
+        icon="description_rounded"
+      />
+      <Intro>
+        Our authentic Vedic Mahadasha dossiers provide exhaustive blueprints to navigate Rahu and Saturn periods safely with consecrated Sanskrit Beej Mantras, 48-day protocols, and protective talismans.
+      </Intro>
+      <SectionTitle title="Official Mahadasha Dossiers" accent={a} />
+      {mahadashaGuides.map((r, i) => (
+        <View
+          key={r.id}
+          style={{
+            marginHorizontal: 16,
+            marginBottom: 12,
+            padding: 16,
+            borderRadius: 18,
+            backgroundColor: colors.surface,
+            borderWidth: 1.5,
+            borderColor: withAlpha(r.color, 80),
+          }}
+        >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ padding: 10, borderRadius: 12, backgroundColor: withAlpha(r.color, 20) }}>
               <AppIcon name={r.icon} color={r.color} size={22} />
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>{t(r.name, r.name)}</Text>
-                {r.popular ? (
-                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: withAlpha(colors.goldAccent, 25), borderWidth: 1, borderColor: withAlpha(colors.goldAccent, 80) }}>
-                    <Text style={{ color: colors.goldAccent, fontSize: 10, fontWeight: '600' }}>{t('Popular')}</Text>
-                  </View>
-                ) : null}
+                <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>
+                  {r.name}
+                </Text>
+                <View
+                  style={{
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    borderRadius: 8,
+                    backgroundColor: withAlpha(colors.goldAccent, 25),
+                    borderWidth: 1,
+                    borderColor: withAlpha(colors.goldAccent, 80),
+                  }}
+                >
+                  <Text style={{ color: colors.goldAccent, fontSize: 9.5, fontWeight: '700' }}>
+                    {r.badge}
+                  </Text>
+                </View>
               </View>
-              <Text style={{ color: r.color, fontSize: 11, fontWeight: '500' }}>{r.pages}</Text>
+              <Text style={{ color: r.color, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
+                {r.pages}
+              </Text>
             </View>
           </View>
-          <Text style={{ marginTop: 10, color: colors.textSecondary, ...lh(12, 1.5) }}>{t(r.desc, r.desc)}</Text>
-          <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ color: colors.goldAccent, fontSize: 20, fontWeight: '800' }}>{formatPrice(r.price)}</Text>
-            <Text style={{ marginLeft: 4, flex: 1, color: colors.textMuted, fontSize: 11 }}>{t('one-time')}</Text>
+          <Text style={{ marginTop: 8, color: colors.textSecondary, ...lh(12, 1.5) }}>
+            {r.desc}
+          </Text>
+          <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ color: colors.goldAccent, fontSize: 18, fontWeight: '800' }}>
+              {formatPrice(r.price)}
+            </Text>
             <Pressable
               testID={`astrologyReports.getReport.${i}`}
-              onPress={() => handleGetReport(r)}
+              onPress={() => push(AppRoutes.kundliReportsScreen)}
               style={{
-                paddingHorizontal: 20,
-                paddingVertical: 10,
-                borderRadius: 10,
-                backgroundColor: r.color,
+                paddingHorizontal: 18,
+                paddingVertical: 9,
+                borderRadius: 100,
+                backgroundColor: '#713B32',
+                flexDirection: 'row',
+                alignItems: 'center',
               }}
             >
-              <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>
-                {!isUserLoggedIn ? t('🔒 Sign In & Get') : t('Get Report')}
+              <AppIcon name="menu_book" color="#FFFFFF" size={14} style={{ marginRight: 6 }} />
+              <Text style={{ color: '#FFFFFF', fontSize: 12.5, fontWeight: '700' }}>
+                View Guide →
               </Text>
             </Pressable>
           </View>
         </View>
       ))}
-
-      <ServiceReportIntakeModal
-        visible={!!activeReportConfig}
-        config={activeReportConfig}
-        onClose={() => setActiveReportConfig(null)}
-      />
     </ServiceLayout>
   );
 }

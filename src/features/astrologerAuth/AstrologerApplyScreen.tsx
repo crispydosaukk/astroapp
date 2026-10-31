@@ -2069,7 +2069,7 @@ export default function AstrologerApplyScreen() {
 
               <ElevatedButton
                 testID="astrologerApply.step1ContinueBtn"
-                label={submittingFinal ? 'Submitting Application...' : (t.btnStartAssessment || 'Submit Application')}
+                label={submittingFinal ? 'Submitting Application...' : 'Submit Application for Verification'}
                 onPress={handleStep1Submit}
                 loading={submittingFinal}
                 disabled={submittingFinal}

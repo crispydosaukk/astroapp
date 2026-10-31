@@ -108,6 +108,139 @@ function houseFromPoint(x: number, y: number): number | null {
   return HOUSE_MAP[`${col},${row}`] ?? null;
 }
 
+const ZODIAC_SIGNS = [
+  'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
+];
+
+const SOUTH_ZODIAC_GRID = [
+  { sign: 'Pisces', short: 'Pis', row: 0, col: 0 },
+  { sign: 'Aries', short: 'Ari', row: 0, col: 1 },
+  { sign: 'Taurus', short: 'Tau', row: 0, col: 2 },
+  { sign: 'Gemini', short: 'Gem', row: 0, col: 3 },
+  { sign: 'Cancer', short: 'Can', row: 1, col: 3 },
+  { sign: 'Leo', short: 'Leo', row: 2, col: 3 },
+  { sign: 'Virgo', short: 'Vir', row: 3, col: 3 },
+  { sign: 'Libra', short: 'Lib', row: 3, col: 2 },
+  { sign: 'Scorpio', short: 'Sco', row: 3, col: 1 },
+  { sign: 'Sagittarius', short: 'Sag', row: 3, col: 0 },
+  { sign: 'Capricorn', short: 'Cap', row: 2, col: 0 },
+  { sign: 'Aquarius', short: 'Aqu', row: 1, col: 0 },
+];
+
+function SouthIndianChart({
+  planets,
+  ascendantSign = 'Scorpio',
+  selectedHouse,
+  onHouseTap,
+  colors,
+}: {
+  planets: Planet[];
+  ascendantSign?: string;
+  selectedHouse: number | null;
+  onHouseTap: (h: number) => void;
+  colors: any;
+}) {
+  const S = CHART / 4; // 70px per box
+  const stroke = colors.cardBorder;
+  const ascIdx = Math.max(0, ZODIAC_SIGNS.findIndex((s) => s.toLowerCase() === ascendantSign.toLowerCase()));
+
+  const handlePressIn = (e: any) => {
+    const x = e.nativeEvent.locationX;
+    const y = e.nativeEvent.locationY;
+    const col = Math.min(3, Math.max(0, Math.floor(x / S)));
+    const row = Math.min(3, Math.max(0, Math.floor(y / S)));
+    if ((col === 1 || col === 2) && (row === 1 || row === 2)) return;
+    const item = SOUTH_ZODIAC_GRID.find((g) => g.col === col && g.row === row);
+    if (!item) return;
+    const signIdx = ZODIAC_SIGNS.findIndex((s) => s.toLowerCase() === item.sign.toLowerCase());
+    const houseNum = ((signIdx - ascIdx + 12) % 12) + 1;
+    onHouseTap(houseNum);
+  };
+
+  return (
+    <Pressable testID="myKundli.southChart" onPressIn={handlePressIn} style={{ width: CHART, height: CHART }}>
+      <Svg width={CHART} height={CHART} pointerEvents="none">
+        {/* Outer background */}
+        <Rect x={0} y={0} width={CHART} height={CHART} fill={colors.surfaceVariant} stroke={stroke} strokeWidth={1.5} />
+
+        {/* 12 Outer Sign Boxes */}
+        {SOUTH_ZODIAC_GRID.map((item) => {
+          const x = item.col * S;
+          const y = item.row * S;
+          const signIdx = ZODIAC_SIGNS.findIndex((s) => s.toLowerCase() === item.sign.toLowerCase());
+          const houseNum = ((signIdx - ascIdx + 12) % 12) + 1;
+          const isAsc = signIdx === ascIdx;
+          const isSelected = selectedHouse === houseNum;
+
+          // Planets in this sign or house
+          const cellPlanets = planets.filter((p) => {
+            if (p.sign && p.sign.toLowerCase() === item.sign.toLowerCase()) return true;
+            return p.house === houseNum;
+          });
+
+          return (
+            <React.Fragment key={item.sign}>
+              <Rect
+                x={x}
+                y={y}
+                width={S}
+                height={S}
+                fill={isSelected ? withAlpha(colors.goldAccent, 25) : isAsc ? withAlpha('#713B32', 20) : 'transparent'}
+                stroke={isSelected ? colors.goldAccent : stroke}
+                strokeWidth={isSelected ? 1.5 : 1}
+              />
+              {/* Ascendant diagonal sash */}
+              {isAsc && (
+                <Line x1={x} y1={y + S} x2={x + S} y2={y} stroke={colors.goldAccent} strokeWidth={1.5} strokeDasharray="3,3" />
+              )}
+              {/* Sign & House label */}
+              <SvgText x={x + 6} y={y + 13} fontSize={9.5} fontWeight="700" fill={isAsc ? colors.goldAccent : colors.textMuted}>
+                {`${item.short} (H${houseNum})`}
+              </SvgText>
+              {isAsc && (
+                <SvgText x={x + S - 6} y={y + 13} fontSize={9} fontWeight="800" textAnchor="end" fill={colors.goldAccent}>
+                  ASC
+                </SvgText>
+              )}
+              {/* Planets */}
+              {cellPlanets.map((p, pIdx) => {
+                const px = x + 12 + (pIdx % 3) * 18;
+                const py = y + 30 + Math.floor(pIdx / 3) * 16;
+                return (
+                  <SvgText key={p.name} x={px} y={py} fontSize={11} fontWeight="700" textAnchor="middle" fill={p.color}>
+                    {p.symbol || p.name.substring(0, 2)}
+                  </SvgText>
+                );
+              })}
+            </React.Fragment>
+          );
+        })}
+
+        {/* Center 2x2 Inner Chamber */}
+        <Rect
+          x={S}
+          y={S}
+          width={S * 2}
+          height={S * 2}
+          fill={colors.isLight ? '#FFFDF9' : '#0B1524'}
+          stroke={colors.goldAccent}
+          strokeWidth={1.5}
+        />
+        <SvgText x={CHART / 2} y={CHART / 2 - 16} fontSize={13} fontWeight="800" textAnchor="middle" fill={colors.goldAccent}>
+          ✦ D-1 LAGNA ✦
+        </SvgText>
+        <SvgText x={CHART / 2} y={CHART / 2 + 2} fontSize={11} fontWeight="700" textAnchor="middle" fill={colors.textPrimary}>
+          {`Lagna: ${ascendantSign}`}
+        </SvgText>
+        <SvgText x={CHART / 2} y={CHART / 2 + 18} fontSize={10} fontWeight="500" textAnchor="middle" fill={colors.textMuted}>
+          South Indian Format
+        </SvgText>
+      </Svg>
+    </Pressable>
+  );
+}
+
 function VedicChart({ planets, selectedHouse, onHouseTap, colors }: { planets: Planet[]; selectedHouse: number | null; onHouseTap: (h: number) => void; colors: any }) {
   const stroke = colors.cardBorder;
   return (
@@ -416,6 +549,7 @@ export default function MyKundliScreen() {
   const setPostLoginRedirect = useAuthStore((s) => s.setPostLoginRedirect);
   const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
   const [selectedHouse, setSelectedHouse] = useState<number | null>(null);
+  const [chartFormat, setChartFormat] = useState<'north' | 'south'>('north');
   const [expanded, setExpanded] = useState<Set<number>>(new Set([0, 1, 2]));
   const [chartData, setChartData] = useState<KundliChartData | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -561,11 +695,90 @@ export default function MyKundliScreen() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Vedic Birth Chart</Text>
             <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: withAlpha(colors.goldAccent, 25), borderWidth: 1, borderColor: colors.cardBorder }}>
-              <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '600' }}>North Indian • Sidereal</Text>
+              <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '600' }}>
+                {chartFormat === 'north' ? 'North Indian (Diamond)' : 'South Indian (Box)'}
+              </Text>
             </View>
           </View>
+
+          {/* North vs South Indian Chart Format Switcher */}
+          <View
+            style={{
+              flexDirection: 'row',
+              marginTop: 12,
+              padding: 3,
+              borderRadius: 14,
+              backgroundColor: colors.surfaceVariant,
+              borderWidth: 1,
+              borderColor: colors.cardBorder,
+            }}
+          >
+            <Pressable
+              onPress={() => setChartFormat('north')}
+              style={{
+                flex: 1,
+                paddingVertical: 7,
+                borderRadius: 11,
+                alignItems: 'center',
+                backgroundColor: chartFormat === 'north' ? '#713B32' : 'transparent',
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: '700',
+                  color: chartFormat === 'north' ? '#FFFFFF' : colors.textSecondary,
+                }}
+              >
+                🏛 North Indian
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setChartFormat('south')}
+              style={{
+                flex: 1,
+                paddingVertical: 7,
+                borderRadius: 11,
+                alignItems: 'center',
+                backgroundColor: chartFormat === 'south' ? '#713B32' : 'transparent',
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: '700',
+                  color: chartFormat === 'south' ? '#FFFFFF' : colors.textSecondary,
+                }}
+              >
+                🛕 South Indian
+              </Text>
+            </Pressable>
+          </View>
+
           <Animated.View style={[{ marginTop: 16, alignItems: 'center' }, chartStyle]}>
-            <VedicChart planets={activePlanets} selectedHouse={selectedHouse} onHouseTap={(h) => { setSelectedHouse(h); houseSheet.open(h); }} colors={colors} />
+            {chartFormat === 'north' ? (
+              <VedicChart
+                planets={activePlanets}
+                selectedHouse={selectedHouse}
+                onHouseTap={(h) => {
+                  setSelectedHouse(h);
+                  houseSheet.open(h);
+                }}
+                colors={colors}
+              />
+            ) : (
+              <SouthIndianChart
+                planets={activePlanets}
+                ascendantSign={chartData?.ascendant?.sign || 'Scorpio'}
+                selectedHouse={selectedHouse}
+                onHouseTap={(h) => {
+                  setSelectedHouse(h);
+                  houseSheet.open(h);
+                }}
+                colors={colors}
+              />
+            )}
           </Animated.View>
           <Text style={{ marginTop: 16, color: colors.textMuted, fontSize: 11, textAlign: 'center' }}>Tap any house or planet for detailed interpretation</Text>
           <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>

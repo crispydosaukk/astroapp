@@ -611,11 +611,11 @@ function CosmicInsightsCarousel({ refreshKey }: { refreshKey?: number }) {
 
 /* ---------------------------------------------------- QuickActionsGridWidget */
 const QUICK_ACTIONS = [
-  { emoji: '🔮', label: 'AI Astrologer', route: AppRoutes.aiChatScreen, color: '#713B32', id: 'aiAstrologer', badge: 'AI Guru' },
-  { emoji: '👨‍🔮', label: 'Live Astrologers', route: AppRoutes.liveAstrologersScreen, color: '#1A3D5C', id: 'liveAstrologers', badge: 'Live' },
-  { emoji: '📜', label: 'My Kundli', route: AppRoutes.myKundliScreen, color: '#1A3D1A', id: 'myKundli' },
-  { emoji: '💫', label: 'Kundli Match', route: AppRoutes.matchKundliScreen, color: '#3D1A2A', id: 'matchKundli' },
-  { emoji: '✨', label: 'Remedies', route: AppRoutes.remediesScreen, color: '#1A2A3D', id: 'remedies' },
+  { emoji: '✋', label: 'Remedies', route: AppRoutes.remediesScreen, color: '#713B32', id: 'remedies', badge: '8 in 1' },
+  { emoji: '🔮', label: 'AI Astrologer', route: AppRoutes.aiChatScreen, color: '#1A3D5C', id: 'aiAstrologer', badge: 'AI Guru' },
+  { emoji: '👨‍🔮', label: 'Live Astrologers', route: AppRoutes.liveAstrologersScreen, color: '#1A3D1A', id: 'liveAstrologers', badge: 'Live' },
+  { emoji: '📜', label: 'My Kundli', route: AppRoutes.myKundliScreen, color: '#3D1A2A', id: 'myKundli' },
+  { emoji: '💫', label: 'Kundli Match', route: AppRoutes.matchKundliScreen, color: '#2A1A3D', id: 'matchKundli' },
   { emoji: '📅', label: 'Panchang', route: AppRoutes.panchangScreen, color: '#2A2A1A', id: 'panchang' },
 ];
 

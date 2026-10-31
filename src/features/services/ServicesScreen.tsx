@@ -156,20 +156,12 @@ export const SERVICES: ServiceItem[] = [
     color: '#FFD700',
   },
   {
-    id: 'kundli-reports',
-    name: 'Kundli Reports',
-    desc: 'Life, Career & Dasha PDF',
+    id: 'mahadasha-guides',
+    name: 'Mahadasha Guides',
+    desc: 'Rahu & Sani PDF Dossiers',
     icon: 'assignment_outlined',
     route: AppRoutes.kundliReportsScreen,
     color: '#2D9E6B',
-  },
-  {
-    id: 'astrology-reports',
-    name: 'Astrology Reports',
-    desc: 'Detailed PDF reports',
-    icon: 'description_outlined',
-    route: AppRoutes.astrologyReportsScreen,
-    color: '#4FC3F7',
   },
 ];
 
