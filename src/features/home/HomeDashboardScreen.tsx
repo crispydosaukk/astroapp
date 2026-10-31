@@ -11,9 +11,11 @@ import { AnimatedPressable, switcherEntering } from '@/components/AnimatedBox';
 import { AppIcon } from '@/components/AppIcon';
 import { AppImage } from '@/components/AppImage';
 import { ProgressRing } from '@/components/common';
+import { FamilyProfileSwitcherModal } from '@/components/FamilyProfileSwitcherModal';
 import { lh, Text, TextInput } from '@/components/Text';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, push } from '@/navigation/routes';
+import { useBirthProfileStore } from '@/services/birthProfileStore';
 import { AppLanguage, useLanguageStore } from '@/theme/languageStore';
 import {
   CosmicInsight,
@@ -26,7 +28,8 @@ import {
   LiveAstrologer,
 } from '@/services/homeDataService';
 import { useLocationStore } from '@/services/locationService';
-import { argb, withAlpha } from '@/theme/colors';
+import { useCurrencyStore } from '@/services/currencyStore';
+import { AppColors, argb, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 
 function getGreeting(): string {
@@ -56,8 +59,20 @@ function HomeHeader() {
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const userName = (isAuthenticated && user?.name?.trim()) ? user.name.trim() : 'Guest';
-  const initial = (userName[0] || 'G').toUpperCase();
+  const activeProfile = useBirthProfileStore((s) => s.activeProfile);
+  const loadProfiles = useBirthProfileStore((s) => s.loadProfiles);
+  const [showProfileSwitcher, setShowProfileSwitcher] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadProfiles();
+    }
+  }, [isAuthenticated, user?.uid, user?.name]);
+
+  const displayName = (isAuthenticated && (activeProfile?.name?.trim() || user?.name?.trim()))
+    ? (activeProfile?.name?.trim() || user?.name?.trim() || 'User')
+    : 'Guest';
+  const initial = (displayName[0] || 'G').toUpperCase();
   const greeting = getGreeting();
 
   const selectedLanguage = useLanguageStore((s) => s.selectedLanguage);
@@ -73,7 +88,7 @@ function HomeHeader() {
     });
   }, [loadCached, detectLocation]);
 
-  const displayCity = location?.city || user?.pob?.split(',')[0].trim() || 'Mumbai';
+  const displayCity = location?.city || activeProfile?.place?.split(',')[0].trim() || user?.pob?.split(',')[0].trim() || 'Mumbai';
 
   const handleLocationPress = () => {
     Alert.alert(
@@ -100,57 +115,102 @@ function HomeHeader() {
           justifyContent: 'space-between',
         }}
       >
-        {/* User profile (Avatar + Name & Greeting) */}
-        <Pressable
-          testID="home.profile"
-          onPress={() => push(AppRoutes.profileScreen)}
+        {/* User profile (Avatar + Name & Relationship pill + Greeting) */}
+        <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
             flex: 1,
             marginRight: 6,
           }}
-          accessibilityRole="button"
-          accessibilityLabel={`Profile of ${userName}`}
         >
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              borderWidth: 1.5,
-              borderColor: colors.goldAccent,
-              overflow: 'hidden',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 8,
-            }}
+          <Pressable
+            testID="home.profile"
+            onPress={() => push(AppRoutes.profileScreen)}
+            accessibilityRole="button"
+            accessibilityLabel={`Profile of ${displayName}`}
           >
-            <LinearGradient
-              colors={['#713B32', '#552B24']}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            />
-            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>{initial}</Text>
-          </View>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                borderWidth: 1.5,
+                borderColor: colors.goldAccent,
+                overflow: 'hidden',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 8,
+              }}
+            >
+              <LinearGradient
+                colors={['#713B32', '#552B24']}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+              />
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>{initial}</Text>
+            </View>
+          </Pressable>
 
-          <View style={{ flex: 1, justifyContent: 'center' }}>
+          <Pressable
+            testID="home.profileSwitcher"
+            onPress={() => {
+              if (isAuthenticated) {
+                setShowProfileSwitcher(true);
+              } else {
+                push(AppRoutes.profileScreen);
+              }
+            }}
+            style={{ flex: 1, justifyContent: 'center' }}
+            accessibilityRole="button"
+            accessibilityLabel={`Active profile: ${displayName}`}
+          >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <AppIcon name="wb_sunny_rounded" color={colors.goldAccent} size={12} />
               <Text numberOfLines={1} ellipsizeMode="tail" style={{ marginLeft: 4, color: colors.isLight ? '#5A6A85' : '#8F9CAE', fontSize: 11, fontWeight: '600' }}>
                 {greeting}
               </Text>
             </View>
-            <Text
-              numberOfLines={1}
-              ellipsizeMode="tail"
-              style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700', marginTop: 1 }}
-            >
-              {userName}
-            </Text>
-          </View>
-        </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700', flexShrink: 1 }}
+              >
+                {displayName}
+              </Text>
+              {isAuthenticated && (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginLeft: 6,
+                    paddingHorizontal: 7,
+                    paddingVertical: 2,
+                    borderRadius: 100,
+                    backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 25 : 35),
+                    borderWidth: 1,
+                    borderColor: withAlpha(colors.goldAccent, 90),
+                  }}
+                >
+                  <Text style={{ fontSize: 10 }}>{activeProfile?.emoji || '🧘'}</Text>
+                  <Text
+                    style={{
+                      fontSize: 10,
+                      fontWeight: '800',
+                      color: colors.isLight ? AppColors.primary : colors.goldAccent,
+                      marginLeft: 3,
+                    }}
+                  >
+                    {activeProfile?.type || 'Myself'}
+                  </Text>
+                  <AppIcon name="arrow_drop_down" size={13} color={colors.goldAccent} />
+                </View>
+              )}
+            </View>
+          </Pressable>
+        </View>
 
         {/* Right Header Cluster: Language Selector + Location Badge + Notifications */}
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -188,7 +248,6 @@ function HomeHeader() {
               backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
               borderWidth: 1,
               borderColor: colors.isLight ? 'rgba(201,168,76,0.32)' : argb('1AC9A84C'),
-              marginRight: 6,
             }}
             accessibilityRole="button"
             accessibilityLabel={`Current Location: ${displayCity}`}
@@ -205,26 +264,6 @@ function HomeHeader() {
             >
               {displayCity}
             </Text>
-          </Pressable>
-
-          {/* Notifications */}
-          <Pressable
-            testID="home.notifications"
-            onPress={() => push(AppRoutes.notificationsScreen)}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 12,
-              backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
-              borderWidth: 1,
-              borderColor: colors.isLight ? 'rgba(201,168,76,0.32)' : argb('1AC9A84C'),
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Notifications"
-          >
-            <AppIcon name="notifications_outlined" color={colors.textPrimary} size={18} />
           </Pressable>
         </View>
       </View>
@@ -395,6 +434,12 @@ function HomeHeader() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Family Profile Switcher Modal */}
+      <FamilyProfileSwitcherModal
+        visible={showProfileSwitcher}
+        onClose={() => setShowProfileSwitcher(false)}
+      />
     </>
   );
 }
@@ -1021,6 +1066,7 @@ function PersonalisedRecs({
   aiAstrologers?: LiveAstrologer[];
 }) {
   const colors = useThemeColors();
+  const formatRate = useCurrencyStore((s) => s.formatRate);
   const topAi = aiAstrologers[0] || DEFAULT_AI_ASTROLOGERS[0];
   const topReal = realAstrologers[0];
 
@@ -1041,7 +1087,7 @@ function PersonalisedRecs({
           {
             emoji: '👨‍🔮',
             title: `Live Consultation: ${topReal.name}`,
-            subtitle: `${topReal.specialty} • ${topReal.experience} • ₹${topReal.price}/min`,
+            subtitle: `${topReal.specialty} • ${topReal.experience} • ${formatRate(topReal.price)}`,
             tag: topReal.isOnline ? 'Live Now' : 'Verified Guru',
             tagColor: '#2D9E6B',
             tagBgLight: '#ECFDF5',
@@ -1156,6 +1202,7 @@ function PersonalisedRecs({
 /* -------------------------------------------- RealAstrologersCarouselWidget */
 function RealAstrologersCarousel({ realAstrologers = [] }: { realAstrologers?: LiveAstrologer[] }) {
   const colors = useThemeColors();
+  const formatRate = useCurrencyStore((s) => s.formatRate);
   const displayList = realAstrologers || [];
   const onlineCount = displayList.filter((a) => a.isOnline).length;
 
@@ -1317,7 +1364,7 @@ function RealAstrologersCarousel({ realAstrologers = [] }: { realAstrologers?: L
 
                 <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '700' }}>
-                    {`₹${a.price}/min`}
+                    {formatRate(a.price || 25)}
                   </Text>
                   <View
                     style={{
@@ -1347,6 +1394,8 @@ function RealAstrologersCarousel({ realAstrologers = [] }: { realAstrologers?: L
 /* ---------------------------------------------- AiAstrologersCarouselWidget */
 function AiAstrologersCarousel({ aiAstrologers = [] }: { aiAstrologers?: LiveAstrologer[] }) {
   const colors = useThemeColors();
+  const formatRate = useCurrencyStore((s) => s.formatRate);
+  const aiChatPrice = useCurrencyStore((s) => s.pricingSettings.aiChatPricePerMinute) || 5;
   const displayList = aiAstrologers && aiAstrologers.length > 0 ? aiAstrologers : DEFAULT_AI_ASTROLOGERS;
 
   return (
@@ -1456,27 +1505,6 @@ function AiAstrologersCarousel({ aiAstrologers = [] }: { aiAstrologers?: LiveAst
                   backgroundColor: '#3DCB7A',
                 }}
               />
-
-              {/* AI Guru badge at bottom */}
-              <View
-                style={{
-                  position: 'absolute',
-                  bottom: -2,
-                  paddingHorizontal: 6,
-                  paddingVertical: 1.5,
-                  borderRadius: 100,
-                  backgroundColor: '#713B32',
-                  borderWidth: 1,
-                  borderColor: '#C9A84C',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                }}
-              >
-                <AppIcon name="auto_awesome_rounded" color="#F0EAD6" size={8} />
-                <Text style={{ marginLeft: 2, color: '#F0EAD6', fontSize: 8, fontWeight: '700' }}>
-                  AI Guru
-                </Text>
-              </View>
             </View>
 
             {/* Right Side: Related Content */}
@@ -1504,7 +1532,7 @@ function AiAstrologersCarousel({ aiAstrologers = [] }: { aiAstrologers?: LiveAst
 
               <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '700' }}>
-                  {`₹${a.price}/min`}
+                  {formatRate(a.price || 25)}
                 </Text>
                 <View
                   style={{
@@ -1530,9 +1558,84 @@ function AiAstrologersCarousel({ aiAstrologers = [] }: { aiAstrologers?: LiveAst
   );
 }
 
+function resolvePromoRoute(rawRoute?: string, btnLabel?: string, title?: string): any {
+  const r = (rawRoute || '').trim().toLowerCase();
+  const b = (btnLabel || '').trim().toLowerCase();
+  const t = (title || '').trim().toLowerCase();
+
+  // Match live astrologers / consultation booking
+  if (
+    r.includes('consultation-booking') ||
+    r.includes('talk-to-astrologer') ||
+    r.includes('live-astrologer') ||
+    r.includes('consult') ||
+    b.includes('astrologer') ||
+    t.includes('consult') ||
+    t.includes('astrologer live')
+  ) {
+    return AppRoutes.liveAstrologersScreen;
+  }
+
+  // Match AI chat
+  if (
+    r.includes('ai-astrologer') ||
+    r.includes('talk-to-ai') ||
+    r.includes('ai-chat') ||
+    b.includes('chat') ||
+    b.includes('ai') ||
+    t.includes('ai')
+  ) {
+    return AppRoutes.aiChatScreen;
+  }
+
+  // Match Panchang & Muhurat
+  if (r.includes('panchang') || b.includes('panchang') || t.includes('panchang') || t.includes('muhurat')) {
+    return AppRoutes.panchangScreen;
+  }
+
+  // Match Remedies
+  if (r.includes('remed') || b.includes('remed') || t.includes('remed')) {
+    return AppRoutes.remediesScreen;
+  }
+
+  // Match Kundli Matching
+  if (r.includes('match') || t.includes('match')) {
+    return AppRoutes.matchKundliScreen;
+  }
+
+  // Match Janam Kundli
+  if (r.includes('kundli') || t.includes('kundli')) {
+    return AppRoutes.myKundliScreen;
+  }
+
+  // Match Horoscope
+  if (r.includes('horoscope') || t.includes('horoscope')) {
+    return AppRoutes.horoscopeScreen;
+  }
+
+  // Match Wallet / Offers
+  if (r.includes('wallet') || b.includes('recharge') || t.includes('wallet')) {
+    return AppRoutes.walletScreen;
+  }
+
+  // Match Services
+  if (r.includes('service') || t.includes('service')) {
+    return AppRoutes.servicesScreen;
+  }
+
+  const allRoutes = Object.values(AppRoutes) as string[];
+  const normalized = rawRoute ? (rawRoute.startsWith('/') ? rawRoute : `/${rawRoute}`) : '';
+  if (allRoutes.includes(normalized)) {
+    return normalized;
+  }
+
+  return AppRoutes.liveAstrologersScreen;
+}
+
 /* ------------------------------------------- Promotions and Offers Section */
 function PromotionsOffersSection({ refreshKey }: { refreshKey?: number }) {
   const colors = useThemeColors();
+  const { currencyCode, formatPrice } = useCurrencyStore();
   const [promotions, setPromotions] = useState<DynamicPromotion[]>([]);
   const scrollRef = React.useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -1594,15 +1697,25 @@ function PromotionsOffersSection({ refreshKey }: { refreshKey?: number }) {
         }}
       >
         {promotions.map((promo) => {
-          const targetRoute = (promo.route?.startsWith('/') ? promo.route : `/${promo.route || 'live-astrologers-screen'}`) as any;
+          const targetRoute = resolvePromoRoute(promo.route, promo.btnLabel, promo.title);
           const showDiscount =
             promo.discount &&
             promo.discount.trim().toLowerCase() !== promo.badge.trim().toLowerCase();
+          const formattedDiscount = promo.discount
+            ? currencyCode === 'USD'
+              ? promo.discount
+                  .replace(/₹499/g, '$9.99')
+                  .replace(/₹199/g, '$3.99')
+                  .replace(/₹(\d+)/g, (_, n) => formatPrice(Number(n)))
+              : promo.discount
+            : '';
 
           return (
-            <View
+            <Pressable
               key={promo.id}
-              style={{
+              testID={`home.promo.card.${promo.id}`}
+              onPress={() => push(targetRoute)}
+              style={({ pressed }) => ({
                 width: 290,
                 borderRadius: 20,
                 overflow: 'hidden',
@@ -1613,7 +1726,10 @@ function PromotionsOffersSection({ refreshKey }: { refreshKey?: number }) {
                 shadowOpacity: 0.15,
                 shadowRadius: 8,
                 elevation: 3,
-              }}
+                transform: [{ scale: pressed ? 0.98 : 1 }],
+              })}
+              accessibilityRole="button"
+              accessibilityLabel={`${promo.title}, ${promo.btnLabel}`}
             >
               <LinearGradient
                 colors={colors.isLight ? ['#FFFDF9', '#F9F5EC'] : promo.gradientColors}
@@ -1647,7 +1763,7 @@ function PromotionsOffersSection({ refreshKey }: { refreshKey?: number }) {
                       }}
                     >
                       <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '800' }}>
-                        {promo.discount}
+                        {formattedDiscount}
                       </Text>
                     </View>
                   ) : null}
@@ -1682,14 +1798,15 @@ function PromotionsOffersSection({ refreshKey }: { refreshKey?: number }) {
                   <Pressable
                     testID={`home.promo.claim.${promo.id}`}
                     onPress={() => push(targetRoute)}
-                    style={{
+                    style={({ pressed }) => ({
                       paddingHorizontal: 14,
                       paddingVertical: 7,
                       borderRadius: 100,
                       backgroundColor: promo.btnBg,
                       flexDirection: 'row',
                       alignItems: 'center',
-                    }}
+                      opacity: pressed ? 0.85 : 1,
+                    })}
                   >
                     <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>
                       {promo.btnLabel}
@@ -1698,7 +1815,7 @@ function PromotionsOffersSection({ refreshKey }: { refreshKey?: number }) {
                   </Pressable>
                 </View>
               </LinearGradient>
-            </View>
+            </Pressable>
           );
         })}
       </ScrollView>

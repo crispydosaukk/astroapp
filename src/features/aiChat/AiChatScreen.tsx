@@ -22,6 +22,7 @@ import { AppImage } from '@/components/AppImage';
 import { lh, Text, TextInput } from '@/components/Text';
 import { AppRoutes, go, push } from '@/navigation/routes';
 import { useAuthStore } from '@/features/auth/authStore';
+import { useCurrencyStore } from '@/services/currencyStore';
 import {
   deductWalletBalance,
   getWalletBalance,
@@ -88,52 +89,64 @@ export const ASTROLOGER_PERSONAS = [
 
 const QUICK_PROMPTS_BY_LANG: Record<string, string[]> = {
   Telugu: [
-    '🔮 2026లో నా గ్రహ సంచారాల ఫలితాలు ఎలా ఉన్నాయి?',
-    '❤️ నా జాతకంలో వివాహ యోగం ఎప్పుడు ఉంది?',
-    '💼 కెరీర్ మార్పు లేదా ప్రమోషన్‌కు సరైన సమయం ఎప్పుడు?',
-    '✨ నా అదృష్ట రత్నం, రుద్రాక్ష మరియు నిత్య మంత్రం ఏమిటి?',
-    '🪐 నాకు శని సాడే సాతి లేదా రాహు మహర్దశ నడుస్తుందా?',
-    '🙏 నా జాతక దోష నివారణకు ఎలాంటి పరిహారాలు లేదా దానం చేయాలి?',
+    '🕉️ మంత్ర పరిహారం: నా గ్రహ శాంతికి ఏ నిత్య వేద మంత్రం & జప విధానం పాటించాలి?',
+    '⬡ యంత్ర పరిహారం: దోష నివారణ మరియు సంపద కోసం ఏ సిద్ధి యంత్రాన్ని ఇంట్లో పూజించాలి?',
+    '🔥 హోమ పరిహారం: నా జన్మ కుండలి శుద్ధికి ఏ పవిత్ర వైదిక హోమం లేదా హవనం చేయించాలి?',
+    '🪔 ఇష్ట దేవత: నా ఇష్ట దేవత & కులదైవం ఎవరు? ఏ పుణ్యక్షేత్ర దర్శనం చేయాలి?',
+    '💎 రత్న ధారణ: నా జాతక బలానికి ఏ భాగ్య రత్నం (Ratna) & లోహం ధరించాలి?',
+    '📿 రుద్రాక్ష పరిహారం: నా నక్షత్రం, ఆరోగ్యం & మానసిక శాంతికి ఏ ముఖి రుద్రాక్ష అనుకూలం?',
+    '🏠 వాస్తు పరిహారం: నా గృహం లేదా వ్యాపారంలో దోష నివారణకు ఏ వాస్తు పరిహారాలు చేయాలి?',
+    '🤲 దానం & సేవ: కర్మ దోష విముక్తికి ఏ విధమైన దానం మరియు సేవ చేయాలి?',
   ],
   Hindi: [
-    '🔮 2026 में मेरे मुख्य ग्रह गोचर का क्या प्रभाव रहेगा?',
-    '❤️ मेरे विवाह का शुभ योग कब बनेगा?',
-    '💼 करियर में पदोन्नति या व्यापार विस्तार का सबसे शुभ समय कब है?',
-    '✨ मेरे लिए भाग्यशाली रत्न, रुद्राक्ष और दैनिक मंत्र क्या है?',
-    '🪐 क्या मुझ पर शनि की साढ़ेसाती या राहु की महादशा चल रही है?',
-    '🙏 ग्रह शांति के लिए मुझे कौन सा विशेष दान या उपाय करना चाहिए?',
+    '🕉️ मंत्र परिहार: ग्रह शांति और आत्मिक बल हेतु मुझे कौन सा दैनिक वैदिक मंत्र जपना चाहिए?',
+    '⬡ यंत्र परिहार: घर में सुख-समृद्धि एवं दोष निवारण हेतु कौन सा सिद्ध यंत्र स्थापित करें?',
+    '🔥 होम परिहार: जन्म पत्रिका के ग्रह दोष शांति हेतु कौन सा वैदिक हवन/होम अनुष्ठान करवाएं?',
+    '🪔 इष्ट देवता: मेरी कुंडली के अनुसार मेरे इष्ट देव कौन हैं और कौन सा तीर्थ परिहार करें?',
+    '💎 रत्न धारण: कुंडली के शुभ ग्रहों को बल देने हेतु कौन सा भाग्यशाली रत्न व धातु धारण करें?',
+    '📿 रुद्राक्ष परिहार: मेरे नक्षत्र, आरोग्य एवं मानसिक शांति हेतु कौन सा मुखी रुद्राक्ष शुभ है?',
+    '🏠 वास्तु परिहार: घर और कार्यक्षेत्र में सकारात्मक ऊर्जा हेतु कौन से वास्तु उपाय करें?',
+    '🤲 दान एवं सेवा: कर्म दोष निवारण एवं पुण्य फल प्राप्ति हेतु क्या दान व सेवा करनी चाहिए?',
   ],
   Tamil: [
-    '🔮 2026-ல் எனது கிரக பெயர்ச்சி பலன்கள் எப்படி உள்ளன?',
-    '❤️ எனது திருமண யோகம் மற்றும் வாழ்க்கை எப்போது அமையும்?',
-    '💼 தொழில் வளர்ச்சி அல்லது வேலை மாற்றத்திற்கு உகந்த நேரம் எப்போது?',
-    '✨ எனது அதிர்ஷ்ட ரத்தினம், ருத்ராட்சம் மற்றும் தினசரி மந்திரம் எது?',
-    '🪐 எனக்கு ஏழரை சனி அல்லது ராகு தசை நடக்கிறதா?',
-    '🙏 கிரக தோஷ நிவர்த்திக்கு என்ன பரிகாரம் அல்லது தானம் செய்ய வேண்டும்?',
+    '🕉️ மந்திர பரிகாரம்: கிரக தோஷ நிவர்த்திக்கு நான் தினமும் ஜபிக்க வேண்டிய வேத மந்திரம் எது?',
+    '⬡ எந்திர பரிகாரம்: வீட்டில் தோஷங்களை நீக்கி நலம் பெற எந்த சக்திவாய்ந்த எந்திரத்தை நிறுவ வேண்டும்?',
+    '🔥 ஹோம பரிகாரம்: எனது ஜாதக தோஷ பரிகாரத்திற்கு எந்த புனித ஹோமம் செய்ய வேண்டும்?',
+    '🪔 இஷ்ட தெய்வம்: எனது இஷ்ட தெய்வம் மற்றும் குலதெய்வம் யார்? எந்த கோவில் பரிகாரம் செய்ய வேண்டும்?',
+    '💎 ரத்தின பரிகாரம்: எனது ஜாதகத்திற்கு அதிர்ஷ்டம் தரும் ராசிக் கல் மற்றும் உலோகம் எது?',
+    '📿 ருத்ராட்ச பரிகாரம்: எனது நட்சத்திரம் மற்றும் ஆரோக்கியத்திற்கு உகந்த முக ருத்ராட்சம் எது?',
+    '🏠 வாஸ்து பரிகாரம்: வீட்டில் நேர்மறை ஆற்றலை அதிகரிக்க என்ன வாஸ்து பரிகாரங்கள் செய்ய வேண்டும்?',
+    '🤲 தானம் & சேவை: கர்ம வினைகள் நீங்க நான் செய்ய வேண்டிய முக்கிய தானங்கள் மற்றும் சேவைகள் என்ன?',
   ],
   Kannada: [
-    '🔮 2026ರಲ್ಲಿ ನನ್ನ ಗ್ರಹ ಸಂಚಾರದ ಫಲಗಳು ಹೇಗಿವೆ?',
-    '❤️ ನನ್ನ ವಿವಾಹ ಯೋಗ ಮತ್ತು ಹೊಂದಾಣಿಕೆ ಯಾವಾಗ ಬರುತ್ತದೆ?',
-    '💼 ವೃತ್ತಿ ಬೆಳವಣಿಗೆ ಅಥವಾ ಉದ್ಯೋಗ ಬದಲಾವಣೆಗೆ ಶುಭ ಸಮಯ ಯಾವುದು?',
-    '✨ ನನ್ನ ಅದೃಷ್ಟ ರತ್ನ, ರುದ್ರಾಕ್ಷಿ ಮತ್ತು ನಿತ್ಯ ಮಂತ್ರ ಯಾವುದು?',
-    '🪐 ನನಗೆ ಸಾಡೇ ಸಾತಿ ಅಥವಾ ರಾಹು ಮಹಾದಶ ನಡೆಯುತ್ತಿದೆಯೇ?',
-    '🙏 ಗ್ರಹ ಶಾಂತಿ ಮತ್ತು ದೋಷ ನಿವಾರಣೆಗೆ ಯಾವ ಪರಿಹಾರ ಮಾಡಬೇಕು?',
+    '🕉️ ಮಂತ್ರ ಪರಿಹಾರ: ಗ್ರಹ ಶಾಂತಿಗಾಗಿ ನಾನು ನಿತ್ಯ ಜಪಿಸಬೇಕಾದ ವೈದಿಕ ಮಂತ್ರ ಯಾವುದು?',
+    '⬡ ಯಂತ್ರ ಪರಿಹಾರ: ದೋಷ ನಿವಾರಣೆ ಮತ್ತು ಸಮೃದ್ಧಿಗಾಗಿ ಮನೆಯಲ್ಲಿ ಯಾವ ಸಿದ್ಧ ಯಂತ್ರ ಸ್ಥಾಪಿಸಬೇಕು?',
+    '🔥 ಹೋಮ ಪರಿಹಾರ: ಕುಂಡಲಿ ದೋಷ ನಿವಾರಣೆಗೆ ಯಾವ ಪವಿತ್ರ ಹೋಮ/ಹವನ ಮಾಡಿಸಬೇಕು?',
+    '🪔 ಇಷ್ಟ ದೇವತೆ: ನನ್ನ ಇಷ್ಟ ದೇವತೆ ಯಾರು ಮತ್ತು ಯಾವ ಪುಣ್ಯಕ್ಷೇತ್ರ ಪರಿಹಾರ ದರ್ಶಿಸಬೇಕು?',
+    '💎 ರತ್ನ ಧಾರಣೆ: ನನ್ನ ಜನ್ಮ ಕುಂಡಲಿಗೆ ಶುಭ ನೀಡುವ ಅದೃಷ್ಟ ರತ್ನ ಮತ್ತು ಲೋಹ ಯಾವುದು?',
+    '📿 ರುದ್ರಾಕ್ಷಿ ಪರಿಹಾರ: ನನ್ನ ನಕ್ಷತ್ರ ಮತ್ತು ಆರೋಗ್ಯಕ್ಕೆ ಯಾವ ಮುಖಿ ರುದ್ರಾಕ್ಷಿ ಧರಿಸಬೇಕು?',
+    '🏠 ವಾಸ್ತು ಪರಿಹಾರ: ಮನೆ ಮತ್ತು ಕಾರ್ಯಸ್ಥಳದಲ್ಲಿ ಸುಖ-ಶಾಂತಿಗೆ ಯಾವ ವಾಸ್ತು ಪರಿಹಾರ ಮಾಡಬೇಕು?',
+    '🤲 ದಾನ & ಸೇವೆ: ಕರ್ಮ ದೋಷ ಪರಿಹಾರಕ್ಕೆ ಯಾವ ವಿಶೇಷ ದಾನ ಮತ್ತು ಸೇವೆ ಮಾಡಬೇಕು?',
   ],
   Malayalam: [
-    '🔮 2026-ൽ എന്റെ ഗ്രഹങ്ങളുടെ സ്വാധീനം എങ്ങനെയുണ്ട്?',
-    '❤️ എന്റെ വിവാഹ യೋಗം എപ്പോഴാണ്?',
-    '💼 കരിയർ മാറ്റത്തിനോ പ്രമോഷനോ അനുയോജ്യമായ സമയം എപ്പോഴാണ്?',
-    '✨ എന്റെ ഭാഗ്യ രത്നം, രുദ്രാക്ഷം, നിത്യ മന്ത്രം എന്നിവ ഏതാണ്?',
-    '🪐 എനിക്ക് ഇപ്പോൾ ഏഴര ശനിയോ രാഹു ദശയോ നടക്കുന്നുണ്ടോ?',
-    '🙏 ദോഷ പരിഹാരത്തിനായി എന്തെല്ലാം പൂജകളും ദാനങ്ങളും ചെയ്യണം?',
+    '🕉️ മന്ത്ര പരിഹാരം: ഗ്രഹദോഷ ശാന്തിക്കായി ഞാൻ നിത്യവും ജപിക്കേണ്ട വേദ മന്ത്രം ഏതാണ്?',
+    '⬡ യന്ത്ര പരിഹാരം: ഗൃഹദോഷങ്ങൾ നീക്കി ഐശ്വര്യം വരാൻ ഏത് യന്ത്രമാണ് പ്രതിഷ്ഠിക്കേണ്ടത്?',
+    '🔥 ഹോമ പരിഹാരം: ജാതക ദോഷ പരിഹാരത്തിനായി ചെയ്യേണ്ട വിശുദ്ധ ഹോമം ഏതാണ്?',
+    '🪔 ഇഷ്ടദേവത: എന്റെ ഇഷ്ടദേവതയും കുലദേവതയും ആരാണ്? ഏത് ക്ഷേത്ര പരിഹാരമാണ് വേണ്ടത്?',
+    '💎 രത്ന ധാരണം: എന്റെ കുണ്ഡലിക്ക് അനുയോജ്യമായ ഭാഗ്യ രത്നവും ലോഹവും ഏതാണ്?',
+    '📿 രുദ്രാക്ഷ പരിഹാരം: എന്റെ നക്ഷത്രത്തിനും ആരോഗ്യത്തിനും ഉചിതമായ മുഖി രുദ്രാക്ഷം ഏതാണ്?',
+    '🏠 വാസ്തു പരിഹാരം: വീട്ടിലെ ഊർജ്ജ സന്തുലനത്തിനായി എന്തെല്ലാം വാസ്തു പരിഹാരങ്ങൾ ചെയ്യണം?',
+    '🤲 ദാനം & സേവ: കർമ്മദോഷ നിവാരണത്തിനായി എന്തെല്ലാം ദാനങ്ങളും സേവകളുമാണ് ചെയ്യേണ്ടത്?',
   ],
   English: [
-    '🔮 What do planetary transits say for me in 2026?',
-    '❤️ When will I meet my compatible life partner?',
-    '💼 When is the best time for a career change or promotion?',
-    '✨ What is my lucky gemstone, rudraksha & daily mantra?',
-    '🪐 Am I currently running Shani Sade Sati or Rahu Mahadasha?',
-    '🙏 What specific Vedic remedies or charity should I perform?',
+    '🕉️ Mantra: What daily Vedic mantra & Japa protocol should I chant for planetary peace?',
+    '⬡ Yantra: Which energized Yantra should I install at home to remove doshas & attract prosperity?',
+    '🔥 Homa: Which sacred Vedic Homa (Navagraha/Ganapathi/Chandi) is recommended for my chart?',
+    '🪔 Ishta Devata: Who is my Ishta Devata & Kuladevata, and which temple pariharam should I visit?',
+    '💎 Gemstone: Which lucky Ratna (gemstone) and metal should I wear according to my Kundli?',
+    '📿 Rudraksha: Which Mukhi Rudraksha is most auspicious for my nakshatra, health & mind?',
+    '🏠 Vastu: What Vastu dosha remedies should I apply to balance energy in my living space?',
+    '🤲 Dana & Seva: What specific charity (food, clothes, grains) should I perform for karmic balance?',
   ],
 };
 
@@ -471,14 +484,26 @@ function Bubble({
         </View>
 
         {!msg.isUser && msg.recommendations && msg.recommendations.length > 0 ? (
-          <View style={{ marginTop: 6, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          <View style={{ marginTop: 8, gap: 7 }}>
             {msg.recommendations.map((rec, rIdx) => (
               <Pressable
                 key={rIdx}
                 onPress={() => onPromptTap(rec)}
-                style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#C9A84C', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }}
+                style={({ pressed }) => ({
+                paddingHorizontal: 14,
+                paddingVertical: 9,
+                borderRadius: 20,
+                backgroundColor: '#FFFFFF',
+                borderWidth: 1.2,
+                borderColor: '#C9A84C',
+                shadowColor: '#C9A84C',
+                shadowOpacity: 0.06,
+                shadowRadius: 3,
+                elevation: 1,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
+              })}
               >
-                <Text style={{ color: '#5A3D0B', fontSize: 11, fontWeight: '600' }}>{rec}</Text>
+                <Text style={{ color: '#4A320A', fontSize: 12.5, fontWeight: '600', lineHeight: 18 }}>{rec}</Text>
               </Pressable>
             ))}
           </View>
@@ -690,6 +715,12 @@ export default function AiChatScreen() {
     });
   }, []);
 
+  const { currencyCode, currencySymbol, formatPrice, getPromptCost, getRechargeOptions } = useCurrencyStore();
+  const promptCost = getPromptCost();
+  const rechargeOptions = getRechargeOptions();
+  const [selectedRechargeIdx, setSelectedRechargeIdx] = useState(2);
+  const activeRecharge = rechargeOptions[selectedRechargeIdx] || rechargeOptions[0];
+
   const [walletBalance, setWalletBalance] = useState(0);
   const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [rechargeAmount, setRechargeAmount] = useState(500);
@@ -713,11 +744,15 @@ export default function AiChatScreen() {
   const handleExecuteRecharge = async () => {
     setIsRecharging(true);
     try {
-      const res = await rechargeWallet(rechargeAmount, selectedPaymentMethod);
+      const res = await rechargeWallet(activeRecharge.value, selectedPaymentMethod, {
+        currency: currencyCode,
+        displayAmount: `+${activeRecharge.amount}`,
+        creditedINR: activeRecharge.valueINR,
+      });
       if (res.success) {
         setWalletBalance(res.newBalance);
         setShowRechargeModal(false);
-        showSnackBar(`₹${rechargeAmount} added via ${selectedPaymentMethod}! New balance: ₹${res.newBalance}`, '#008069');
+        showSnackBar(`${activeRecharge.amount} added via ${selectedPaymentMethod}! New balance: ${formatPrice(res.newBalance)}`, '#008069');
       } else {
         showSnackBar('Recharge failed. Please try again.', '#CF4444');
       }
@@ -760,7 +795,7 @@ export default function AiChatScreen() {
     }
 
     // 1. Check wallet balance: Each prompt costs ₹5
-    if (walletBalance < 5) {
+    if (walletBalance < promptCost.costINR) {
       setShowRechargeModal(true);
       return;
     }
@@ -776,9 +811,11 @@ export default function AiChatScreen() {
     // 2. Real-time amount deduction: Deduct ₹5 per prompt
     try {
       const deductRes = await deductWalletBalance(
-        5,
+        promptCost.costINR,
         `AI Astrologer Consultation: ${selectedAstrologer.name}`,
-        selectedAstrologer.name
+        selectedAstrologer.name,
+        undefined,
+        { displayAmount: `-${promptCost.label}` }
       );
       if (deductRes.success) {
         setWalletBalance(deductRes.newBalance);
@@ -1441,14 +1478,14 @@ export default function AiChatScreen() {
             >
               <View>
                 <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 11 }}>{t('Current Balance', 'Current Balance')}</Text>
-                <Text style={{ color: walletBalance < 5 ? '#FF6B6B' : (colors.isLight ? '#B45309' : '#FFD700'), fontSize: 20, fontWeight: '800', marginTop: 2 }}>
-                  ₹{walletBalance}
+                <Text style={{ color: walletBalance < promptCost.costINR ? '#FF6B6B' : (colors.isLight ? '#B45309' : '#FFD700'), fontSize: 20, fontWeight: '800', marginTop: 2 }}>
+                  {formatPrice(walletBalance)}
                 </Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 11 }}>{t('Consultation Rate', 'Consultation Rate')}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                  <Text style={{ color: '#C9A84C', fontSize: 13, fontWeight: '700' }}>₹5 per prompt</Text>
+                  <Text style={{ color: '#C9A84C', fontSize: 13, fontWeight: '700' }}>{promptCost.label} per prompt</Text>
                 </View>
               </View>
             </View>
@@ -1458,18 +1495,12 @@ export default function AiChatScreen() {
               {t('Select Amount', 'Select Amount')}
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-              {[
-                { amount: 100, label: '₹100', bonus: null },
-                { amount: 200, label: '₹200', bonus: null },
-                { amount: 500, label: '₹500', bonus: '+₹25 Free' },
-                { amount: 1000, label: '₹1000', bonus: '+₹75 Free' },
-                { amount: 2000, label: '₹2000', bonus: '+₹200 Free' },
-              ].map((opt) => {
-                const isSel = rechargeAmount === opt.amount;
+              {rechargeOptions.slice(0, 5).map((opt, idx) => {
+                const isSel = selectedRechargeIdx === idx;
                 return (
                   <Pressable
                     key={opt.amount}
-                    onPress={() => setRechargeAmount(opt.amount)}
+                    onPress={() => setSelectedRechargeIdx(idx)}
                     style={{
                       flex: 1,
                       minWidth: '28%',
@@ -1484,7 +1515,7 @@ export default function AiChatScreen() {
                     }}
                   >
                     <Text style={{ color: isSel ? '#C9A84C' : (colors.isLight ? '#1F1535' : '#FFFFFF'), fontSize: 15, fontWeight: '800' }}>
-                      {opt.label}
+                      {opt.amount}
                     </Text>
                     {opt.bonus ? (
                       <Text style={{ color: '#16A34A', fontSize: 9, fontWeight: '700', marginTop: 2 }}>
@@ -1501,11 +1532,18 @@ export default function AiChatScreen() {
               {t('Select Payment Method', 'Select Payment Method')}
             </Text>
             <View style={{ gap: 8, marginBottom: 18 }}>
-              {[
-                { id: 'UPI', label: 'Google Pay / PhonePe / Paytm (UPI)', icon: '📱' },
-                { id: 'Card', label: 'Credit / Debit Card (Visa, RuPay, Master)', icon: '💳' },
-                { id: 'Net Banking', label: 'Net Banking (All Major Indian Banks)', icon: '🏦' },
-              ].map((pm) => {
+              {(currencyCode === 'INR'
+                ? [
+                    { id: 'UPI', label: 'Google Pay / PhonePe / Paytm (UPI)', icon: '📱' },
+                    { id: 'Card', label: 'Credit / Debit Card (Visa, RuPay, Master)', icon: '💳' },
+                    { id: 'Net Banking', label: 'Net Banking (All Major Indian Banks)', icon: '🏦' },
+                  ]
+                : [
+                    { id: 'Card', label: 'Credit / Debit Card (Visa, Master, Amex)', icon: '💳' },
+                    { id: 'PayPal', label: 'PayPal / Apple Pay / Google Pay', icon: '🌐' },
+                    { id: 'Wire', label: 'International Wire Transfer', icon: '🏦' },
+                  ]
+              ).map((pm) => {
                 const isSel = selectedPaymentMethod === pm.id;
                 return (
                   <Pressable
@@ -1554,7 +1592,7 @@ export default function AiChatScreen() {
               }}
             >
               <Text style={{ color: '#080D1A', fontSize: 15, fontWeight: '800' }}>
-                {isRecharging ? t('Processing Secure Payment...', 'Processing Secure Payment...') : `${t('Pay & Recharge', 'Pay & Recharge')} ₹${rechargeAmount}`}
+                {isRecharging ? t('Processing Secure Payment...', 'Processing Secure Payment...') : `${t('Pay & Recharge', 'Pay & Recharge')} ${activeRecharge.amount}`}
               </Text>
             </Pressable>
 
@@ -1628,8 +1666,8 @@ export default function AiChatScreen() {
                 }}
               >
                 {t(
-                  'Please sign in to your AstroParihar account to ask AI Astrologers and unlock Vedic Jyotish insights. Each consultation prompt costs ₹5 from your wallet.',
-                  'Please sign in to your AstroParihar account to ask AI Astrologers and unlock Vedic Jyotish insights. Each consultation prompt costs ₹5 from your wallet.'
+                  `Please sign in to your AstroParihar account to ask AI Astrologers and unlock Vedic Jyotish insights. Each consultation prompt costs ${promptCost.label} from your wallet.`,
+                  `Please sign in to your AstroParihar account to ask AI Astrologers and unlock Vedic Jyotish insights. Each consultation prompt costs ${promptCost.label} from your wallet.`
                 )}
               </Text>
             </View>

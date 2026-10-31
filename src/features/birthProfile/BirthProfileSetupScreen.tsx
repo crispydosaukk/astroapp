@@ -16,6 +16,7 @@ import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton } from '@/components/common';
 import { showSnackBar } from '@/components/overlays';
 import { formatTimeOfDay, pickDate, pickTime } from '@/components/pickers';
+import { LocationSearchInput } from '@/components/LocationSearchInput';
 import { lh, Text, TextInput } from '@/components/Text';
 import { API_ENDPOINTS } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
@@ -254,71 +255,18 @@ function BirthDetailsForm(p: {
 }
 
 /* ---------------------------------------------------------------- step 2 */
-const PLACE_SUGGESTIONS = [
-  'Mumbai, Maharashtra, India', 'Delhi, India', 'Bengaluru, Karnataka, India', 'Chennai, Tamil Nadu, India',
-  'Hyderabad, Telangana, India', 'Kolkata, West Bengal, India', 'Pune, Maharashtra, India', 'Ahmedabad, Gujarat, India',
-  'London, United Kingdom', 'New York, USA',
-];
-const POPULAR_CITIES = ['Mumbai', 'Delhi', 'Bengaluru', 'Chennai', 'Hyderabad', 'Kolkata'];
-
 function BirthPlace({ value, onChange }: { value: string; onChange: (s: string) => void }) {
-  const colors = useThemeColors();
-  const [filtered, setFiltered] = useState<string[]>([]);
-  const [show, setShow] = useState(false);
-  const onChanged = (val: string) => {
-    onChange(val);
-    if (val.length > 1) {
-      const f = PLACE_SUGGESTIONS.filter((s) => s.toLowerCase().includes(val.toLowerCase()));
-      setFiltered(f);
-      setShow(f.length > 0);
-    } else setShow(false);
-  };
   return (
     <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
       <StepTitle title={'Your Birth\nPlace'} subtitle="Enter the city and country where you were born." />
-      <View style={{ borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, overflow: 'hidden' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 4 }}>
-          <AppIcon name="location_on_rounded" color={colors.goldAccent} size={22} />
-          <TextInput
-            testID="birthProfile.place"
-            value={value}
-            onChangeText={onChanged}
-            placeholder="Search city, state, country..."
-            placeholderTextColor={colors.textMuted}
-            style={{ flex: 1, marginLeft: 12, paddingVertical: 16, color: colors.textPrimary, fontSize: 15 }}
-          />
-        </View>
-        {show ? (
-          <>
-            <View style={{ height: 1, backgroundColor: colors.cardBorder }} />
-            {filtered.slice(0, 5).map((s, i) => (
-              <Pressable
-                key={s}
-                testID={`birthProfile.place.suggestion.${i}`}
-                android_ripple={{ color: 'rgba(201,168,76,0.1)' }}
-                onPress={() => { onChange(s); setShow(false); }}
-                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 }}
-              >
-                <AppIcon name="location_city_rounded" color={colors.textMuted} size={16} />
-                <Text style={{ marginLeft: 12, flex: 1, color: colors.textPrimary, fontSize: 14 }}>{s}</Text>
-              </Pressable>
-            ))}
-          </>
-        ) : null}
-      </View>
-      <Text style={{ marginTop: 24, color: colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.2 }}>POPULAR CITIES</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-        {POPULAR_CITIES.map((c) => (
-          <Pressable
-            key={c}
-            testID={`birthProfile.popular.${c.toLowerCase()}`}
-            onPress={() => { onChange(`${c}, India`); setShow(false); }}
-            style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 100, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder }}
-          >
-            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{c}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <LocationSearchInput
+        value={value}
+        onChangeText={onChange}
+        required
+        label="Birth Place (City, State, Country)"
+        placeholder="Search city or Google Maps place..."
+        style={{ marginTop: 8 }}
+      />
     </ScrollView>
   );
 }
@@ -422,14 +370,15 @@ export default function BirthProfileSetupScreen() {
         id: `bp_${uid}`,
         name: profileData.name,
         type: profileType,
+        gender,
         dob: formattedDob,
         time: formattedTob,
         place: birthPlace.trim(),
         zodiac: calculatedZodiac,
         sign: calculatedZodiac,
         nakshatra: calculatedNakshatra,
-        emoji: profileType === 'Partner' ? '❤️' : profileType === 'Child' ? '👶' : '🔮',
-        color: '#9370DB',
+        emoji: profileType === 'Partner' ? '❤️' : profileType === 'Child' ? '👶' : '🧘',
+        color: '#C9A84C',
         active: true,
       };
       await AsyncStorage.setItem(`astroparihar_birth_profiles_${uid}`, JSON.stringify([primaryProfileItem]));

@@ -84,7 +84,11 @@ export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(function 
       selectionColor={accent}
       cursorColor={accent}
       {...props}
-      style={[resolve(style), { color: resolvedColor, padding: 0 }]}
+      style={[
+        { paddingVertical: 0, paddingHorizontal: 0 },
+        resolve(style),
+        { color: resolvedColor },
+      ]}
     />
   );
 });

@@ -28,6 +28,7 @@ import { AppRoutes, go, push, useExtra } from '@/navigation/routes';
 import { submitConsultationReview } from '@/services/reviewService';
 import { deductWalletBalance, getWalletBalance, subscribeWallet } from '@/services/walletService';
 import { generateZegoRoomId, openAiCallRoom, openZegoCallRoom } from '@/services/zegoService';
+import { useCurrencyStore } from '@/services/currencyStore';
 import {
   createConsultationBooking,
   getConsultationStatus,
@@ -50,7 +51,7 @@ const DEFAULT_ASTRO: Astro = {
   imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/swami-ji.png',
   semanticLabel: 'Elderly Indian sage with white beard and traditional orange robes',
   isOnline: true,
-  price: 45,
+  price: 25,
   rating: 4.99,
 };
 
@@ -87,8 +88,9 @@ export default function ConsultationScreen() {
   const extra = useExtra<{ type?: string; astrologer?: Astro; roomID?: string }>();
   const astro = extra?.astrologer ?? DEFAULT_ASTRO;
   const isVideo = extra?.type !== 'voice';
-  const ratePerMin = Number(astro.price ?? 45);
+  const ratePerMin = Number(astro.price ?? 25);
   const isAi = Boolean((astro as any)?.isAi || astro.name?.includes('(AI)') || (astro.title && astro.title.toLowerCase().includes('ai')));
+  const { formatPrice, formatRate } = useCurrencyStore();
 
   // Authentication check
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -245,7 +247,7 @@ export default function ConsultationScreen() {
           if (firstMin.success) {
             setBalance(firstMin.newBalance);
             setTotalCharged(ratePerMin);
-            addSystem(`AI Consultation connected. First minute (₹${ratePerMin}) billed.`);
+            addSystem(`AI Consultation connected. First minute (${formatPrice(ratePerMin)}) billed.`);
             addSystem(`Session: ${roomID}`);
           }
 
@@ -341,7 +343,7 @@ export default function ConsultationScreen() {
             if (firstMin.success) {
               setBalance(firstMin.newBalance);
               setTotalCharged(ratePerMin);
-              addSystem(`Astrologer accepted! Call connected. First minute (₹${ratePerMin}) billed.`);
+              addSystem(`Astrologer accepted! Call connected. First minute (${formatPrice(ratePerMin)}) billed.`);
               addSystem(`ZegoCloud Room: ${roomID}`);
             }
 
@@ -360,7 +362,7 @@ export default function ConsultationScreen() {
                 setBalance(res.newBalance);
                 setTotalCharged((prev) => prev + ratePerMin);
                 if (res.newBalance < ratePerMin) {
-                  addSystem(`⚠️ Low balance: ₹${res.newBalance.toFixed(0)} left. Less than 1 minute remaining.`);
+                  addSystem(`⚠️ Low balance: ${formatPrice(res.newBalance)} left. Less than 1 minute remaining.`);
                 }
               } else if (res.isDepleted) {
                 addSystem('Wallet balance exhausted. Ending session...');
@@ -507,7 +509,7 @@ export default function ConsultationScreen() {
             </View>
             <View style={{ marginLeft: 8, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.38)', borderWidth: 1, borderColor: balance < 50 ? withAlpha(AppColors.error, 100) : AppColors.goldBorder }}>
               <AppIcon name="account_balance_wallet_outlined" color={balance < 50 ? AppColors.error : AppColors.goldAccent} size={14} />
-              <Text testID="consultation.balance" style={{ marginLeft: 4, color: balance < 50 ? AppColors.error : AppColors.goldAccent, fontSize: 13, fontWeight: '700' }}>{`₹${balance.toFixed(0)}`}</Text>
+              <Text testID="consultation.balance" style={{ marginLeft: 4, color: balance < 50 ? AppColors.error : AppColors.goldAccent, fontSize: 13, fontWeight: '700' }}>{formatPrice(balance)}</Text>
             </View>
           </View>
 
@@ -536,7 +538,7 @@ export default function ConsultationScreen() {
                   </View>
                   <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(201,168,76,0.18)', borderWidth: 1, borderColor: '#C9A84C' }}>
                     <Text style={{ color: '#C9A84C', fontSize: 10, fontWeight: '800' }}>
-                      ₹{ratePerMin}/min
+                      {formatRate(ratePerMin)}
                     </Text>
                   </View>
                 </View>
@@ -708,8 +710,8 @@ export default function ConsultationScreen() {
           <View style={{ marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder, gap: 8 }}>
             {[
               ['Duration', fmt(seconds)],
-              ['Amount Charged', `₹${(totalCharged > 0 ? totalCharged : Math.round((seconds / 60) * ratePerMin)).toFixed(2)}`],
-              ['Remaining Balance', `₹${balance.toFixed(2)}`],
+              ['Amount Charged', formatPrice(totalCharged > 0 ? totalCharged : Math.round((seconds / 60) * ratePerMin))],
+              ['Remaining Balance', formatPrice(balance)],
             ].map(([l, v]) => (
               <View key={l} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{l}</Text>

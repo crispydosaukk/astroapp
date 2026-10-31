@@ -15,6 +15,7 @@ import { AppBar, BoxBackButton } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton, LinearProgress, OutlinedButton, ProgressRing } from '@/components/common';
 import { OutlinedField } from '@/components/fields';
+import { LocationSearchInput } from '@/components/LocationSearchInput';
 import { showSnackBar } from '@/components/overlays';
 import { formatTimeOfDay, pickDate, pickTime } from '@/components/pickers';
 import { lh, Text } from '@/components/Text';
@@ -161,12 +162,12 @@ function PersonCard({
         <PickerField label="Time of Birth" value={tob} icon="access_time_outlined" onPress={onPickTime} style={{ flex: 1 }} />
       </View>
       <View style={{ marginTop: 12 }}>
-        <OutlinedField
-          testID={`${testID}.pob`}
-          label="Birth Place (City, State)"
-          icon="location_on_outlined"
+        <LocationSearchInput
+          label="Birth Place (City, State, Country)"
+          placeholder="Search city or Google Maps place..."
           value={pob}
           onChangeText={setPob}
+          showPopularChips={false}
         />
       </View>
     </View>

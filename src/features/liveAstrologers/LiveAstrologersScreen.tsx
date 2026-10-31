@@ -22,6 +22,7 @@ import { useAuthStore } from '@/features/auth/authStore';
 import { fetchAiAstrologers, fetchRealAstrologers } from '@/services/homeDataService';
 import { generateZegoRoomId } from '@/services/zegoService';
 import { AppRoutes, push } from '@/navigation/routes';
+import { useCurrencyStore } from '@/services/currencyStore';
 import { argb, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 
@@ -147,7 +148,7 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     rating: 4.99,
     reviews: '38,420',
     consultations: '38k+',
-    price: 10,
+    price: 25,
     isOnline: true,
     languages: 'English, Hindi, Telugu, Tamil, Kannada',
     imageUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&fit=crop',
@@ -166,7 +167,7 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     rating: 4.98,
     reviews: '42,100',
     consultations: '42k+',
-    price: 5,
+    price: 25,
     isOnline: true,
     languages: 'English, Hindi, Telugu, Tamil',
     imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&fit=crop',
@@ -185,7 +186,7 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     rating: 4.99,
     reviews: '29,800',
     consultations: '29k+',
-    price: 15,
+    price: 25,
     isOnline: true,
     languages: 'Hindi, English, Sanskrit',
     imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&fit=crop',
@@ -204,7 +205,7 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     rating: 4.97,
     reviews: '24,600',
     consultations: '24k+',
-    price: 10,
+    price: 25,
     isOnline: true,
     languages: 'English, Hindi, Telugu, Tamil',
     imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&fit=crop',
@@ -223,7 +224,7 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     rating: 4.96,
     reviews: '18,900',
     consultations: '18k+',
-    price: 12,
+    price: 25,
     isOnline: true,
     languages: 'English, Hindi, Gujarati, Marathi',
     imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&fit=crop',
@@ -242,7 +243,7 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     rating: 4.98,
     reviews: '22,300',
     consultations: '22k+',
-    price: 10,
+    price: 25,
     isOnline: true,
     languages: 'Hindi, Telugu, Kannada, English',
     imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&fit=crop',
@@ -295,7 +296,7 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
       const roomID = generateZegoRoomId('ai_call');
       push(AppRoutes.consultationScreen, {
         type: 'voice',
-        astrologer: data,
+        astrologer: { ...data, price: effectivePrice },
         roomID,
       });
     } else {
@@ -305,6 +306,9 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
 
   const id = `liveAstrologers.card.${index}`;
   const colors = useThemeColors();
+  const formatRate = useCurrencyStore((s) => s.formatRate);
+  const defaultRate = useCurrencyStore((s) => s.pricingSettings.humanAstrologerDefaultRate) || 25;
+  const effectivePrice = Number(data.price) > 0 ? Number(data.price) : defaultRate;
 
   return (
     <Animated.View style={[{ marginBottom: 12 }, anim]}>
@@ -351,71 +355,74 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
                   borderRadius: 5,
                   borderWidth: 1.5,
                   borderColor: colors.surface,
-                  backgroundColor: data.isOnline ? '#3DCB7A' : '#6B7A99',
+                  backgroundColor: isAi || data.isOnline ? '#3DCB7A' : '#6B7A99',
                 }}
               />
             </View>
 
-            {/* AI or Live Online/Offline Status Pill Badge */}
-            {isAi ? (
-              <View style={{ marginTop: 5, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: '#713B32', borderWidth: 0.5, borderColor: '#C9A84C' }}>
-                <Text style={{ textAlign: 'center', color: '#F0EAD6', fontSize: 8, fontWeight: '800' }}>🔮 AI GURU</Text>
-              </View>
-            ) : (
+            {/* Offline status tag for real astrologers only (Hidden for 24/7 AI) */}
+            {!isAi && !data.isOnline && (
               <View
                 style={{
                   marginTop: 5,
                   paddingHorizontal: 6,
                   paddingVertical: 2,
                   borderRadius: 6,
-                  backgroundColor: data.isOnline
-                    ? colors.isLight
-                      ? '#DCFCE7'
-                      : argb('263DCB7A')
-                    : colors.surfaceVariant,
+                  backgroundColor: colors.surfaceVariant,
                   borderWidth: 0.5,
-                  borderColor: data.isOnline ? '#3DCB7A' : colors.cardBorder,
+                  borderColor: colors.cardBorder,
                 }}
               >
                 <Text
                   style={{
                     textAlign: 'center',
-                    color: data.isOnline ? (colors.isLight ? '#15803D' : '#3DCB7A') : colors.textMuted,
+                    color: colors.textMuted,
                     fontSize: 8,
                     fontWeight: '800',
                   }}
                 >
-                  {data.isOnline ? '🟢 ONLINE' : '🔴 OFFLINE'}
+                  🔴 OFFLINE
                 </Text>
               </View>
             )}
           </View>
 
-          {/* Right Column: Detailed Info & Compact Actions */}
+          {/* Right Column: Detailed Info & Neatly Proportioned Actions */}
           <View style={{ flex: 1, justifyContent: 'space-between' }}>
-            {/* Header: Name & Price */}
+            {/* Header: Name & Premium Price Pill */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', marginRight: 6 }}>
-                <Text numberOfLines={1} style={{ color: colors.textPrimary, fontSize: 14.5, fontWeight: '700' }}>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', marginRight: 8 }}>
+                <Text numberOfLines={1} style={{ color: colors.textPrimary, fontSize: 14.5, fontWeight: '700', flexShrink: 1 }}>
                   {data.name}
                 </Text>
                 <AppIcon name={isAi ? 'auto_awesome_rounded' : 'verified_rounded'} color={colors.goldAccent} size={14} style={{ marginLeft: 4 }} />
               </View>
-              <Text style={{ color: colors.goldAccent, fontSize: 13.5, fontWeight: '800' }}>
-                {`₹${data.price}/min`}
-              </Text>
+              <View
+                style={{
+                  paddingHorizontal: 8,
+                  paddingVertical: 2.5,
+                  borderRadius: 8,
+                  backgroundColor: colors.isLight ? '#FEF3C7' : argb('1FC9A84C'),
+                  borderWidth: 1,
+                  borderColor: colors.isLight ? 'rgba(201,168,76,0.35)' : argb('33C9A84C'),
+                }}
+              >
+                <Text style={{ color: colors.isLight ? '#92400E' : colors.goldAccent, fontSize: 12.5, fontWeight: '800' }}>
+                  {formatRate(effectivePrice)}
+                </Text>
+              </View>
             </View>
 
-            {/* Specialty / Title */}
-            <Text numberOfLines={1} style={{ color: colors.textSecondary, fontSize: 11, marginTop: 2 }}>
-              {data.title || data.specialty}
+            {/* Specialty / Domain */}
+            <Text numberOfLines={1} style={{ color: colors.textSecondary, fontSize: 11.5, marginTop: 2, fontWeight: '500' }}>
+              {data.specialty || (data.title?.split('•')[0]?.trim()) || 'Vedic Astrology'}
             </Text>
 
             {/* Rating, Reviews & Experience */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
               <AppIcon name="star_rounded" color={colors.goldAccent} size={13} />
-              <Text style={{ marginLeft: 2, color: colors.goldAccent, fontSize: 11.5, fontWeight: '700' }}>
-                {String(data.rating || 'New')}
+              <Text style={{ marginLeft: 3, color: colors.goldAccent, fontSize: 11.5, fontWeight: '700' }}>
+                {String(data.rating || '4.9')}
               </Text>
               {data.reviews && data.reviews !== '0' ? (
                 <Text style={{ marginLeft: 3, color: colors.textMuted, fontSize: 10.5 }}>
@@ -434,23 +441,41 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
 
             {/* Languages */}
             {data.languages ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
                 <AppIcon name="language_rounded" color={colors.textMuted} size={11} />
-                <Text numberOfLines={1} style={{ marginLeft: 3, flex: 1, color: colors.textMuted, fontSize: 10.5 }}>
+                <Text numberOfLines={1} style={{ marginLeft: 4, flex: 1, color: colors.textMuted, fontSize: 10.5 }}>
                   {data.languages}
                 </Text>
               </View>
             ) : null}
 
-            {/* Bottom Row: Sessions Count + Chat & Call CTAs (Disabled when Offline) */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-              <Text style={{ color: colors.textMuted, fontSize: 10 }}>
-                {data.consultations && data.consultations !== '0'
-                  ? `${data.consultations} sessions`
-                  : data.isOnline
-                  ? 'Available Now'
-                  : 'Currently Offline'}
-              </Text>
+            {/* Bottom Row: Status Indicator & Balanced CTAs */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginTop: 8,
+                paddingTop: 7,
+                borderTopWidth: 0.5,
+                borderTopColor: colors.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: isAi || data.isOnline ? '#16A34A' : '#9CA3AF',
+                    marginRight: 4,
+                  }}
+                />
+                <Text style={{ color: isAi || data.isOnline ? (colors.isLight ? '#15803D' : '#3DCB7A') : colors.textMuted, fontSize: 10.5, fontWeight: '600' }}>
+                  {isAi ? 'Instant 24/7' : data.isOnline ? (data.consultations ? `${data.consultations} orders` : 'Available') : 'Offline'}
+                </Text>
+              </View>
+
               {!isAi && !data.isOnline ? (
                 <Pressable
                   testID={`${id}.offlineProfile`}
@@ -458,8 +483,8 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    paddingHorizontal: 11,
-                    paddingVertical: 5.5,
+                    paddingHorizontal: 12,
+                    paddingVertical: 5,
                     borderRadius: 100,
                     backgroundColor: colors.surfaceVariant,
                     borderWidth: 1,
@@ -467,7 +492,7 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
                   }}
                 >
                   <Text style={{ color: colors.textMuted, fontSize: 10.5, fontWeight: '700' }}>
-                    Offline • View Profile →
+                    View Profile →
                   </Text>
                 </Pressable>
               ) : (
@@ -478,7 +503,8 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
-                      paddingHorizontal: 11,
+                      justifyContent: 'center',
+                      paddingHorizontal: 12,
                       paddingVertical: 5.5,
                       borderRadius: 100,
                       backgroundColor: '#713B32',
@@ -496,16 +522,17 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
-                      paddingHorizontal: 11,
+                      justifyContent: 'center',
+                      paddingHorizontal: 12,
                       paddingVertical: 5.5,
                       borderRadius: 100,
-                      backgroundColor: colors.isLight ? 'rgba(201,168,76,0.18)' : 'rgba(255,255,255,0.08)',
+                      backgroundColor: colors.isLight ? '#FDF8F0' : argb('1AF0EAD6'),
                       borderWidth: 1,
-                      borderColor: colors.goldAccent,
+                      borderColor: colors.isLight ? '#C9A84C' : argb('40C9A84C'),
                     }}
                   >
-                    <AppIcon name={isAi ? 'headset_mic_rounded' : 'call_rounded'} color={colors.goldAccent} size={11} />
-                    <Text style={{ marginLeft: 3, color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
+                    <AppIcon name={isAi ? 'headset_mic_rounded' : 'call_rounded'} color={colors.isLight ? '#8B5E0D' : colors.goldAccent} size={11} />
+                    <Text style={{ marginLeft: 3, color: colors.isLight ? '#8B5E0D' : colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
                       {isAi ? 'Voice AI' : 'Call'}
                     </Text>
                   </Pressable>
@@ -521,11 +548,28 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
 
 /* ----------------------------------------------------- filter sheet widget */
 function SectionLabel({ label }: { label: string }) {
-  return <Text style={{ color: '#6B7A99', fontSize: 11, fontWeight: '700', letterSpacing: 1.2 }}>{label.toUpperCase()}</Text>;
-}
-function ChipGroup({ options, selected, onSelected, idPrefix }: { options: string[]; selected: string; onSelected: (v: string) => void; idPrefix: string }) {
+  const colors = useThemeColors();
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+    <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '700', letterSpacing: 1.2 }}>
+      {label.toUpperCase()}
+    </Text>
+  );
+}
+
+function ChipGroup({
+  options,
+  selected,
+  onSelected,
+  idPrefix,
+}: {
+  options: string[];
+  selected: string;
+  onSelected: (v: string) => void;
+  idPrefix: string;
+}) {
+  const colors = useThemeColors();
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
       {options.map((o) => {
         const sel = selected === o;
         return (
@@ -534,9 +578,29 @@ function ChipGroup({ options, selected, onSelected, idPrefix }: { options: strin
             testID={`${idPrefix}.${o}`}
             onPress={() => onSelected(o)}
             duration={180}
-            style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 100, borderWidth: 1, backgroundColor: sel ? '#713B32' : argb('0FFFFFFF'), borderColor: sel ? '#713B32' : argb('1AC9A84C') }}
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              borderRadius: 100,
+              borderWidth: 1.5,
+              backgroundColor: sel ? colors.goldAccent : colors.surfaceVariant,
+              borderColor: sel ? colors.goldAccent : colors.cardBorder,
+              shadowColor: sel ? colors.goldAccent : 'transparent',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: sel ? 0.25 : 0,
+              shadowRadius: 4,
+              elevation: sel ? 2 : 0,
+            }}
           >
-            <Text style={{ color: sel ? '#F0EAD6' : '#6B7A99', fontSize: 13, fontWeight: sel ? '700' : '400' }}>{o}</Text>
+            <Text
+              style={{
+                color: sel ? '#FFFFFF' : colors.textPrimary,
+                fontSize: 13,
+                fontWeight: sel ? '700' : '500',
+              }}
+            >
+              {o}
+            </Text>
           </AnimatedPressable>
         );
       })}
@@ -544,48 +608,240 @@ function ChipGroup({ options, selected, onSelected, idPrefix }: { options: strin
   );
 }
 
-function FilterSheet({ onlineOnly, onOnlineChanged, onClose }: { onlineOnly: boolean; onOnlineChanged: (v: boolean) => void; onClose: () => void }) {
+function FilterSheet({
+  onlineOnly,
+  onOnlineChanged,
+  onClose,
+}: {
+  onlineOnly: boolean;
+  onOnlineChanged: (v: boolean) => void;
+  onClose: () => void;
+}) {
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
   const [online, setOnline] = useState(onlineOnly);
   const [sort, setSort] = useState('Top Rated');
   const [price, setPrice] = useState('All');
   const [gender, setGender] = useState('All');
   const [language, setLanguage] = useState('All');
+
+  const handleReset = () => {
+    setOnline(false);
+    setSort('Top Rated');
+    setPrice('All');
+    setGender('All');
+    setLanguage('All');
+  };
+
   return (
-    <View style={{ borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', borderTopWidth: 1, borderTopColor: argb('33C9A84C') }}>
-      <BlurView intensity={60} tint="dark" experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
-      <ScrollView style={{ backgroundColor: withAlpha('#0D1B2A', 242) }} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: insets.bottom + 24 }}>
-        <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 100, backgroundColor: '#2A3550' }} />
-        <Text style={{ marginTop: 20, color: '#F0EAD6', fontSize: 18, fontWeight: '700' }}>Filter Astrologers</Text>
-        <View style={{ marginTop: 20, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, backgroundColor: argb('0FFFFFFF'), borderWidth: 1, borderColor: argb('1AC9A84C') }}>
-          <Text style={{ flex: 1, color: '#F0EAD6', fontSize: 14, fontWeight: '500' }}>Show Online Only</Text>
-          <Switch testID="liveAstrologers.filter.onlineOnly" value={online} onValueChange={setOnline} />
+    <View
+      style={{
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.cardBorder,
+        maxHeight: '90%',
+      }}
+    >
+      {/* Header with Title and Close Button */}
+      <View
+        style={{
+          paddingHorizontal: 24,
+          paddingTop: 16,
+          paddingBottom: 14,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.cardBorder,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: withAlpha(colors.goldAccent, 20),
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 10,
+            }}
+          >
+            <AppIcon name="tune" size={18} color={colors.goldAccent} />
+          </View>
+          <View>
+            <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '800' }}>
+              Filter Astrologers
+            </Text>
+            <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+              Refine verified masters & consultations
+            </Text>
+          </View>
         </View>
-        <View style={{ height: 16 }} />
+
+        <Pressable onPress={onClose} hitSlop={8} style={{ padding: 4 }}>
+          <AppIcon name="close_rounded" color={colors.textMuted} size={22} />
+        </Pressable>
+      </View>
+
+      {/* Scrollable Filters Body */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingTop: 16,
+          paddingBottom: 16,
+        }}
+      >
+        {/* Show Online Only Card */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            borderRadius: 16,
+            backgroundColor: colors.surfaceVariant,
+            borderWidth: 1.5,
+            borderColor: online ? colors.goldAccent : colors.cardBorder,
+          }}
+        >
+          <View
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 5,
+              backgroundColor: '#10B981',
+              marginRight: 10,
+            }}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>
+              Show Online Only
+            </Text>
+            <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>
+              Only display masters currently ready to consult
+            </Text>
+          </View>
+          <Switch
+            testID="liveAstrologers.filter.onlineOnly"
+            value={online}
+            onValueChange={setOnline}
+          />
+        </View>
+
+        <View style={{ height: 18 }} />
         <SectionLabel label="Sort By" />
-        <ChipGroup idPrefix="liveAstrologers.filter.sort" options={['Top Rated', 'Price: Low', 'Price: High', 'Most Consulted', 'Experience']} selected={sort} onSelected={setSort} />
-        <View style={{ height: 16 }} />
+        <ChipGroup
+          idPrefix="liveAstrologers.filter.sort"
+          options={['Top Rated', 'Price: Low', 'Price: High', 'Most Consulted', 'Experience']}
+          selected={sort}
+          onSelected={setSort}
+        />
+
+        <View style={{ height: 18 }} />
         <SectionLabel label="Price Range" />
-        <ChipGroup idPrefix="liveAstrologers.filter.price" options={['All', 'Under ₹20', '₹20–₹40', '₹40–₹60', '₹60+']} selected={price} onSelected={setPrice} />
-        <View style={{ height: 16 }} />
+        <ChipGroup
+          idPrefix="liveAstrologers.filter.price"
+          options={
+            useCurrencyStore.getState().currencyCode === 'INR'
+              ? ['All', 'Under ₹20', '₹20–₹40', '₹40–₹60', '₹60+']
+              : ['All', 'Under $0.25', '$0.25–$0.50', '$0.50–$0.75', '$0.75+']
+          }
+          selected={price}
+          onSelected={setPrice}
+        />
+
+        <View style={{ height: 18 }} />
         <SectionLabel label="Gender" />
-        <ChipGroup idPrefix="liveAstrologers.filter.gender" options={['All', 'Male', 'Female']} selected={gender} onSelected={setGender} />
-        <View style={{ height: 16 }} />
+        <ChipGroup
+          idPrefix="liveAstrologers.filter.gender"
+          options={['All', 'Male', 'Female']}
+          selected={gender}
+          onSelected={setGender}
+        />
+
+        <View style={{ height: 18 }} />
         <SectionLabel label="Language" />
         <ChipGroup
           idPrefix="liveAstrologers.filter.language"
-          options={['All', 'Hindi', 'English', 'Tamil', 'Telugu', 'Kannada', 'Malayalam', 'Bengali', 'Marathi', 'Gujarati', 'Punjabi', 'Odia']}
+          options={[
+            'All',
+            'Hindi',
+            'English',
+            'Tamil',
+            'Telugu',
+            'Kannada',
+            'Malayalam',
+            'Bengali',
+            'Marathi',
+            'Gujarati',
+            'Punjabi',
+            'Odia',
+          ]}
           selected={language}
           onSelected={setLanguage}
         />
-        <ElevatedButton
-          testID="liveAstrologers.filter.apply"
-          label="Apply Filters"
-          onPress={() => { onOnlineChanged(online); onClose(); }}
-          style={{ marginTop: 24 }}
-          fontWeight="700"
-        />
       </ScrollView>
+
+      {/* Fixed Bottom Action Bar */}
+      <View
+        style={{
+          paddingHorizontal: 24,
+          paddingTop: 12,
+          paddingBottom: insets.bottom + 12,
+          borderTopWidth: 1,
+          borderTopColor: colors.cardBorder,
+          backgroundColor: colors.surface,
+          flexDirection: 'row',
+          gap: 12,
+        }}
+      >
+        <Pressable
+          onPress={handleReset}
+          style={{
+            flex: 1,
+            paddingVertical: 14,
+            borderRadius: 14,
+            borderWidth: 1.5,
+            borderColor: colors.cardBorder,
+            backgroundColor: colors.surfaceVariant,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '700' }}>
+            Reset
+          </Text>
+        </Pressable>
+
+        <Pressable
+          testID="liveAstrologers.filter.apply"
+          onPress={() => {
+            onOnlineChanged(online);
+            onClose();
+          }}
+          style={{
+            flex: 2,
+            paddingVertical: 14,
+            borderRadius: 14,
+            backgroundColor: colors.goldAccent,
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: colors.goldAccent,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 6,
+            elevation: 3,
+          }}
+        >
+          <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800' }}>
+            Apply Filters
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -732,12 +988,12 @@ export default function LiveAstrologersScreen() {
           id: a.id,
           name: a.name,
           specialty: a.specialty,
-          title: a.semanticLabel || `${a.specialty} • ${a.experience}`,
+          title: a.specialty || 'Vedic Astrology',
           experience: a.experience,
           rating: a.rating,
           reviews: a.reviews,
           consultations: `${a.reviews}+`,
-          price: a.price,
+          price: Number(a.price) > 0 ? Number(a.price) : 25,
           isOnline: a.isOnline,
           languages: a.languages,
           imageUrl: a.imageUrl,

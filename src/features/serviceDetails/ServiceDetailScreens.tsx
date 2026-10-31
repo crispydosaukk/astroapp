@@ -13,6 +13,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/features/auth/authStore';
+import { useCurrencyStore } from '@/services/currencyStore';
 import { AnimatedPressable } from '@/components/AnimatedBox';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
@@ -94,6 +95,7 @@ type Mini = { name: string; specialty: string; imageUrl: string; rating: number;
 function AstrologerRow({ items, accent }: { items: Mini[]; accent: string }) {
   const colors = useThemeColors();
   const { t } = useTranslation();
+  const formatRate = useCurrencyStore((s) => s.formatRate);
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height: 180 }} contentContainerStyle={{ paddingHorizontal: 16 }}>
       {items.map((a) => (
@@ -107,7 +109,7 @@ function AstrologerRow({ items, accent }: { items: Mini[]; accent: string }) {
             <AppIcon name="star_rounded" color={colors.goldAccent} size={12} />
             <Text style={{ marginLeft: 2, color: colors.goldAccent, fontSize: 11, fontWeight: '600' }}>{String(a.rating)}</Text>
           </View>
-          <Text style={{ marginTop: 6, color: accent, fontSize: 11, fontWeight: '700' }}>{`₹${a.price}/min`}</Text>
+          <Text style={{ marginTop: 6, color: accent, fontSize: 11, fontWeight: '700' }}>{formatRate(a.price)}</Text>
         </View>
       ))}
     </ScrollView>
@@ -129,6 +131,10 @@ function ServiceLayout({ title, testID, children }: { title: string; testID: str
             testID === 'careerAstrology' || testID === 'marriageAstrology' || testID === 'businessAstrology' || testID === 'financeAstrology'
               ? 349
               : 199,
+          priceUSD:
+            testID === 'careerAstrology' || testID === 'marriageAstrology' || testID === 'businessAstrology' || testID === 'financeAstrology'
+              ? 4.99
+              : 2.99,
           category: testID === 'muhurat' ? 'panchang' : 'services',
         };
 
@@ -572,6 +578,7 @@ export function AstrologyReportsScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const formatPrice = useCurrencyStore((s) => s.formatPrice);
   const authUser = useAuthStore((s) => s.user);
   const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
   const a = '#4FC3F7';
@@ -592,6 +599,7 @@ export function AstrologyReportsScreen() {
       title: reportItem.name,
       subtitle: `${reportItem.pages} • ${reportItem.desc}`,
       price: reportItem.price,
+      priceUSD: Number((reportItem.price * 0.012).toFixed(2)),
       category: 'services',
     });
   };
@@ -621,7 +629,7 @@ export function AstrologyReportsScreen() {
           </View>
           <Text style={{ marginTop: 10, color: colors.textSecondary, ...lh(12, 1.5) }}>{t(r.desc, r.desc)}</Text>
           <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ color: colors.goldAccent, fontSize: 20, fontWeight: '800' }}>{`₹${r.price}`}</Text>
+            <Text style={{ color: colors.goldAccent, fontSize: 20, fontWeight: '800' }}>{formatPrice(r.price)}</Text>
             <Text style={{ marginLeft: 4, flex: 1, color: colors.textMuted, fontSize: 11 }}>{t('one-time')}</Text>
             <Pressable
               testID={`astrologyReports.getReport.${i}`}

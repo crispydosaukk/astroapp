@@ -10,6 +10,7 @@ import { BottomSheet, showSnackBar } from '@/components/overlays';
 import { formatTimeOfDay, pickDate, pickTime } from '@/components/pickers';
 import { Text } from '@/components/Text';
 import { useAuthStore } from '@/features/auth/authStore';
+import { useCurrencyStore } from '@/services/currencyStore';
 import { AppRoutes, push } from '@/navigation/routes';
 import {
   generateCompletePariharaPlan,
@@ -91,6 +92,7 @@ export interface ReportIntakeConfig {
   title: string;
   subtitle?: string;
   price: number;
+  priceUSD?: number;
   serviceId?: string;
   remedyName?: string;
   category?: 'services' | 'remedies' | 'panchang' | 'mahadasha';
@@ -133,6 +135,9 @@ export function ServiceReportFormBody({ config, onSuccess, onCancel, isModal }: 
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [loadingWallet, setLoadingWallet] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
+
+  const { currencyCode, currencySymbol, formatPrice, convertPrice } = useCurrencyStore();
+  const feeDisplay = config.price > 0 ? formatPrice(config.price, config.priceUSD) : 'FREE';
 
   // Sync user profile or saved draft
   useEffect(() => {
@@ -284,7 +289,7 @@ export function ServiceReportFormBody({ config, onSuccess, onCancel, isModal }: 
 
         if (currentBal < price) {
           showSnackBar(
-            `Insufficient wallet balance (Available: ₹${currentBal}, Required: ₹${price}). Redirecting to Wallet...`,
+            `Insufficient wallet balance (Available: ${formatPrice(currentBal)}, Required: ${feeDisplay}). Redirecting to Wallet...`,
             '#D4821A'
           );
           setSubmitting(false);
@@ -303,6 +308,7 @@ export function ServiceReportFormBody({ config, onSuccess, onCancel, isModal }: 
               ? 'svc-parihara-plan'
               : `svc-${(config.remedyName || config.title).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`),
           serviceType: config.mode === 'mahadasha' ? 'guide' : 'report',
+          displayAmount: `-${feeDisplay}`,
           details: {
             name: name.trim(),
             gender,
@@ -465,7 +471,7 @@ export function ServiceReportFormBody({ config, onSuccess, onCancel, isModal }: 
         >
           <Text style={{ color: colors.textMuted, fontSize: 9.5, fontWeight: '700' }}>FEE</Text>
           <Text style={{ color: colors.goldAccent, fontSize: 17, fontWeight: '900' }}>
-            {config.price > 0 ? `₹${config.price}` : 'FREE'}
+            {feeDisplay}
           </Text>
         </View>
       </View>
@@ -519,7 +525,7 @@ export function ServiceReportFormBody({ config, onSuccess, onCancel, isModal }: 
             />
             <View style={{ marginLeft: 8, flex: 1 }}>
               <Text style={{ color: colors.textPrimary, fontSize: 12.5, fontWeight: '700' }}>
-                {loadingWallet ? 'Checking Wallet...' : `Wallet Balance: ₹${walletBalance}`}
+                {loadingWallet ? 'Checking Wallet...' : `Wallet Balance: ${formatPrice(walletBalance)}`}
               </Text>
               <Text
                 style={{
@@ -529,8 +535,8 @@ export function ServiceReportFormBody({ config, onSuccess, onCancel, isModal }: 
                 }}
               >
                 {hasSufficientBalance
-                  ? `✓ Sufficient balance for ₹${config.price} deduction`
-                  : `Need ₹${Math.max(0, config.price - walletBalance)} more to unlock this report`}
+                  ? `✓ Sufficient balance for ${feeDisplay} deduction`
+                  : `Need ${formatPrice(Math.max(0, config.price - walletBalance))} more to unlock this report`}
               </Text>
             </View>
           </View>
@@ -945,7 +951,7 @@ export function ServiceReportFormBody({ config, onSuccess, onCancel, isModal }: 
           ) : config.price > 0 && !hasSufficientBalance ? (
             <ElevatedButton
               testID="reportIntake.rechargeToContinue"
-              label={`⚡ Recharge Wallet (₹${config.price})`}
+              label={`⚡ Recharge Wallet (${feeDisplay})`}
               onPress={handleRechargeRedirect}
               bg="#D4821A"
               fg="#FFFFFF"
@@ -961,7 +967,7 @@ export function ServiceReportFormBody({ config, onSuccess, onCancel, isModal }: 
                 submitting
                   ? 'Synthesizing Vedic Report...'
                   : config.price > 0
-                  ? `✨ Generate Report • Pay ₹${config.price}`
+                  ? `✨ Generate Report • Pay ${feeDisplay}`
                   : '✨ Generate Free Vedic Report'
               }
               disabled={submitting}

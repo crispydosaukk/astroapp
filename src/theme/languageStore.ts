@@ -4094,15 +4094,16 @@ export function translateStringWithDict(text: string, lang: AppLanguage): string
     if (lang === 'Malayalam') return `${leadWs}${count} ഓൺലൈൻ${trailWs}`;
   }
 
-  // C. "₹25/min"
-  const priceMatch = trimmed.match(/^(?:₹|Rs\.?)\s*(\d+)\s*\/\s*min$/i);
+  // C. "₹25/min" or "$0.30/min"
+  const priceMatch = trimmed.match(/^(?:₹|\$|Rs\.?)\s*(\d+(?:\.\d+)?)\s*\/\s*min$/i);
   if (priceMatch) {
+    const sym = trimmed.trim().startsWith('$') ? '$' : '₹';
     const amt = priceMatch[1];
-    if (lang === 'Telugu') return `${leadWs}₹${amt}/నిమిషానికి${trailWs}`;
-    if (lang === 'Hindi') return `${leadWs}₹${amt}/मिनट${trailWs}`;
-    if (lang === 'Tamil') return `${leadWs}₹${amt}/நிமிடம்${trailWs}`;
-    if (lang === 'Kannada') return `${leadWs}₹${amt}/ನಿಮಿಷಕ್ಕೆ${trailWs}`;
-    if (lang === 'Malayalam') return `${leadWs}₹${amt}/മിനിറ്റ്${trailWs}`;
+    if (lang === 'Telugu') return `${leadWs}${sym}${amt}/నిమిషానికి${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}${sym}${amt}/मिनट${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}${sym}${amt}/நிமிடம்${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}${sym}${amt}/ನಿಮಿಷಕ್ಕೆ${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}${sym}${amt}/മിനിറ്റ്${trailWs}`;
   }
 
   // D. "10+ Yrs" / "35+ Yrs"
@@ -4116,15 +4117,16 @@ export function translateStringWithDict(text: string, lang: AppLanguage): string
     if (lang === 'Malayalam') return `${leadWs}${yrs}+ വർഷം${trailWs}`;
   }
 
-  // E. "₹5 / prompt"
-  const promptMatch = trimmed.match(/^(?:₹|Rs\.?)\s*(\d+)\s*\/\s*prompt$/i);
+  // E. "₹5 / prompt" or "$0.15 / prompt"
+  const promptMatch = trimmed.match(/^(?:₹|\$|Rs\.?)\s*(\d+(?:\.\d+)?)\s*\/\s*prompt$/i);
   if (promptMatch) {
+    const sym = trimmed.trim().startsWith('$') ? '$' : '₹';
     const amt = promptMatch[1];
-    if (lang === 'Telugu') return `${leadWs}₹${amt} / ప్రశ్నకి${trailWs}`;
-    if (lang === 'Hindi') return `${leadWs}₹${amt} / प्रश्न${trailWs}`;
-    if (lang === 'Tamil') return `${leadWs}₹${amt} / கேள்விக்கு${trailWs}`;
-    if (lang === 'Kannada') return `${leadWs}₹${amt} / ಪ್ರಶ್ನೆಗೆ${trailWs}`;
-    if (lang === 'Malayalam') return `${leadWs}₹${amt} / ചോദ്യത്തിന്${trailWs}`;
+    if (lang === 'Telugu') return `${leadWs}${sym}${amt} / ప్రశ్నకి${trailWs}`;
+    if (lang === 'Hindi') return `${leadWs}${sym}${amt} / प्रश्न${trailWs}`;
+    if (lang === 'Tamil') return `${leadWs}${sym}${amt} / கேள்விக்கு${trailWs}`;
+    if (lang === 'Kannada') return `${leadWs}${sym}${amt} / ಪ್ರಶ್ನೆಗೆ${trailWs}`;
+    if (lang === 'Malayalam') return `${leadWs}${sym}${amt} / ചോദ്യത്തിന്${trailWs}`;
   }
 
   // F. "Ask AI Astrologer about your Love"

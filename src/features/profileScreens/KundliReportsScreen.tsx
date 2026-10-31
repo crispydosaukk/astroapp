@@ -21,6 +21,7 @@ import {
 import { TabBar, TabPager } from '@/components/Tabs';
 import { Text } from '@/components/Text';
 import { useAuthStore } from '@/features/auth/authStore';
+import { useCurrencyStore } from '@/services/currencyStore';
 import { AppRoutes, pop, push } from '@/navigation/routes';
 import {
   KundliReportItem,
@@ -260,6 +261,7 @@ export default function KundliReportsScreen() {
   const [loadingReports, setLoadingReports] = useState(true);
   const [selectedReport, setSelectedReport] = useState<KundliReportItem | null>(null);
   const [intakeConfig, setIntakeConfig] = useState<ReportIntakeConfig | null>(null);
+  const formatPrice = useCurrencyStore((s) => s.formatPrice);
 
   const loadReports = async () => {
     if (!isUserLoggedIn) {
@@ -300,6 +302,7 @@ export default function KundliReportsScreen() {
       title: item.title,
       subtitle: `${item.pages} • ${item.desc}`,
       price: item.price,
+      priceUSD: Number((item.price * 0.012).toFixed(2)),
       serviceId: item.id,
       remedyName: item.title,
       category: item.category as any,
@@ -726,7 +729,7 @@ export default function KundliReportsScreen() {
                   </View>
                 </View>
                 <View style={{ marginLeft: 10, alignItems: 'flex-end' }}>
-                  <Text style={{ color: colors.goldAccent, fontSize: 16, fontWeight: '800' }}>{c.priceDisplay}</Text>
+                  <Text style={{ color: colors.goldAccent, fontSize: 16, fontWeight: '800' }}>{formatPrice(c.price)}</Text>
                   <Pressable
                     onPress={() => handleBuyReport(c)}
                     style={{

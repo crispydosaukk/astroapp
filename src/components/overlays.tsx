@@ -49,17 +49,35 @@ export function BottomSheet({
   if (!mounted) return null;
   return (
     <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.54)' }, barrierStyle]}>
+      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+        <Animated.View
+          style={[
+            { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.54)' },
+            barrierStyle,
+          ]}
+        >
           <Pressable style={{ flex: 1 }} onPress={onClose} testID={testID ? `${testID}.barrier` : undefined} />
         </Animated.View>
-        <Animated.View
-          testID={testID}
-          style={[{ position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: SCREEN_H * maxHeightRatio, backgroundColor }, sheetStyle, style]}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ width: '100%', justifyContent: 'flex-end' }}
         >
-          {children}
-        </Animated.View>
-      </KeyboardAvoidingView>
+          <Animated.View
+            testID={testID}
+            style={[
+              {
+                width: '100%',
+                maxHeight: SCREEN_H * maxHeightRatio,
+                backgroundColor,
+              },
+              sheetStyle,
+              style,
+            ]}
+          >
+            {children}
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

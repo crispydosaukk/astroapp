@@ -28,6 +28,7 @@ import {
 } from '@/services/consultationService';
 import { getAstrologerReviews } from '@/services/reviewService';
 import { getWalletBalance, rechargeWallet, subscribeWallet } from '@/services/walletService';
+import { useCurrencyStore } from '@/services/currencyStore';
 import { generateZegoRoomId } from '@/services/zegoService';
 import { argb, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
@@ -208,7 +209,7 @@ export default function AstrologerDetailScreen() {
 
           const liveExp = expNum > 0 ? `${expNum}+ Yrs` : '';
           const livePrice =
-            Number(liveDoc.amount ?? liveDoc.pricePerMinute ?? liveDoc.price ?? initialData.price) || 0;
+            Number(liveDoc.amount ?? liveDoc.pricePerMinute ?? liveDoc.price ?? initialData.price) || 25;
 
           const totalConsultsNum =
             Number(liveDoc.totalConsultations ?? liveDoc.consultations ?? completedCalls.length) || 0;
@@ -398,6 +399,8 @@ export default function AstrologerDetailScreen() {
   const authUser = useAuthStore((s) => s.user);
   const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
 
+  const { currencyCode, currencySymbol, formatPrice, formatRate } = useCurrencyStore();
+
   const minBalance = price * 5;
   const selectedTotalCost = price * selectedDuration;
   const isSufficient = walletBalance >= minBalance;
@@ -406,10 +409,16 @@ export default function AstrologerDetailScreen() {
     setIsRecharging(true);
     setRechargeMsg('');
     try {
-      const res = await rechargeWallet(amt, 'UPI (Razorpay)');
+      const isUSD = currencyCode === 'USD';
+      const creditedINR = isUSD ? Math.round(amt / 0.012) : amt;
+      const res = await rechargeWallet(amt, isUSD ? 'Card (Stripe)' : 'UPI (Razorpay)', {
+        currency: currencyCode,
+        displayAmount: `+${formatPrice(amt)}`,
+        creditedINR,
+      });
       if (res.success) {
         setWalletBalance(res.newBalance);
-        setRechargeMsg(`₹${amt} added successfully! Balance: ₹${res.newBalance}`);
+        setRechargeMsg(`${formatPrice(amt)} added successfully! Balance: ${formatPrice(res.newBalance)}`);
       }
     } catch {
       setRechargeMsg('Payment failed. Please try again.');
@@ -599,7 +608,7 @@ export default function AstrologerDetailScreen() {
           <StatDivider />
           <StatItem value={String(data.consultations || '0')} label="Sessions" icon="🎯" color="#2D9E6B" />
           <StatDivider />
-          <StatItem value={`₹${price}/min`} label="Rate" icon="💎" color="#FFB347" />
+          <StatItem value={formatRate(price)} label="Rate" icon="💎" color="#FFB347" />
         </View>
 
         {/* Dynamic Specialisations Chips */}
@@ -1189,11 +1198,11 @@ export default function AstrologerDetailScreen() {
                     <Text style={{ marginLeft: 6, color: '#CF4444', fontSize: 12, fontWeight: '700' }}>Low Wallet Balance</Text>
                   </View>
                   <Text style={{ marginTop: 4, color: colors.textSecondary, fontSize: 11 }}>
-                    {`Minimum 5-minute balance (₹${minBalance}) required to connect. Please add ₹${minBalance - walletBalance} or more.`}
+                    {`Minimum 5-minute balance (${formatPrice(minBalance)}) required to connect. Please add ${formatPrice(Math.max(0, minBalance - walletBalance))} or more.`}
                   </Text>
 
                   <View style={{ marginTop: 10, flexDirection: 'row', gap: 8 }}>
-                    {[100, 250, 500].map((amt) => (
+                    {(currencyCode === 'INR' ? [100, 250, 500] : [5, 10, 25]).map((amt) => (
                       <Pressable
                         key={amt}
                         onPress={() => handleQuickRecharge(amt)}
@@ -1208,13 +1217,13 @@ export default function AstrologerDetailScreen() {
                           alignItems: 'center',
                         }}
                       >
-                        <Text style={{ color: colors.goldAccent, fontSize: 12, fontWeight: '700' }}>{`+₹${amt}`}</Text>
+                        <Text style={{ color: colors.goldAccent, fontSize: 12, fontWeight: '700' }}>{`+${formatPrice(amt)}`}</Text>
                       </Pressable>
                     ))}
                   </View>
 
                   <Pressable
-                    onPress={() => handleQuickRecharge(Math.max(100, Math.ceil(minBalance - walletBalance)))}
+                    onPress={() => handleQuickRecharge(Math.max(currencyCode === 'USD' ? 5 : 100, Math.ceil(minBalance - walletBalance)))}
                     disabled={isRecharging}
                     style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden' }}
                   >
@@ -1234,7 +1243,7 @@ export default function AstrologerDetailScreen() {
                       <Text style={{ color: colors.isLight ? '#FFFFFF' : '#080D1A', fontSize: 13, fontWeight: '800' }}>
                         {isRecharging
                           ? 'Processing Recharge...'
-                          : `⚡ Quick Recharge ₹${Math.max(100, Math.ceil(minBalance - walletBalance))} (UPI/Cards)`}
+                          : `⚡ Quick Recharge ${formatPrice(Math.max(currencyCode === 'USD' ? 5 : 100, Math.ceil(minBalance - walletBalance)))} (${currencyCode === 'INR' ? 'UPI/Cards' : 'Stripe/Cards'})`}
                       </Text>
                     </LinearGradient>
                   </Pressable>

@@ -1,43 +1,44 @@
 /**
  * Port of lib/presentation/profile_screens/birth_profiles_screen.dart
  * Completely dynamic:
- * - Reads & persists family birth profiles via AsyncStorage
- * - Active profile synced with user's primary birth chart
- * - Full Add Profile Sheet with Name, Relation, DOB, TOB, POB
- * - Set as Active / Delete / View Kundli fully functional
+ * - Reads & persists family birth profiles via useBirthProfileStore
+ * - Active profile synced with user's primary birth chart across whole app
+ * - Full Add & Edit Profile Sheets with Name, Relation, DOB, TOB, POB, Gender
+ * - Date & Time pickers for seamless accuracy
+ * - Set as Active / Edit / Delete / View Kundli fully functional
  * - Dynamic Light Vedic & Dark Cosmic theming with high-contrast text
  */
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
-import { ElevatedButton } from '@/components/common';
+import { ElevatedButton, OutlinedButton } from '@/components/common';
 import { BottomSheet, PopupMenu, showSnackBar } from '@/components/overlays';
+import { formatTimeOfDay, pickDate, pickTime } from '@/components/pickers';
+import { LocationSearchInput } from '@/components/LocationSearchInput';
 import { Text, TextInput } from '@/components/Text';
 import { AppRoutes, pop, push } from '@/navigation/routes';
 import { useAuthStore } from '@/features/auth/authStore';
+import {
+  BirthProfile,
+  PROFILE_RELATION_TYPES,
+  useBirthProfileStore,
+} from '@/services/birthProfileStore';
 import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
 
-export type BirthProfile = {
-  id: string;
-  name: string;
-  type: string;
-  dob: string;
-  time: string;
-  place: string;
-  zodiac: string;
-  sign: string;
-  nakshatra: string;
-  emoji: string;
-  color: string;
-  active: boolean;
-};
-
-const STORAGE_PROFILES_KEY = 'astroparihar_birth_profiles';
+const POPULAR_CITIES = [
+  'New Delhi, India',
+  'Mumbai, India',
+  'Bengaluru, India',
+  'Hyderabad, India',
+  'Chennai, India',
+  'Kolkata, India',
+  'London, UK',
+  'New York, USA',
+];
 
 function DetailRow({ emoji, label, value, colors }: { emoji: string; label: string; value: string; colors: any }) {
   return (
@@ -78,133 +79,144 @@ export default function BirthProfilesScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const authUser = useAuthStore((s) => s.user);
-  const updateUserProfile = useAuthStore((s) => s.updateUserProfile);
 
-  const userStorageKey = authUser?.uid
-    ? `astroparihar_birth_profiles_${authUser.uid}`
-    : (authUser?.phone ? `astroparihar_birth_profiles_${authUser.phone.replace(/\D/g, '')}` : STORAGE_PROFILES_KEY);
+  const profiles = useBirthProfileStore((s) => s.profiles);
+  const activeProfile = useBirthProfileStore((s) => s.activeProfile);
+  const loadProfiles = useBirthProfileStore((s) => s.loadProfiles);
+  const setActiveProfile = useBirthProfileStore((s) => s.setActiveProfile);
+  const addProfile = useBirthProfileStore((s) => s.addProfile);
+  const updateProfile = useBirthProfileStore((s) => s.updateProfile);
+  const deleteProfile = useBirthProfileStore((s) => s.deleteProfile);
 
-  const [profiles, setProfiles] = useState<BirthProfile[]>([]);
-  const [sheet, setSheet] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetMode, setSheetMode] = useState<'add' | 'edit'>('add');
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Form states for adding new birth profile
-  const [newName, setNewName] = useState('');
-  const [newType, setNewType] = useState('Partner');
-  const [newDob, setNewDob] = useState('');
-  const [newTime, setNewTime] = useState('');
-  const [newPlace, setNewPlace] = useState('');
-
-  const loadProfiles = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(userStorageKey);
-      if (stored) {
-        const parsed: BirthProfile[] = JSON.parse(stored);
-        if (authUser) {
-          const synced = parsed.map((p) => {
-            if (p.type === 'Myself' || p.active) {
-              return {
-                ...p,
-                name: authUser.name?.trim() || p.name,
-                dob: authUser.dob || p.dob,
-                time: authUser.tob || p.time,
-                place: authUser.pob || p.place,
-                sign: authUser.zodiac || p.sign,
-                nakshatra: authUser.nakshatra || p.nakshatra,
-              };
-            }
-            return p;
-          });
-          setProfiles(synced);
-        } else {
-          setProfiles(parsed);
-        }
-      } else {
-        const initialProfiles: BirthProfile[] = [
-          {
-            id: `bp_${authUser?.uid || '1'}`,
-            name: authUser?.name?.trim() || 'My Profile',
-            type: authUser?.profileType || 'Myself',
-            dob: authUser?.dob || 'Not specified',
-            time: authUser?.tob || 'Not specified',
-            place: authUser?.pob || 'Not specified',
-            zodiac: '♏',
-            sign: authUser?.zodiac || 'Scorpio',
-            nakshatra: authUser?.nakshatra || 'Pushya',
-            emoji: '🔮',
-            color: '#9370DB',
-            active: true,
-          },
-        ];
-        await AsyncStorage.setItem(userStorageKey, JSON.stringify(initialProfiles));
-        setProfiles(initialProfiles);
-      }
-    } catch {
-      setProfiles([]);
-    }
-  };
+  // Form states
+  const [formName, setFormName] = useState('');
+  const [formType, setFormType] = useState('Partner');
+  const [formGender, setFormGender] = useState('Male');
+  const [formDob, setFormDob] = useState('1995-10-15');
+  const [formTime, setFormTime] = useState('12:00 PM');
+  const [formPlace, setFormPlace] = useState('New Delhi, India');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadProfiles();
   }, [authUser]);
 
-  const saveProfilesList = async (updated: BirthProfile[]) => {
-    setProfiles(updated);
-    await AsyncStorage.setItem(userStorageKey, JSON.stringify(updated));
-    await AsyncStorage.setItem(STORAGE_PROFILES_KEY, JSON.stringify(updated));
+  const openAddSheet = () => {
+    setSheetMode('add');
+    setEditingId(null);
+    setFormName('');
+    setFormType('Partner');
+    setFormGender('Male');
+    setFormDob('1995-10-15');
+    setFormTime('12:00 PM');
+    setFormPlace('New Delhi, India');
+    setSheetOpen(true);
+  };
+
+  const openEditSheet = (profile: BirthProfile) => {
+    setSheetMode('edit');
+    setEditingId(profile.id);
+    setFormName(profile.name);
+    setFormType(profile.type || 'Myself');
+    setFormGender(profile.gender || 'Male');
+    setFormDob(profile.dob || '1995-10-15');
+    setFormTime(profile.time || '12:00 PM');
+    setFormPlace(profile.place || 'New Delhi, India');
+    setSheetOpen(true);
+  };
+
+  const handlePickDate = async () => {
+    try {
+      const initialDate = formDob ? new Date(formDob) : new Date(1995, 9, 15);
+      const chosen = await pickDate({
+        value: isNaN(initialDate.getTime()) ? new Date(1995, 9, 15) : initialDate,
+        maximumDate: new Date(),
+      });
+      if (chosen) {
+        const y = chosen.getFullYear();
+        const m = String(chosen.getMonth() + 1).padStart(2, '0');
+        const d = String(chosen.getDate()).padStart(2, '0');
+        setFormDob(`${y}-${m}-${d}`);
+      }
+    } catch {}
+  };
+
+  const handlePickTime = async () => {
+    try {
+      const chosen = await pickTime({
+        value: new Date(2000, 0, 1, 12, 0),
+      });
+      if (chosen) {
+        setFormTime(formatTimeOfDay(chosen));
+      }
+    } catch {}
   };
 
   const onMenu = async (index: number, val: 'edit' | 'set_active' | 'delete') => {
+    const target = profiles[index];
+    if (!target) return;
+
     if (val === 'set_active') {
-      const updated = profiles.map((p, i) => ({ ...p, active: i === index }));
-      await saveProfilesList(updated);
-      const activeP = updated[index];
-      if (activeP) {
-        await updateUserProfile({
-          name: activeP.name,
-          dob: activeP.dob !== 'Not specified' ? activeP.dob : '',
-          tob: activeP.time !== 'Not specified' ? activeP.time : '',
-          pob: activeP.place !== 'Not specified' ? activeP.place : '',
-        });
-        showSnackBar(`${activeP.name} is now your primary birth profile`, colors.surfaceVariant);
-      }
+      await setActiveProfile(target.id);
+      showSnackBar(`${target.name} (${target.type}) is now your active birth chart!`);
     } else if (val === 'delete') {
-      const deletedName = profiles[index]?.name;
-      const updated = profiles.filter((_, i) => i !== index);
-      await saveProfilesList(updated);
-      showSnackBar(`${deletedName} profile removed`, colors.surfaceVariant);
-    } else {
-      showSnackBar('Editing profile details...', colors.surfaceVariant);
+      if (profiles.length <= 1) {
+        showSnackBar('Cannot delete the only profile', '#CF4444');
+        return;
+      }
+      await deleteProfile(target.id);
+      showSnackBar(`${target.name} profile removed`);
+    } else if (val === 'edit') {
+      openEditSheet(target);
     }
   };
 
-  const handleAddNewProfile = async () => {
-    if (!newName.trim()) {
-      showSnackBar('Please enter a name for the birth profile', '#CF4444');
+  const handleSaveProfile = async () => {
+    if (!formName.trim()) {
+      showSnackBar('Please enter member name', '#CF4444');
       return;
     }
-    const newProfile: BirthProfile = {
-      id: `bp_${Date.now()}`,
-      name: newName.trim(),
-      type: newType,
-      dob: newDob.trim() || '01 January 1995',
-      time: newTime.trim() || '12:00 PM',
-      place: newPlace.trim() || 'New Delhi, India',
-      zodiac: '♈',
-      sign: 'Aries',
-      nakshatra: 'Ashwini',
-      emoji: newType === 'Partner' ? '💫' : newType === 'Child' ? '⭐' : '🌟',
-      color: newType === 'Partner' ? '#FF6B6B' : newType === 'Child' ? '#FFB347' : '#9370DB',
-      active: false,
-    };
+    if (!formPlace.trim()) {
+      showSnackBar('Please enter birth place', '#CF4444');
+      return;
+    }
 
-    const updated = [...profiles, newProfile];
-    await saveProfilesList(updated);
-    setSheet(false);
-    setNewName('');
-    setNewDob('');
-    setNewTime('');
-    setNewPlace('');
-    showSnackBar(`Added ${newProfile.name}'s birth profile`, colors.surfaceVariant);
+    setSaving(true);
+    try {
+      if (sheetMode === 'edit' && editingId) {
+        const updated = await updateProfile(editingId, {
+          name: formName.trim(),
+          type: formType,
+          gender: formGender,
+          dob: formDob,
+          time: formTime,
+          place: formPlace.trim(),
+        });
+        if (updated) {
+          showSnackBar(`Updated birth details for ${updated.name}!`);
+        }
+      } else {
+        const created = await addProfile({
+          name: formName.trim(),
+          type: formType,
+          gender: formGender,
+          dob: formDob,
+          time: formTime,
+          place: formPlace.trim(),
+          setAsActive: false,
+        });
+        showSnackBar(`Added ${created.name} (${created.type}) to your family profiles!`);
+      }
+      setSheetOpen(false);
+    } catch {
+      showSnackBar('Could not save profile. Please try again.', '#CF4444');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -219,7 +231,7 @@ export default function BirthProfilesScreen() {
           {
             icon: 'add_circle_outline_rounded',
             color: colors.goldAccent,
-            onPress: () => setSheet(true),
+            onPress: openAddSheet,
             testID: 'birthProfiles.add',
           },
         ]}
@@ -239,7 +251,7 @@ export default function BirthProfilesScreen() {
         >
           <Text style={{ fontSize: 20 }}>✨</Text>
           <Text style={{ marginLeft: 10, flex: 1, color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
-            Manage family birth charts. Switching the active profile recalibrates your Kundli, daily horoscope, and remedies.
+            Manage family birth charts. Switching the active profile recalibrates your Kundli, daily horoscope, and remedies across the entire app.
           </Text>
         </View>
 
@@ -273,14 +285,14 @@ export default function BirthProfilesScreen() {
                   width: 56,
                   height: 56,
                   borderRadius: 28,
-                  backgroundColor: withAlpha(p.color, colors.isLight ? 25 : 30),
+                  backgroundColor: withAlpha(p.color || colors.goldAccent, colors.isLight ? 25 : 30),
                   borderWidth: 2,
-                  borderColor: withAlpha(p.color, 80),
+                  borderColor: withAlpha(p.color || colors.goldAccent, 80),
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontSize: 24 }}>{p.emoji}</Text>
+                <Text style={{ fontSize: 24 }}>{p.emoji || '🧘'}</Text>
               </View>
               <View style={{ flex: 1, marginLeft: 14 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -308,10 +320,10 @@ export default function BirthProfilesScreen() {
                     paddingHorizontal: 8,
                     paddingVertical: 2,
                     borderRadius: 20,
-                    backgroundColor: withAlpha(p.color, 20),
+                    backgroundColor: withAlpha(p.color || colors.goldAccent, 20),
                   }}
                 >
-                  <Text style={{ color: p.color, fontSize: 11, fontWeight: '700' }}>{p.type}</Text>
+                  <Text style={{ color: p.color || colors.goldAccent, fontSize: 11, fontWeight: '700' }}>{p.type}</Text>
                 </View>
               </View>
 
@@ -337,12 +349,17 @@ export default function BirthProfilesScreen() {
             <View style={{ height: 1, backgroundColor: colors.divider }} />
 
             <View style={{ paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-              <AstroChip symbol={p.zodiac} value={p.sign} label="Rashi" colors={colors} />
+              <AstroChip symbol="♈" value={p.sign || p.zodiac} label="Rashi" colors={colors} />
               <AstroChip symbol="⭐" value={p.nakshatra} label="Nakshatra" colors={colors} />
               <View style={{ flex: 1 }} />
               <Pressable
                 testID={`birthProfiles.card.${i}.viewKundli`}
-                onPress={() => push(AppRoutes.myKundliScreen)}
+                onPress={async () => {
+                  if (!p.active) {
+                    await setActiveProfile(p.id);
+                  }
+                  push(AppRoutes.myKundliScreen);
+                }}
                 style={{
                   paddingHorizontal: 14,
                   paddingVertical: 7,
@@ -362,7 +379,7 @@ export default function BirthProfilesScreen() {
 
         <Pressable
           testID="birthProfiles.addButton"
-          onPress={() => setSheet(true)}
+          onPress={openAddSheet}
           style={{
             marginTop: 8,
             padding: 16,
@@ -383,125 +400,216 @@ export default function BirthProfilesScreen() {
         </Pressable>
       </ScrollView>
 
-      {/* Add Profile BottomSheet */}
-      <BottomSheet visible={sheet} onClose={() => setSheet(false)} testID="birthProfiles.addSheet">
+      {/* Add / Edit Profile BottomSheet */}
+      <BottomSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} testID="birthProfiles.addSheet">
         <View
           style={{
-            padding: 24,
             backgroundColor: colors.surface,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
             borderWidth: 1,
             borderColor: colors.cardBorder,
+            maxHeight: '100%',
           }}
         >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '800' }}>
-              Add Family Birth Chart
-            </Text>
-            <Pressable onPress={() => setSheet(false)} style={{ padding: 4 }}>
+          {/* Header */}
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingHorizontal: 24,
+              paddingTop: 18,
+              paddingBottom: 14,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.cardBorder,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 17,
+                  backgroundColor: withAlpha(colors.goldAccent, 20),
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 10,
+                }}
+              >
+                <AppIcon name="person_add" size={18} color={colors.goldAccent} />
+              </View>
+              <View>
+                <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '800' }}>
+                  {sheetMode === 'add' ? 'Add Family Birth Chart' : 'Edit Birth Profile'}
+                </Text>
+                <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                  Sacred Vedic kundli details
+                </Text>
+              </View>
+            </View>
+            <Pressable onPress={() => setSheetOpen(false)} hitSlop={8} style={{ padding: 4 }}>
               <AppIcon name="close_rounded" color={colors.textMuted} size={22} />
             </Pressable>
           </View>
 
-          <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 4 }}>Relationship</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-            {['Partner', 'Child', 'Parent', 'Sibling', 'Other'].map((tVal) => {
-              const isSel = newType === tVal;
-              return (
+          {/* Scrollable Form Body with Keyboard Handling */}
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingHorizontal: 24,
+              paddingTop: 16,
+              paddingBottom: insets.bottom + 24,
+            }}
+          >
+            {/* Relationship */}
+            <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
+              Relationship
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {PROFILE_RELATION_TYPES.map((r) => {
+                const isSel = formType === r.label;
+                return (
+                  <Pressable
+                    key={r.label}
+                    onPress={() => setFormType(r.label)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: 13,
+                      paddingVertical: 7,
+                      borderRadius: 16,
+                      backgroundColor: isSel ? colors.goldAccent : colors.surfaceVariant,
+                      borderWidth: 1.5,
+                      borderColor: isSel ? colors.goldAccent : colors.cardBorder,
+                      shadowColor: isSel ? colors.goldAccent : 'transparent',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: isSel ? 0.25 : 0,
+                      shadowRadius: 4,
+                      elevation: isSel ? 2 : 0,
+                    }}
+                  >
+                    <Text style={{ fontSize: 14 }}>{r.emoji}</Text>
+                    <Text
+                      style={{
+                        color: isSel ? '#FFFFFF' : colors.textPrimary,
+                        fontSize: 12,
+                        fontWeight: isSel ? '800' : '600',
+                        marginLeft: 5,
+                      }}
+                    >
+                      {r.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Full Name Input */}
+            <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
+              Full Name <Text style={{ color: colors.goldAccent }}>*</Text>
+            </Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: colors.surfaceVariant,
+                borderRadius: 14,
+                borderWidth: 1.5,
+                borderColor: colors.cardBorder,
+                paddingHorizontal: 12,
+                minHeight: 50,
+                marginBottom: 16,
+              }}
+            >
+              <AppIcon name="person_outline" size={20} color={colors.goldAccent} style={{ marginRight: 8 }} />
+              <TextInput
+                placeholder="e.g. Rahul Sharma"
+                value={formName}
+                onChangeText={setFormName}
+                placeholderTextColor={colors.textMuted}
+                style={{
+                  flex: 1,
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: colors.textPrimary,
+                  paddingVertical: 12,
+                }}
+              />
+            </View>
+
+            {/* Birth Date & Time Side by Side */}
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
+                  Birth Date <Text style={{ color: colors.goldAccent }}>*</Text>
+                </Text>
                 <Pressable
-                  key={tVal}
-                  onPress={() => setNewType(tVal)}
+                  onPress={handlePickDate}
                   style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
                     paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 16,
-                    backgroundColor: isSel ? colors.goldAccent : colors.surfaceVariant,
-                    borderWidth: 1,
-                    borderColor: isSel ? colors.goldAccent : colors.cardBorder,
+                    minHeight: 50,
+                    borderRadius: 14,
+                    backgroundColor: colors.surfaceVariant,
+                    borderWidth: 1.5,
+                    borderColor: colors.cardBorder,
                   }}
                 >
-                  <Text style={{ color: isSel ? '#080D1A' : colors.textPrimary, fontSize: 12, fontWeight: '700' }}>
-                    {tVal}
+                  <AppIcon name="calendar_today" size={17} color={colors.goldAccent} style={{ marginRight: 8 }} />
+                  <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700', flex: 1 }}>
+                    {formDob || 'Select Date'}
                   </Text>
                 </Pressable>
-              );
-            })}
-          </View>
+              </View>
 
-          <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 4 }}>Full Name</Text>
-          <TextInput
-            placeholder="e.g. Rahul Sharma"
-            value={newName}
-            onChangeText={setNewName}
-            style={{
-              padding: 12,
-              borderRadius: 12,
-              backgroundColor: colors.surfaceVariant,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              fontSize: 14,
-              marginBottom: 12,
-            }}
-          />
-
-          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 4 }}>Birth Date</Text>
-              <TextInput
-                placeholder="DD Month YYYY"
-                value={newDob}
-                onChangeText={setNewDob}
-                style={{
-                  padding: 12,
-                  borderRadius: 12,
-                  backgroundColor: colors.surfaceVariant,
-                  borderWidth: 1,
-                  borderColor: colors.cardBorder,
-                  fontSize: 14,
-                }}
-              />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
+                  Birth Time <Text style={{ color: colors.goldAccent }}>*</Text>
+                </Text>
+                <Pressable
+                  onPress={handlePickTime}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 12,
+                    minHeight: 50,
+                    borderRadius: 14,
+                    backgroundColor: colors.surfaceVariant,
+                    borderWidth: 1.5,
+                    borderColor: colors.cardBorder,
+                  }}
+                >
+                  <AppIcon name="schedule" size={17} color={colors.goldAccent} style={{ marginRight: 8 }} />
+                  <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700', flex: 1 }}>
+                    {formTime || 'Select Time'}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 4 }}>Birth Time</Text>
-              <TextInput
-                placeholder="e.g. 06:30 AM"
-                value={newTime}
-                onChangeText={setNewTime}
-                style={{
-                  padding: 12,
-                  borderRadius: 12,
-                  backgroundColor: colors.surfaceVariant,
-                  borderWidth: 1,
-                  borderColor: colors.cardBorder,
-                  fontSize: 14,
-                }}
-              />
-            </View>
-          </View>
 
-          <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 4 }}>Birth Place</Text>
-          <TextInput
-            placeholder="City, State, Country"
-            value={newPlace}
-            onChangeText={setNewPlace}
-            style={{
-              padding: 12,
-              borderRadius: 12,
-              backgroundColor: colors.surfaceVariant,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              fontSize: 14,
-              marginBottom: 20,
-            }}
-          />
+            {/* Google Maps Location Search */}
+            <LocationSearchInput
+              value={formPlace}
+              onChangeText={setFormPlace}
+              required
+              label="Birth Place (City, State, Country)"
+              placeholder="Search city or Google Maps place..."
+            />
 
-          <ElevatedButton
-            label="Save Birth Profile"
-            onPress={handleAddNewProfile}
-            radius={14}
-            paddingV={12}
-          />
+            {/* Save Button */}
+            <ElevatedButton
+              label={saving ? 'Calculating Chart...' : sheetMode === 'add' ? 'Save Birth Profile' : 'Update Profile Details'}
+              onPress={handleSaveProfile}
+              disabled={saving}
+              loading={saving}
+              radius={14}
+              paddingV={14}
+              style={{ marginTop: 8 }}
+            />
+          </ScrollView>
         </View>
       </BottomSheet>
     </View>

@@ -33,6 +33,7 @@ import {
   YANTRAS,
 } from '@/data/remedies';
 import { useAuthStore } from '@/features/auth/authStore';
+import { useCurrencyStore } from '@/services/currencyStore';
 import { AppRoutes, push, useExtra } from '@/navigation/routes';
 import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
@@ -492,12 +493,15 @@ export default function RemedyDetailScreen() {
   const data = getRemedyData(name);
   const isVastu = name.toLowerCase().includes('vastu') || name.toLowerCase().includes('vāstu');
 
+  const { formatPrice } = useCurrencyStore();
+
   const reportConfig: ReportIntakeConfig = isVastu
     ? {
         mode: 'vastu',
         title: 'Personalised Vastu Shastra Consultation Report',
         subtitle: '16-Zone spatial audit, entrance direction analysis & non-demolition remedies',
         price: 149,
+        priceUSD: 2.99,
         serviceId: 'svc-vastu',
         remedyName: name,
         category: 'remedies',
@@ -507,6 +511,7 @@ export default function RemedyDetailScreen() {
         title: `${name} Personalised Parihar Report`,
         subtitle: `Custom ${remedy.sanskrit} prescription aligned with your natal chart & Dasha`,
         price: 99,
+        priceUSD: 1.99,
         remedyName: name,
         category: 'remedies',
       };
@@ -713,8 +718,8 @@ export default function RemedyDetailScreen() {
             testID="remedyDetail.report"
             label={
               !isUserLoggedIn
-                ? `🔒 Sign In to Get ${name} Report (₹${reportConfig.price})`
-                : `Get My Personalised ${name} Report — ₹${reportConfig.price}`
+                ? `🔒 Sign In to Get ${name} Report (${formatPrice(reportConfig.price, reportConfig.priceUSD)})`
+                : `Get My Personalised ${name} Report — ${formatPrice(reportConfig.price, reportConfig.priceUSD)}`
             }
             onPress={() => setReportModalOpen(true)}
             radius={100}

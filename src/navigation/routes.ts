@@ -28,8 +28,6 @@ export const AppRoutes = {
   savedAstrologersScreen: '/saved-astrologers-screen',
   consultationHistoryScreen: '/consultation-history-screen',
   walletScreen: '/wallet-screen',
-  notificationsScreen: '/notifications-screen',
-  notificationSettingsScreen: '/notification-settings-screen',
   languageScreen: '/language-screen',
   themeScreen: '/theme-screen',
   privacyScreen: '/privacy-screen',

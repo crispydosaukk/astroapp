@@ -121,16 +121,19 @@ export async function getWalletTransactions(): Promise<WalletTransaction[]> {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.documents) && data.documents.length > 0) {
+            const isUSD = (await AsyncStorage.getItem('astroparihar_currency')) === 'USD';
+            const sym = isUSD ? '$' : '₹';
             const formatted: WalletTransaction[] = data.documents.map((doc: any) => {
               const f = doc.fields || {};
               const isCredit = f.type?.stringValue === 'credit';
               const amtNum = f.amount?.doubleValue ?? f.amount?.integerValue ?? 0;
+              const formattedAmt = isUSD ? (amtNum * 0.012).toFixed(2) : String(amtNum);
               return {
                 id: doc.name?.split('/').pop() || String(Math.random()),
                 type: isCredit ? 'credit' : 'debit',
                 title: f.description?.stringValue || f.title?.stringValue || (isCredit ? 'Wallet Recharge' : 'Astrology Service'),
                 subtitle: f.serviceType?.stringValue || (isCredit ? 'UPI / Online' : 'Consultation'),
-                amount: isCredit ? `+₹${amtNum}` : `-₹${amtNum}`,
+                amount: isCredit ? `+${sym}${formattedAmt}` : `-${sym}${formattedAmt}`,
                 date: f.date?.stringValue ? new Date(f.date.stringValue).toLocaleDateString() : 'Recently',
                 icon: isCredit ? '💳' : '📞',
                 status: f.status?.stringValue || 'success',
@@ -180,15 +183,21 @@ export async function createPaymentOrder(amount: number): Promise<{
  */
 export async function rechargeWallet(
   amount: number,
-  paymentMethod: string = 'UPI'
+  paymentMethod: string = 'UPI',
+  options?: {
+    currency?: 'INR' | 'USD';
+    displayAmount?: string;
+    creditedINR?: number;
+  }
 ): Promise<{
   success: boolean;
   newBalance: number;
   message?: string;
 }> {
   try {
+    const credited = options?.creditedINR !== undefined ? options.creditedINR : amount;
     const curBal = await getWalletBalance();
-    const newBal = curBal + amount;
+    const newBal = curBal + credited;
 
     const storedAuth = await AsyncStorage.getItem('astroparihar_auth_user');
     const parsedUser = storedAuth ? JSON.parse(storedAuth) : null;
@@ -218,7 +227,7 @@ export async function rechargeWallet(
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               fields: {
-                amount: { doubleValue: amount },
+                amount: { doubleValue: credited },
                 type: { stringValue: 'credit' },
                 description: { stringValue: `Wallet Recharge via ${paymentMethod}` },
                 status: { stringValue: 'completed' },
@@ -236,12 +245,13 @@ export async function rechargeWallet(
     await AsyncStorage.setItem(STORAGE_KEY_BALANCE, String(newBal));
 
     const txs = await getWalletTransactions();
+    const displayAmt = options?.displayAmount || (options?.currency === 'USD' ? `+$${amount}` : `+₹${amount}`);
     const newTx: WalletTransaction = {
       id: `tx_${Date.now()}`,
       type: 'credit',
       title: 'Wallet Recharge',
       subtitle: `${paymentMethod} Payment`,
-      amount: `+₹${amount}`,
+      amount: displayAmt,
       date: 'Just now',
       icon: '💳',
       status: 'success',
@@ -249,7 +259,7 @@ export async function rechargeWallet(
     await AsyncStorage.setItem(STORAGE_KEY_TX, JSON.stringify([newTx, ...txs]));
 
     notifyBalance(newBal);
-    return { success: true, newBalance: newBal, message: `₹${amount} added successfully!` };
+    return { success: true, newBalance: newBal, message: `${displayAmt} added successfully!` };
   } catch (error: any) {
     return { success: false, newBalance: 0, message: error.message || 'Recharge failed' };
   }
@@ -269,6 +279,7 @@ export async function deductWalletBalance(
     serviceId?: string;
     serviceType?: 'report' | 'guide' | 'consultation';
     details?: any;
+    displayAmount?: string;
   }
 ): Promise<{
   success: boolean;
@@ -366,7 +377,7 @@ export async function deductWalletBalance(
       type: 'debit',
       title: description || (astrologerName ? `Consultation: ${astrologerName}` : 'Service Payment'),
       subtitle: isReport ? 'Vedic Report / Guide' : 'Consultation Usage',
-      amount: `-₹${amount}`,
+      amount: extraOptions?.displayAmount || `-₹${amount}`,
       date: 'Just now',
       icon: isReport ? '📜' : '📞',
       status: 'success',

@@ -13,6 +13,7 @@ import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
 import { useAuthStore } from '@/features/auth/authStore';
+import { useCurrencyStore } from '@/services/currencyStore';
 import {
   getWalletBalance,
   getWalletTransactions,
@@ -20,15 +21,6 @@ import {
   subscribeWallet,
   WalletTransaction,
 } from '@/services/walletService';
-
-const ADD_OPTIONS = [
-  { amount: '₹100', value: 100, bonus: null },
-  { amount: '₹200', value: 200, bonus: null },
-  { amount: '₹500', value: 500, bonus: '₹25 bonus' },
-  { amount: '₹1000', value: 1000, bonus: '₹75 bonus' },
-  { amount: '₹2000', value: 2000, bonus: '₹200 bonus' },
-  { amount: '₹5000', value: 5000, bonus: '₹600 bonus' },
-];
 
 function WalletStat({ value, label, colors }: { value: string; label: string; colors: any }) {
   return (
@@ -47,13 +39,25 @@ export default function WalletScreen() {
   const authUser = useAuthStore((s) => s.user);
   const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
 
+  const {
+    currencyCode,
+    currencySymbol,
+    formatPrice,
+    setCurrencyCode,
+    getRechargeOptions,
+  } = useCurrencyStore();
+
+  const rechargeOptions = getRechargeOptions();
+
   const [tab, setTab] = useState(0);
-  const [selected, setSelected] = useState(500);
+  const [selectedIdx, setSelectedIdx] = useState(2); // default to 3rd package
   const [sheet, setSheet] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [gridW, setGridW] = useState(0);
+
+  const activeOption = rechargeOptions[selectedIdx] || rechargeOptions[0];
 
   useEffect(() => {
     let isMounted = true;
@@ -95,11 +99,15 @@ export default function WalletScreen() {
     }
     setIsProcessing(true);
     try {
-      const res = await rechargeWallet(selected, method);
+      const res = await rechargeWallet(activeOption.value, method, {
+        currency: currencyCode,
+        displayAmount: `+${activeOption.amount}`,
+        creditedINR: activeOption.valueINR,
+      });
       setSheet(false);
       if (res.success) {
         setBalance(res.newBalance);
-        showSnackBar(`₹${selected} added via ${method}! New balance: ₹${res.newBalance}`, colors.surfaceVariant);
+        showSnackBar(`${activeOption.amount} added via ${method}! New balance: ${formatPrice(res.newBalance)}`, colors.surfaceVariant);
         getWalletTransactions().then(setTransactions);
       } else {
         showSnackBar('Recharge failed. Please try again.', '#CF4444');
@@ -110,6 +118,7 @@ export default function WalletScreen() {
       setIsProcessing(false);
     }
   };
+
   const cell = gridW > 0 ? (gridW - 20) / 3 : 0;
 
   return (
@@ -157,26 +166,81 @@ export default function WalletScreen() {
                 shadowRadius: 10,
               }}
             >
+              {/* Currency Selector Pill */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: colors.surface,
+                  padding: 3,
+                  borderRadius: 100,
+                  borderWidth: 1,
+                  borderColor: colors.cardBorder,
+                  marginBottom: 12,
+                }}
+              >
+                <Pressable
+                  onPress={() => setCurrencyCode('INR')}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 5,
+                    borderRadius: 100,
+                    backgroundColor: currencyCode === 'INR' ? colors.goldAccent : 'transparent',
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 11.5,
+                      fontWeight: '800',
+                      color: currencyCode === 'INR' ? '#080D1A' : colors.textMuted,
+                    }}
+                  >
+                    ₹ INR (India)
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setCurrencyCode('USD')}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 5,
+                    borderRadius: 100,
+                    backgroundColor: currencyCode === 'USD' ? colors.goldAccent : 'transparent',
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 11.5,
+                      fontWeight: '800',
+                      color: currencyCode === 'USD' ? '#080D1A' : colors.textMuted,
+                    }}
+                  >
+                    $ USD (Abroad)
+                  </Text>
+                </Pressable>
+              </View>
+
               <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>Available Balance</Text>
-              <Text testID="wallet.balance" style={{ marginTop: 8, color: colors.goldAccent, fontSize: 44, fontWeight: '800' }}>{`₹${balance}`}</Text>
+              <Text testID="wallet.balance" style={{ marginTop: 8, color: colors.goldAccent, fontSize: 44, fontWeight: '800' }}>
+                {formatPrice(balance)}
+              </Text>
               <View style={{ marginTop: 16, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center' }}>
-                <WalletStat value={isAuth ? `₹${balance}` : '₹0'} label="Total Added" colors={colors} />
+                <WalletStat value={isAuth ? formatPrice(balance) : formatPrice(0)} label="Total Added" colors={colors} />
                 <View style={{ width: 1, height: 30, backgroundColor: colors.divider }} />
-                <WalletStat value="₹0" label="Total Spent" colors={colors} />
+                <WalletStat value={formatPrice(0)} label="Total Spent" colors={colors} />
                 <View style={{ width: 1, height: 30, backgroundColor: colors.divider }} />
-                <WalletStat value="₹0" label="Bonus Earned" colors={colors} />
+                <WalletStat value={formatPrice(0)} label="Bonus Earned" colors={colors} />
               </View>
             </LinearGradient>
 
             <Text style={{ marginTop: 22, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Add Money</Text>
             <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 10 }} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
-              {cell > 0 && ADD_OPTIONS.map((o) => {
-                const sel = selected === o.value;
+              {cell > 0 && rechargeOptions.map((o, idx) => {
+                const sel = selectedIdx === idx;
                 return (
                   <Pressable
-                    key={o.value}
+                    key={o.amount}
                     testID={`wallet.amount.${o.value}`}
-                    onPress={() => setSelected(o.value)}
+                    onPress={() => setSelectedIdx(idx)}
                     style={{
                       width: cell,
                       height: cell / 1.7,
@@ -194,16 +258,29 @@ export default function WalletScreen() {
                 );
               })}
             </View>
-            <ElevatedButton testID="wallet.addMoney" label={isProcessing ? 'Processing Payment...' : `Add ₹${selected} to Wallet`} onPress={() => setSheet(true)} radius={14} style={{ marginTop: 16 }} />
+            <ElevatedButton
+              testID="wallet.addMoney"
+              label={isProcessing ? 'Processing Payment...' : `Add ${activeOption.amount} to Wallet`}
+              onPress={() => setSheet(true)}
+              radius={14}
+              style={{ marginTop: 16 }}
+            />
 
             <Text style={{ marginTop: 22, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Payment Methods</Text>
             <View style={{ marginTop: 12, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }}>
-              {[
-                ['📱', 'UPI (Google Pay, PhonePe, Paytm)', 'Instant recharge via any UPI app', 'UPI'],
-                ['💳', 'Credit / Debit Card', 'Visa, Mastercard, RuPay', 'Card'],
-                ['🏦', 'Net Banking', 'All major Indian banks supported', 'Net Banking'],
-              ].map(([e, titleText, s, method], i) => (
-                <Pressable key={titleText} onPress={() => { setSelected(selected || 500); setSheet(true); }}>
+              {(currencyCode === 'INR'
+                ? [
+                    ['📱', 'UPI (Google Pay, PhonePe, Paytm)', 'Instant recharge via any UPI app', 'UPI'],
+                    ['💳', 'Credit / Debit Card', 'Visa, Mastercard, RuPay', 'Card'],
+                    ['🏦', 'Net Banking', 'All major Indian banks supported', 'Net Banking'],
+                  ]
+                : [
+                    ['💳', 'Credit / Debit Card (Stripe)', 'Visa, Mastercard, American Express', 'Card'],
+                    ['🌐', 'PayPal / Apple Pay / Google Pay', 'Instant global checkout', 'Digital Wallet'],
+                    ['🏦', 'International Bank Transfer', 'Direct international wire', 'Wire'],
+                  ]
+              ).map(([e, titleText, s, method], i) => (
+                <Pressable key={titleText} onPress={() => setSheet(true)}>
                   {i > 0 ? <View style={{ height: 1, marginLeft: 60, backgroundColor: colors.divider }} /> : null}
                   <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, minHeight: 64 }}>
                     <Text style={{ fontSize: 22 }}>{e}</Text>
@@ -223,7 +300,11 @@ export default function WalletScreen() {
                 <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>Have a Coupon?</Text>
                 <Text style={{ color: colors.textMuted, fontSize: 11 }}>Use code ASTRO50 for extra bonus</Text>
               </View>
-              <Pressable testID="wallet.coupon.apply" onPress={() => showSnackBar('Coupon ASTRO50 applied! ₹50 extra bonus on next recharge', colors.surfaceVariant)} style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
+              <Pressable
+                testID="wallet.coupon.apply"
+                onPress={() => showSnackBar(`Coupon ASTRO50 applied! ${formatPrice(50)} extra bonus on next recharge`, colors.surfaceVariant)}
+                style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+              >
                 <Text style={{ color: colors.goldAccent, fontWeight: '700', fontSize: 14 }}>Apply</Text>
               </Pressable>
             </View>
@@ -231,7 +312,7 @@ export default function WalletScreen() {
 
           <ScrollView key="tx" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}>
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              {[['Total Added', isAuth ? `₹${balance}` : '₹0', '#2D9E6B'], ['Total Spent', '₹0', '#CF4444']].map(([l, v, c]) => (
+              {[['Total Added', isAuth ? formatPrice(balance) : formatPrice(0), '#2D9E6B'], ['Total Spent', formatPrice(0), '#CF4444']].map(([l, v, c]) => (
                 <View key={l} style={{ flex: 1, padding: 16, borderRadius: 16, backgroundColor: withAlpha(c, colors.isLight ? 15 : 20), borderWidth: 1, borderColor: withAlpha(c, 60) }}>
                   <Text style={{ color: colors.textMuted, fontSize: 11 }}>{l}</Text>
                   <Text style={{ marginTop: 4, color: c, fontSize: 19, fontWeight: '800' }}>{v}</Text>
@@ -274,19 +355,30 @@ export default function WalletScreen() {
         <View style={{ padding: 24, backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderColor: colors.cardBorder }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <View>
-              <Text style={{ color: colors.textMuted, fontSize: 12 }}>Razorpay Secure Checkout</Text>
-              <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800' }}>{`Add ₹${selected} to Wallet`}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 12 }}>
+                {currencyCode === 'INR' ? 'Razorpay Secure Checkout' : 'Stripe Global Checkout'}
+              </Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800' }}>
+                {`Add ${activeOption.amount} to Wallet`}
+              </Text>
             </View>
             <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: 'rgba(57,181,74,0.15)', borderWidth: 1, borderColor: '#39B54A' }}>
               <Text style={{ color: '#39B54A', fontSize: 11, fontWeight: '700' }}>🔒 256-Bit SSL</Text>
             </View>
           </View>
 
-          {[
-            { label: '📱 Google Pay / PhonePe / Paytm (UPI)', method: 'UPI' },
-            { label: '💳 Credit / Debit Card (Visa, RuPay)', method: 'Card' },
-            { label: '🏦 Net Banking (SBI, HDFC, ICICI, Axis)', method: 'Net Banking' },
-          ].map((m, i) => (
+          {(currencyCode === 'INR'
+            ? [
+                { label: '📱 Google Pay / PhonePe / Paytm (UPI)', method: 'UPI' },
+                { label: '💳 Credit / Debit Card (Visa, RuPay)', method: 'Card' },
+                { label: '🏦 Net Banking (SBI, HDFC, ICICI, Axis)', method: 'Net Banking' },
+              ]
+            : [
+                { label: '💳 Credit / Debit Card (Visa, Master, Amex)', method: 'Card' },
+                { label: '🌐 PayPal / Apple Pay / Google Pay', method: 'Digital Wallet' },
+                { label: '🏦 International Wire Transfer', method: 'Wire' },
+              ]
+          ).map((m, i) => (
             <Pressable
               key={m.method}
               testID={`wallet.paymentSheet.method.${i}`}

@@ -27,6 +27,7 @@ import { API_ENDPOINTS } from '@/config/api';
 import { REMEDIES, Remedy } from '@/data/remedies';
 import { AppRoutes, push } from '@/navigation/routes';
 import { useAuthStore } from '@/features/auth/authStore';
+import { useCurrencyStore } from '@/services/currencyStore';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 import { fetchLiveRemedies } from '@/services/astrologyService';
@@ -47,11 +48,17 @@ export default function RemediesScreen() {
   const [remediesList, setRemediesList] = useState<Remedy[]>(REMEDIES);
   const [pariharaModalOpen, setPariharaModalOpen] = useState(false);
 
+  const { formatPrice, pricingSettings, currencyCode } = useCurrencyStore();
+  const pariharaPlanPriceINR = pricingSettings.pariharaPlanPrice || 499;
+  const pariharaPlanPriceUSD = pricingSettings.pariharaPlanPriceUSD || 9.99;
+  const planPriceDisplay = formatPrice(pariharaPlanPriceINR, pariharaPlanPriceUSD);
+
   const pariharaPlanConfig: ReportIntakeConfig = {
     mode: 'parihara_plan',
     title: 'Complete 8-Fold Personalized Parihara Plan',
     subtitle: 'All 8 directional remedies + 48-Day Sankalpa Protocol + 3 Sacred Temple Pariharams',
-    price: 499,
+    price: pariharaPlanPriceINR,
+    priceUSD: pariharaPlanPriceUSD,
     serviceId: 'svc-parihara-plan',
     category: 'remedies',
   };
@@ -482,7 +489,7 @@ export default function RemediesScreen() {
                     ★ FLAGSHIP 8-DIRECTIONAL DOSSIER
                   </Text>
                 </View>
-                <Text style={{ color: colors.goldAccent, fontSize: 18, fontWeight: '900' }}>₹499</Text>
+                <Text style={{ color: colors.goldAccent, fontSize: 18, fontWeight: '900' }}>{planPriceDisplay}</Text>
               </View>
               <Text style={{ marginTop: 10, color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
                 Complete 8-Fold Personalized Parihara Plan
@@ -494,8 +501,8 @@ export default function RemediesScreen() {
                 testID="remedies.generateCompletePlan"
                 label={
                   Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone))
-                    ? 'Generate My Complete Parihara Plan — ₹499'
-                    : '🔒 Sign In to Generate Complete Plan (₹499)'
+                    ? `Generate My Complete Parihara Plan — ${planPriceDisplay}`
+                    : `🔒 Sign In to Generate Complete Plan (${planPriceDisplay})`
                 }
                 onPress={handleGenerateAshtaReport}
                 bg="#713B32"

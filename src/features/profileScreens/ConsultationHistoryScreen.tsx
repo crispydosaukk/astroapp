@@ -15,13 +15,14 @@ import { AppRoutes, pop, push } from '@/navigation/routes';
 import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
+import { useCurrencyStore } from '@/services/currencyStore';
 
 const CONSULTATIONS = [
-  { id: 'c1', astrologer: 'Swami Shankarananda Giri', type: 'Chat', topic: 'Career & Job Change', duration: '18 min', amount: '₹270', date: 'Today, 10:30 AM', rating: 5, status: 'Completed', emoji: '🧘', color: '#9370DB' },
-  { id: 'c2', astrologer: 'Pandit Radhey Shyam Chaturvedi', type: 'Voice Call', topic: 'Marriage Timing', duration: '25 min', amount: '₹300', date: '08 Jan 2026', rating: 5, status: 'Completed', emoji: '🔮', color: '#FFD700' },
-  { id: 'c3', astrologer: 'Dr. Meenakshi Devi', type: 'Chat', topic: 'Health & Remedies', duration: '12 min', amount: '₹216', date: '02 Jan 2026', rating: 4, status: 'Completed', emoji: '🌸', color: '#FF6B6B' },
-  { id: 'c4', astrologer: 'Jyotish Acharya Suresh', type: 'Voice Call', topic: 'Business Astrology', duration: '30 min', amount: '₹450', date: '28 Dec 2025', rating: 4, status: 'Completed', emoji: '🌙', color: '#4FC3F7' },
-  { id: 'c5', astrologer: 'Swami Shankarananda Giri', type: 'AI Chat', topic: 'Saturn Transit Effects', duration: '15 min', amount: 'Free', date: '20 Dec 2025', rating: 5, status: 'Completed', emoji: '🤖', color: '#81C784' },
+  { id: 'c1', astrologer: 'Swami Shankarananda Giri', type: 'Chat', topic: 'Career & Job Change', duration: '18 min', rawAmount: 270, date: 'Today, 10:30 AM', rating: 5, status: 'Completed', emoji: '🧘', color: '#9370DB' },
+  { id: 'c2', astrologer: 'Pandit Radhey Shyam Chaturvedi', type: 'Voice Call', topic: 'Marriage Timing', duration: '25 min', rawAmount: 300, date: '08 Jan 2026', rating: 5, status: 'Completed', emoji: '🔮', color: '#FFD700' },
+  { id: 'c3', astrologer: 'Dr. Meenakshi Devi', type: 'Chat', topic: 'Health & Remedies', duration: '12 min', rawAmount: 216, date: '02 Jan 2026', rating: 4, status: 'Completed', emoji: '🌸', color: '#FF6B6B' },
+  { id: 'c4', astrologer: 'Jyotish Acharya Suresh', type: 'Voice Call', topic: 'Business Astrology', duration: '30 min', rawAmount: 450, date: '28 Dec 2025', rating: 4, status: 'Completed', emoji: '🌙', color: '#4FC3F7' },
+  { id: 'c5', astrologer: 'Swami Shankarananda Giri', type: 'AI Chat', topic: 'Saturn Transit Effects', duration: '15 min', rawAmount: 0, date: '20 Dec 2025', rating: 5, status: 'Completed', emoji: '🤖', color: '#81C784' },
 ];
 
 function SummaryCard({ value, label, color, colors }: { value: string; label: string; color: string; colors: any }) {
@@ -68,12 +69,13 @@ export default function ConsultationHistoryScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const [tab, setTab] = useState(0);
+  const formatPrice = useCurrencyStore((s) => s.formatPrice);
 
   const handleBookAgain = (c: typeof CONSULTATIONS[0]) => {
     push(AppRoutes.consultationScreen, {
       name: c.astrologer,
       type: c.type === 'Voice Call' ? 'call' : 'chat',
-      price: c.amount,
+      price: c.rawAmount,
       rate: 15,
     });
   };
@@ -109,7 +111,7 @@ export default function ConsultationHistoryScreen() {
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <SummaryCard value="12" label="Sessions" color={colors.goldAccent} colors={colors} />
               <SummaryCard value="8h 45m" label="Talk Time" color="#4FC3F7" colors={colors} />
-              <SummaryCard value="₹1,236" label="Total Spent" color="#CF4444" colors={colors} />
+              <SummaryCard value={formatPrice(1236)} label="Total Spent" color="#CF4444" colors={colors} />
             </View>
 
             <View style={{ height: 18 }} />
@@ -157,7 +159,9 @@ export default function ConsultationHistoryScreen() {
                   </View>
 
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ color: colors.goldAccent, fontSize: 15, fontWeight: '800' }}>{c.amount}</Text>
+                    <Text style={{ color: colors.goldAccent, fontSize: 15, fontWeight: '800' }}>
+                      {c.rawAmount ? formatPrice(c.rawAmount) : 'Free'}
+                    </Text>
                     <Text style={{ color: colors.textMuted, fontSize: 11 }}>{c.duration}</Text>
                   </View>
                 </View>
