@@ -1575,7 +1575,7 @@ export default function ProfileScreen() {
             contentContainerStyle={{
               paddingHorizontal: 24,
               paddingTop: 16,
-              paddingBottom: insets.bottom + 24,
+              paddingBottom: Math.max(insets.bottom + 24, 48),
             }}
           >
             {/* Full Name */}

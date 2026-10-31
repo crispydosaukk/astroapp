@@ -2,7 +2,7 @@
  * Modal primitives replacing Flutter's showModalBottomSheet, showDialog and ScaffoldMessenger SnackBar.
  */
 import React, { useEffect, useState } from 'react';
-import { Dimensions, KeyboardAvoidingView, Modal, Platform, Pressable, StyleProp, Text as RNText, View, ViewStyle } from 'react-native';
+import { Dimensions, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, StyleProp, Text as RNText, View, ViewStyle } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
@@ -26,8 +26,25 @@ export function BottomSheet({
   maxHeightRatio?: number; backgroundColor?: string; testID?: string;
 }) {
   const [mounted, setMounted] = useState(visible);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const insets = useSafeAreaInsets();
   const y = useSharedValue(SCREEN_H);
   const barrier = useSharedValue(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardHeight(0)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -47,9 +64,20 @@ export function BottomSheet({
   const barrierStyle = useAnimatedStyle(() => ({ opacity: barrier.value }));
 
   if (!mounted) return null;
+
+  const topSafe = insets.top > 0 ? insets.top : 24;
+  const maxAvailableH = SCREEN_H - topSafe - (Platform.OS === 'android' ? keyboardHeight : 0) - 16;
+  const calculatedMaxHeight = Math.max(200, Math.min(SCREEN_H * maxHeightRatio, maxAvailableH));
+
   return (
     <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'flex-end',
+          paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0,
+        }}
+      >
         <Animated.View
           style={[
             { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.54)' },
@@ -59,7 +87,7 @@ export function BottomSheet({
           <Pressable style={{ flex: 1 }} onPress={onClose} testID={testID ? `${testID}.barrier` : undefined} />
         </Animated.View>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ width: '100%', justifyContent: 'flex-end' }}
         >
           <Animated.View
@@ -67,7 +95,7 @@ export function BottomSheet({
             style={[
               {
                 width: '100%',
-                maxHeight: SCREEN_H * maxHeightRatio,
+                maxHeight: calculatedMaxHeight,
                 backgroundColor,
               },
               sheetStyle,

@@ -426,7 +426,8 @@ export function FamilyProfileSwitcherModal({
           /* -------------------- MODE: ADD / EDIT PROFILE FORM -------------------- */
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingTop: 14, paddingBottom: 24 }}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingTop: 14, paddingBottom: 40 }}
           >
             {/* Relationship Chips */}
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>

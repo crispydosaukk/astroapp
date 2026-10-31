@@ -176,37 +176,17 @@ function HomeHeader() {
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700', flexShrink: 1 }}
+                style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700', flexShrink: 1 }}
               >
                 {displayName}
               </Text>
               {isAuthenticated && (
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    marginLeft: 6,
-                    paddingHorizontal: 7,
-                    paddingVertical: 2,
-                    borderRadius: 100,
-                    backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 25 : 35),
-                    borderWidth: 1,
-                    borderColor: withAlpha(colors.goldAccent, 90),
-                  }}
-                >
-                  <Text style={{ fontSize: 10 }}>{activeProfile?.emoji || '🧘'}</Text>
-                  <Text
-                    style={{
-                      fontSize: 10,
-                      fontWeight: '800',
-                      color: colors.isLight ? AppColors.primary : colors.goldAccent,
-                      marginLeft: 3,
-                    }}
-                  >
-                    {activeProfile?.type || 'Myself'}
-                  </Text>
-                  <AppIcon name="arrow_drop_down" size={13} color={colors.goldAccent} />
-                </View>
+                <AppIcon
+                  name="keyboard_arrow_down_rounded"
+                  size={18}
+                  color={colors.goldAccent}
+                  style={{ marginLeft: 3 }}
+                />
               )}
             </View>
           </Pressable>
