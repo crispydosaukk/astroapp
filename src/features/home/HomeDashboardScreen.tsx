@@ -447,6 +447,30 @@ function PlanetTag({ label, isLight }: { label: string; isLight: boolean }) {
   );
 }
 
+function resolveInsightRoute(card: CosmicInsight, index: number): string {
+  if (card.ctaAction && card.ctaAction.startsWith('/') && card.ctaAction !== AppRoutes.aiChatScreen) {
+    return card.ctaAction;
+  }
+  const fullText = `${card.tag || ''} ${card.title || ''} ${card.description || ''} ${(card.planetTags || []).join(' ')}`.toLowerCase();
+
+  if (fullText.includes('muhurat') || fullText.includes('panchang') || fullText.includes('abhijit') || fullText.includes('choghadiya')) {
+    return AppRoutes.panchangScreen;
+  }
+  if (fullText.includes('rahu') || fullText.includes('ketu') || fullText.includes('remed') || fullText.includes('parihar') || fullText.includes('puja') || fullText.includes('gemstone') || fullText.includes('sadhana')) {
+    return AppRoutes.remediesScreen;
+  }
+  if (fullText.includes('horoscope') || fullText.includes('moon') || fullText.includes('nakshatra') || fullText.includes('scorpio') || fullText.includes('rashi') || fullText.includes('zodiac')) {
+    return AppRoutes.horoscopeScreen;
+  }
+
+  // Fallback by index so 3 cards each have distinct, specialized destinations
+  if (index === 0) return AppRoutes.horoscopeScreen;
+  if (index === 1) return AppRoutes.remediesScreen;
+  if (index === 2) return AppRoutes.panchangScreen;
+
+  return AppRoutes.horoscopeScreen;
+}
+
 function CosmicInsightsCarousel({ refreshKey }: { refreshKey?: number }) {
   const colors = useThemeColors();
   const [insights, setInsights] = useState<CosmicInsight[]>([]);
@@ -475,121 +499,129 @@ function CosmicInsightsCarousel({ refreshKey }: { refreshKey?: number }) {
         }}
         scrollEventThrottle={16}
       >
-        {insights.map((card, i) => (
-          <View
-            key={card.id || i}
-            style={{
-              width: 320,
-              height: 205,
-              borderRadius: 24,
-              borderWidth: 1.5,
-              borderColor: colors.isLight ? 'rgba(201,168,76,0.38)' : 'rgba(201,168,76,0.25)',
-              backgroundColor: colors.isLight ? '#FFFFFF' : '#0D1B2A',
-              overflow: 'hidden',
-              marginRight: 14,
-              shadowColor: colors.isLight ? '#C9A84C' : '#000',
-              shadowOpacity: colors.isLight ? 0.08 : 0.25,
-              shadowRadius: 8,
-              elevation: 3,
-            }}
-          >
-            <AppImage
-              uri={card.imageUrl}
-              width={190}
-              height={205}
-              fit="cover"
-              semanticLabel={card.title}
-              style={{ position: 'absolute', right: -15, top: 0 }}
-            />
-            <LinearGradient
-              colors={
-                colors.isLight
-                  ? ['#FFFFFF', '#FFFFFF', 'rgba(255,255,255,0.96)', 'rgba(255,255,255,0.35)']
-                  : ['#0D1B2A', '#0D1B2A', 'rgba(13,27,42,0.96)', 'rgba(13,27,42,0.35)']
-              }
-              locations={[0, 0.60, 0.82, 1]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            />
-            <View style={{ flex: 1, padding: 18, justifyContent: 'space-between' }}>
-              <View style={{ maxWidth: 215 }}>
-                <View
-                  style={{
-                    alignSelf: 'flex-start',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingHorizontal: 9,
-                    paddingVertical: 3.5,
-                    borderRadius: 100,
-                    backgroundColor: colors.isLight ? '#FFF8EE' : 'rgba(201,168,76,0.18)',
-                    borderWidth: 1,
-                    borderColor: colors.goldAccent,
-                  }}
-                >
-                  <Text style={{ fontSize: 10, color: colors.isLight ? '#713B32' : '#FFD700' }}>✦ </Text>
-                  <Text style={{ color: colors.isLight ? '#713B32' : '#FFD700', fontSize: 11, fontWeight: '800' }}>
-                    {card.tag.replace(/^✦\s*/, '')}
+        {insights.map((card, i) => {
+          const targetRoute = resolveInsightRoute(card, i);
+          const ctaLabel = card.ctaText || (i === 0 ? "View Today's Horoscope" : i === 1 ? "Explore Remedies" : "Explore Panchang");
+
+          return (
+            <Pressable
+              key={card.id || i}
+              testID={`home.dailyInsight.card.${i}`}
+              onPress={() => push(targetRoute)}
+              style={({ pressed }) => ({
+                width: 320,
+                height: 205,
+                borderRadius: 24,
+                borderWidth: 1.5,
+                borderColor: colors.isLight ? 'rgba(201,168,76,0.38)' : 'rgba(201,168,76,0.25)',
+                backgroundColor: colors.isLight ? '#FFFFFF' : '#0D1B2A',
+                overflow: 'hidden',
+                marginRight: 14,
+                shadowColor: colors.isLight ? '#C9A84C' : '#000',
+                shadowOpacity: colors.isLight ? 0.08 : 0.25,
+                shadowRadius: 8,
+                elevation: 3,
+                opacity: pressed ? 0.96 : 1,
+              })}
+            >
+              <AppImage
+                uri={card.imageUrl}
+                width={190}
+                height={205}
+                fit="cover"
+                semanticLabel={card.title}
+                style={{ position: 'absolute', right: -15, top: 0 }}
+              />
+              <LinearGradient
+                colors={
+                  colors.isLight
+                    ? ['#FFFFFF', '#FFFFFF', 'rgba(255,255,255,0.96)', 'rgba(255,255,255,0.35)']
+                    : ['#0D1B2A', '#0D1B2A', 'rgba(13,27,42,0.96)', 'rgba(13,27,42,0.35)']
+                }
+                locations={[0, 0.60, 0.82, 1]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+              />
+              <View style={{ flex: 1, padding: 18, justifyContent: 'space-between' }}>
+                <View style={{ maxWidth: 215 }}>
+                  <View
+                    style={{
+                      alignSelf: 'flex-start',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: 9,
+                      paddingVertical: 3.5,
+                      borderRadius: 100,
+                      backgroundColor: colors.isLight ? '#FFF8EE' : 'rgba(201,168,76,0.18)',
+                      borderWidth: 1,
+                      borderColor: colors.goldAccent,
+                    }}
+                  >
+                    <Text style={{ fontSize: 10, color: colors.isLight ? '#713B32' : '#FFD700' }}>✦ </Text>
+                    <Text style={{ color: colors.isLight ? '#713B32' : '#FFD700', fontSize: 11, fontWeight: '800' }}>
+                      {card.tag.replace(/^✦\s*/, '')}
+                    </Text>
+                  </View>
+                  <Text
+                    numberOfLines={2}
+                    style={{
+                      marginTop: 8,
+                      color: colors.isLight ? '#1A1A2E' : '#FFFFFF',
+                      fontWeight: '800',
+                      fontSize: 16,
+                      lineHeight: 22,
+                    }}
+                  >
+                    {card.title}
+                  </Text>
+                  <Text
+                    numberOfLines={2}
+                    style={{
+                      marginTop: 5,
+                      color: colors.isLight ? '#383852' : '#DCE5F2',
+                      fontWeight: '600',
+                      fontSize: 12,
+                      lineHeight: 17,
+                    }}
+                  >
+                    {card.description}
                   </Text>
                 </View>
-                <Text
-                  numberOfLines={2}
-                  style={{
-                    marginTop: 8,
-                    color: colors.isLight ? '#1A1A2E' : '#FFFFFF',
-                    fontWeight: '800',
-                    fontSize: 16,
-                    lineHeight: 22,
-                  }}
-                >
-                  {card.title}
-                </Text>
-                <Text
-                  numberOfLines={2}
-                  style={{
-                    marginTop: 5,
-                    color: colors.isLight ? '#383852' : '#DCE5F2',
-                    fontWeight: '600',
-                    fontSize: 12,
-                    lineHeight: 17,
-                  }}
-                >
-                  {card.description}
-                </Text>
-              </View>
 
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-                <Pressable
-                  testID={`home.dailyInsight.guidance.${i}`}
-                  onPress={() => push(card.ctaAction?.startsWith('/') ? card.ctaAction : AppRoutes.aiChatScreen)}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingHorizontal: 12,
-                    paddingVertical: 7,
-                    borderRadius: 100,
-                    backgroundColor: '#713B32',
-                    shadowColor: '#713B32',
-                    shadowOpacity: 0.25,
-                    shadowRadius: 4,
-                    elevation: 2,
-                  }}
-                >
-                  <AppIcon name="auto_awesome_rounded" color="#FFFFFF" size={13} />
-                  <Text style={{ marginLeft: 5, color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>
-                    {card.ctaText || "View Guidance"}
-                  </Text>
-                </Pressable>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                  <Pressable
+                    testID={`home.dailyInsight.guidance.${i}`}
+                    onPress={() => push(targetRoute)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: 12,
+                      paddingVertical: 7,
+                      borderRadius: 100,
+                      backgroundColor: '#713B32',
+                      shadowColor: '#713B32',
+                      shadowOpacity: 0.25,
+                      shadowRadius: 4,
+                      elevation: 2,
+                    }}
+                  >
+                    <AppIcon name="auto_awesome_rounded" color="#FFFFFF" size={13} />
+                    <Text style={{ marginLeft: 5, color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>
+                      {ctaLabel}
+                    </Text>
+                  </Pressable>
 
-                <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 4 }}>
-                  {(card.planetTags || ['♃ Jupiter', '♏ Scorpio']).slice(0, 2).map((tag, tIdx) => (
-                    <PlanetTag key={tIdx} label={tag} isLight={colors.isLight} />
-                  ))}
+                  <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 4 }}>
+                    {(card.planetTags || ['♃ Jupiter', '♏ Scorpio']).slice(0, 2).map((tag, tIdx) => (
+                      <PlanetTag key={tIdx} label={tag} isLight={colors.isLight} />
+                    ))}
+                  </View>
                 </View>
               </View>
-            </View>
-          </View>
-        ))}
+            </Pressable>
+          );
+        })}
       </ScrollView>
 
       {/* Pagination indicators */}

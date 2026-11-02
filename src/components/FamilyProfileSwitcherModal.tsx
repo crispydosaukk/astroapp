@@ -415,7 +415,7 @@ export function FamilyProfileSwitcherModal({
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             style={{ flexShrink: 1 }}
-            contentContainerStyle={{ paddingTop: 14, paddingBottom: 280 }}
+            contentContainerStyle={{ paddingTop: 14, paddingBottom: 24 }}
           >
             {/* Relationship Chips */}
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>

@@ -760,6 +760,20 @@ export default function AiChatScreen() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('UPI');
   const [isRecharging, setIsRecharging] = useState(false);
 
+  const [freeChatsRemaining, setFreeChatsRemaining] = useState(5);
+  const freeStorageKey = authUser?.uid ? `astroparihar_free_chats_${authUser.uid}` : 'astroparihar_free_chats_guest';
+
+  useEffect(() => {
+    AsyncStorage.getItem(freeStorageKey).then((val) => {
+      if (val !== null) {
+        const num = parseInt(val, 10);
+        if (!isNaN(num)) setFreeChatsRemaining(num);
+      } else {
+        setFreeChatsRemaining(5);
+      }
+    });
+  }, [authUser?.uid, freeStorageKey]);
+
   useEffect(() => {
     let isMounted = true;
     getWalletBalance().then((b) => {
@@ -827,8 +841,10 @@ export default function AiChatScreen() {
       return;
     }
 
-    // 1. Check wallet balance: Each prompt costs ₹5
-    if (walletBalance < promptCost.costINR) {
+    const hasFreePrompt = freeChatsRemaining > 0;
+
+    // 1. Check wallet balance only if user has no free chats left
+    if (!hasFreePrompt && walletBalance < promptCost.costINR) {
       setShowRechargeModal(true);
       return;
     }
@@ -841,20 +857,22 @@ export default function AiChatScreen() {
     setInput('');
     scrollToBottom();
 
-    // 2. Real-time amount deduction: Deduct ₹5 per prompt
-    try {
-      const deductRes = await deductWalletBalance(
-        promptCost.costINR,
-        `AI Astrologer Consultation: ${selectedAstrologer.name}`,
-        selectedAstrologer.name,
-        undefined,
-        { displayAmount: `-${promptCost.label}` }
-      );
-      if (deductRes.success) {
-        setWalletBalance(deductRes.newBalance);
+    // 2. Real-time amount deduction: Deduct ₹5 only if NOT a free prompt
+    if (!hasFreePrompt) {
+      try {
+        const deductRes = await deductWalletBalance(
+          promptCost.costINR,
+          `AI Astrologer Consultation: ${selectedAstrologer.name}`,
+          selectedAstrologer.name,
+          undefined,
+          { displayAmount: `-${promptCost.label}` }
+        );
+        if (deductRes.success) {
+          setWalletBalance(deductRes.newBalance);
+        }
+      } catch (e) {
+        console.warn('Wallet deduction note:', e);
       }
-    } catch (e) {
-      console.warn('Wallet deduction note:', e);
     }
 
     try {
@@ -869,10 +887,21 @@ export default function AiChatScreen() {
         astrologerId: selectedAstrologer.id,
         modelPreference: selectedModel,
         userInfo: effectiveUserInfo,
+        userId: authUser?.uid,
       });
 
       if (!mounted.current) return;
       setIsTyping(false);
+
+      if (hasFreePrompt) {
+        const updated = Math.max(0, freeChatsRemaining - 1);
+        setFreeChatsRemaining(updated);
+        AsyncStorage.setItem(freeStorageKey, String(updated));
+      }
+
+      if (res.newBalance !== undefined) {
+        setWalletBalance(res.newBalance);
+      }
 
       setMessages((prev) => [
         ...prev,
@@ -1071,14 +1100,14 @@ export default function AiChatScreen() {
                 paddingHorizontal: 7,
                 paddingVertical: 3,
                 borderRadius: 8,
-                backgroundColor: '#FFFDFC',
+                backgroundColor: freeChatsRemaining > 0 ? '#E6F4EA' : '#FFFDFC',
                 borderWidth: 1,
-                borderColor: '#E5D9C8',
+                borderColor: freeChatsRemaining > 0 ? '#34A853' : '#E5D9C8',
                 marginRight: 8,
               }}
             >
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#C9A84C' }}>
-                ⚡ {promptCost.label} / prompt
+              <Text style={{ fontSize: 11, fontWeight: '700', color: freeChatsRemaining > 0 ? '#137333' : '#C9A84C' }}>
+                {freeChatsRemaining > 0 ? `⚡ ${freeChatsRemaining} Free Prompts` : `⚡ ${promptCost.label} / prompt`}
               </Text>
             </View>
             <Pressable
@@ -1221,7 +1250,7 @@ export default function AiChatScreen() {
                   Sign In Required to Consult
                 </Text>
                 <Text style={{ color: '#5A4A3A', fontSize: 11, marginTop: 2 }}>
-                  Please sign in or register to chat with AI Astrologers. Each prompt costs {promptCost.label}.
+                  Please sign in or register to chat with AI Astrologers. First 5 questions are 100% Free!
                 </Text>
               </View>
             </View>
@@ -1242,7 +1271,7 @@ export default function AiChatScreen() {
               </Text>
             </Pressable>
           </View>
-        ) : walletBalance < promptCost.costINR && (
+        ) : (freeChatsRemaining <= 0 && walletBalance < promptCost.costINR) && (
           <View
             style={{
               marginHorizontal: 10,
@@ -1741,8 +1770,8 @@ export default function AiChatScreen() {
                 }}
               >
                 {t(
-                  `Please sign in to your AstroParihar account to ask AI Astrologers and unlock Vedic Jyotish insights. Each consultation prompt costs ${promptCost.label} from your wallet.`,
-                  `Please sign in to your AstroParihar account to ask AI Astrologers and unlock Vedic Jyotish insights. Each consultation prompt costs ${promptCost.label} from your wallet.`
+                  `Please sign in to your AstroParihar account to consult with AI Astrologers. Your first 5 consultation prompts are 100% Free!`,
+                  `Please sign in to your AstroParihar account to consult with AI Astrologers. Your first 5 consultation prompts are 100% Free!`
                 )}
               </Text>
             </View>

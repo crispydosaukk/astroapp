@@ -56,8 +56,8 @@ export const DEFAULT_COSMIC_INSIGHTS: CosmicInsight[] = [
     description: "Jupiter's transit brings divine clarity to your career path and financial growth today.",
     imageUrl: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800&auto=format&fit=crop',
     active: true,
-    ctaText: "View Today's Guidance",
-    ctaAction: '/ai-chat-screen',
+    ctaText: "View Today's Horoscope",
+    ctaAction: '/horoscope-screen',
     badgeColor: '#C9A84C',
     planetTags: ['♃ Jupiter', '♏ Scorpio', 'Punarvasu'],
   },
@@ -69,8 +69,8 @@ export const DEFAULT_COSMIC_INSIGHTS: CosmicInsight[] = [
     description: 'Auspicious Venus-Mercury harmony favors strategic contracts, spiritual sadhana, and emotional peace.',
     imageUrl: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800&auto=format&fit=crop',
     active: true,
-    ctaText: 'Ask AI Astrologer',
-    ctaAction: '/ai-chat-screen',
+    ctaText: 'Explore Remedies',
+    ctaAction: '/remedies-screen',
     badgeColor: '#713B32',
     planetTags: ['♀ Venus', '☿ Mercury', 'Harmony'],
   },
@@ -316,8 +316,20 @@ export async function getDynamicCosmicInsights(): Promise<CosmicInsight[]> {
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.insights)) {
-          // Accurately respect turned off cards (active === false)
-          const active = data.insights.filter((c: CosmicInsight) => c.active !== false);
+          // Accurately respect turned off cards (active === false) and map routes properly
+          const active = data.insights
+            .filter((c: CosmicInsight) => c.active !== false)
+            .map((c: CosmicInsight, idx: number) => {
+              let action = c.ctaAction;
+              if (!action || action === '/ai-chat-screen') {
+                const combined = `${c.tag || ''} ${c.title || ''} ${c.description || ''}`.toLowerCase();
+                if (combined.includes('muhurat') || combined.includes('panchang')) action = '/panchang-screen';
+                else if (combined.includes('rahu') || combined.includes('ketu') || combined.includes('remed')) action = '/remedies-screen';
+                else if (combined.includes('moon') || combined.includes('scorpio') || combined.includes('horoscope')) action = '/horoscope-screen';
+                else action = idx === 0 ? '/horoscope-screen' : idx === 1 ? '/remedies-screen' : '/panchang-screen';
+              }
+              return { ...c, ctaAction: action };
+            });
           await AsyncStorage.setItem(STORAGE_INSIGHTS_KEY, JSON.stringify(active));
           return active;
         }
@@ -336,17 +348,28 @@ export async function getDynamicCosmicInsights(): Promise<CosmicInsight[]> {
       if (fsRes.ok) {
         const fsData = await fsRes.json();
         if (fsData.fields?.insights?.arrayValue?.values) {
-          const list = fsData.fields.insights.arrayValue.values.map((v: any) => {
+          const list = fsData.fields.insights.arrayValue.values.map((v: any, idx: number) => {
             const m = v.mapValue?.fields || {};
+            const tag = m.tag?.stringValue || '✦ Cosmic Transit';
+            const title = m.title?.stringValue || 'Planetary Shift';
+            const desc = m.description?.stringValue || '';
+            let action = m.ctaAction?.stringValue;
+            if (!action || action === '/ai-chat-screen') {
+              const combined = `${tag} ${title} ${desc}`.toLowerCase();
+              if (combined.includes('muhurat') || combined.includes('panchang')) action = '/panchang-screen';
+              else if (combined.includes('rahu') || combined.includes('ketu') || combined.includes('remed')) action = '/remedies-screen';
+              else if (combined.includes('moon') || combined.includes('scorpio') || combined.includes('horoscope')) action = '/horoscope-screen';
+              else action = idx === 0 ? '/horoscope-screen' : idx === 1 ? '/remedies-screen' : '/panchang-screen';
+            }
             return {
               id: m.id?.stringValue || `insight-${Date.now()}`,
-              tag: m.tag?.stringValue || '✦ Cosmic Transit',
-              title: m.title?.stringValue || 'Planetary Shift',
-              description: m.description?.stringValue || '',
+              tag,
+              title,
+              description: desc,
               imageUrl: m.imageUrl?.stringValue || 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800&auto=format&fit=crop',
               active: m.active?.booleanValue !== false,
-              ctaText: m.ctaText?.stringValue || "View Today's Guidance",
-              ctaAction: m.ctaAction?.stringValue || '/ai-chat-screen',
+              ctaText: m.ctaText?.stringValue || (idx === 0 ? "View Today's Horoscope" : idx === 1 ? "Explore Remedies" : "Explore Panchang"),
+              ctaAction: action,
               planetTags: m.planetTags?.arrayValue?.values?.map((p: any) => p.stringValue) || ['Jupiter', 'Vedic'],
             };
           });

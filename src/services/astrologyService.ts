@@ -548,6 +548,8 @@ export interface AIChatResponse {
   recommendations: string[];
   modelUsed?: string;
   language?: string;
+  deducted?: number;
+  newBalance?: number;
 }
 
 export async function sendLiveAIChatMessage(params: {
@@ -556,6 +558,7 @@ export async function sendLiveAIChatMessage(params: {
   astrologerId?: string;
   modelPreference?: 'vedika-ai' | 'openai-gpt4o' | 'auto';
   userInfo?: any;
+  userId?: string;
 }): Promise<AIChatResponse> {
   const lang = params.language || 'English';
   const astroId = params.astrologerId || 'acharya-devavrat';
@@ -583,6 +586,11 @@ export async function sendLiveAIChatMessage(params: {
     } catch {}
   }
 
+  const effectiveUserId =
+    params.userId ||
+    useAuthStore.getState().user?.uid ||
+    '';
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
@@ -595,6 +603,7 @@ export async function sendLiveAIChatMessage(params: {
         astrologerId: astroId,
         modelPreference: model,
         userInfo: effectiveUserInfo,
+        userId: effectiveUserId,
       }),
       signal: controller.signal,
     });
@@ -611,6 +620,8 @@ export async function sendLiveAIChatMessage(params: {
           recommendations: data.recommendations || [],
           modelUsed: data.modelUsed || 'AstroParihar AI Engine',
           language: data.language || lang,
+          deducted: data.deducted,
+          newBalance: data.newBalance,
         };
       }
     }
