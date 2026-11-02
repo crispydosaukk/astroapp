@@ -49,11 +49,11 @@ export function Text({ style, children, ...props }: TextProps) {
   const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
 
   let resolvedColor = flat.color;
-  if (!resolvedColor || resolvedColor === AppColors.textPrimary || resolvedColor === '#F0EAD6') {
+  if (!resolvedColor || resolvedColor === AppColors.textPrimary) {
     resolvedColor = textPrimary;
-  } else if (resolvedColor === AppColors.textSecondary || resolvedColor === '#A0A8C0') {
+  } else if (resolvedColor === AppColors.textSecondary) {
     resolvedColor = textSecondary;
-  } else if (resolvedColor === AppColors.textMuted || resolvedColor === '#6B7A99') {
+  } else if (resolvedColor === AppColors.textMuted) {
     resolvedColor = textMuted;
   }
 
@@ -69,7 +69,7 @@ export const TextInput = React.forwardRef<RNTextInput, TextInputProps>(function 
   const selectedLanguage = useLanguageStore((s) => s.selectedLanguage);
   const translateText = useLanguageStore((s) => s.translateText);
   const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
-  const resolvedColor = (!flat.color || flat.color === AppColors.textPrimary || flat.color === '#F0EAD6') ? textPrimary : flat.color;
+  const resolvedColor = (!flat.color || flat.color === AppColors.textPrimary) ? textPrimary : flat.color;
 
   const translatedPlaceholder = placeholder && selectedLanguage !== 'English'
     ? translateText(placeholder)

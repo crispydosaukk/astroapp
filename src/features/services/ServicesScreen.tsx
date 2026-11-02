@@ -513,7 +513,7 @@ export default function ServicesScreen() {
             <View style={{ paddingVertical: 40, alignItems: 'center' }}>
               <AppIcon name="search_off" color={colors.textMuted} size={42} />
               <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>
-                No services found matching "{searchQuery}"
+                No services found matching &quot;{searchQuery}&quot;
               </Text>
             </View>
           ) : (

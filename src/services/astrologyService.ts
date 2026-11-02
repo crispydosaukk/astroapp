@@ -119,7 +119,6 @@ export async function fetchCalculatedKundli(profile?: {
 }): Promise<KundliChartData> {
   const authUser = useAuthStore.getState().user;
   const userUid = authUser?.uid || (authUser?.phone ? authUser.phone.replace(/\D/g, '') : null);
-  const cacheKey = userUid ? `astroparihar_cached_kundli_${userUid}` : 'astroparihar_cached_kundli';
   let effectiveProfile = profile;
   try {
     // Check saved user birth profile from authUser or user-scoped storage if not explicitly passed
@@ -140,6 +139,11 @@ export async function fetchCalculatedKundli(profile?: {
         }
       }
     }
+
+    const profileKey = effectiveProfile?.dob
+      ? `_${(effectiveProfile?.name || '').replace(/\s+/g, '_')}_${effectiveProfile.dob}`
+      : '';
+    const cacheKey = userUid ? `astroparihar_cached_kundli_${userUid}${profileKey}` : `astroparihar_cached_kundli${profileKey}`;
 
     const payload = {
       dob: effectiveProfile?.dob || '1995-10-15',
@@ -188,16 +192,26 @@ export async function fetchCalculatedKundli(profile?: {
             Ketu: '☋',
           };
 
-          const formattedPlanets: CalculatedPlanet[] = (c.planetaryDegrees || []).map((p: any) => ({
-            name: p.planet,
-            symbol: planetSymbols[p.planet] || '✦',
-            sign: p.rashi || 'Aries',
-            house: p.house || 1,
-            degree: p.dms || `${Math.round(p.degreeInRashi || 0)}°`,
-            color: planetColors[p.planet] || '#C9A84C',
-            retrograde: Boolean(p.isRetrograde),
-            nakshatra: p.nakshatra,
-          }));
+          const formattedPlanets: CalculatedPlanet[] = (c.planetaryDegrees || []).map((p: any) => {
+            const rawPlanet = String(p.planet || 'Planet');
+            const cleanPlanet = rawPlanet.split('(')[0].trim().split(' ')[0].trim();
+            const rawSign = String(p.rashi || 'Aries');
+            const cleanSign = rawSign.split('(')[0].trim().split(' ')[0].trim();
+            const houseNum = typeof p.house === 'number'
+              ? p.house
+              : parseInt(String(p.house || '').replace(/\D/g, ''), 10) || 1;
+
+            return {
+              name: cleanPlanet,
+              symbol: planetSymbols[cleanPlanet] || planetSymbols[rawPlanet] || '✦',
+              sign: cleanSign,
+              house: houseNum,
+              degree: p.dms || `${Math.round(p.degreeInRashi || 0)}°`,
+              color: planetColors[cleanPlanet] || planetColors[rawPlanet] || '#C9A84C',
+              retrograde: Boolean(p.isRetrograde),
+              nakshatra: p.nakshatra,
+            };
+          });
 
           const result: KundliChartData = {
             name: c.name || payload.name,

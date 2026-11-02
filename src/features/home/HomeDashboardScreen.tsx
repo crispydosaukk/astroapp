@@ -2,6 +2,7 @@
  * Port of lib/presentation/home_dashboard_screen/ (screen + 7 widgets).
  * RefreshIndicator → RefreshControl (800 ms no-op refresh, same as source).
  */
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Modal, Pressable, RefreshControl, ScrollView, View } from 'react-native';
@@ -13,6 +14,8 @@ import { AppImage } from '@/components/AppImage';
 import { ProgressRing } from '@/components/common';
 import { FamilyProfileSwitcherModal } from '@/components/FamilyProfileSwitcherModal';
 import { lh, Text, TextInput } from '@/components/Text';
+import { API_ENDPOINTS } from '@/config/api';
+import { REMEDIES, Remedy } from '@/data/remedies';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, push } from '@/navigation/routes';
 import { useBirthProfileStore } from '@/services/birthProfileStore';
@@ -610,7 +613,7 @@ function CosmicInsightsCarousel({ refreshKey }: { refreshKey?: number }) {
 }
 
 /* ---------------------------------------------------- QuickActionsGridWidget */
-const QUICK_ACTIONS = [
+const DEFAULT_QUICK_ACTIONS = [
   { emoji: '✋', label: 'Remedies', route: AppRoutes.remediesScreen, color: '#713B32', id: 'remedies', badge: '8 in 1' },
   { emoji: '🔮', label: 'AI Astrologer', route: AppRoutes.aiChatScreen, color: '#1A3D5C', id: 'aiAstrologer', badge: 'AI Guru' },
   { emoji: '👨‍🔮', label: 'Live Astrologers', route: AppRoutes.liveAstrologersScreen, color: '#1A3D1A', id: 'liveAstrologers', badge: 'Live' },
@@ -619,10 +622,41 @@ const QUICK_ACTIONS = [
   { emoji: '📅', label: 'Panchang', route: AppRoutes.panchangScreen, color: '#2A2A1A', id: 'panchang' },
 ];
 
-function QuickActionsGrid() {
+function QuickActionsGrid({ refreshKey }: { refreshKey?: number }) {
   const colors = useThemeColors();
   const [w, setW] = useState(0);
   const cell = w > 0 ? (w - 24) / 3 : 0;
+  const [actions, setActions] = useState(DEFAULT_QUICK_ACTIONS);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDynamicActions() {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(API_ENDPOINTS.services, { signal: controller.signal });
+        clearTimeout(timer);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.categories) && isMounted) {
+            const remCat = data.categories.find(
+              (c: any) => c.id === 'cat-remedies' || c.category === 'remedies'
+            );
+            if (remCat?.badge) {
+              setActions((prev) =>
+                prev.map((a) => (a.id === 'remedies' ? { ...a, badge: remCat.badge } : a))
+              );
+            }
+          }
+        }
+      } catch {}
+    }
+    loadDynamicActions();
+    return () => {
+      isMounted = false;
+    };
+  }, [refreshKey]);
+
   return (
     <View>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 }}>
@@ -632,7 +666,7 @@ function QuickActionsGrid() {
       <View style={{ marginTop: 14, paddingHorizontal: 20 }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
           {cell > 0 &&
-            QUICK_ACTIONS.map((a) => (
+            actions.map((a) => (
               <Pressable
                 key={a.id}
                 testID={`home.quickAction.${a.id}`}
@@ -694,6 +728,172 @@ function QuickActionsGrid() {
             ))}
         </View>
       </View>
+    </View>
+  );
+}
+
+/* ---------------------------------------------------- AshtaPariharRemediesCard */
+function AshtaPariharRemediesCard({ refreshKey }: { refreshKey?: number }) {
+  const colors = useThemeColors();
+  const [remedies, setRemedies] = useState<Remedy[]>(REMEDIES);
+
+  useEffect(() => {
+    let isMounted = true;
+    AsyncStorage.getItem('astroparihar_dynamic_remedies_cache')
+      .then((c) => {
+        if (c && isMounted) {
+          try {
+            const parsed = JSON.parse(c);
+            if (Array.isArray(parsed) && parsed.length > 0) setRemedies(parsed);
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    async function loadRemedies() {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 6000);
+        const [servRes, remRes] = await Promise.all([
+          fetch(API_ENDPOINTS.services, { signal: controller.signal }).catch(() => null),
+          fetch(API_ENDPOINTS.remedies, { signal: controller.signal }).catch(() => null),
+        ]);
+        clearTimeout(timer);
+
+        let activeItems: any[] = [];
+        let ashtaDirections: any[] = [];
+        if (servRes && servRes.ok) {
+          const sData = await servRes.json();
+          if (sData.success && Array.isArray(sData.categories)) {
+            const remCat = sData.categories.find(
+              (c: any) => c.id === 'cat-remedies' || c.category === 'remedies'
+            );
+            if (remCat && Array.isArray(remCat.items)) activeItems = remCat.items;
+          }
+        }
+        if (remRes && remRes.ok) {
+          const rData = await remRes.json();
+          if (rData && rData.success && Array.isArray(rData.ashtaDirections)) {
+            ashtaDirections = rData.ashtaDirections;
+          }
+        }
+
+        if (activeItems.length > 0 || ashtaDirections.length > 0) {
+          const hydrated = REMEDIES.map((base) => {
+            const match = activeItems.find(
+              (ai: any) =>
+                ai.id?.toLowerCase().includes(base.name.toLowerCase().split(' ')[0]) ||
+                ai.name?.toLowerCase().includes(base.name.toLowerCase().split(' ')[0]) ||
+                ai.direction?.toLowerCase() === base.direction.toLowerCase()
+            );
+            const dirMatch = ashtaDirections.find(
+              (ad: any) => ad.direction?.toLowerCase().includes(base.direction.toLowerCase())
+            );
+            return {
+              ...base,
+              name: match?.name || base.name,
+              sanskrit: match?.sanskrit || base.sanskrit,
+              desc: match?.desc || dirMatch?.purpose || base.desc,
+              mantra: match?.mantra || base.mantra,
+              directionHindi: match?.directionHindi || base.directionHindi,
+              color: match?.color || base.color,
+            };
+          });
+          if (isMounted) {
+            setRemedies(hydrated);
+            AsyncStorage.setItem('astroparihar_dynamic_remedies_cache', JSON.stringify(hydrated)).catch(() => {});
+          }
+        }
+      } catch {}
+    }
+
+    loadRemedies();
+    return () => {
+      isMounted = false;
+    };
+  }, [refreshKey]);
+
+  return (
+    <View style={{ marginTop: 22 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 }}>
+        <View>
+          <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700' }}>
+            Sacred Vedic Remedies
+          </Text>
+          <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '700', marginTop: 2 }}>
+            अष्ट परिहार • Ashta-Digbandhana (8 Directions)
+          </Text>
+        </View>
+        <Pressable
+          testID="home.viewAllRemedies"
+          onPress={() => push(AppRoutes.remediesScreen)}
+          style={{
+            paddingHorizontal: 12,
+            paddingVertical: 5,
+            borderRadius: 100,
+            borderWidth: 1,
+            borderColor: withAlpha(colors.goldAccent, 60),
+            backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 15 : 25),
+          }}
+        >
+          <Text style={{ color: colors.goldAccent, fontSize: 11.5, fontWeight: '700' }}>
+            Explore All 8 ↗
+          </Text>
+        </Pressable>
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, gap: 10 }}
+      >
+        {remedies.map((r) => (
+          <Pressable
+            key={r.name}
+            testID={`home.remedy.${r.name.replace(/[^A-Za-z]/g, '')}`}
+            onPress={() => push(AppRoutes.remedyDetailScreen, r)}
+            style={({ pressed }) => ({
+              width: 144,
+              padding: 14,
+              borderRadius: 18,
+              backgroundColor: colors.surface,
+              borderWidth: 1.5,
+              borderColor: withAlpha(r.color || colors.goldAccent, colors.isLight ? 40 : 65),
+              opacity: pressed ? 0.85 : 1,
+              shadowColor: r.color || '#000',
+              shadowOpacity: colors.isLight ? 0.06 : 0.25,
+              shadowRadius: 6,
+              elevation: 2,
+            })}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 28 }}>{r.emoji}</Text>
+              <View
+                style={{
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 6,
+                  backgroundColor: withAlpha(r.color || colors.goldAccent, colors.isLight ? 18 : 28),
+                }}
+              >
+                <Text style={{ fontSize: 9.5, fontWeight: '800', color: colors.textPrimary }}>
+                  {r.direction.split('-')[0]}
+                </Text>
+              </View>
+            </View>
+
+            <Text numberOfLines={1} style={{ marginTop: 10, color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>
+              {r.name.split(' (')[0]}
+            </Text>
+            <Text numberOfLines={1} style={{ color: colors.goldAccent, fontSize: 10.5, fontWeight: '600', marginTop: 1 }}>
+              {r.sanskrit}
+            </Text>
+            <Text numberOfLines={2} style={{ marginTop: 4, color: colors.textMuted, fontSize: 10, lineHeight: 14 }}>
+              {r.desc}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
     </View>
   );
 }
@@ -1961,12 +2161,15 @@ export default function HomeDashboardScreen() {
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.goldAccent} colors={[colors.goldAccent]} progressBackgroundColor={colors.surface} />}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         <HomeHeader />
         <View style={{ height: 16 }} />
         <CosmicInsightsCarousel refreshKey={refreshKey} />
         <PromotionsOffersSection refreshKey={refreshKey} />
-        <QuickActionsGrid />
+        <QuickActionsGrid refreshKey={refreshKey} />
+        <AshtaPariharRemediesCard refreshKey={refreshKey} />
         <View style={{ height: 24 }} />
         <HoroscopeCards />
         <View style={{ height: 24 }} />

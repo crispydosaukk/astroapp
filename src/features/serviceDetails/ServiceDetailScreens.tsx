@@ -8,27 +8,72 @@
  * - Muhurat: static content (no calculation in source)
  * SOURCE_INERT: "Get Report" buttons on Astrology Reports.
  */
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { API_ENDPOINTS } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
 import { useCurrencyStore } from '@/services/currencyStore';
+import { fetchRealAstrologers } from '@/services/homeDataService';
 import { AnimatedPressable } from '@/components/AnimatedBox';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { AppImage } from '@/components/AppImage';
 import { ElevatedButton, OutlinedButton } from '@/components/common';
-import {
-  InlineServiceReportCard,
-  ReportIntakeConfig,
-  ServiceReportIntakeModal,
-} from '@/components/ServiceReportIntakeModal';
 import { lh, Text, TextInput } from '@/components/Text';
 import { AppRoutes, pop, push } from '@/navigation/routes';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
+
+const STORAGE_SERVICES_KEY = 'astroparihar_dynamic_services_list';
+
+export function useDynamicService(serviceId: string) {
+  const [data, setData] = useState<{
+    id: string;
+    name: string;
+    desc?: string;
+    sanskrit?: string;
+    icon?: string;
+    color?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    AsyncStorage.getItem(STORAGE_SERVICES_KEY).then((cached) => {
+      if (cached && isMounted) {
+        try {
+          const list = JSON.parse(cached);
+          if (Array.isArray(list)) {
+            const found = list.find((s: any) => s.id === serviceId);
+            if (found) setData(found);
+          }
+        } catch {}
+      }
+    });
+
+    fetch(API_ENDPOINTS.services)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json?.success && Array.isArray(json.services)) {
+          AsyncStorage.setItem(STORAGE_SERVICES_KEY, JSON.stringify(json.services)).catch(() => {});
+          if (isMounted) {
+            const found = json.services.find((s: any) => s.id === serviceId);
+            if (found) setData(found);
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [serviceId]);
+
+  return data;
+}
 
 /* ------------------------------------------------------------- shared */
 function ServiceHeroCard({ title, subtitle, imageUrl, semanticLabel, accent, icon }: { title: string; subtitle: string; imageUrl: string; semanticLabel: string; accent: string; icon: string }) {
@@ -91,15 +136,47 @@ function ConsultCTABar({ testIDPrefix }: { testIDPrefix: string }) {
     </View>
   );
 }
-type Mini = { name: string; specialty: string; imageUrl: string; rating: number; price: number };
+type Mini = { name: string; specialty: string; imageUrl: string; rating: number; price: number; fullObj?: any };
 function AstrologerRow({ items, accent }: { items: Mini[]; accent: string }) {
   const colors = useThemeColors();
   const { t } = useTranslation();
   const formatRate = useCurrencyStore((s) => s.formatRate);
+  const [liveList, setLiveList] = useState<Mini[]>(items);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchRealAstrologers()
+      .then((real) => {
+        if (isMounted && Array.isArray(real) && real.length > 0) {
+          setLiveList(
+            real.map((r) => ({
+              name: r.name,
+              specialty: r.specialty,
+              imageUrl: r.imageUrl,
+              rating: r.rating || 4.9,
+              price: r.price,
+              fullObj: r,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height: 180 }} contentContainerStyle={{ paddingHorizontal: 16 }}>
-      {items.map((a) => (
-        <View key={a.name} style={{ width: 160, marginRight: 12, padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, alignItems: 'center', alignSelf: 'flex-start' }}>
+      {liveList.map((a) => (
+        <Pressable
+          key={a.name}
+          onPress={() => {
+            if (a.fullObj) push(AppRoutes.astrologerDetailScreen, a.fullObj);
+            else push(AppRoutes.liveAstrologersScreen);
+          }}
+          style={{ width: 160, marginRight: 12, padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, alignItems: 'center', alignSelf: 'flex-start' }}
+        >
           <View style={{ width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: withAlpha(accent, 100), overflow: 'hidden' }}>
             <AppImage uri={a.imageUrl} semanticLabel={`Astrologer ${a.name} profile photo`} width="100%" height="100%" fit="cover" />
           </View>
@@ -110,7 +187,7 @@ function AstrologerRow({ items, accent }: { items: Mini[]; accent: string }) {
             <Text style={{ marginLeft: 2, color: colors.goldAccent, fontSize: 11, fontWeight: '600' }}>{String(a.rating)}</Text>
           </View>
           <Text style={{ marginTop: 6, color: accent, fontSize: 11, fontWeight: '700' }}>{formatRate(a.price)}</Text>
-        </View>
+        </Pressable>
       ))}
     </ScrollView>
   );
@@ -120,34 +197,11 @@ function ServiceLayout({ title, testID, children }: { title: string; testID: str
   const colors = useThemeColors();
   const { t } = useTranslation();
 
-  const serviceReportConfig: ReportIntakeConfig | null =
-    testID === 'astrologyReports'
-      ? null
-      : {
-          mode: 'service',
-          title: `${title} Personalised Vedic Report`,
-          subtitle: `Complete ${title.toLowerCase()} analysis, Dasha timings & Vedic remedies`,
-          price:
-            testID === 'careerAstrology' || testID === 'marriageAstrology' || testID === 'businessAstrology' || testID === 'financeAstrology'
-              ? 349
-              : 199,
-          priceUSD:
-            testID === 'careerAstrology' || testID === 'marriageAstrology' || testID === 'businessAstrology' || testID === 'financeAstrology'
-              ? 4.99
-              : 2.99,
-          category: testID === 'muhurat' ? 'panchang' : 'services',
-        };
-
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID={`${testID}.screen`}>
       <AppBar title={t(title, title)} onBack={pop} testIDPrefix={testID} backSize={24} backgroundColor={colors.background} backColor={colors.textPrimary} />
-      <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+      <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         {children}
-        {serviceReportConfig ? (
-          <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
-            <InlineServiceReportCard config={serviceReportConfig} />
-          </View>
-        ) : null}
         <View style={{ height: Math.max(140, insets.bottom + 85) }} />
       </ScrollView>
       <ConsultCTABar testIDPrefix={testID} />
@@ -158,17 +212,17 @@ function HScroll({ height, children }: { height: number; children: React.ReactNo
   return <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height }} contentContainerStyle={{ paddingHorizontal: 16 }}>{children}</ScrollView>;
 }
 
-// Verified high-speed Unsplash CDN image helper
-const P = (photoId: string) => `https://images.unsplash.com/${photoId}?w=800&auto=format&fit=crop`;
-
 /* ------------------------------------------------------------- Career */
 export function CareerAstrologyScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
-  const a = '#FFD700';
+  const dynamicSvc = useDynamicService('gui-career');
+  const a = dynamicSvc?.color || '#FFD700';
+  const title = dynamicSvc?.name || 'Career Astrology';
+  const subtitle = dynamicSvc?.desc || 'Unlock your professional destiny';
   return (
-    <ServiceLayout title="Career Astrology" testID="careerAstrology">
-      <ServiceHeroCard title="Career Astrology" subtitle="Unlock your professional destiny" imageUrl="https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop" semanticLabel="Professional office setting with charts and career planning documents on a desk" accent={a} icon="work_outline_rounded" />
+    <ServiceLayout title={title} testID="careerAstrology">
+      <ServiceHeroCard title={title} subtitle={subtitle} imageUrl="https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop" semanticLabel="Professional office setting with charts and career planning documents on a desk" accent={a} icon={dynamicSvc?.icon || 'work_outline_rounded'} />
       <Intro>Your birth chart holds the blueprint of your professional life. Vedic astrology reveals the most favourable career paths, promotion timings, and business opportunities aligned with your planetary positions.</Intro>
       <SectionTitle title="What We Analyse" accent={a} />
       <InfoCard icon="trending_up_rounded" title="Career Path & Profession" description="Identify the most suitable career fields based on your 10th house lord, Saturn, and Sun placements." accent={a} />
@@ -199,13 +253,16 @@ export function CareerAstrologyScreen() {
 export function MarriageAstrologyScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
-  const a = '#FF6B6B';
+  const dynamicSvc = useDynamicService('gui-marriage');
+  const a = dynamicSvc?.color || '#FF6B6B';
+  const title = dynamicSvc?.name || 'Marriage Astrology';
+  const subtitle = dynamicSvc?.desc || 'Find your destined life partner';
   const [w, setW] = useState(0);
   const cell = w > 0 ? (w - 24) / 4 : 0;
   const aspects = [['Varna', 1, '#9370DB'], ['Vashya', 2, '#FF6B6B'], ['Tara', 3, '#FFB347'], ['Yoni', 4, '#4FC3F7'], ['Graha Maitri', 5, '#81C784'], ['Gana', 6, '#FFD700'], ['Bhakoot', 7, '#FF6B6B'], ['Nadi', 8, '#9370DB']] as const;
   return (
-    <ServiceLayout title="Marriage Astrology" testID="marriageAstrology">
-      <ServiceHeroCard title="Marriage Astrology" subtitle="Find your destined life partner" imageUrl="https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=800&auto=format&fit=crop" semanticLabel="Indian couple in traditional wedding attire with floral decorations and warm golden lighting" accent={a} icon="favorite_rounded" />
+    <ServiceLayout title={title} testID="marriageAstrology">
+      <ServiceHeroCard title={title} subtitle={subtitle} imageUrl="https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=800&auto=format&fit=crop" semanticLabel="Indian couple in traditional wedding attire with floral decorations and warm golden lighting" accent={a} icon={dynamicSvc?.icon || 'favorite_rounded'} />
       <Intro>Marriage is one of the most significant events in life. Vedic astrology provides deep insights into marriage timing, partner characteristics, compatibility, and the strength of your marital bond through the 7th house and Venus analysis.</Intro>
       <SectionTitle title="Marriage Analysis" accent={a} />
       <InfoCard icon="schedule_rounded" title="Marriage Timing" description="Determine the most auspicious period for marriage based on Venus Dasha, 7th house transits, and Navamsa chart analysis." accent={a} />
@@ -237,11 +294,14 @@ export function MarriageAstrologyScreen() {
 export function BusinessAstrologyScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
-  const a = '#4FC3F7';
+  const dynamicSvc = useDynamicService('gui-business');
+  const a = dynamicSvc?.color || '#4FC3F7';
+  const title = dynamicSvc?.name || 'Business Astrology';
+  const subtitle = dynamicSvc?.desc || 'Align your enterprise with the cosmos';
   const sectors = [['Mercury', 'IT & Communication', '#4FC3F7'], ['Venus', 'Fashion & Beauty', '#FF6B6B'], ['Mars', 'Real Estate', '#FF6B35'], ['Jupiter', 'Education & Law', '#FFD700'], ['Saturn', 'Manufacturing', '#9370DB'], ['Sun', 'Government & Politics', '#FFB347']];
   return (
-    <ServiceLayout title="Business Astrology" testID="businessAstrology">
-      <ServiceHeroCard title="Business Astrology" subtitle="Align your enterprise with the cosmos" imageUrl="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&auto=format&fit=crop" semanticLabel="Business team meeting around a conference table with charts and graphs on screens" accent={a} icon="business_center_rounded" />
+    <ServiceLayout title={title} testID="businessAstrology">
+      <ServiceHeroCard title={title} subtitle={subtitle} imageUrl="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&auto=format&fit=crop" semanticLabel="Business team meeting around a conference table with charts and graphs on screens" accent={a} icon={dynamicSvc?.icon || 'business_center_rounded'} />
       <Intro>Every successful business has cosmic timing. Vedic astrology helps entrepreneurs identify the best time to launch, expand, or pivot their business, choose the right partners, and navigate challenging periods with confidence.</Intro>
       <SectionTitle title="Business Insights" accent={a} />
       <InfoCard icon="rocket_launch_rounded" title="Business Launch Timing" description="Identify the most auspicious Muhurat for launching your business, signing contracts, or opening new ventures." accent={a} />
@@ -270,10 +330,13 @@ export function BusinessAstrologyScreen() {
 export function FinanceAstrologyScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
-  const a = '#81C784';
+  const dynamicSvc = useDynamicService('gui-finance');
+  const a = dynamicSvc?.color || '#81C784';
+  const title = dynamicSvc?.name || 'Finance Astrology';
+  const subtitle = dynamicSvc?.desc || 'Wealth, investments & financial destiny';
   return (
-    <ServiceLayout title="Finance Astrology" testID="financeAstrology">
-      <ServiceHeroCard title="Finance Astrology" subtitle="Wealth, investments & financial destiny" imageUrl="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=800&auto=format&fit=crop" semanticLabel="Gold coins and financial charts with upward trending graphs on a dark background" accent={a} icon="account_balance_rounded" />
+    <ServiceLayout title={title} testID="financeAstrology">
+      <ServiceHeroCard title={title} subtitle={subtitle} imageUrl="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=800&auto=format&fit=crop" semanticLabel="Gold coins and financial charts with upward trending graphs on a dark background" accent={a} icon={dynamicSvc?.icon || 'account_balance_rounded'} />
       <Intro>The 2nd, 5th, 8th, and 11th houses in your birth chart govern wealth accumulation, speculative gains, inheritance, and income respectively. Our expert astrologers decode your financial destiny and guide you toward prosperity.</Intro>
       <SectionTitle title="Financial Analysis" accent={a} />
       <InfoCard icon="savings_rounded" title="Wealth Accumulation Periods" description="Identify Jupiter and Venus Dasha periods that bring maximum financial growth and wealth accumulation." accent={a} />
@@ -318,11 +381,14 @@ const TAROT_CARDS = [
 export function TarotScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
-  const a = '#9370DB';
+  const dynamicSvc = useDynamicService('gui-tarot');
+  const a = dynamicSvc?.color || '#9370DB';
+  const title = dynamicSvc?.name || 'Tarot Reading';
+  const subtitle = dynamicSvc?.desc || 'Ancient wisdom through sacred cards';
   const [selected, setSelected] = useState<number | null>(null);
   return (
-    <ServiceLayout title="Tarot Reading" testID="tarot">
-      <ServiceHeroCard title="Tarot Reading" subtitle="Ancient wisdom through sacred cards" imageUrl="https://images.unsplash.com/photo-1532012197267-da84d127e765?w=800&auto=format&fit=crop" semanticLabel="Mystical tarot cards spread on a dark velvet cloth with candles and crystals" accent={a} icon="style_rounded" />
+    <ServiceLayout title={title} testID="tarot">
+      <ServiceHeroCard title={title} subtitle={subtitle} imageUrl="https://images.unsplash.com/photo-1532012197267-da84d127e765?w=800&auto=format&fit=crop" semanticLabel="Mystical tarot cards spread on a dark velvet cloth with candles and crystals" accent={a} icon={dynamicSvc?.icon || 'style_rounded'} />
       <Intro>Tarot is a powerful divination tool that uses 78 symbolic cards to reveal hidden truths, illuminate life paths, and provide guidance on love, career, and spiritual growth. Each card carries profound archetypal wisdom.</Intro>
       <SectionTitle title="Daily Card Draw" accent={a} />
       <LinearGradient colors={[withAlpha(a, colors.isLight ? 20 : 30), colors.surface]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ marginHorizontal: 16, padding: 20, borderRadius: 20, borderWidth: 1, borderColor: withAlpha(a, colors.isLight ? 50 : 80), alignItems: 'center' }}>
@@ -421,7 +487,10 @@ export function NumerologyScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
   const authUser = useAuthStore((s) => s.user);
-  const a = '#FFB347';
+  const dynamicSvc = useDynamicService('gui-numerology');
+  const a = dynamicSvc?.color || '#FFB347';
+  const title = dynamicSvc?.name || 'Numerology';
+  const subtitle = dynamicSvc?.desc || 'Decode the numbers of your destiny';
   const [name, setName] = useState(authUser?.name || '');
   const [dob, setDob] = useState(authUser?.dob || '');
   const [lifePath, setLifePath] = useState<number | null>(() => {
@@ -444,7 +513,7 @@ export function NumerologyScreen() {
         if (lp != null) setLifePath(lp);
       }
     }
-  }, [authUser]);
+  }, [authUser, dob, name]);
 
   const calculate = () => {
     const lp = calcLifePath(dob);
@@ -460,8 +529,8 @@ export function NumerologyScreen() {
     </LinearGradient>
   );
   return (
-    <ServiceLayout title="Numerology" testID="numerology">
-      <ServiceHeroCard title="Numerology" subtitle="Decode the numbers of your destiny" imageUrl="https://images.unsplash.com/photo-1509228468518-180dd4864904?w=800&auto=format&fit=crop" semanticLabel="Sacred numbers and mathematical symbols glowing in golden light on a dark mystical background" accent={a} icon="tag_rounded" />
+    <ServiceLayout title={title} testID="numerology">
+      <ServiceHeroCard title={title} subtitle={subtitle} imageUrl="https://images.unsplash.com/photo-1509228468518-180dd4864904?w=800&auto=format&fit=crop" semanticLabel="Sacred numbers and mathematical symbols glowing in golden light on a dark mystical background" accent={a} icon={dynamicSvc?.icon || 'tag_rounded'} />
       <Intro>Numerology is the ancient science of numbers and their divine influence on human life. Every number carries a unique vibration that shapes your personality, destiny, and life path.</Intro>
       <SectionTitle title="Calculate Your Numbers" accent={a} />
       <View style={{ marginHorizontal: 16, padding: 20, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(a, colors.isLight ? 50 : 80), gap: 12 }}>
@@ -487,7 +556,10 @@ export function NumerologyScreen() {
 export function MuhuratScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
-  const a = '#FFD700';
+  const dynamicSvc = useDynamicService('pan-muhurat');
+  const a = dynamicSvc?.color || '#FFD700';
+  const title = dynamicSvc?.name || 'Muhurat';
+  const subtitle = dynamicSvc?.desc || 'Auspicious timings for life events';
   const muhurats = [
     { event: 'Marriage', icon: 'favorite_rounded', dates: ['15 Nov 2025', '22 Nov 2025', '3 Dec 2025'], color: '#FF6B6B' },
     { event: 'Business Launch', icon: 'rocket_launch_rounded', dates: ['8 Nov 2025', '19 Nov 2025', '1 Dec 2025'], color: '#4FC3F7' },
@@ -496,8 +568,8 @@ export function MuhuratScreen() {
     { event: 'Griha Pravesh', icon: 'door_front_door_rounded', dates: ['17 Nov 2025', '28 Nov 2025', '9 Dec 2025'], color: '#9370DB' },
   ];
   return (
-    <ServiceLayout title="Muhurat" testID="muhurat">
-      <ServiceHeroCard title="Muhurat" subtitle="Auspicious timings for life events" imageUrl="https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800&auto=format&fit=crop" semanticLabel="Traditional Hindu calendar with auspicious dates marked, surrounded by marigold flowers and diyas" accent={a} icon="event_available_rounded" />
+    <ServiceLayout title={title} testID="muhurat">
+      <ServiceHeroCard title={title} subtitle={subtitle} imageUrl="https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800&auto=format&fit=crop" semanticLabel="Traditional Hindu calendar with auspicious dates marked, surrounded by marigold flowers and diyas" accent={a} icon={dynamicSvc?.icon || 'event_available_rounded'} />
       <Intro>Muhurat is the Vedic science of selecting the most auspicious time for important life events. Starting any significant activity at the right cosmic moment ensures divine blessings and minimises obstacles.</Intro>
       <SectionTitle title="Upcoming Auspicious Dates" accent={a} />
       {muhurats.map((m) => (
@@ -537,10 +609,13 @@ export function MuhuratScreen() {
 export function SpiritualGuidanceScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
-  const a = '#9370DB';
+  const dynamicSvc = useDynamicService('gui-spiritual');
+  const a = dynamicSvc?.color || '#9370DB';
+  const title = dynamicSvc?.name || 'Spiritual Guidance';
+  const subtitle = dynamicSvc?.desc || "Illuminate your soul's sacred path";
   return (
-    <ServiceLayout title="Spiritual Guidance" testID="spiritualGuidance">
-      <ServiceHeroCard title="Spiritual Guidance" subtitle="Illuminate your soul's sacred path" imageUrl="https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&auto=format&fit=crop" semanticLabel="Person meditating in lotus position on a mountain peak at sunset with golden light and spiritual energy" accent={a} icon="psychology_rounded" />
+    <ServiceLayout title={title} testID="spiritualGuidance">
+      <ServiceHeroCard title={title} subtitle={subtitle} imageUrl="https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&auto=format&fit=crop" semanticLabel="Person meditating in lotus position on a mountain peak at sunset with golden light and spiritual energy" accent={a} icon={dynamicSvc?.icon || 'psychology_rounded'} />
       <Intro>Beyond the material world lies the realm of the soul. Our spiritual astrologers and guides help you understand your karmic journey, past life influences, dharmic purpose, and the spiritual practices best suited for your soul&apos;s evolution.</Intro>
       <SectionTitle title="Spiritual Services" accent={a} />
       <InfoCard icon="loop_rounded" title="Karma & Past Life Analysis" description="Explore karmic debts and past life influences through the 12th house, Saturn, and Rahu-Ketu axis in your birth chart." accent={a} />
@@ -576,7 +651,6 @@ export function SpiritualGuidanceScreen() {
 /* ------------------------------------------------------------- Reports */
 export function AstrologyReportsScreen() {
   const colors = useThemeColors();
-  const { t } = useTranslation();
   const formatPrice = useCurrencyStore((s) => s.formatPrice);
   const a = '#4FC3F7';
 

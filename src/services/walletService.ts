@@ -127,7 +127,16 @@ export async function getWalletTransactions(): Promise<WalletTransaction[]> {
               const f = doc.fields || {};
               const isCredit = f.type?.stringValue === 'credit';
               const amtNum = f.amount?.doubleValue ?? f.amount?.integerValue ?? 0;
-              const formattedAmt = isUSD ? (amtNum * 0.012).toFixed(2) : String(amtNum);
+              // Clean floating-point precision (e.g. 0.44999999999999996 -> 0.45)
+              const cleanNum = Number(amtNum.toFixed(2));
+              let formattedAmt: string;
+              if (isUSD) {
+                // If amount is small (<2) or has decimals, it was originally USD
+                const usdVal = cleanNum < 2 ? cleanNum : Number((cleanNum * 0.012).toFixed(2));
+                formattedAmt = usdVal % 1 === 0 ? usdVal.toFixed(0) : usdVal.toFixed(2);
+              } else {
+                formattedAmt = cleanNum % 1 === 0 ? cleanNum.toFixed(0) : cleanNum.toFixed(2);
+              }
               return {
                 id: doc.name?.split('/').pop() || String(Math.random()),
                 type: isCredit ? 'credit' : 'debit',
@@ -369,15 +378,21 @@ export async function deductWalletBalance(
 
     await AsyncStorage.setItem(STORAGE_KEY_BALANCE, String(calculatedNewBal));
 
-    // Record local transaction
+    // Record local transaction with clean 2-decimal rounded amount and proper currency symbol
     const txs = await getWalletTransactions();
     const isReport = extraOptions?.serviceType === 'report' || extraOptions?.serviceType === 'guide';
+    const isUSD = (await AsyncStorage.getItem('astroparihar_currency')) === 'USD';
+    const sym = isUSD ? '$' : '₹';
+    const cleanNum = typeof amount === 'number' ? Number(amount.toFixed(2)) : parseFloat(String(amount)) || 0;
+    const formattedAmt = cleanNum % 1 === 0 ? cleanNum.toFixed(0) : cleanNum.toFixed(2);
+    const displayAmt = extraOptions?.displayAmount || `-${sym}${formattedAmt}`;
+
     const newTx: WalletTransaction = {
       id: `tx_${Date.now()}`,
       type: 'debit',
       title: description || (astrologerName ? `Consultation: ${astrologerName}` : 'Service Payment'),
       subtitle: isReport ? 'Vedic Report / Guide' : 'Consultation Usage',
-      amount: extraOptions?.displayAmount || `-₹${amount}`,
+      amount: displayAmt,
       date: 'Just now',
       icon: isReport ? '📜' : '📞',
       status: 'success',

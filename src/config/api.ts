@@ -23,6 +23,7 @@ export const API_ENDPOINTS = {
   aiChat: `${BASE_URL}/api/app-dynamic/ai-chat`,
   reviews: `${BASE_URL}/api/app-dynamic/reviews`,
   services: `${BASE_URL}/api/app-dynamic/services`,
+  remedies: `${BASE_URL}/api/app-dynamic/remedies`,
   profile: `${BASE_URL}/api/app-dynamic/profile`,
   astrologerSendOtp: `${BASE_URL}/api/astrologer/auth/send-otp`,
   astrologerVerifyOtp: `${BASE_URL}/api/astrologer/auth/verify-otp`,

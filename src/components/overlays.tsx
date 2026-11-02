@@ -2,7 +2,7 @@
  * Modal primitives replacing Flutter's showModalBottomSheet, showDialog and ScaffoldMessenger SnackBar.
  */
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, StyleProp, Text as RNText, View, ViewStyle } from 'react-native';
+import { Dimensions, Keyboard, KeyboardAvoidingView, LayoutAnimation, Modal, Platform, Pressable, StyleProp, Text as RNText, View, ViewStyle } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
@@ -35,9 +35,15 @@ export function BottomSheet({
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const showSub = Keyboard.addListener(showEvent, (e) => {
+      if (Platform.OS === 'android') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
       setKeyboardHeight(e.endCoordinates.height);
     });
     const hideSub = Keyboard.addListener(hideEvent, () => {
+      if (Platform.OS === 'android') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
       setKeyboardHeight(0);
     });
     return () => {
@@ -78,15 +84,20 @@ export function BottomSheet({
         </Animated.View>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ width: '100%', justifyContent: 'flex-end', paddingBottom: keyboardHeight }}
+          style={{
+            width: '100%',
+            justifyContent: 'flex-end',
+            paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0,
+          }}
         >
           <Animated.View
             testID={testID}
             style={[
               {
                 width: '100%',
-                maxHeight: Math.max(260, SCREEN_H * maxHeightRatio - keyboardHeight),
+                maxHeight: Math.max(280, SCREEN_H * maxHeightRatio - (Platform.OS === 'android' ? keyboardHeight : 0)),
                 backgroundColor,
+                overflow: 'hidden',
               },
               sheetStyle,
               style,
@@ -110,6 +121,7 @@ export function SheetContainer({ children, style, handle = true, radius = 28 }: 
         {
           backgroundColor: colors.surface, borderTopLeftRadius: radius, borderTopRightRadius: radius,
           borderWidth: 1, borderBottomWidth: 0, borderColor: colors.cardBorder, paddingBottom: insets.bottom,
+          flexShrink: 1, overflow: 'hidden',
         },
         style,
       ]}

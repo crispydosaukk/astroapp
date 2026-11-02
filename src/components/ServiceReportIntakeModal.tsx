@@ -818,28 +818,6 @@ export function ServiceReportFormBody({ config, onSuccess, onCancel, isModal }: 
           onChangeText={setPob}
         />
 
-        {/* Quick City Chips if empty */}
-        {!pob.trim() && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-            {POPULAR_CITIES.map((city) => (
-              <Pressable
-                key={city}
-                onPress={() => setPob(`${city}, India`)}
-                style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderRadius: 100,
-                  backgroundColor: colors.surfaceVariant,
-                  borderWidth: 1,
-                  borderColor: colors.cardBorder,
-                }}
-              >
-                <Text style={{ color: colors.textSecondary, fontSize: 11 }}>📍 {city}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        )}
-
         {/* Primary Concern Selector */}
         <View style={{ marginTop: 2 }}>
           <Text style={{ color: colors.textSecondary, fontSize: 11.5, fontWeight: '700', marginBottom: 6 }}>

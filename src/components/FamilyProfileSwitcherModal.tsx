@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,19 +17,7 @@ import {
   useBirthProfileStore,
 } from '@/services/birthProfileStore';
 import { AppColors, withAlpha } from '@/theme/colors';
-import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
-
-const POPULAR_CITIES = [
-  'New Delhi, India',
-  'Mumbai, India',
-  'Bengaluru, India',
-  'Hyderabad, India',
-  'Chennai, India',
-  'Kolkata, India',
-  'London, UK',
-  'New York, USA',
-];
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Other'] as const;
 
@@ -46,7 +33,6 @@ export function FamilyProfileSwitcherModal({
   onProfileSelected,
 }: FamilyProfileSwitcherModalProps) {
   const colors = useThemeColors();
-  const { t } = useTranslation();
 
   const profiles = useBirthProfileStore((s) => s.profiles);
   const activeProfile = useBirthProfileStore((s) => s.activeProfile);
@@ -68,6 +54,7 @@ export function FamilyProfileSwitcherModal({
   const [formPlace, setFormPlace] = useState('New Delhi, India');
   const [formSetAsActive, setFormSetAsActive] = useState(true);
   const [saving, setSaving] = useState(false);
+  const formScrollRef = useRef<ScrollView>(null);
 
   const resetForm = () => {
     setFormName('');
@@ -241,6 +228,7 @@ export function FamilyProfileSwitcherModal({
         {mode === 'list' ? (
           <ScrollView
             showsVerticalScrollIndicator={false}
+            style={{ flexShrink: 1 }}
             contentContainerStyle={{ paddingTop: 14, paddingBottom: 20 }}
           >
             {/* Active profile callout banner */}
@@ -422,10 +410,12 @@ export function FamilyProfileSwitcherModal({
         ) : (
           /* -------------------- MODE: ADD / EDIT PROFILE FORM -------------------- */
           <ScrollView
+            ref={formScrollRef}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            contentContainerStyle={{ paddingTop: 14, paddingBottom: 320 }}
+            style={{ flexShrink: 1 }}
+            contentContainerStyle={{ paddingTop: 14, paddingBottom: 280 }}
           >
             {/* Relationship Chips */}
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
@@ -577,14 +567,19 @@ export function FamilyProfileSwitcherModal({
               </View>
             </View>
 
-            {/* Place of Birth with Google Maps */}
+            {/* Place of Birth */}
             <LocationSearchInput
               value={formPlace}
               onChangeText={setFormPlace}
               required
               label="Place of Birth (City, Country)"
-              placeholder="Search city or Google Maps place..."
+              placeholder="Enter birth place (e.g. Mumbai)"
               style={{ marginTop: 14 }}
+              onFocus={() => {
+                setTimeout(() => {
+                  formScrollRef.current?.scrollToEnd({ animated: true });
+                }, 100);
+              }}
             />
 
             {/* Toggle Set As Active (only for add mode) */}

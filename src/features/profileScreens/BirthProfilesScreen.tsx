@@ -8,7 +8,7 @@
  * - Set as Active / Edit / Delete / View Kundli fully functional
  * - Dynamic Light Vedic & Dark Cosmic theming with high-contrast text
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar } from '@/components/AppBar';
@@ -100,6 +100,7 @@ export default function BirthProfilesScreen() {
   const [formTime, setFormTime] = useState('12:00 PM');
   const [formPlace, setFormPlace] = useState('New Delhi, India');
   const [saving, setSaving] = useState(false);
+  const sheetScrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     loadProfiles();
@@ -410,6 +411,8 @@ export default function BirthProfilesScreen() {
             borderWidth: 1,
             borderColor: colors.cardBorder,
             maxHeight: '100%',
+            flexShrink: 1,
+            overflow: 'hidden',
           }}
         >
           {/* Header */}
@@ -455,12 +458,15 @@ export default function BirthProfilesScreen() {
 
           {/* Scrollable Form Body with Keyboard Handling */}
           <ScrollView
+            ref={sheetScrollRef}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+            keyboardDismissMode="on-drag"
+            showsVerticalScrollIndicator={true}
+            style={{ flexShrink: 1 }}
             contentContainerStyle={{
               paddingHorizontal: 24,
               paddingTop: 16,
-              paddingBottom: insets.bottom + 24,
+              paddingBottom: Math.max(insets.bottom + 260, 300),
             }}
           >
             {/* Relationship */}
@@ -529,6 +535,11 @@ export default function BirthProfilesScreen() {
                 value={formName}
                 onChangeText={setFormName}
                 placeholderTextColor={colors.textMuted}
+                onFocus={() => {
+                  setTimeout(() => {
+                    sheetScrollRef.current?.scrollTo({ y: 60, animated: true });
+                  }, 100);
+                }}
                 style={{
                   flex: 1,
                   fontSize: 14,
@@ -590,13 +601,18 @@ export default function BirthProfilesScreen() {
               </View>
             </View>
 
-            {/* Google Maps Location Search */}
+            {/* Birth Place Location Input */}
             <LocationSearchInput
               value={formPlace}
               onChangeText={setFormPlace}
               required
               label="Birth Place (City, State, Country)"
-              placeholder="Search city or Google Maps place..."
+              placeholder="Enter birth place (e.g. Mumbai)"
+              onFocus={() => {
+                setTimeout(() => {
+                  sheetScrollRef.current?.scrollToEnd({ animated: true });
+                }, 100);
+              }}
             />
 
             {/* Save Button */}

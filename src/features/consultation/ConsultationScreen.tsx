@@ -12,7 +12,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
+import { FlatList, Keyboard, KeyboardAvoidingView, LayoutAnimation, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Svg, { Line, Rect, Text as SvgText } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -39,6 +39,7 @@ import {
   startCallBilling,
 } from '@/services/consultationService';
 import { fetchCalculatedKundli, KundliChartData, sendLiveAIChatMessage } from '@/services/astrologyService';
+import { VedicKundliChart } from '@/components/VedicKundliChart';
 import { speakAstrologerText, stopAstrologerSpeech } from '@/services/speechService';
 import { AppColors, argb, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
@@ -97,169 +98,6 @@ const DEFAULT_KUNDLI_PLANETS = [
   { name: 'Ketu', symbol: '☋', sign: 'Sagittarius', house: 9, degree: "14°29'", color: '#CD853F' },
 ];
 
-function InCallKundliChart({
-  planets,
-}: {
-  planets: Array<{ name: string; symbol: string; house: number; color: string }>;
-}) {
-  const S = 210;
-  const stroke = '#C9A84C';
-  const coords: Record<number, { x: number; y: number }> = {
-    1:  { x: S * 0.50, y: S * 0.25 },
-    2:  { x: S * 0.25, y: S * 0.14 },
-    3:  { x: S * 0.14, y: S * 0.25 },
-    4:  { x: S * 0.25, y: S * 0.50 },
-    5:  { x: S * 0.14, y: S * 0.75 },
-    6:  { x: S * 0.25, y: S * 0.86 },
-    7:  { x: S * 0.50, y: S * 0.75 },
-    8:  { x: S * 0.75, y: S * 0.86 },
-    9:  { x: S * 0.86, y: S * 0.75 },
-    10: { x: S * 0.75, y: S * 0.50 },
-    11: { x: S * 0.86, y: S * 0.25 },
-    12: { x: S * 0.75, y: S * 0.14 },
-  };
-
-  const planetsByHouse: Record<number, Array<{ symbol: string; color: string }>> = {};
-  planets.forEach((p) => {
-    if (p.house >= 1 && p.house <= 12) {
-      if (!planetsByHouse[p.house]) planetsByHouse[p.house] = [];
-      planetsByHouse[p.house].push({ symbol: p.symbol, color: p.color });
-    }
-  });
-
-  return (
-    <View style={{ width: S, height: S, alignSelf: 'center', marginVertical: 6 }}>
-      <Svg width={S} height={S}>
-        <Rect x={0} y={0} width={S} height={S} fill="rgba(30,12,9,0.92)" stroke={stroke} strokeWidth={1.5} rx={8} />
-        {/* Main Diagonals */}
-        <Line x1={0} y1={0} x2={S} y2={S} stroke={stroke} strokeWidth={1.2} />
-        <Line x1={0} y1={S} x2={S} y2={0} stroke={stroke} strokeWidth={1.2} />
-        {/* Inner Diamond */}
-        <Line x1={S * 0.5} y1={0} x2={S} y2={S * 0.5} stroke={stroke} strokeWidth={1.2} />
-        <Line x1={S} y1={S * 0.5} x2={S * 0.5} y2={S} stroke={stroke} strokeWidth={1.2} />
-        <Line x1={S * 0.5} y1={S} x2={0} y2={S * 0.5} stroke={stroke} strokeWidth={1.2} />
-        <Line x1={0} y1={S * 0.5} x2={S * 0.5} y2={0} stroke={stroke} strokeWidth={1.2} />
-
-        {/* House Numbers & Lagna */}
-        {Object.entries(coords).map(([hStr, pt]) => {
-          const h = Number(hStr);
-          const housePlanets = planetsByHouse[h] || [];
-          return (
-            <React.Fragment key={`h_${h}`}>
-              <SvgText x={pt.x} y={pt.y - 6} fontSize={9} fontWeight="700" textAnchor="middle" fill="rgba(201,168,76,0.75)">
-                {h}
-              </SvgText>
-              {h === 1 && (
-                <SvgText x={pt.x} y={pt.y - 14} fontSize={8} fontWeight="900" textAnchor="middle" fill="#FFD700">
-                  Lg
-                </SvgText>
-              )}
-              {housePlanets.length > 0 && (
-                <SvgText x={pt.x} y={pt.y + 7} fontSize={11} fontWeight="800" textAnchor="middle" fill={housePlanets[0].color}>
-                  {housePlanets.map((hp) => hp.symbol).join('')}
-                </SvgText>
-              )}
-            </React.Fragment>
-          );
-        })}
-      </Svg>
-    </View>
-  );
-}
-
-const ZODIAC_SIGNS = [
-  'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
-  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
-];
-
-const SOUTH_GRID = [
-  { sign: 'Pisces', short: 'Pis', row: 0, col: 0 },
-  { sign: 'Aries', short: 'Ari', row: 0, col: 1 },
-  { sign: 'Taurus', short: 'Tau', row: 0, col: 2 },
-  { sign: 'Gemini', short: 'Gem', row: 0, col: 3 },
-  { sign: 'Cancer', short: 'Can', row: 1, col: 3 },
-  { sign: 'Leo', short: 'Leo', row: 2, col: 3 },
-  { sign: 'Virgo', short: 'Vir', row: 3, col: 3 },
-  { sign: 'Libra', short: 'Lib', row: 3, col: 2 },
-  { sign: 'Scorpio', short: 'Sco', row: 3, col: 1 },
-  { sign: 'Sagittarius', short: 'Sag', row: 3, col: 0 },
-  { sign: 'Capricorn', short: 'Cap', row: 2, col: 0 },
-  { sign: 'Aquarius', short: 'Aqu', row: 1, col: 0 },
-];
-
-function InCallSouthIndianChart({
-  planets,
-  ascendantSign = 'Scorpio',
-}: {
-  planets: Array<{ symbol: string; house: number; color: string; sign?: string }>;
-  ascendantSign?: string;
-}) {
-  const S = 220;
-  const C = S / 4; // 55px per cell
-  const stroke = 'rgba(201, 168, 76, 0.45)';
-  const ascIdx = Math.max(0, ZODIAC_SIGNS.findIndex((s) => s.toLowerCase() === ascendantSign.toLowerCase()));
-
-  return (
-    <View style={{ width: S, height: S, alignSelf: 'center', marginVertical: 6 }}>
-      <Svg width={S} height={S}>
-        <Rect x={0} y={0} width={S} height={S} fill="rgba(30,12,9,0.92)" stroke={stroke} strokeWidth={1.5} rx={8} />
-
-        {SOUTH_GRID.map((item) => {
-          const x = item.col * C;
-          const y = item.row * C;
-          const signIdx = ZODIAC_SIGNS.findIndex((s) => s.toLowerCase() === item.sign.toLowerCase());
-          const houseNum = ((signIdx - ascIdx + 12) % 12) + 1;
-          const isAsc = signIdx === ascIdx;
-
-          const cellPlanets = planets.filter((p) => {
-            if (p.sign && p.sign.toLowerCase() === item.sign.toLowerCase()) return true;
-            return p.house === houseNum;
-          });
-
-          return (
-            <React.Fragment key={item.sign}>
-              <Rect
-                x={x}
-                y={y}
-                width={C}
-                height={C}
-                fill={isAsc ? 'rgba(201,168,76,0.18)' : 'transparent'}
-                stroke={stroke}
-                strokeWidth={1}
-              />
-              {isAsc && (
-                <Line x1={x} y1={y + C} x2={x + C} y2={y} stroke="#FFD700" strokeWidth={1} strokeDasharray="2,2" />
-              )}
-              <SvgText x={x + 4} y={y + 11} fontSize={8} fontWeight="700" fill={isAsc ? '#FFD700' : 'rgba(201,168,76,0.7)'}>
-                {item.short}
-              </SvgText>
-              {isAsc && (
-                <SvgText x={x + C - 4} y={y + 11} fontSize={7.5} fontWeight="800" textAnchor="end" fill="#FFD700">
-                  ASC
-                </SvgText>
-              )}
-              {cellPlanets.length > 0 && (
-                <SvgText x={x + C / 2} y={y + 26} fontSize={10} fontWeight="800" textAnchor="middle" fill={cellPlanets[0].color}>
-                  {cellPlanets.map((p) => p.symbol).join('')}
-                </SvgText>
-              )}
-            </React.Fragment>
-          );
-        })}
-
-        {/* Center 2x2 Chamber */}
-        <Rect x={C} y={C} width={C * 2} height={C * 2} fill="#140604" stroke="rgba(201,168,76,0.6)" strokeWidth={1} />
-        <SvgText x={S / 2} y={S / 2 - 8} fontSize={10} fontWeight="800" textAnchor="middle" fill="#FFD700">
-          ✦ D1 LAGNA ✦
-        </SvgText>
-        <SvgText x={S / 2} y={S / 2 + 8} fontSize={9} fontWeight="700" textAnchor="middle" fill="#F0EAD6">
-          {ascendantSign}
-        </SvgText>
-      </Svg>
-    </View>
-  );
-}
-
 export default function ConsultationScreen() {
   const colors = useThemeColors();
   const extra = useExtra<{ type?: string; astrologer?: Astro; roomID?: string }>();
@@ -277,7 +115,7 @@ export default function ConsultationScreen() {
 
   const [chartData, setChartData] = useState<KundliChartData | null>(null);
   const [callTab, setCallTab] = useState<'chart' | 'stream'>('chart');
-  const [inCallChartFormat, setInCallChartFormat] = useState<'north' | 'south'>('north');
+  const [inCallChartFormat, setInCallChartFormat] = useState<'north' | 'south'>('south');
 
   // Load Devotee Birth Chart for the Call Screen
   useEffect(() => {
@@ -318,6 +156,28 @@ export default function ConsultationScreen() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [ended, setEnded] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      if (Platform.OS === 'android') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      if (Platform.OS === 'android') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Review states
   const [reviewRating, setReviewRating] = useState(5);
@@ -374,7 +234,7 @@ export default function ConsultationScreen() {
         type: isVideo ? 'Video Call' : 'Voice Call',
         date: 'Today',
         duration: fmt(secondsRef.current),
-        amount: totalCharged,
+        amount: Number(totalCharged.toFixed(2)),
         avatar: astro.imageUrl,
         roomID,
       };
@@ -438,11 +298,13 @@ export default function ConsultationScreen() {
           const firstMin = await deductWalletBalance(
             ratePerMin,
             `1st Min: AI Consultation with ${astro.name}`,
-            astro.name
+            astro.name,
+            undefined,
+            { displayAmount: `-${formatPrice(ratePerMin)}` }
           );
           if (firstMin.success) {
             setBalance(firstMin.newBalance);
-            setTotalCharged(ratePerMin);
+            setTotalCharged(Number(ratePerMin.toFixed(2)));
             addSystem(`AI Consultation connected. First minute (${formatPrice(ratePerMin)}) billed.`);
             addSystem(`Session: ${roomID}`);
           }
@@ -455,11 +317,13 @@ export default function ConsultationScreen() {
             const res = await deductWalletBalance(
               ratePerMin,
               `AI Consultation with ${astro.name}`,
-              astro.name
+              astro.name,
+              undefined,
+              { displayAmount: `-${formatPrice(ratePerMin)}` }
             );
             if (res.success) {
               setBalance(res.newBalance);
-              setTotalCharged((prev) => prev + ratePerMin);
+              setTotalCharged((prev) => Number((prev + ratePerMin).toFixed(2)));
             } else if (res.isDepleted) {
               addSystem('Wallet balance exhausted. Ending session...');
               setTimeout(endCall, 800);
@@ -541,11 +405,12 @@ export default function ConsultationScreen() {
               ratePerMin,
               `1st Min: ${isVideo ? 'Video' : 'Voice'} Call with ${astro.name}`,
               astro.name,
-              activeConsultId
+              activeConsultId,
+              { displayAmount: `-${formatPrice(ratePerMin)}` }
             );
             if (firstMin.success) {
               setBalance(firstMin.newBalance);
-              setTotalCharged(ratePerMin);
+              setTotalCharged(Number(ratePerMin.toFixed(2)));
               addSystem(`Astrologer accepted! Call connected. First minute (${formatPrice(ratePerMin)}) billed.`);
               addSystem(`ZegoCloud Room: ${roomID}`);
             }
@@ -559,11 +424,12 @@ export default function ConsultationScreen() {
                 ratePerMin,
                 `${isVideo ? 'Video' : 'Voice'} Call with ${astro.name}`,
                 astro.name,
-                activeConsultId
+                activeConsultId,
+                { displayAmount: `-${formatPrice(ratePerMin)}` }
               );
               if (res.success) {
                 setBalance(res.newBalance);
-                setTotalCharged((prev) => prev + ratePerMin);
+                setTotalCharged((prev) => Number((prev + ratePerMin).toFixed(2)));
                 if (res.newBalance < ratePerMin) {
                   addSystem(`⚠️ Low balance: ${formatPrice(res.newBalance)} left. Less than 1 minute remaining.`);
                 }
@@ -684,7 +550,10 @@ export default function ConsultationScreen() {
       />
 
       <SafeAreaView style={{ flex: 1 }}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView
+          style={{ flex: 1, paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           {/* Top Bar: Astrologer Info, Live Timer, Wallet Balance */}
           <View
             style={{
@@ -808,146 +677,75 @@ export default function ConsultationScreen() {
 
             {connected && !isChatOpen && (
               callTab === 'chart' ? (
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 4 }}>
-                  {/* Devotee Birth Details Card */}
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 6, paddingBottom: 28 }}>
+                  {/* Devotee Birth Details Header Card */}
                   <View
                     style={{
                       marginHorizontal: 16,
-                      paddingHorizontal: 14,
-                      paddingVertical: 10,
-                      borderRadius: 16,
-                      backgroundColor: 'rgba(38, 16, 11, 0.92)',
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      borderRadius: 18,
+                      backgroundColor: 'rgba(32, 14, 10, 0.94)',
                       borderWidth: 1.5,
-                      borderColor: 'rgba(201, 168, 76, 0.45)',
-                      shadowColor: '#C9A84C',
-                      shadowOpacity: 0.15,
+                      borderColor: '#C9952B',
+                      shadowColor: '#C9952B',
+                      shadowOpacity: 0.2,
                       shadowRadius: 8,
-                      elevation: 3,
+                      elevation: 4,
+                      marginBottom: 12,
                     }}
                   >
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={{ color: '#F0EAD6', fontSize: 13.5, fontWeight: '800' }}>
+                      <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800' }}>
                         👤 {devoteeName}
                       </Text>
-                      <View style={{ paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 8, backgroundColor: 'rgba(201, 168, 76, 0.22)', borderWidth: 1, borderColor: '#C9A84C' }}>
-                        <Text style={{ color: '#FFD700', fontSize: 10.5, fontWeight: '800' }}>
+                      <View style={{ paddingHorizontal: 9, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(201, 149, 43, 0.25)', borderWidth: 1, borderColor: '#C9952B' }}>
+                        <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '800' }}>
                           Lagna: {devoteeLagna}
                         </Text>
                       </View>
                     </View>
 
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5, flexWrap: 'wrap', gap: 8 }}>
-                      <Text style={{ color: '#D4C5A9', fontSize: 11 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, flexWrap: 'wrap', gap: 10 }}>
+                      <Text style={{ color: '#E2E8F0', fontSize: 11.5, fontWeight: '600' }}>
                         📅 {devoteeDob} • ⏰ {devoteeTob}
                       </Text>
-                      <Text numberOfLines={1} style={{ color: '#D4C5A9', fontSize: 11, flexShrink: 1 }}>
+                      <Text numberOfLines={1} style={{ color: '#CBD5E1', fontSize: 11.5, fontWeight: '500', flexShrink: 1 }}>
                         📍 {devoteePob}
                       </Text>
                     </View>
 
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5, gap: 12 }}>
-                      <Text style={{ color: '#C9A84C', fontSize: 11.5, fontWeight: '700' }}>
-                        ♈ Rashi: {devoteeRashi}
-                      </Text>
-                      <Text style={{ color: '#C9A84C', fontSize: 11.5, fontWeight: '700' }}>
-                        🌟 Nakshatra: {devoteeNakshatra}
-                      </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 7, flexWrap: 'wrap', gap: 8 }}>
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 7, backgroundColor: 'rgba(255, 255, 255, 0.08)', borderWidth: 0.8, borderColor: 'rgba(255, 255, 255, 0.22)' }}>
+                        <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '700' }}>
+                          ♈ Rashi: {devoteeRashi}
+                        </Text>
+                      </View>
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 7, backgroundColor: 'rgba(255, 255, 255, 0.08)', borderWidth: 0.8, borderColor: 'rgba(255, 255, 255, 0.22)' }}>
+                        <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '700' }}>
+                          🌟 Nakshatra: {devoteeNakshatra}
+                        </Text>
+                      </View>
                     </View>
                   </View>
 
-                  {/* Chart Format Switcher: North Indian vs South Indian */}
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      marginHorizontal: 16,
-                      marginTop: 8,
-                      marginBottom: 2,
-                      padding: 2,
-                      borderRadius: 10,
-                      backgroundColor: 'rgba(20, 8, 5, 0.9)',
-                      borderWidth: 1,
-                      borderColor: 'rgba(201, 168, 76, 0.25)',
-                    }}
-                  >
-                    <Pressable
-                      onPress={() => setInCallChartFormat('north')}
-                      style={{
-                        flex: 1,
-                        paddingVertical: 4.5,
-                        borderRadius: 8,
-                        alignItems: 'center',
-                        backgroundColor: inCallChartFormat === 'north' ? '#713B32' : 'transparent',
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 10.5,
-                          fontWeight: '700',
-                          color: inCallChartFormat === 'north' ? '#FFD700' : '#A0A8C0',
-                        }}
-                      >
-                        🏛 North Indian
-                      </Text>
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() => setInCallChartFormat('south')}
-                      style={{
-                        flex: 1,
-                        paddingVertical: 4.5,
-                        borderRadius: 8,
-                        alignItems: 'center',
-                        backgroundColor: inCallChartFormat === 'south' ? '#713B32' : 'transparent',
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 10.5,
-                          fontWeight: '700',
-                          color: inCallChartFormat === 'south' ? '#FFD700' : '#A0A8C0',
-                        }}
-                      >
-                        🛕 South Indian
-                      </Text>
-                    </Pressable>
-                  </View>
-
-                  {/* Janam Kundli SVG Chart (North or South Indian) */}
-                  {inCallChartFormat === 'north' ? (
-                    <InCallKundliChart planets={activePlanets} />
-                  ) : (
-                    <InCallSouthIndianChart planets={activePlanets} ascendantSign={devoteeLagna} />
-                  )}
-
-                  {/* Planetary Positions Horizontal Chips */}
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 16, gap: 6, paddingVertical: 4 }}
-                  >
-                    {activePlanets.map((p) => (
-                      <View
-                        key={p.name}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          paddingHorizontal: 8,
-                          paddingVertical: 4.5,
-                          borderRadius: 8,
-                          backgroundColor: 'rgba(38, 16, 11, 0.88)',
-                          borderWidth: 1,
-                          borderColor: 'rgba(201, 168, 76, 0.35)',
-                        }}
-                      >
-                        <Text style={{ color: p.color, fontSize: 11.5, fontWeight: '800', marginRight: 4 }}>
-                          {p.symbol}
-                        </Text>
-                        <Text style={{ color: '#F0EAD6', fontSize: 11, fontWeight: '600' }}>
-                          {p.name} ({p.house}H • {p.sign})
-                        </Text>
-                      </View>
-                    ))}
-                  </ScrollView>
+                  {/* Fully Dynamic Vedic Kundli Chart (Matching Reference Image 2) */}
+                  <VedicKundliChart
+                    chartData={chartData}
+                    devoteeName={devoteeName}
+                    dob={devoteeDob}
+                    tob={devoteeTob}
+                    pob={devoteePob}
+                    ascendantSign={devoteeLagna}
+                    moonSign={devoteeRashi}
+                    nakshatra={devoteeNakshatra}
+                    planets={activePlanets}
+                    chartStyle={inCallChartFormat === 'north' ? 'north-indian' : 'south-indian'}
+                    onChartStyleChange={(s) => setInCallChartFormat(s === 'north-indian' ? 'north' : 'south')}
+                    showFormatSwitcher={true}
+                    showPlanetaryList={true}
+                    compact={false}
+                  />
                 </ScrollView>
               ) : (
                 /* Astrologer Voice Stream View */

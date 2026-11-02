@@ -164,10 +164,9 @@ function PersonCard({
       <View style={{ marginTop: 12 }}>
         <LocationSearchInput
           label="Birth Place (City, State, Country)"
-          placeholder="Search city or Google Maps place..."
+          placeholder="Enter birth place (e.g. Mumbai)"
           value={pob}
           onChangeText={setPob}
-          showPopularChips={false}
         />
       </View>
     </View>

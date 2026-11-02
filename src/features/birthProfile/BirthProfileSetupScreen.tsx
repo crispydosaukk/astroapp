@@ -8,7 +8,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Keyboard, LayoutAnimation, Platform, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedBox, AnimatedPressable, switcherEntering } from '@/components/AnimatedBox';
@@ -109,7 +109,11 @@ function BirthDetailsForm(p: {
 }) {
   const colors = useThemeColors();
   return (
-    <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 160 }}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+    >
       <StepTitle title={'Your Birth\nDetails'} subtitle="Accurate details help us generate your precise Kundli." />
       <GlassField label="Full Name">
         <TextInput
@@ -257,14 +261,18 @@ function BirthDetailsForm(p: {
 /* ---------------------------------------------------------------- step 2 */
 function BirthPlace({ value, onChange }: { value: string; onChange: (s: string) => void }) {
   return (
-    <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 160 }}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+    >
       <StepTitle title={'Your Birth\nPlace'} subtitle="Enter the city and country where you were born." />
       <LocationSearchInput
         value={value}
         onChangeText={onChange}
         required
         label="Birth Place (City, State, Country)"
-        placeholder="Search city or Google Maps place..."
+        placeholder="Enter birth place (e.g. Mumbai)"
         style={{ marginTop: 8 }}
       />
     </ScrollView>
@@ -284,6 +292,28 @@ export default function BirthProfileSetupScreen() {
   const [time, setTime] = useState<Date | null>(null);
   const [birthPlace, setBirthPlace] = useState('');
   const [saving, setSaving] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      if (Platform.OS === 'android') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      if (Platform.OS === 'android') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const pendingAuth = useAuthStore((s) => s.pendingAuth);
   const setUser = useAuthStore((s) => s.setUser);
@@ -323,7 +353,7 @@ export default function BirthProfileSetupScreen() {
         if (chart.moonSign) calculatedMoonSign = chart.moonSign;
         if (chart.nakshatra) calculatedNakshatra = chart.nakshatra;
       }
-    } catch {}
+    } catch { }
 
     const profileData = {
       uid,
@@ -383,7 +413,7 @@ export default function BirthProfileSetupScreen() {
       };
       await AsyncStorage.setItem(`astroparihar_birth_profiles_${uid}`, JSON.stringify([primaryProfileItem]));
       await AsyncStorage.setItem('astroparihar_birth_profiles', JSON.stringify([primaryProfileItem]));
-    } catch {}
+    } catch { }
 
     showSnackBar('Cosmic Birth Profile successfully registered!');
     const redirect = useAuthStore.getState().postLoginRedirect;
@@ -476,7 +506,16 @@ export default function BirthProfileSetupScreen() {
         </Animated.View>
       </View>
 
-      <View style={{ flexDirection: 'row', paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 24 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: keyboardHeight > 0
+            ? (Platform.OS === 'android' ? keyboardHeight + 8 : 12)
+            : insets.bottom + 24,
+        }}
+      >
         {currentStep > 0 ? (
           <Pressable
             testID="birthProfile.backButton"

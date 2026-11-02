@@ -12,19 +12,16 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Line, Rect, Text as SvgText } from 'react-native-svg';
 import { EXPAND_LAYOUT, Expandable } from '@/components/AnimatedBox';
 import { AppBar, BoxBackButton } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton } from '@/components/common';
 import { BottomSheet, showSnackBar, useSheet } from '@/components/overlays';
-import {
-  ReportIntakeConfig,
-  ServiceReportIntakeModal,
-} from '@/components/ServiceReportIntakeModal';
 import { lh, Text } from '@/components/Text';
+import { VedicKundliChart } from '@/components/VedicKundliChart';
 import { AppRoutes, push } from '@/navigation/routes';
 import { fetchCalculatedKundli, KundliChartData } from '@/services/astrologyService';
+import { useBirthProfileStore } from '@/services/birthProfileStore';
 import { downloadOrShareReport } from '@/services/reportService';
 import { useAuthStore } from '@/features/auth/authStore';
 import { withAlpha } from '@/theme/colors';
@@ -92,199 +89,7 @@ const GENERIC: Record<string, string> = {
   Spirituality: 'Ketu in 9th house and Venus in 12th house indicate deep spiritual inclination and divine protection.',
 };
 
-/* ------------------------------------------------------------ chart (SVG) */
-const CHART = 280;
-const T = CHART / 3;
-const HOUSE_POS: Record<number, [number, number]> = {
-  1: [T * 1.5, T * 0.5], 2: [T * 2.5, T * 0.5], 3: [T * 2.5, T * 1.5], 4: [T * 2.5, T * 2.5],
-  9: [T * 1.5, T * 2.5], 10: [T * 0.5, T * 2.5], 11: [T * 0.5, T * 1.5], 12: [T * 0.5, T * 0.5],
-};
-const HOUSE_MAP: Record<string, number> = { '0,0': 12, '1,0': 1, '2,0': 2, '0,1': 11, '2,1': 3, '0,2': 10, '1,2': 9, '2,2': 4 };
 
-function houseFromPoint(x: number, y: number): number | null {
-  const col = Math.min(2, Math.max(0, Math.floor(x / T)));
-  const row = Math.min(2, Math.max(0, Math.floor(y / T)));
-  if (col === 1 && row === 1) return null;
-  return HOUSE_MAP[`${col},${row}`] ?? null;
-}
-
-const ZODIAC_SIGNS = [
-  'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
-  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
-];
-
-const SOUTH_ZODIAC_GRID = [
-  { sign: 'Pisces', short: 'Pis', row: 0, col: 0 },
-  { sign: 'Aries', short: 'Ari', row: 0, col: 1 },
-  { sign: 'Taurus', short: 'Tau', row: 0, col: 2 },
-  { sign: 'Gemini', short: 'Gem', row: 0, col: 3 },
-  { sign: 'Cancer', short: 'Can', row: 1, col: 3 },
-  { sign: 'Leo', short: 'Leo', row: 2, col: 3 },
-  { sign: 'Virgo', short: 'Vir', row: 3, col: 3 },
-  { sign: 'Libra', short: 'Lib', row: 3, col: 2 },
-  { sign: 'Scorpio', short: 'Sco', row: 3, col: 1 },
-  { sign: 'Sagittarius', short: 'Sag', row: 3, col: 0 },
-  { sign: 'Capricorn', short: 'Cap', row: 2, col: 0 },
-  { sign: 'Aquarius', short: 'Aqu', row: 1, col: 0 },
-];
-
-function SouthIndianChart({
-  planets,
-  ascendantSign = 'Scorpio',
-  selectedHouse,
-  onHouseTap,
-  colors,
-}: {
-  planets: Planet[];
-  ascendantSign?: string;
-  selectedHouse: number | null;
-  onHouseTap: (h: number) => void;
-  colors: any;
-}) {
-  const S = CHART / 4; // 70px per box
-  const stroke = colors.cardBorder;
-  const ascIdx = Math.max(0, ZODIAC_SIGNS.findIndex((s) => s.toLowerCase() === ascendantSign.toLowerCase()));
-
-  const handlePressIn = (e: any) => {
-    const x = e.nativeEvent.locationX;
-    const y = e.nativeEvent.locationY;
-    const col = Math.min(3, Math.max(0, Math.floor(x / S)));
-    const row = Math.min(3, Math.max(0, Math.floor(y / S)));
-    if ((col === 1 || col === 2) && (row === 1 || row === 2)) return;
-    const item = SOUTH_ZODIAC_GRID.find((g) => g.col === col && g.row === row);
-    if (!item) return;
-    const signIdx = ZODIAC_SIGNS.findIndex((s) => s.toLowerCase() === item.sign.toLowerCase());
-    const houseNum = ((signIdx - ascIdx + 12) % 12) + 1;
-    onHouseTap(houseNum);
-  };
-
-  return (
-    <Pressable testID="myKundli.southChart" onPressIn={handlePressIn} style={{ width: CHART, height: CHART }}>
-      <Svg width={CHART} height={CHART} pointerEvents="none">
-        {/* Outer background */}
-        <Rect x={0} y={0} width={CHART} height={CHART} fill={colors.surfaceVariant} stroke={stroke} strokeWidth={1.5} />
-
-        {/* 12 Outer Sign Boxes */}
-        {SOUTH_ZODIAC_GRID.map((item) => {
-          const x = item.col * S;
-          const y = item.row * S;
-          const signIdx = ZODIAC_SIGNS.findIndex((s) => s.toLowerCase() === item.sign.toLowerCase());
-          const houseNum = ((signIdx - ascIdx + 12) % 12) + 1;
-          const isAsc = signIdx === ascIdx;
-          const isSelected = selectedHouse === houseNum;
-
-          // Planets in this sign or house
-          const cellPlanets = planets.filter((p) => {
-            if (p.sign && p.sign.toLowerCase() === item.sign.toLowerCase()) return true;
-            return p.house === houseNum;
-          });
-
-          return (
-            <React.Fragment key={item.sign}>
-              <Rect
-                x={x}
-                y={y}
-                width={S}
-                height={S}
-                fill={isSelected ? withAlpha(colors.goldAccent, 25) : isAsc ? withAlpha('#713B32', 20) : 'transparent'}
-                stroke={isSelected ? colors.goldAccent : stroke}
-                strokeWidth={isSelected ? 1.5 : 1}
-              />
-              {/* Ascendant diagonal sash */}
-              {isAsc && (
-                <Line x1={x} y1={y + S} x2={x + S} y2={y} stroke={colors.goldAccent} strokeWidth={1.5} strokeDasharray="3,3" />
-              )}
-              {/* Sign & House label */}
-              <SvgText x={x + 6} y={y + 13} fontSize={9.5} fontWeight="700" fill={isAsc ? colors.goldAccent : colors.textMuted}>
-                {`${item.short} (H${houseNum})`}
-              </SvgText>
-              {isAsc && (
-                <SvgText x={x + S - 6} y={y + 13} fontSize={9} fontWeight="800" textAnchor="end" fill={colors.goldAccent}>
-                  ASC
-                </SvgText>
-              )}
-              {/* Planets */}
-              {cellPlanets.map((p, pIdx) => {
-                const px = x + 12 + (pIdx % 3) * 18;
-                const py = y + 30 + Math.floor(pIdx / 3) * 16;
-                return (
-                  <SvgText key={p.name} x={px} y={py} fontSize={11} fontWeight="700" textAnchor="middle" fill={p.color}>
-                    {p.symbol || p.name.substring(0, 2)}
-                  </SvgText>
-                );
-              })}
-            </React.Fragment>
-          );
-        })}
-
-        {/* Center 2x2 Inner Chamber */}
-        <Rect
-          x={S}
-          y={S}
-          width={S * 2}
-          height={S * 2}
-          fill={colors.isLight ? '#FFFDF9' : '#0B1524'}
-          stroke={colors.goldAccent}
-          strokeWidth={1.5}
-        />
-        <SvgText x={CHART / 2} y={CHART / 2 - 16} fontSize={13} fontWeight="800" textAnchor="middle" fill={colors.goldAccent}>
-          ✦ D-1 LAGNA ✦
-        </SvgText>
-        <SvgText x={CHART / 2} y={CHART / 2 + 2} fontSize={11} fontWeight="700" textAnchor="middle" fill={colors.textPrimary}>
-          {`Lagna: ${ascendantSign}`}
-        </SvgText>
-        <SvgText x={CHART / 2} y={CHART / 2 + 18} fontSize={10} fontWeight="500" textAnchor="middle" fill={colors.textMuted}>
-          South Indian Format
-        </SvgText>
-      </Svg>
-    </Pressable>
-  );
-}
-
-function VedicChart({ planets, selectedHouse, onHouseTap, colors }: { planets: Planet[]; selectedHouse: number | null; onHouseTap: (h: number) => void; colors: any }) {
-  const stroke = colors.cardBorder;
-  return (
-    <Pressable
-      testID="myKundli.chart"
-      onPressIn={(e) => {
-        const h = houseFromPoint(e.nativeEvent.locationX, e.nativeEvent.locationY);
-        if (h != null) onHouseTap(h);
-      }}
-      style={{ width: CHART, height: CHART }}
-    >
-      <Svg width={CHART} height={CHART} pointerEvents="none">
-        <Rect x={0} y={0} width={CHART} height={CHART} fill={colors.surfaceVariant} stroke={stroke} strokeWidth={1.5} />
-        {[1, 2].map((i) => (
-          <React.Fragment key={i}>
-            <Line x1={i * T} y1={0} x2={i * T} y2={CHART} stroke={stroke} strokeWidth={1.5} />
-            <Line x1={0} y1={i * T} x2={CHART} y2={i * T} stroke={stroke} strokeWidth={1.5} />
-          </React.Fragment>
-        ))}
-        <Line x1={0} y1={0} x2={T} y2={T} stroke={stroke} strokeWidth={1.5} />
-        <Line x1={2 * T} y1={0} x2={T} y2={T} stroke={stroke} strokeWidth={1.5} />
-        <Line x1={0} y1={CHART} x2={T} y2={2 * T} stroke={stroke} strokeWidth={1.5} />
-        <Line x1={CHART} y1={CHART} x2={2 * T} y2={2 * T} stroke={stroke} strokeWidth={1.5} />
-        {Object.entries(HOUSE_POS).map(([h, [x, y]]) => (
-          <SvgText key={`h${h}`} x={x} y={y - 8 + 4} fontSize={11} fontWeight="700" textAnchor="middle" fill={selectedHouse === Number(h) ? colors.goldAccent : colors.textMuted}>
-            {h}
-          </SvgText>
-        ))}
-        {planets.map((p) => {
-          const pos = HOUSE_POS[p.house];
-          if (!pos) return null;
-          return (
-            <SvgText key={p.name} x={pos[0]} y={pos[1] + 6 + 5} fontSize={14} textAnchor="middle" fill={p.color}>
-              {p.symbol}
-            </SvgText>
-          );
-        })}
-        <SvgText x={T * 1.5} y={T * 0.5 - 18 + 9} fontSize={10} fontWeight="800" textAnchor="middle" fill={colors.goldAccent}>
-          Lg
-        </SvgText>
-      </Svg>
-    </Pressable>
-  );
-}
 
 function InfoChip({ label, value, color }: { label: string; value: string; color: string }) {
   return (
@@ -546,29 +351,31 @@ export default function MyKundliScreen() {
   const insets = useSafeAreaInsets();
   const authUser = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const activeProfile = useBirthProfileStore((s) => s.activeProfile);
   const setPostLoginRedirect = useAuthStore((s) => s.setPostLoginRedirect);
   const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
   const [selectedHouse, setSelectedHouse] = useState<number | null>(null);
-  const [chartFormat, setChartFormat] = useState<'north' | 'south'>('north');
+  const [chartFormat, setChartFormat] = useState<'north' | 'south'>('south');
   const [expanded, setExpanded] = useState<Set<number>>(new Set([0, 1, 2]));
   const [chartData, setChartData] = useState<KundliChartData | null>(null);
-  const [reportModalOpen, setReportModalOpen] = useState(false);
   const planetSheet = useSheet<Planet>();
   const houseSheet = useSheet<number>();
 
-  const detailedReportConfig: ReportIntakeConfig = {
-    mode: 'service',
-    title: 'Comprehensive Life Kundli Report',
-    subtitle: '48+ pages of 12-Bhava predictions, Mahadasha timeline & Vedic pariharam',
-    price: 499,
-    category: 'services',
-  };
-
   useEffect(() => {
-    fetchCalculatedKundli().then((data) => {
+    const profileParams = activeProfile?.dob
+      ? {
+          name: activeProfile.name,
+          dob: activeProfile.dob,
+          tob: activeProfile.time,
+          pob: activeProfile.place,
+          gender: activeProfile.gender,
+        }
+      : undefined;
+
+    fetchCalculatedKundli(profileParams).then((data) => {
       if (data) setChartData(data);
     });
-  }, [authUser]);
+  }, [authUser, activeProfile]);
 
   const chart = useSharedValue(0);
   useEffect(() => { chart.value = withTiming(1, { duration: 1200, easing: Easing.out(Easing.cubic) }); }, [chart]);
@@ -617,10 +424,6 @@ export default function MyKundliScreen() {
         'Perform directional Ashta Parihar remedies aligned with your Lagna',
       ],
     });
-  };
-
-  const handleGetDetailedReport = () => {
-    setReportModalOpen(true);
   };
 
   return (
@@ -672,12 +475,12 @@ export default function MyKundliScreen() {
           </View>
           <View style={{ flex: 1, marginLeft: 16 }}>
             <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700', marginBottom: 4 }}>
-              {chartData?.name || authUser?.name || 'Guest'}
+              {chartData?.name || activeProfile?.name || authUser?.name || 'Guest'}
             </Text>
             {[
-              ['📅', chartData?.dob || authUser?.dob || 'Not specified'],
-              ['⏰', chartData?.tob || authUser?.tob || 'Not specified'],
-              ['📍', chartData?.pob || authUser?.pob || 'Not specified'],
+              ['📅', chartData?.dob || activeProfile?.dob || authUser?.dob || 'Not specified'],
+              ['⏰', chartData?.tob || activeProfile?.time || authUser?.tob || 'Not specified'],
+              ['📍', chartData?.pob || activeProfile?.place || authUser?.pob || 'Not specified'],
             ].map(([e, tText]) => (
               <View key={tText} style={{ marginTop: 2, flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 11 }}>{e}</Text>
@@ -690,120 +493,41 @@ export default function MyKundliScreen() {
           </View>
         </LinearGradient>
 
-        {/* chart card */}
-        <View style={{ marginHorizontal: 20, marginVertical: 8, padding: 16, borderRadius: 22, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Vedic Birth Chart</Text>
-            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: withAlpha(colors.goldAccent, 25), borderWidth: 1, borderColor: colors.cardBorder }}>
-              <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '600' }}>
-                {chartFormat === 'north' ? 'North Indian (Diamond)' : 'South Indian (Box)'}
-              </Text>
-            </View>
-          </View>
-
-          {/* North vs South Indian Chart Format Switcher */}
-          <View
-            style={{
-              flexDirection: 'row',
-              marginTop: 12,
-              padding: 3,
-              borderRadius: 14,
-              backgroundColor: colors.surfaceVariant,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
+        {/* Vedic Kundli Birth Chart (Matching Reference Image 2) */}
+        <Animated.View style={[{ marginHorizontal: 16, marginVertical: 8, alignItems: 'center' }, chartStyle]}>
+          <VedicKundliChart
+            chartData={chartData}
+            devoteeName={chartData?.name || activeProfile?.name || authUser?.name || 'Devotee'}
+            dob={chartData?.dob || activeProfile?.dob || authUser?.dob || '1995-10-15'}
+            tob={chartData?.tob || activeProfile?.time || authUser?.tob || '12:00 PM'}
+            pob={chartData?.pob || activeProfile?.place || authUser?.pob || 'New Delhi, India'}
+            ascendantSign={chartData?.ascendant?.sign || 'Scorpio'}
+            moonSign={chartData?.moonSign || 'Cancer'}
+            nakshatra={chartData?.nakshatra || 'Punarvasu'}
+            nakshatraPada={chartData?.nakshatraPada || 1}
+            planets={activePlanets}
+            chartStyle={chartFormat === 'north' ? 'north-indian' : 'south-indian'}
+            onChartStyleChange={(s) => setChartFormat(s === 'north-indian' ? 'north' : 'south')}
+            selectedHouse={selectedHouse}
+            onHouseTap={(h) => {
+              setSelectedHouse(h);
+              houseSheet.open(h);
             }}
-          >
-            <Pressable
-              onPress={() => setChartFormat('north')}
-              style={{
-                flex: 1,
-                paddingVertical: 7,
-                borderRadius: 11,
-                alignItems: 'center',
-                backgroundColor: chartFormat === 'north' ? '#713B32' : 'transparent',
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: '700',
-                  color: chartFormat === 'north' ? '#FFFFFF' : colors.textSecondary,
-                }}
-              >
-                🏛 North Indian
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => setChartFormat('south')}
-              style={{
-                flex: 1,
-                paddingVertical: 7,
-                borderRadius: 11,
-                alignItems: 'center',
-                backgroundColor: chartFormat === 'south' ? '#713B32' : 'transparent',
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: '700',
-                  color: chartFormat === 'south' ? '#FFFFFF' : colors.textSecondary,
-                }}
-              >
-                🛕 South Indian
-              </Text>
-            </Pressable>
-          </View>
-
-          <Animated.View style={[{ marginTop: 16, alignItems: 'center' }, chartStyle]}>
-            {chartFormat === 'north' ? (
-              <VedicChart
-                planets={activePlanets}
-                selectedHouse={selectedHouse}
-                onHouseTap={(h) => {
-                  setSelectedHouse(h);
-                  houseSheet.open(h);
-                }}
-                colors={colors}
-              />
-            ) : (
-              <SouthIndianChart
-                planets={activePlanets}
-                ascendantSign={chartData?.ascendant?.sign || 'Scorpio'}
-                selectedHouse={selectedHouse}
-                onHouseTap={(h) => {
-                  setSelectedHouse(h);
-                  houseSheet.open(h);
-                }}
-                colors={colors}
-              />
-            )}
-          </Animated.View>
-          <Text style={{ marginTop: 16, color: colors.textMuted, fontSize: 11, textAlign: 'center' }}>Tap any house or planet for detailed interpretation</Text>
-          <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {activePlanets.map((p) => (
-              <Pressable
-                key={p.name}
-                testID={`myKundli.planet.${p.name.toLowerCase()}`}
-                onPress={() => planetSheet.open(p)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingHorizontal: 10,
-                  paddingVertical: 5,
-                  borderRadius: 20,
-                  backgroundColor: withAlpha(p.color, colors.isLight ? 20 : 30),
-                  borderWidth: 1,
-                  borderColor: withAlpha(p.color, 80),
-                }}
-              >
-                <Text style={{ color: p.color, fontSize: 13 }}>{p.symbol}</Text>
-                <Text style={{ marginLeft: 4, color: colors.textSecondary, fontSize: 11 }}>{p.name}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
+            onPlanetTap={(p) => {
+              planetSheet.open({
+                name: p.name || p.cleanName,
+                symbol: p.symbol || p.style?.symbol || '✦',
+                sign: p.sign || p.signName || 'Aries',
+                house: Number(p.houseNum || p.house || 1),
+                degree: p.degree || "10°00'",
+                color: p.color || p.style?.text || '#FFD700',
+              });
+            }}
+            showFormatSwitcher={true}
+            showPlanetaryList={true}
+            compact={false}
+          />
+        </Animated.View>
 
         {/* AI card */}
         <LinearGradient
@@ -845,41 +569,8 @@ export default function MyKundliScreen() {
           );
         })}
 
-        {/* detailed report CTA */}
-        <LinearGradient
-          colors={
-            colors.isLight
-              ? ['#FFF9F0', '#F2E9DE']
-              : [withAlpha(colors.goldAccent, 25), colors.surfaceVariant]
-          }
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 8, padding: 20, borderRadius: 20, borderWidth: 1, borderColor: colors.cardBorder, alignItems: 'center' }}
-        >
-          <Text style={{ fontSize: 32 }}>📜</Text>
-          <Text style={{ marginTop: 8, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Get Detailed Kundli Report</Text>
-          <Text style={{ marginTop: 4, color: colors.textSecondary, fontSize: 13 }}>40+ pages of personalised Vedic analysis & pariharam</Text>
-          <ElevatedButton
-            testID="myKundli.detailedReport"
-            label={isUserLoggedIn ? 'Get Detailed Report — ₹499' : '🔒 Sign In to Get Report — ₹499'}
-            onPress={handleGetDetailedReport}
-            bg="#713B32"
-            fg="#FFFFFF"
-            radius={100}
-            paddingV={14}
-            fontSize={14}
-            fontWeight="700"
-            style={{ marginTop: 16, alignSelf: 'stretch' }}
-          />
-        </LinearGradient>
         <View style={{ height: Math.max(140, insets.bottom + 80) }} />
       </ScrollView>
-
-      <ServiceReportIntakeModal
-        visible={reportModalOpen}
-        config={detailedReportConfig}
-        onClose={() => setReportModalOpen(false)}
-      />
 
       <BottomSheet visible={planetSheet.visible} onClose={planetSheet.close} testID="myKundli.planetSheet">
         {planetSheet.value ? <PlanetDetailSheet planet={planetSheet.value} onClose={planetSheet.close} colors={colors} /> : null}

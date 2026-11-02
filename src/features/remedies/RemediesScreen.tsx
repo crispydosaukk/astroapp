@@ -9,25 +9,20 @@
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { Dimensions, Pressable, ScrollView, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated as RNAnimated, Dimensions, Easing as RNEasing, Pressable, ScrollView, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import Svg, { Line } from 'react-native-svg';
 import { AppBar, BoxBackButton } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
-import { ElevatedButton, OutlinedButton, RadialGlow } from '@/components/common';
-import {
-  ReportIntakeConfig,
-  ServiceReportIntakeModal,
-} from '@/components/ServiceReportIntakeModal';
+import { ElevatedButton } from '@/components/common';
 import { lh, Text } from '@/components/Text';
 import { API_ENDPOINTS } from '@/config/api';
 import { REMEDIES, Remedy } from '@/data/remedies';
 import { AppRoutes, push } from '@/navigation/routes';
 import { useAuthStore } from '@/features/auth/authStore';
-import { useCurrencyStore } from '@/services/currencyStore';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 import { fetchLiveRemedies } from '@/services/astrologyService';
@@ -41,31 +36,46 @@ export default function RemediesScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const authUser = useAuthStore((s) => s.user);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const pulse = useSharedValue(0.95);
-  const wheel = useSharedValue(0);
   const [w, setW] = useState(Dimensions.get('window').width - 40);
   const [remediesList, setRemediesList] = useState<Remedy[]>(REMEDIES);
-  const [pariharaModalOpen, setPariharaModalOpen] = useState(false);
 
-  const { formatPrice, pricingSettings, currencyCode } = useCurrencyStore();
-  const pariharaPlanPriceINR = pricingSettings.pariharaPlanPrice || 499;
-  const pariharaPlanPriceUSD = pricingSettings.pariharaPlanPriceUSD || 9.99;
-  const planPriceDisplay = formatPrice(pariharaPlanPriceINR, pariharaPlanPriceUSD);
-
-  const pariharaPlanConfig: ReportIntakeConfig = {
-    mode: 'parihara_plan',
-    title: 'Complete 8-Fold Personalized Parihara Plan',
-    subtitle: 'All 8 directional remedies + 48-Day Sankalpa Protocol + 3 Sacred Temple Pariharams',
-    price: pariharaPlanPriceINR,
-    priceUSD: pariharaPlanPriceUSD,
-    serviceId: 'svc-parihara-plan',
-    category: 'remedies',
-  };
+  // Continuous smooth 360-degree rotation for the sacred Ashta Parihar Wheel (from SplashScreen)
+  const spinAnim = useRef(new RNAnimated.Value(0)).current;
+  const pulseAnim = useRef(new RNAnimated.Value(0.78)).current;
 
   useEffect(() => {
     pulse.value = withRepeat(withTiming(1.05, { duration: 1500, easing: Easing.inOut(Easing.ease) }), -1, true);
-    wheel.value = withRepeat(withTiming(1, { duration: 20000, easing: Easing.linear }), -1, false);
+
+    // 1. Infinite smooth rotation for the Ashta Wheel (28s loop for dignified sacred rotation)
+    const spinLoop = RNAnimated.loop(
+      RNAnimated.timing(spinAnim, {
+        toValue: 1,
+        duration: 28000,
+        easing: RNEasing.linear,
+        useNativeDriver: true,
+      })
+    );
+    spinLoop.start();
+
+    // 2. Ambient aura pulse
+    const pulseLoop = RNAnimated.loop(
+      RNAnimated.sequence([
+        RNAnimated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1800,
+          easing: RNEasing.inOut(RNEasing.sin),
+          useNativeDriver: true,
+        }),
+        RNAnimated.timing(pulseAnim, {
+          toValue: 0.78,
+          duration: 1800,
+          easing: RNEasing.inOut(RNEasing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseLoop.start();
 
     fetchLiveRemedies().catch(() => {});
 
@@ -84,43 +94,62 @@ export default function RemediesScreen() {
     async function loadDynamicRemedies() {
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 5000);
-        const res = await fetch(API_ENDPOINTS.services, { signal: controller.signal });
+        const timer = setTimeout(() => controller.abort(), 6000);
+        const [res, remRes] = await Promise.all([
+          fetch(API_ENDPOINTS.services, { signal: controller.signal }).catch(() => null),
+          fetch(API_ENDPOINTS.remedies, { signal: controller.signal }).catch(() => null),
+        ]);
         clearTimeout(timer);
-        if (res.ok) {
+
+        let activeItems: any[] = [];
+        let ashtaDirections: any[] = [];
+
+        if (res && res.ok) {
           const data = await res.json();
           if (data.success && Array.isArray(data.categories)) {
             const remCat = data.categories.find(
               (c: any) => c.id === 'cat-remedies' || c.category === 'remedies'
             );
             if (remCat && Array.isArray(remCat.items) && remCat.items.length > 0) {
-              const activeItems = remCat.items.filter((it: any) => it.active !== false);
-              const hydrated: Remedy[] = REMEDIES.map((base) => {
-                const match = activeItems.find(
-                  (ai: any) =>
-                    ai.id?.toLowerCase().includes(base.name.toLowerCase().split(' ')[0]) ||
-                    ai.name?.toLowerCase().includes(base.name.toLowerCase().split(' ')[0]) ||
-                    ai.direction?.toLowerCase() === base.direction.toLowerCase()
-                );
-                if (match) {
-                  return {
-                    ...base,
-                    name: match.name || base.name,
-                    sanskrit: match.sanskrit || base.sanskrit,
-                    desc: match.desc || base.desc,
-                    mantra: match.mantra || base.mantra,
-                    directionHindi: match.directionHindi || base.directionHindi,
-                    color: match.color || base.color,
-                  };
-                }
-                return base;
-              });
-
-              if (isMounted) {
-                setRemediesList(hydrated);
-                AsyncStorage.setItem(STORAGE_REMEDIES_CACHE, JSON.stringify(hydrated)).catch(() => {});
-              }
+              activeItems = remCat.items.filter((it: any) => it.active !== false);
             }
+          }
+        }
+
+        if (remRes && remRes.ok) {
+          const rData = await remRes.json();
+          if (rData && rData.success && Array.isArray(rData.ashtaDirections)) {
+            ashtaDirections = rData.ashtaDirections;
+          }
+        }
+
+        if (activeItems.length > 0 || ashtaDirections.length > 0) {
+          const hydrated: Remedy[] = REMEDIES.map((base) => {
+            const match = activeItems.find(
+              (ai: any) =>
+                ai.id?.toLowerCase().includes(base.name.toLowerCase().split(' ')[0]) ||
+                ai.name?.toLowerCase().includes(base.name.toLowerCase().split(' ')[0]) ||
+                ai.direction?.toLowerCase() === base.direction.toLowerCase()
+            );
+
+            const dirMatch = ashtaDirections.find(
+              (ad: any) => ad.direction?.toLowerCase().includes(base.direction.toLowerCase())
+            );
+
+            return {
+              ...base,
+              name: match?.name || base.name,
+              sanskrit: match?.sanskrit || base.sanskrit,
+              desc: match?.desc || dirMatch?.purpose || base.desc,
+              mantra: match?.mantra || base.mantra,
+              directionHindi: match?.directionHindi || base.directionHindi,
+              color: match?.color || base.color,
+            };
+          });
+
+          if (isMounted) {
+            setRemediesList(hydrated);
+            AsyncStorage.setItem(STORAGE_REMEDIES_CACHE, JSON.stringify(hydrated)).catch(() => {});
           }
         }
       } catch {}
@@ -130,7 +159,13 @@ export default function RemediesScreen() {
     return () => {
       isMounted = false;
     };
-  }, [pulse, wheel]);
+  }, [pulse, pulseAnim, spinAnim]);
+
+  // Interpolate continuous 360-degree rotation for the Ashta Parihar Wheel
+  const spin = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   const onDiscoverRemedies = async () => {
     try {
@@ -155,18 +190,10 @@ export default function RemediesScreen() {
     }
   };
 
-  const handleGenerateAshtaReport = () => {
-    setPariharaModalOpen(true);
-  };
-
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
-  const wheelStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${wheel.value * 360 * 0.05}deg` }] }));
   const screenWidth = Dimensions.get('window').width;
-  const wheelBoxSize = Math.min(screenWidth - 40, 300);
-  const wheelCenter = wheelBoxSize / 2;
-  const nodeRadius = wheelBoxSize * 0.36;
-  const spokeRadius = wheelBoxSize * 0.27;
-  const nodeSize = Math.max(54, Math.min(60, wheelBoxSize * 0.2));
+  const wheelSize = Math.min(screenWidth - 48, 290);
+  const emblemSize = wheelSize * 0.334;
   const cellW = Math.max(140, (w - 12) / 2);
 
   return (
@@ -229,76 +256,97 @@ export default function RemediesScreen() {
           />
         </LinearGradient>
 
-        <View style={{ marginHorizontal: 20, marginVertical: 8 }}>
-          <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Ashta-Digbandhana</Text>
-          <Text style={{ color: colors.textMuted, fontSize: 12 }}>The 8 Sacred Directions of Vedic Remedies</Text>
-          <View style={{ marginTop: 16, alignSelf: 'center', width: wheelBoxSize, height: wheelBoxSize, alignItems: 'center', justifyContent: 'center' }}>
-            <Animated.View style={[{ position: 'absolute', width: wheelBoxSize, height: wheelBoxSize, borderRadius: wheelBoxSize / 2, borderWidth: 1, borderColor: colors.cardBorder }, wheelStyle]} />
-            <View style={{ width: wheelBoxSize * 0.27, height: wheelBoxSize * 0.27, borderRadius: (wheelBoxSize * 0.27) / 2, borderWidth: 1.5, borderColor: colors.goldAccent, backgroundColor: colors.surface, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
-              <RadialGlow colors={[withAlpha(colors.goldAccent, colors.isLight ? 50 : 120), colors.surfaceVariant]} />
-              <Text style={{ fontSize: 26 }}>🕉️</Text>
-            </View>
-            <Svg width={wheelBoxSize} height={wheelBoxSize} style={{ position: 'absolute' }} pointerEvents="none">
-              {remediesList.map((r) => (
-                <Line
-                  key={r.name}
-                  x1={wheelCenter}
-                  y1={wheelCenter}
-                  x2={wheelCenter + spokeRadius * Math.cos(r.angle)}
-                  y2={wheelCenter + spokeRadius * Math.sin(r.angle)}
-                  stroke={colors.cardBorder}
-                  strokeWidth={1}
-                />
-              ))}
-            </Svg>
-            {remediesList.map((r) => {
-              const x = nodeRadius * Math.cos(r.angle);
-              const y = nodeRadius * Math.sin(r.angle);
-              const halfNode = nodeSize / 2;
-              return (
-                <Pressable
-                  key={r.name}
-                  testID={`remedies.wheel.${r.name.replace(/[^A-Za-z]/g, '')}`}
-                  onPress={() => openRemedy(r)}
-                  style={{
-                    position: 'absolute',
-                    left: wheelCenter + x - halfNode,
-                    top: wheelCenter + y - halfNode,
-                    width: nodeSize,
-                    height: nodeSize,
-                    borderRadius: halfNode,
-                    backgroundColor: colors.surface,
-                    borderWidth: 1.2,
-                    borderColor: withAlpha(colors.goldAccent, colors.isLight ? 50 : 75),
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    shadowColor: '#000',
-                    shadowOpacity: colors.isLight ? 0.05 : 0.2,
-                    shadowRadius: 6,
-                    shadowOffset: { width: 0, height: 2 },
-                    elevation: 3,
-                  }}
-                >
-                  <Text style={{ fontSize: 17 }}>{r.emoji}</Text>
-                  <Text
-                    numberOfLines={1}
-                    style={{
-                      color: colors.textPrimary,
-                      fontSize: 8.5,
-                      fontWeight: '700',
-                      textAlign: 'center',
-                      marginTop: 1,
-                    }}
-                  >
-                    {r.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
+        <View style={{ marginHorizontal: 20, marginVertical: 10, alignItems: 'center' }}>
+          <View style={{ width: '100%', marginBottom: 6 }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800' }}>
+              Ashta-Digbandhana
+            </Text>
+            <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
+              The 8 Sacred Directions of Vedic Remedies
+            </Text>
           </View>
-          <Text style={{ marginTop: 12, color: colors.textMuted, fontSize: 12, textAlign: 'center' }}>
-            Tap any direction to explore that remedy
-          </Text>
+
+          {/* Animated Rotating Ashta Parihar Wheel with Stationary Center Sacred Emblem (from SplashScreen) */}
+          <Pressable
+            testID="remedies.wheel"
+            onPress={onDiscoverRemedies}
+            style={{
+              width: wheelSize,
+              height: wheelSize,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginVertical: 12,
+            }}
+          >
+            {/* Ambient Glowing Aura behind the wheel */}
+            <RNAnimated.View
+              style={{
+                position: 'absolute',
+                width: wheelSize * 0.94,
+                height: wheelSize * 0.94,
+                borderRadius: (wheelSize * 0.94) / 2,
+                backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 35 : 55),
+                opacity: pulseAnim,
+                transform: [{ scale: pulseAnim }],
+              }}
+            />
+
+            {/* 1. The 8 Remedies Wheel — Continuously Rotates around the center */}
+            <RNAnimated.View
+              style={{
+                width: wheelSize,
+                height: wheelSize,
+                alignItems: 'center',
+                justifyContent: 'center',
+                transform: [{ rotate: spin }],
+                shadowColor: colors.goldAccent,
+                shadowOpacity: colors.isLight ? 0.22 : 0.45,
+                shadowRadius: 18,
+                shadowOffset: { width: 0, height: 4 },
+                elevation: 8,
+              }}
+            >
+              <Image
+                source={require('@/../assets/images/ashta_parihar_wheel_outer.png')}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="contain"
+                priority="high"
+                accessibilityLabel="Ashta Parihar 8 Remedies Wheel"
+              />
+            </RNAnimated.View>
+
+            {/* 2. Middle Logo / Sacred Emblem — Kept CONSTANT (Stationary, Does NOT Rotate) */}
+            <View
+              style={{
+                position: 'absolute',
+                width: emblemSize,
+                height: emblemSize,
+                borderRadius: emblemSize / 2,
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10,
+                shadowColor: colors.goldAccent,
+                shadowOpacity: 0.35,
+                shadowRadius: 6,
+                elevation: 6,
+              }}
+            >
+              <Image
+                source={require('@/../assets/images/app_logo_emblem.png')}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="contain"
+                priority="high"
+                accessibilityLabel="AstroParihar Center Sacred Emblem"
+              />
+            </View>
+          </Pressable>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+            <AppIcon name="touch_app" size={14} color={colors.goldAccent} style={{ marginRight: 5 }} />
+            <Text style={{ color: colors.textMuted, fontSize: 12, textAlign: 'center', fontWeight: '600' }}>
+              Tap wheel to consult AI or explore each remedy below
+            </Text>
+          </View>
         </View>
 
         <View style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 8 }}>
@@ -457,64 +505,6 @@ export default function RemediesScreen() {
             </View>
           </View>
 
-            {/* Flagship Complete 8-Fold Personalized Parihara Plan Banner (Website Parity) */}
-            <LinearGradient
-              colors={
-                colors.isLight
-                  ? ['#FFFDF8', '#F6EDD9']
-                  : [withAlpha(colors.goldAccent, 30), withAlpha('#713B32', 45)]
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
-                marginTop: 14,
-                padding: 18,
-                borderRadius: 20,
-                borderWidth: 1.5,
-                borderColor: colors.goldAccent,
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <View
-                  style={{
-                    paddingHorizontal: 10,
-                    paddingVertical: 3,
-                    borderRadius: 100,
-                    backgroundColor: withAlpha(colors.goldAccent, 30),
-                    borderWidth: 1,
-                    borderColor: colors.goldAccent,
-                  }}
-                >
-                  <Text style={{ color: colors.goldAccent, fontSize: 10, fontWeight: '800' }}>
-                    ★ FLAGSHIP 8-DIRECTIONAL DOSSIER
-                  </Text>
-                </View>
-                <Text style={{ color: colors.goldAccent, fontSize: 18, fontWeight: '900' }}>{planPriceDisplay}</Text>
-              </View>
-              <Text style={{ marginTop: 10, color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
-                Complete 8-Fold Personalized Parihara Plan
-              </Text>
-              <Text style={{ marginTop: 4, color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
-                Synthesizes all 8 directional remedies (Mantra, Yantra, Homa, Devata, Gemstone, Rudraksha, Vastu & Dāna), a 48-Day Mandala Sankalpa Protocol, and 3 Temple Pariharams tailored to your birth chart.
-              </Text>
-              <ElevatedButton
-                testID="remedies.generateCompletePlan"
-                label={
-                  Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone))
-                    ? `Generate My Complete Parihara Plan — ${planPriceDisplay}`
-                    : `🔒 Sign In to Generate Complete Plan (${planPriceDisplay})`
-                }
-                onPress={handleGenerateAshtaReport}
-                bg="#713B32"
-                fg="#FFFFFF"
-                radius={100}
-                paddingV={13}
-                fontSize={13}
-                fontWeight="800"
-                style={{ marginTop: 14 }}
-              />
-            </LinearGradient>
-
             {/* Quick Consultation CTA */}
             <LinearGradient
               colors={
@@ -559,12 +549,6 @@ export default function RemediesScreen() {
             </LinearGradient>
           </View>
         </ScrollView>
-
-        <ServiceReportIntakeModal
-          visible={pariharaModalOpen}
-          config={pariharaPlanConfig}
-          onClose={() => setPariharaModalOpen(false)}
-        />
       </View>
     );
   }

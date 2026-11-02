@@ -5,10 +5,12 @@ import {
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Modal,
   Platform,
   Pressable,
   ScrollView,
+  UIManager,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -42,6 +44,10 @@ import {
   speakAstrologerText,
   stopAstrologerSpeech,
 } from '@/services/speechService';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export interface ChatMessage {
   isUser: boolean;
@@ -152,12 +158,12 @@ const QUICK_PROMPTS_BY_LANG: Record<string, string[]> = {
 };
 
 const PLACEHOLDERS_BY_LANG: Record<string, string> = {
-  Telugu: 'మీ కుండలి, ప్రేమ, కెరీర్ లేదా పరిహారాల గురించి అడగండి...',
-  Hindi: 'अपनी कुंडली, प्रेम, करियर या उपायों के बारे में पूछें...',
-  Tamil: 'உங்கள் ஜாதகம், தொழில், திருமணம் அல்லது பரிகாரங்கள் பற்றி கேளுங்கள்...',
-  Kannada: 'ನಿಮ್ಮ ಕುಂಡಲಿ, ಪ್ರೀತಿ, ವೃತ್ತಿ ಅಥವಾ ಪರಿಹಾರಗಳ ಬಗ್ಗೆ ಕೇಳಿ...',
-  Malayalam: 'നിങ്ങളുടെ ജാതകം, പ്രണയം, കരിയർ അല്ലെങ്കിൽ പരിഹാരങ്ങളെക്കുറിച്ച് ചോദിക്കുക...',
-  English: 'Ask about your Kundli, love, career, or remedies...',
+  Telugu: 'జ్యోతిష్య ప్రశ్నను అడగండి...',
+  Hindi: 'वैदिक प्रश्न यहाँ पूछें...',
+  Tamil: 'உங்கள் கேள்வியைக் கேளுங்கள்...',
+  Kannada: 'ನಿಮ್ಮ ಪ್ರಶ್ನೆಯನ್ನು ಕೇಳಿ...',
+  Malayalam: 'നിങ്ങളുടെ ചോദ്യം ചോദിക്കുക...',
+  English: 'Ask Acharya Devavrat...',
 };
 
 function getWelcomeMessage(lang: string, name: string, astroName: string = 'Acharya Devavrat') {
@@ -906,10 +912,25 @@ export default function AiChatScreen() {
     }
   }, [params.initialPrompt]);
 
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      if (Platform.OS === 'android') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
+      setKeyboardHeight(e.endCoordinates.height);
+      setTimeout(() => {
+        listRef.current?.scrollToEnd({ animated: true });
+      }, 80);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      if (Platform.OS === 'android') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
+      setKeyboardHeight(0);
+    });
     return () => {
       showSub.remove();
       hideSub.remove();
@@ -1141,6 +1162,7 @@ export default function AiChatScreen() {
             keyExtractor={(item, i) => (item === 'typing' ? 'typing' : String(i))}
             contentContainerStyle={{ paddingHorizontal: 10, paddingVertical: 12, paddingBottom: 24 }}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             renderItem={({ item, index }) => (
               item === 'typing' ? (
                 <TypingIndicator />
@@ -1262,21 +1284,47 @@ export default function AiChatScreen() {
           </View>
         )}
 
-        {/* Chat Input Widget - Authentic WhatsApp layout without voice or attachment icons */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 10, paddingTop: 8, paddingBottom: isKeyboardVisible ? Math.max(10, insets.bottom + 4) : insets.bottom + 90, backgroundColor: '#EFEAE2', borderTopWidth: 0.5, borderTopColor: 'rgba(0,0,0,0.06)' }}>
+        {/* Chat Input Widget - Authentic WhatsApp layout sitting cleanly above keyboard */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 12,
+            paddingTop: 10,
+            paddingBottom: keyboardHeight > 0
+              ? (Platform.OS === 'android' ? keyboardHeight + 20 : 16)
+              : Math.max(12, insets.bottom + 84),
+            backgroundColor: '#EFEAE2',
+            borderTopWidth: 0.5,
+            borderTopColor: 'rgba(0,0,0,0.06)',
+          }}
+        >
           <Pressable
             onPress={() => {
               if (!isAuth) setShowAuthModal(true);
             }}
-            style={{ flex: 1, minHeight: 44, borderRadius: 24, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 2, elevation: 1 }}
+            style={{
+              flex: 1,
+              minHeight: 44,
+              borderRadius: 24,
+              backgroundColor: '#FFFFFF',
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 12,
+              shadowColor: '#000',
+              shadowOpacity: 0.06,
+              shadowRadius: 2,
+              elevation: 1,
+            }}
           >
+            <AppIcon name="mood" size={22} color="#8696A0" style={{ marginRight: 6 }} />
             <TextInput
               testID="aiChat.input"
               value={input}
               onChangeText={setInput}
               multiline
               numberOfLines={4}
-              placeholder={!isAuth ? 'Sign in to ask AI Astrologer...' : currentPlaceholder}
+              placeholder={!isAuth ? 'Sign in to ask questions...' : currentPlaceholder}
               placeholderTextColor="#8A8A8A"
               editable={isAuth}
               onSubmitEditing={() => {

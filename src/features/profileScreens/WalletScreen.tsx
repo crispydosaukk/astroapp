@@ -31,6 +31,69 @@ function WalletStat({ value, label, colors }: { value: string; label: string; co
   );
 }
 
+/**
+ * Parse any raw transaction amount (number or string like '-₹0.44999999999999996' or '-$0.45' or '5')
+ * into a clean float.
+ */
+function parseTxAmount(raw: number | string | undefined | null): number {
+  if (typeof raw === 'number') return isNaN(raw) ? 0 : Math.abs(raw);
+  if (!raw) return 0;
+  const match = String(raw).match(/(\d+(\.\d+)?)/);
+  if (!match) return 0;
+  const val = parseFloat(match[0]);
+  return isNaN(val) ? 0 : val;
+}
+
+/**
+ * Format a transaction amount cleanly:
+ * - Rounds floating point precision noise (e.g., 0.44999999999999996 -> 0.45).
+ * - Displays 2 decimal places if there are decimals (e.g., $0.45, ₹37.50, $6.34).
+ * - Displays integer if whole (e.g. ₹5, $5).
+ * - Uses the active currency symbol (₹ or $).
+ */
+function formatTransactionAmount(
+  rawAmount: number | string | undefined | null,
+  type: 'credit' | 'debit',
+  currencyCode: 'INR' | 'USD' = 'USD',
+  currencySymbol: string = '$'
+): string {
+  const sign = type === 'credit' ? '+' : '-';
+  if (rawAmount === undefined || rawAmount === null || rawAmount === '') {
+    return `${sign}${currencySymbol}0.00`;
+  }
+
+  let num = 0;
+  const str = String(rawAmount);
+
+  const match = str.match(/(\d+(\.\d+)?)/);
+  if (match) {
+    num = parseFloat(match[0]);
+  }
+
+  if (isNaN(num)) return `${sign}${currencySymbol}0.00`;
+
+  const hadRupee = str.includes('₹');
+  const hadDollar = str.includes('$');
+
+  if (currencyCode === 'USD') {
+    let finalUSD = num;
+    if (hadRupee && num >= 5) {
+      finalUSD = Number((num * 0.012).toFixed(2));
+    }
+    finalUSD = Number(finalUSD.toFixed(2));
+    const formatted = finalUSD % 1 === 0 ? finalUSD.toFixed(0) : finalUSD.toFixed(2);
+    return `${sign}$${formatted}`;
+  } else {
+    let finalINR = num;
+    if (hadDollar || num < 2) {
+      finalINR = Number((num / 0.012).toFixed(2));
+    }
+    finalINR = Number(finalINR.toFixed(2));
+    const formatted = finalINR % 1 === 0 ? finalINR.toFixed(0) : finalINR.toFixed(2);
+    return `${sign}₹${formatted}`;
+  }
+}
+
 export default function WalletScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -58,6 +121,37 @@ export default function WalletScreen() {
   const [gridW, setGridW] = useState(0);
 
   const activeOption = rechargeOptions[selectedIdx] || rechargeOptions[0];
+
+  // Dynamic Total Spent calculated from all debit transactions in the active currency
+  const totalSpentNum = transactions
+    .filter((tx) => tx.type === 'debit')
+    .reduce((sum, tx) => {
+      const amtStr = formatTransactionAmount(tx.amount, 'debit', currencyCode, currencySymbol);
+      const match = amtStr.match(/(\d+(\.\d+)?)/);
+      const val = match ? parseFloat(match[0]) : 0;
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+
+  // Dynamic Total Added from credit transactions (or fallback to balance)
+  const totalAddedFromTxs = transactions
+    .filter((tx) => tx.type === 'credit')
+    .reduce((sum, tx) => {
+      const amtStr = formatTransactionAmount(tx.amount, 'credit', currencyCode, currencySymbol);
+      const match = amtStr.match(/(\d+(\.\d+)?)/);
+      const val = match ? parseFloat(match[0]) : 0;
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+
+  const formatStatValue = (val: number) => {
+    if (isNaN(val) || val <= 0) return `${currencySymbol}0`;
+    const formatted = val % 1 === 0 ? val.toFixed(0) : val.toFixed(2);
+    return `${currencySymbol}${formatted}`;
+  };
+
+  const totalSpentDisplay = formatStatValue(totalSpentNum);
+  const totalAddedDisplay = isAuth
+    ? (totalAddedFromTxs > 0 ? formatStatValue(totalAddedFromTxs) : formatPrice(balance))
+    : `${currencySymbol}0`;
 
   useEffect(() => {
     let isMounted = true;
@@ -224,11 +318,11 @@ export default function WalletScreen() {
                 {formatPrice(balance)}
               </Text>
               <View style={{ marginTop: 16, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center' }}>
-                <WalletStat value={isAuth ? formatPrice(balance) : formatPrice(0)} label="Total Added" colors={colors} />
+                <WalletStat value={totalAddedDisplay} label="Total Added" colors={colors} />
                 <View style={{ width: 1, height: 30, backgroundColor: colors.divider }} />
-                <WalletStat value={formatPrice(0)} label="Total Spent" colors={colors} />
+                <WalletStat value={totalSpentDisplay} label="Total Spent" colors={colors} />
                 <View style={{ width: 1, height: 30, backgroundColor: colors.divider }} />
-                <WalletStat value={formatPrice(0)} label="Bonus Earned" colors={colors} />
+                <WalletStat value={`${currencySymbol}0`} label="Bonus Earned" colors={colors} />
               </View>
             </LinearGradient>
 
@@ -312,7 +406,10 @@ export default function WalletScreen() {
 
           <ScrollView key="tx" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}>
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              {[['Total Added', isAuth ? formatPrice(balance) : formatPrice(0), '#2D9E6B'], ['Total Spent', formatPrice(0), '#CF4444']].map(([l, v, c]) => (
+              {[
+                ['Total Added', totalAddedDisplay, '#2D9E6B'],
+                ['Total Spent', totalSpentDisplay, '#CF4444'],
+              ].map(([l, v, c]) => (
                 <View key={l} style={{ flex: 1, padding: 16, borderRadius: 16, backgroundColor: withAlpha(c, colors.isLight ? 15 : 20), borderWidth: 1, borderColor: withAlpha(c, 60) }}>
                   <Text style={{ color: colors.textMuted, fontSize: 11 }}>{l}</Text>
                   <Text style={{ marginTop: 4, color: c, fontSize: 19, fontWeight: '800' }}>{v}</Text>
@@ -332,17 +429,80 @@ export default function WalletScreen() {
               transactions.map((tItem, i) => {
                 const credit = tItem.type === 'credit';
                 const c = credit ? '#2D9E6B' : '#CF4444';
+                const displayAmt = formatTransactionAmount(tItem.amount, tItem.type, currencyCode, currencySymbol);
+
                 return (
-                  <View key={tItem.id || i} style={{ marginBottom: 10, padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: withAlpha(c, 20), alignItems: 'center', justifyContent: 'center' }}>
+                  <View
+                    key={tItem.id || i}
+                    style={{
+                      marginBottom: 10,
+                      padding: 14,
+                      borderRadius: 16,
+                      backgroundColor: colors.surface,
+                      borderWidth: 1,
+                      borderColor: colors.cardBorder,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 12,
+                        backgroundColor: withAlpha(c, 20),
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
                       <Text style={{ fontSize: 20 }}>{tItem.icon || (credit ? '💳' : '📞')}</Text>
                     </View>
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>{tItem.title}</Text>
-                      <Text style={{ color: colors.textMuted, fontSize: 11 }}>{tItem.subtitle}</Text>
-                      <Text style={{ color: colors.textMuted, fontSize: 10 }}>{tItem.date}</Text>
+                    <View style={{ flex: 1, marginHorizontal: 12 }}>
+                      <Text
+                        numberOfLines={2}
+                        style={{
+                          color: colors.textPrimary,
+                          fontSize: 13.5,
+                          fontWeight: '700',
+                          lineHeight: 18,
+                        }}
+                      >
+                        {tItem.title}
+                      </Text>
+                      <Text
+                        numberOfLines={1}
+                        style={{
+                          color: colors.textMuted,
+                          fontSize: 11,
+                          marginTop: 2,
+                        }}
+                      >
+                        {tItem.subtitle} • {tItem.date}
+                      </Text>
                     </View>
-                    <Text style={{ color: c, fontSize: 15, fontWeight: '800' }}>{String(tItem.amount)}</Text>
+                    <View style={{ alignItems: 'flex-end', marginLeft: 4 }}>
+                      <Text
+                        numberOfLines={1}
+                        style={{
+                          color: c,
+                          fontSize: 15,
+                          fontWeight: '800',
+                          letterSpacing: 0.3,
+                        }}
+                      >
+                        {displayAmt}
+                      </Text>
+                      <Text
+                        style={{
+                          color: credit ? '#2D9E6B' : colors.textMuted,
+                          fontSize: 10,
+                          fontWeight: '600',
+                          marginTop: 2,
+                        }}
+                      >
+                        {credit ? 'Credited' : 'Debited'}
+                      </Text>
+                    </View>
                   </View>
                 );
               })

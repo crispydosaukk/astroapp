@@ -25,15 +25,23 @@ cmd.exe /c "gradlew.bat assembleRelease --no-daemon --max-workers=1 --gradle-use
 # 3. Check and copy the output APK to Desktop & project root
 $apkSource = "C:\Users\PC\Desktop\astroparihar-app\android\app\build\outputs\apk\release\app-release.apk"
 $apkDesktop = "C:\Users\PC\Desktop\AstroParihar-Latest.apk"
+$apkDesktopV = "C:\Users\PC\Desktop\AstroParihar-v2.4.0.apk"
 $apkProjectLatest = "C:\Users\PC\Desktop\astroparihar-app\AstroParihar-Latest.apk"
+$apkProjectRelease = "C:\Users\PC\Desktop\astroparihar-app\astroparihar-release.apk"
+$apkProjectV = "C:\Users\PC\Desktop\astroparihar-app\AstroParihar-v2.4.0.apk"
 
 if (Test-Path $apkSource) {
     Copy-Item -Path $apkSource -Destination $apkDesktop -Force
+    Copy-Item -Path $apkSource -Destination $apkDesktopV -Force
     Copy-Item -Path $apkSource -Destination $apkProjectLatest -Force
+    Copy-Item -Path $apkSource -Destination $apkProjectRelease -Force
+    Copy-Item -Path $apkSource -Destination $apkProjectV -Force
     $sizeMB = [math]::Round((Get-Item $apkDesktop).Length / 1MB, 2)
     Write-Host "`n[3/3] SUCCESS! Release APK generated successfully ($sizeMB MB):" -ForegroundColor Green
     Write-Host "  -> Desktop: $apkDesktop" -ForegroundColor Yellow
+    Write-Host "  -> Desktop: $apkDesktopV" -ForegroundColor Yellow
     Write-Host "  -> Project: $apkProjectLatest" -ForegroundColor Yellow
+    Write-Host "  -> Project: $apkProjectRelease" -ForegroundColor Yellow
 } else {
     Write-Host "`nAPK build did not produce output at expected location. Check Gradle logs above." -ForegroundColor Red
 }

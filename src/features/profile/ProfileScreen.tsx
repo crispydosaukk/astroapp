@@ -10,7 +10,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  Linking,
   Modal,
   Pressable,
   RefreshControl,
@@ -18,6 +17,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton } from '@/components/common';
@@ -36,6 +36,11 @@ import { getWalletBalance, subscribeWallet } from '@/services/walletService';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { AppLanguage, useLanguageStore, useTranslation } from '@/theme/languageStore';
 import { useThemeColors, useThemeStore } from '@/theme/themeStore';
+
+export const APP_VERSION =
+  Constants.expoConfig?.version ||
+  Constants.nativeAppVersion ||
+  '2.4.0';
 
 const STORAGE_PROFILE_CONFIG_KEY = 'astroparihar_app_profile_config_v3';
 
@@ -190,7 +195,7 @@ export const DEFAULT_PROFILE_CONFIG: DynamicProfileConfig = {
   editPobLabel: 'Place of Birth (City, State)',
   editSaveButtonText: 'Save Profile Details',
 
-  appVersionText: 'AstroParihar v2.4.0 • Sacred Vedic Wisdom',
+  appVersionText: `AstroParihar v${APP_VERSION} • Sacred Vedic Wisdom`,
   sanskritTagline: '॥ लोकाः समस्ताः सुखिनो भवन्तु ॥',
 
   sections: [
@@ -204,7 +209,7 @@ export const DEFAULT_PROFILE_CONFIG: DynamicProfileConfig = {
         { id: 'myKundli', order: 1, labelKey: 'profile.myKundli', defaultLabel: 'My Kundli', subtitle: 'Your detailed birth chart & planetary positions', icon: 'auto_stories', route: AppRoutes.myKundliScreen, active: true },
         { id: 'myRemedies', order: 2, labelKey: 'profile.myRemedies', defaultLabel: 'My Remedies (अष्ट परिहार)', subtitle: 'Personalised 8-directional remedial remedies', icon: 'auto_awesome', route: AppRoutes.remediesScreen, badge: '8 in 1', active: true },
         { id: 'birthProfiles', order: 3, labelKey: 'profile.birthProfiles', defaultLabel: 'Birth Profiles', subtitle: 'Family, partner & seeker kundli profiles', icon: 'person_outline_rounded', route: AppRoutes.birthProfilesScreen, active: true },
-        { id: 'kundliReports', order: 4, labelKey: 'profile.kundliReports', defaultLabel: 'Kundli & Service Reports', subtitle: 'Saved astrology predictions & PDF reports', icon: 'description_outlined', route: AppRoutes.kundliReportsScreen, active: true },
+        { id: 'kundliReports', order: 4, labelKey: 'profile.kundliReports', defaultLabel: 'Mahadasha PDF Guides', subtitle: 'Official Rahu & Sani Mahadasha PDF guides', icon: 'description_outlined', route: AppRoutes.kundliReportsScreen, active: true },
         { id: 'matchReports', order: 5, labelKey: 'profile.matchReports', defaultLabel: 'Match Reports', subtitle: '36 Guna Ashtakoot matrimonial reports', icon: 'favorite_border', route: AppRoutes.matchReportsScreen, active: true },
         { id: 'panchangReports', order: 6, labelKey: 'profile.panchangReports', defaultLabel: 'Panchang & Muhurat', subtitle: 'Daily Vedic almanac, tithi & auspicious timings', icon: 'calendar_today_outlined', route: AppRoutes.panchangScreen, active: true },
         { id: 'savedAstrologers', order: 7, labelKey: 'profile.savedAstrologers', defaultLabel: 'Saved Astrologers', subtitle: 'Your favorite verified Vedic consultants', icon: 'star_outline', route: AppRoutes.savedAstrologersScreen, active: true },
@@ -1438,7 +1443,9 @@ export default function ProfileScreen() {
             {config.sanskritTagline || '॥ लोकाः समस्ताः सुखिनो भवन्तु ॥'}
           </Text>
           <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 11.5 }}>
-            {config.appVersionText || 'AstroParihar v2.4.0 • Sacred Vedic Wisdom'}
+            {(config.appVersionText || `AstroParihar v${APP_VERSION} • Sacred Vedic Wisdom`)
+              .replace(/v\d+(\.\d+)+/gi, `v${APP_VERSION}`)
+              .replace('{version}', APP_VERSION)}
           </Text>
         </View>
       </ScrollView>
@@ -1532,6 +1539,8 @@ export default function ProfileScreen() {
             borderWidth: 1,
             borderColor: colors.cardBorder,
             maxHeight: '100%',
+            flexShrink: 1,
+            overflow: 'hidden',
           }}
         >
           {/* Header */}
@@ -1580,11 +1589,12 @@ export default function ProfileScreen() {
             ref={editScrollRef}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={true}
+            style={{ flexShrink: 1 }}
             contentContainerStyle={{
               paddingHorizontal: 24,
               paddingTop: 16,
-              paddingBottom: Math.max(insets.bottom + 24, 48),
+              paddingBottom: Math.max(insets.bottom + 260, 300),
             }}
           >
             {/* Full Name */}
@@ -1610,6 +1620,11 @@ export default function ProfileScreen() {
                 onChangeText={setEditName}
                 placeholder="Full Name"
                 placeholderTextColor={colors.textMuted}
+                onFocus={() => {
+                  setTimeout(() => {
+                    editScrollRef.current?.scrollTo({ y: 0, animated: true });
+                  }, 100);
+                }}
                 style={{
                   flex: 1,
                   fontSize: 14,
@@ -1645,6 +1660,11 @@ export default function ProfileScreen() {
                 placeholderTextColor={colors.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                onFocus={() => {
+                  setTimeout(() => {
+                    editScrollRef.current?.scrollTo({ y: 80, animated: true });
+                  }, 100);
+                }}
                 style={{
                   flex: 1,
                   fontSize: 14,
@@ -1706,12 +1726,17 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {/* Google Maps Location Search for Birth Place */}
+            {/* Birth Place Location Input */}
             <LocationSearchInput
               value={editPob}
               onChangeText={setEditPob}
               label={config.editPobLabel || 'Place of Birth (City, State, Country)'}
-              placeholder="Search city or Google Maps place..."
+              placeholder="Enter birth place (e.g. Mumbai)"
+              onFocus={() => {
+                setTimeout(() => {
+                  editScrollRef.current?.scrollToEnd({ animated: true });
+                }, 100);
+              }}
             />
 
             {/* Save Button */}
