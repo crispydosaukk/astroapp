@@ -307,8 +307,11 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
   const id = `liveAstrologers.card.${index}`;
   const colors = useThemeColors();
   const formatRate = useCurrencyStore((s) => s.formatRate);
-  const defaultRate = useCurrencyStore((s) => s.pricingSettings.humanAstrologerDefaultRate) || 25;
-  const effectivePrice = Number(data.price) > 0 ? Number(data.price) : defaultRate;
+  const pricingSettings = useCurrencyStore((s) => s.pricingSettings);
+  const defaultRate = pricingSettings.humanAstrologerDefaultRate || 25;
+  const effectivePrice = isAi
+    ? (pricingSettings.aiChatPricePerMinute || 25)
+    : (Number(data.price) > 0 ? Number(data.price) : defaultRate);
 
   return (
     <Animated.View style={[{ marginBottom: 12 }, anim]}>
@@ -979,7 +982,7 @@ export default function LiveAstrologersScreen() {
           rating: a.rating,
           reviews: a.reviews,
           consultations: `${a.reviews}+`,
-          price: Number(a.price) > 0 ? Number(a.price) : 25,
+          price: useCurrencyStore.getState().pricingSettings.aiChatPricePerMinute || 25,
           isOnline: a.isOnline,
           languages: a.languages,
           imageUrl: a.imageUrl,

@@ -17,6 +17,7 @@ import * as Speech from 'expo-speech';
 export interface AstrologerSpeechOptions {
   language?: string;
   astrologerName?: string;
+  gender?: 'male' | 'female';
   onStart?: () => void;
   onDone?: () => void;
   onError?: (error: any) => void;
@@ -24,6 +25,7 @@ export interface AstrologerSpeechOptions {
 
 // Global speech token to ensure only the latest active speech queue executes
 let activeSpeechId = 0;
+let cachedVoices: Speech.Voice[] | null = null;
 
 // Universal regex to strip all emojis and pictorial symbols
 const EMOJI_REGEX =
@@ -31,7 +33,8 @@ const EMOJI_REGEX =
 
 /**
  * Clean astrology response into pristine, 100% speakable text
- * Strips emojis, markdown, symbols, bullet artifacts, and HTML
+ * Strips emojis, markdown, symbols, bullet artifacts, and HTML while preserving
+ * all letters, numbers, full words, and natural phonetic punctuation.
  */
 export function cleanTextForSpeech(raw: string): string {
   if (!raw) return '';
@@ -49,13 +52,13 @@ export function cleanTextForSpeech(raw: string): string {
 }
 
 /**
- * Split text into natural sentence chunks respecting sentence boundaries
- * Keeps chunk size under 160 characters so Android/iOS buffer never drops text
+ * Split very long texts (over 1000 chars) into large paragraphs
+ * Avoids micro-chunking so Android TTS reads uninterruptedly without leaving single alphabets.
  */
-export function splitIntoSpeechChunks(text: string, maxLen: number = 160): string[] {
+export function splitIntoSpeechChunks(text: string, maxLen: number = 1000): string[] {
   if (!text) return [];
+  if (text.length <= maxLen) return [text];
 
-  // Split on sentence boundaries: periods, exclamation marks, question marks, Indic dandas (।, ॥) or newlines
   const sentences = text.split(/(?<=[.!?।॥\n])\s+/);
   const chunks: string[] = [];
   let currentChunk = '';
@@ -68,28 +71,12 @@ export function splitIntoSpeechChunks(text: string, maxLen: number = 160): strin
       currentChunk = currentChunk ? `${currentChunk} ${trimmed}` : trimmed;
     } else {
       if (currentChunk) chunks.push(currentChunk);
-
-      if (trimmed.length > maxLen) {
-        // Sentence itself is long without punctuation; split by words
-        const words = trimmed.split(/\s+/);
-        let sub = '';
-        for (const w of words) {
-          if (sub.length + w.length + 1 <= maxLen) {
-            sub = sub ? `${sub} ${w}` : w;
-          } else {
-            if (sub) chunks.push(sub);
-            sub = w;
-          }
-        }
-        currentChunk = sub;
-      } else {
-        currentChunk = trimmed;
-      }
+      currentChunk = trimmed;
     }
   }
 
   if (currentChunk) chunks.push(currentChunk);
-  return chunks;
+  return chunks.length > 0 ? chunks : [text];
 }
 
 export function getLanguageCode(lang?: string): string {
@@ -102,11 +89,12 @@ export function getLanguageCode(lang?: string): string {
   return 'en-IN';
 }
 
-export function isFemaleAstrologer(name?: string): boolean {
+export function isFemaleAstrologer(name?: string, gender?: string): boolean {
+  if (gender && gender.toLowerCase() === 'female') return true;
+  if (gender && gender.toLowerCase() === 'male') return false;
   if (!name) return false;
   const n = name.toLowerCase();
   return (
-    n.includes('vedika') ||
     n.includes('ananya') ||
     n.includes('devi') ||
     n.includes('mata') ||
@@ -114,6 +102,7 @@ export function isFemaleAstrologer(name?: string): boolean {
     n.includes('meera') ||
     n.includes('smita') ||
     n.includes('radha') ||
+    n.includes('radhika') ||
     n.includes('laxmi') ||
     n.includes('parvati') ||
     n.includes('female')
@@ -121,8 +110,39 @@ export function isFemaleAstrologer(name?: string): boolean {
 }
 
 /**
- * Speak Astrologer response sequentially sentence by sentence
- * Guarantees zero truncations, speaking completely to the final alphabet of every sentence
+ * Find the optimal native OS voice identifier matching language and gender strictly
+ */
+async function resolveVoiceIdentifier(langCode: string, isFemale: boolean): Promise<string | undefined> {
+  try {
+    if (!cachedVoices) {
+      cachedVoices = await Speech.getAvailableVoicesAsync();
+    }
+    if (!cachedVoices || cachedVoices.length === 0) return undefined;
+
+    const langPrefix = langCode.split('-')[0].toLowerCase();
+    const matching = cachedVoices.filter((v) =>
+      v.language?.toLowerCase().startsWith(langPrefix)
+    );
+
+    if (matching.length === 0) return undefined;
+
+    const targetGender = isFemale ? 'female' : 'male';
+    const altGender = isFemale ? 'f' : 'm';
+
+    const preferred = matching.find((v) => {
+      const lower = `${v.name} ${v.identifier}`.toLowerCase();
+      return lower.includes(targetGender) || lower.includes(`-${altGender}-`);
+    });
+
+    return preferred?.identifier || matching[0]?.identifier;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Speak Astrologer response with strict male vs female timbre and 100% full text recitation.
+ * Does not leave out a single alphabet or sentence.
  */
 export async function speakAstrologerText(
   text: string,
@@ -142,25 +162,28 @@ export async function speakAstrologerText(
     await Speech.stop();
   } catch {}
 
-  const chunks = splitIntoSpeechChunks(clean, 160);
+  const chunks = splitIntoSpeechChunks(clean, 1200);
   if (chunks.length === 0) {
     options.onDone?.();
     return;
   }
 
   const langCode = getLanguageCode(options.language);
-  const isFemale = isFemaleAstrologer(options.astrologerName);
+  const isFemale = isFemaleAstrologer(options.astrologerName, options.gender);
 
-  // Tuned for reverent, natural Vedic pacing
-  const pitch = isFemale ? 1.05 : 0.82;
+  // Strict male vs female acoustic parameters
+  // Male: 0.70 deep Pandit baritone timbre
+  // Female: 1.28 melodic serene Devi cadence
+  const pitch = isFemale ? 1.28 : 0.70;
   const rate = isFemale ? 0.88 : 0.85;
+
+  const voiceId = await resolveVoiceIdentifier(langCode, isFemale);
 
   options.onStart?.();
 
   let chunkIndex = 0;
 
   const speakNext = () => {
-    // If user cancelled, or a newer speech was launched, halt immediately
     if (currentToken !== activeSpeechId) return;
 
     if (chunkIndex >= chunks.length) {
@@ -173,6 +196,7 @@ export async function speakAstrologerText(
 
     Speech.speak(chunk, {
       language: langCode,
+      voice: voiceId,
       pitch,
       rate,
       onDone: () => {

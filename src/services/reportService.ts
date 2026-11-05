@@ -1372,6 +1372,7 @@ export interface ConsultationSummaryParams {
   devoteeNakshatra?: string;
   chatSummary?: string;
   primaryConcern?: string;
+  language?: string;
 }
 
 /**
@@ -1391,15 +1392,16 @@ export async function generateConsultationSummaryReport(
     minute: '2-digit',
   });
 
+  const lang = params.language || 'English';
   const reportId = `rep_consult_${params.consultationId || Date.now()}`;
-  const title = `${params.astrologerName} — Vedic Consultation Summary`;
-  const subtitle = `${params.devoteeName} (${params.devoteeDob}) • ${params.serviceType}`;
 
-  const summary =
+  let title = `${params.astrologerName} — Vedic Consultation Summary`;
+  let subtitle = `${params.devoteeName} (${params.devoteeDob}) • ${params.serviceType}`;
+  let summary =
     params.chatSummary ||
     `Official Astrological Consultation Summary & Parihara Protocol prepared by ${params.astrologerName}. Full analysis of Lagna (${params.devoteeLagna || 'Scorpio'}), Rashi (${params.devoteeRashi || 'Cancer'}), and Nakshatra (${params.devoteeNakshatra || 'Punarvasu'}) with targeted remedial recommendations.`;
 
-  const astrologicalAnalysis =
+  let astrologicalAnalysis =
     `Vedic Jyotish Consultation Session Record:\n\n` +
     `• Astrologer: ${params.astrologerName}\n` +
     `• Consultation Type: ${params.serviceType}\n` +
@@ -1414,13 +1416,75 @@ export async function generateConsultationSummaryReport(
     `2. Dasha Influence: Active Vimshottari period requires maintaining mental serenity and honoring the governing planetary deity.\n` +
     `3. Parihara Direction: Ashta Digbandhana remedies should be focused towards the Ishanya (North-East) and Purva (East) directions to channel positive cosmic energy.`;
 
-  const remediesPrescribed = [
+  let remediesPrescribed = [
     `Daily Recitation: Gayatri Mantra 108 times at Brahmamuhurta facing East`,
     `Ishta Devata Seva: Offer prayers and sacred water to Lord Shiva & Sri Mahalakshmi`,
     `Directional Remedy: Light a pure cow ghee lamp in the North-East corner of the residence`,
     `Dana & Charity: Donate yellow lentils (chana dal) or food to 3 deserving souls on Thursdays`,
     `Planetary Harmony: Observe peaceful meditation and refrain from tamasic habits on Saturdays`,
   ];
+
+  if (lang === 'Telugu') {
+    title = `${params.astrologerName} — వైదిక జ్యోతిష సంప్రదింపు సారాంశం`;
+    subtitle = `${params.devoteeName} (${params.devoteeDob}) • ${params.serviceType === 'Voice Call' ? 'వాయిస్ కాల్' : params.serviceType === 'Video Call' ? 'వీడియో కాల్' : 'AI చాట్'}`;
+    if (!params.chatSummary) {
+      summary = `${params.astrologerName} చేత సిద్ధం చేయబడిన అధికారిక జ్యోతిష సంప్రదింపు నివేదిక మరియు పరిహార ప్రణాళిక. లగ్నం (${params.devoteeLagna || 'వృశ్చికం'}), రాశి (${params.devoteeRashi || 'కర్కాటకం'}), జన్మ నక్షత్రం (${params.devoteeNakshatra || 'పునర్వసు'}) సమగ్ర విశ్లేషణ.`;
+    }
+    astrologicalAnalysis =
+      `వైదిక జ్యోతిష సంప్రదింపు సెషన్ రికార్డు:\n\n` +
+      `• జ్యోతిష నిపుణుడు: ${params.astrologerName}\n` +
+      `• సంప్రదింపు విధానం: ${params.serviceType}\n` +
+      `• సంభాషణ సమయం: ${params.durationText} (${params.durationMinutes} నిమిషాలు)\n` +
+      `• భక్తుడు/జాతుకుడు: ${params.devoteeName}\n` +
+      `• జన్మ వివరాలు: ${params.devoteeDob} ${params.devoteeTob ? `సమయం: ${params.devoteeTob}` : ''} (${params.devoteePob || 'భారతదేశం'})\n` +
+      `• లగ్నం: ${params.devoteeLagna || 'వృశ్చికం'}\n` +
+      `• రాశి: ${params.devoteeRashi || 'కర్కాటకం'}\n` +
+      `• నక్షత్రం: ${params.devoteeNakshatra || 'పునర్వసు'}\n\n` +
+      `గ్రహ సంచార మరియు దశా ఫలితాలు:\n` +
+      `1. గోచార ఫలితం: గురు మరియు శని సంచార ప్రభావం ఉద్యోగ, వ్యాపార మరియు వ్యక్తిగత రంగాలలో అడ్డంకులను తొలగించి శుభ ఫలితాలను చేకూరుస్తుంది.\n` +
+      `2. వింశోత్తరి దశా బలం: మానసిక ప్రశాంతత కోసం నిత్య దేవతా ఆరాధన శ్రేయస్కరం.\n` +
+      `3. అష్ట పరిహార దిశ: ఈశాన్యం మరియు తూర్పు దిశలలో అనుకూల పాజిటివ్ తరంగాలను పొందడానికి నిత్య దీపారాధన చేయాలి.`;
+    remediesPrescribed = [
+      `నిత్య జపం: ప్రతిరోజూ ఉదయం బ్రాహ్మీ ముహూర్తంలో తూర్పు ముఖంగా గాయత్రీ మంత్రం 108 సార్లు జపించండి.`,
+      `ఇష్టదేవతా సేవ: పరమశివుడు మరియు శ్రీ మహాలక్ష్మికి పవిత్ర జల సమర్పణ, ధూప దీప నైవేద్యం.`,
+      `వాస్తు పరిహారం: గృహంలోని ఈశాన్య మూలలో నిత్యం ఆవు నెయ్యితో దీపం వెలిగించండి.`,
+      `దానం & సేవ: గురువారాల్లో పసుపు పప్పు లేదా ఆకలితో ఉన్న పేదవారికి ఆహార దానం చేయండి.`,
+      `గ్రహ శాంతి: శనివారాల్లో సాత్విక జీవన విధానం పాటించి, నవగ్రహ ప్రదక్షిణలు చేయండి.`,
+    ];
+  } else if (lang === 'Hindi') {
+    title = `${params.astrologerName} — वैदिक ज्योतिष परामर्श सारांश`;
+    subtitle = `${params.devoteeName} (${params.devoteeDob}) • ${params.serviceType === 'Voice Call' ? 'वॉइस कॉल' : params.serviceType === 'Video Call' ? 'वीडियो कॉल' : 'एआई चैट'}`;
+    if (!params.chatSummary) {
+      summary = `${params.astrologerName} द्वारा तैयार आधिकारिक ज्योतिषीय परामर्श सारांश एवं परिहार प्रोटोकॉल। लग्न (${params.devoteeLagna || 'वृश्चिक'}), राशि (${params.devoteeRashi || 'कर्क'}), और नक्षत्र (${params.devoteeNakshatra || 'पुनर्वसु'}) का संपूर्ण विश्लेषण।`;
+    }
+    astrologicalAnalysis =
+      `वैदिक ज्योतिष परामर्श सत्र विवरण:\n\n` +
+      `• ज्योतिषी: ${params.astrologerName}\n` +
+      `• परामर्श प्रकार: ${params.serviceType}\n` +
+      `• परामर्श अवधि: ${params.durationText} (${params.durationMinutes} मिनट)\n` +
+      `• जातक का नाम: ${params.devoteeName}\n` +
+      `• जन्म विवरण: ${params.devoteeDob} ${params.devoteeTob ? `समय: ${params.devoteeTob}` : ''} (${params.devoteePob || 'भारत'})\n` +
+      `• लग्न: ${params.devoteeLagna || 'वृश्चिक'}\n` +
+      `• चंद्र राशि: ${params.devoteeRashi || 'कर्क'}\n` +
+      `• जन्म नक्षत्र: ${params.devoteeNakshatra || 'पुनर्वसु'}\n\n` +
+      `ग्रह गोचर एवं दशा विश्लेषण:\n` +
+      `1. गोचर प्रभाव: देवगुरु बृहस्पति एवं शनि का गोचर आपके करियर व आर्थिक पक्ष में शुभ संकेत दे रहा है।\n` +
+      `2. विंशोत्तरी दशा: वर्तमान दशा में मानसिक एकाग्रता और कुलदेवता की उपासना विशेष फलदायी रहेगी।\n` +
+      `3. अष्ट परिहार दिशा: ईशान (उत्तर-पूर्व) एवं पूर्व दिशा में सकारात्मक ऊर्जा प्रवाह हेतु दैनिक उपाय करें।`;
+    remediesPrescribed = [
+      `दैनिक जप: ब्रह्ममुहूर्त में पूर्व दिशा की ओर मुख करके 108 बार गायत्री मंत्र का जाप करें।`,
+      `इष्टदेव सेवा: भगवान शिव एवं माता महालक्ष्मी को जल व पुष्प अर्पित करें।`,
+      `दिशा परिहार: घर के ईशान कोण में गाय के शुद्ध घी का दीपक प्रज्वलित करें।`,
+      `दान एवं सेवा: गुरुवार को चने की दाल या भोजन जरूरतमंदों को दान करें।`,
+      `ग्रह शांति: शनिवार को सात्विक आचरण अपनाएं और पीपल वृक्ष की परिक्रमा करें।`,
+    ];
+  } else if (lang === 'Tamil') {
+    title = `${params.astrologerName} — வேத ஜோதிட ஆலோசனை சுருக்கம்`;
+    subtitle = `${params.devoteeName} (${params.devoteeDob}) • ${params.serviceType}`;
+  } else if (lang === 'Kannada') {
+    title = `${params.astrologerName} — ವೈದಿಕ ಜ್ಯೋತಿಷ್ಯ ಸಮಾಲೋಚನೆ ಸಾರಾಂಶ`;
+    subtitle = `${params.devoteeName} (${params.devoteeDob}) • ${params.serviceType}`;
+  }
 
   const report: KundliReportItem = {
     id: reportId,
@@ -1434,12 +1498,13 @@ export async function generateConsultationSummaryReport(
     size: '2.4 MB',
     category: 'services',
     price: params.amountCharged,
-    language: 'English',
+    language: lang,
     summary,
     astrologicalAnalysis,
     remediesPrescribed,
     details: {
       ...params,
+      language: lang,
       generatedAt: new Date().toISOString(),
     },
   };

@@ -414,7 +414,7 @@ export function FamilyProfileSwitcherModal({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="none"
-            style={{ flexShrink: 1 }}
+            style={{ flex: 1, minHeight: 240 }}
             contentContainerStyle={{ paddingTop: 14, paddingBottom: 220 }}
           >
             {/* Relationship Chips */}

@@ -1549,8 +1549,8 @@ export default function ProfileScreen() {
             borderTopRightRadius: 28,
             borderWidth: 1,
             borderColor: colors.cardBorder,
+            height: '100%',
             maxHeight: '100%',
-            flexShrink: 1,
             overflow: 'hidden',
           }}
         >
@@ -1601,7 +1601,7 @@ export default function ProfileScreen() {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="none"
             showsVerticalScrollIndicator={true}
-            style={{ flexGrow: 1, flexShrink: 1 }}
+            style={{ flex: 1, minHeight: 240 }}
             contentContainerStyle={{
               paddingHorizontal: 24,
               paddingTop: 16,

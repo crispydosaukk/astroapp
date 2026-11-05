@@ -43,6 +43,7 @@ import { generateConsultationSummaryReport } from '@/services/reportService';
 import { AppLanguage, useLanguageStore, useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
 import {
+  isFemaleAstrologer,
   speakAstrologerText,
   stopAstrologerSpeech,
 } from '@/services/speechService';
@@ -769,6 +770,12 @@ function Bubble({
   });
   const bg = msg.isUser ? '#D9FDD3' : '#FFFFFF';
   const displayedText = !msg.isUser ? stripTrailingAstrologerQuestions(msg.text, language) : msg.text;
+  const astrologerName = !msg.isUser
+    ? (msg.modelUsed || 'AstroParihar AI')
+        .replace(/\s*\([^)]*(?:vedika|engine|live)[^)]*\)/gi, '')
+        .replace(/\s*\(Live\)/gi, '')
+        .trim() || 'AstroParihar AI'
+    : '';
 
   return (
     <Animated.View style={[{ marginBottom: 10, flexDirection: 'row', alignItems: 'flex-end', justifyContent: msg.isUser ? 'flex-end' : 'flex-start' }, anim]}>
@@ -788,18 +795,36 @@ function Bubble({
           }}
         >
           {!msg.isUser ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <Text style={{ color: '#008069', fontSize: 12, fontWeight: '700' }}>
-                {msg.modelUsed || 'AstroParihar AI'}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 6,
+                gap: 8,
+              }}
+            >
+              <Text
+                numberOfLines={1}
+                style={{
+                  flex: 1,
+                  flexShrink: 1,
+                  color: '#008069',
+                  fontSize: 12,
+                  fontWeight: '700',
+                }}
+              >
+                {astrologerName}
               </Text>
               <Pressable
                 testID={`aiChat.voice.${index}`}
                 onPress={() => onVoiceTap?.(displayedText, index)}
                 style={{
+                  flexShrink: 0,
                   flexDirection: 'row',
                   alignItems: 'center',
                   paddingHorizontal: 8,
-                  paddingVertical: 3,
+                  paddingVertical: 3.5,
                   borderRadius: 12,
                   backgroundColor: isSpeaking ? 'rgba(201,168,76,0.25)' : 'rgba(0,128,105,0.08)',
                   borderWidth: 1,
@@ -811,7 +836,15 @@ function Bubble({
                   size={13}
                   color={isSpeaking ? '#C9A84C' : '#008069'}
                 />
-                <Text style={{ marginLeft: 3, color: isSpeaking ? '#C9A84C' : '#008069', fontSize: 10, fontWeight: '700' }}>
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    marginLeft: 4,
+                    color: isSpeaking ? '#C9A84C' : '#008069',
+                    fontSize: 10.5,
+                    fontWeight: '700',
+                  }}
+                >
                   {isSpeaking ? (AUDIO_LABEL_BY_LANG[language]?.stop || 'Stop') : (AUDIO_LABEL_BY_LANG[language]?.listen || 'Listen')}
                 </Text>
               </Pressable>
@@ -1096,9 +1129,11 @@ export default function AiChatScreen() {
       setSpeakingIndex(null);
     } else {
       setSpeakingIndex(idx);
+      const isFemale = isFemaleAstrologer(selectedAstrologer.name);
       speakAstrologerText(text, {
         language: selectedLanguage,
         astrologerName: selectedAstrologer.name,
+        gender: isFemale ? 'female' : 'male',
         onStart: () => setSpeakingIndex(idx),
         onDone: () => setSpeakingIndex(null),
         onError: () => setSpeakingIndex(null),
@@ -1369,7 +1404,7 @@ export default function AiChatScreen() {
           time: currentTime(),
           recommendations: res.recommendations,
           structured: res.structured,
-          modelUsed: `${selectedAstrologer.name} (${res.modelUsed || 'AstroParihar AI'})`,
+          modelUsed: selectedAstrologer.name,
         },
       ]);
       scrollToMessageStart();
@@ -1392,6 +1427,7 @@ export default function AiChatScreen() {
           devoteeRashi: effectiveUserInfo.zodiac,
           chatSummary: `User: ${userMsgText}\n\n${selectedAstrologer.name}: ${res.reply}`,
           primaryConcern: userMsgText,
+          language: selectedLanguage,
         },
         authUser?.uid || authUser?.phone
       ).catch(() => {});

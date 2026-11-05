@@ -12,7 +12,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { FlatList, Keyboard, KeyboardAvoidingView, LayoutAnimation, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
+import { BackHandler, FlatList, Keyboard, KeyboardAvoidingView, LayoutAnimation, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Svg, { Line, Rect, Text as SvgText } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -41,7 +41,7 @@ import {
 import { fetchCalculatedKundli, KundliChartData, sendLiveAIChatMessage } from '@/services/astrologyService';
 import { VedicKundliChart } from '@/components/VedicKundliChart';
 import { generateConsultationSummaryReport } from '@/services/reportService';
-import { speakAstrologerText, stopAstrologerSpeech } from '@/services/speechService';
+import { isFemaleAstrologer, speakAstrologerText, stopAstrologerSpeech } from '@/services/speechService';
 import { AppColors, argb, withAlpha } from '@/theme/colors';
 import { useLanguageStore } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
@@ -50,6 +50,32 @@ import { useController } from '@/utils/anim';
 type Astro = { id?: string; name: string; title?: string; imageUrl: string; semanticLabel?: string; price?: number; isAi?: boolean;[k: string]: unknown };
 type Msg = { text: string; isSystem: boolean; isUser?: boolean; time: string };
 
+function deduplicateTranscript(text: string): string {
+  if (!text) return '';
+  const words = text.trim().split(/\s+/);
+  const out: string[] = [];
+  let i = 0;
+  while (i < words.length) {
+    let isDup = false;
+    for (let len = 1; len <= 6; len++) {
+      if (out.length >= len && i + len <= words.length) {
+        const prevSlice = out.slice(out.length - len).join(' ');
+        const nextSlice = words.slice(i, i + len).join(' ');
+        if (prevSlice.toLowerCase() === nextSlice.toLowerCase()) {
+          isDup = true;
+          i += len;
+          break;
+        }
+      }
+    }
+    if (!isDup) {
+      out.push(words[i]);
+      i += 1;
+    }
+  }
+  return out.join(' ');
+}
+
 const SPEECH_RECOGNITION_HTML = `
 <!DOCTYPE html>
 <html>
@@ -57,6 +83,34 @@ const SPEECH_RECOGNITION_HTML = `
 <body>
 <script>
   var rec = null;
+  var finalTranscript = '';
+
+  function cleanDedup(text) {
+    if (!text) return '';
+    var words = text.trim().split(/\\s+/);
+    var out = [];
+    var i = 0;
+    while (i < words.length) {
+      var isDup = false;
+      for (var len = 1; len <= 6; len++) {
+        if (out.length >= len && i + len <= words.length) {
+          var prev = out.slice(out.length - len).join(' ');
+          var curr = words.slice(i, i + len).join(' ');
+          if (prev.toLowerCase() === curr.toLowerCase()) {
+            isDup = true;
+            i += len;
+            break;
+          }
+        }
+      }
+      if (!isDup) {
+        out.push(words[i]);
+        i += 1;
+      }
+    }
+    return out.join(' ');
+  }
+
   function startListening(lang) {
     try {
       var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -72,18 +126,27 @@ const SPEECH_RECOGNITION_HTML = `
       rec.continuous = true;
       rec.interimResults = true;
       rec.maxAlternatives = 1;
+      finalTranscript = '';
 
       rec.onstart = function() {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'STARTED' }));
       };
       rec.onresult = function(event) {
-        var str = '';
-        for (var i = 0; i < event.results.length; ++i) {
-          str += event.results[i][0].transcript;
+        var interimTranscript = '';
+        for (var i = event.resultIndex; i < event.results.length; ++i) {
+          var piece = event.results[i][0].transcript || '';
+          if (event.results[i].isFinal) {
+            finalTranscript += ' ' + piece;
+          } else {
+            interimTranscript += ' ' + piece;
+          }
         }
+        var combined = (finalTranscript + ' ' + interimTranscript).replace(/\\s+/g, ' ').trim();
+        var cleaned = cleanDedup(combined);
+
         window.ReactNativeWebView.postMessage(JSON.stringify({
           type: 'RESULT',
-          transcript: str,
+          transcript: cleaned,
           isFinal: event.results[event.results.length - 1].isFinal
         }));
       };
@@ -103,6 +166,7 @@ const SPEECH_RECOGNITION_HTML = `
     if (rec) {
       try { rec.stop(); } catch(e){}
     }
+    finalTranscript = '';
   }
 
   window.startListening = startListening;
@@ -167,8 +231,12 @@ export default function ConsultationScreen() {
   const extra = useExtra<{ type?: string; astrologer?: Astro; roomID?: string }>();
   const astro = extra?.astrologer ?? DEFAULT_ASTRO;
   const isVideo = extra?.type !== 'voice';
-  const ratePerMin = Number(astro.price ?? 25);
   const isAi = Boolean((astro as any)?.isAi || astro.name?.includes('(AI)') || (astro.title && astro.title.toLowerCase().includes('ai')));
+  // Unified dynamic pricing for all AI astrologers (admin controlled)
+  const dynamicAiVoiceRate = useCurrencyStore((s) => s.pricingSettings.aiVoicePricePerMinute) || 25;
+  const ratePerMin = isAi ? dynamicAiVoiceRate : Number(astro.price ?? 25);
+  const astroGender: 'male' | 'female' =
+    (astro as any)?.gender || (isFemaleAstrologer(astro.name) ? 'female' : 'male');
   const { formatPrice, formatRate } = useCurrencyStore();
 
   // Authentication check
@@ -200,7 +268,12 @@ export default function ConsultationScreen() {
   const [consultationId, setConsultationId] = useState<string | null>(null);
   const roomID = useRef(extra?.roomID || generateZegoRoomId()).current;
 
-  const selectedLanguage = useLanguageStore((s) => s.selectedLanguage);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(
+    useLanguageStore.getState().selectedLanguage || 'English'
+  );
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const callEndedRef = useRef(false);
+
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
 
@@ -292,7 +365,14 @@ export default function ConsultationScreen() {
   };
 
   const endCall = async () => {
+    callEndedRef.current = true;
     stopTimers();
+    stopAstrologerSpeech();
+    setConnected(false);
+    setConnecting(false);
+    setIsWaitingAstrologer(false);
+    setIsAiSpeaking(false);
+    setIsListening(false);
     setEnded(true);
 
     const consultId = consultationIdRef.current || `call_${Date.now()}`;
@@ -309,7 +389,7 @@ export default function ConsultationScreen() {
     });
     const dateISO = new Date().toISOString();
 
-    // 1. Generate & Save Consultation Summary Report
+    // 1. Generate & Save Consultation Summary Report in the selected language
     let genReportId = `rep_consult_${consultId}`;
     try {
       const rep = await generateConsultationSummaryReport(
@@ -328,6 +408,7 @@ export default function ConsultationScreen() {
           devoteeLagna,
           devoteeRashi,
           devoteeNakshatra,
+          language: selectedLanguage,
           chatSummary: messages.length > 0
             ? messages.filter((m) => !m.isSystem).map((m) => `${m.isUser ? 'Devotee' : astro.name}: ${m.text}`).join('\n')
             : undefined,
@@ -404,7 +485,9 @@ export default function ConsultationScreen() {
   };
 
   const cancelCallBeforeAcceptance = async () => {
+    callEndedRef.current = true;
     stopTimers();
+    stopAstrologerSpeech();
     if (consultationIdRef.current) {
       await cancelConsultationBooking(consultationIdRef.current, 'Cancelled by user before acceptance');
     }
@@ -485,8 +568,9 @@ export default function ConsultationScreen() {
             ]);
             speakAstrologerText(initialGreeting, {
               astrologerName: astro.name,
+              gender: astroGender,
               language: selectedLanguage,
-              onStart: () => setIsAiSpeaking(true),
+              onStart: () => { if (!callEndedRef.current) setIsAiSpeaking(true); },
               onDone: () => setIsAiSpeaking(false),
             });
           }
@@ -634,10 +718,29 @@ export default function ConsultationScreen() {
 
     return () => {
       mounted.current = false;
+      callEndedRef.current = true;
       stopTimers();
+      stopAstrologerSpeech();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuth]);
+
+  // Clean Android Hardware Back press handling
+  useEffect(() => {
+    const onBackPress = () => {
+      if (connected && !ended && !callEndedRef.current) {
+        endCall();
+        return true;
+      }
+      stopTimers();
+      stopAstrologerSpeech();
+      return false;
+    };
+    const backSub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => {
+      backSub.remove();
+    };
+  }, [connected, ended]);
 
   const QUICK_VOICE_TOPICS = selectedLanguage === 'Telugu' ? [
     { label: '💼 ఉద్యోగం & కెరీర్', query: 'నా ఉద్యోగం మరియు కెరీర్ భవిష్యత్తు ఎలా ఉంది? ప్రమోషన్ ఎప్పుడు వస్తుంది?' },
@@ -663,6 +766,7 @@ export default function ConsultationScreen() {
   ];
 
   const sendMessage = async (customText?: string) => {
+    if (callEndedRef.current) return;
     const text = (typeof customText === 'string' ? customText : input).trim();
     if (!text) return;
     setMessages((m) => [...m, { text, isSystem: false, isUser: true, time: fmt(secondsRef.current) }]);
@@ -677,14 +781,16 @@ export default function ConsultationScreen() {
           language: selectedLanguage,
           astrologerId: String((astro as any).id || 'acharya-devavrat'),
         });
+        if (callEndedRef.current) return;
         if (res.reply) {
           setMessages((m) => [...m, { text: res.reply, isSystem: false, isUser: false, time: fmt(secondsRef.current) }]);
           scrollChat();
-          if (isSpeakerOn && !isMuted) {
+          if (isSpeakerOn && !isMuted && !callEndedRef.current) {
             speakAstrologerText(res.reply, {
               astrologerName: astro.name,
+              gender: astroGender,
               language: selectedLanguage,
-              onStart: () => setIsAiSpeaking(true),
+              onStart: () => { if (!callEndedRef.current) setIsAiSpeaking(true); },
               onDone: () => setIsAiSpeaking(false),
             });
           }
@@ -694,7 +800,7 @@ export default function ConsultationScreen() {
     }
 
     setTimeout(() => {
-      if (!mounted.current) return;
+      if (!mounted.current || callEndedRef.current) return;
       const fallbackReply = selectedLanguage === 'Telugu'
         ? `మీ జన్మ కుండలిని పరిశీలించాను. గ్రహ గోచారాల ప్రభావం సానుకూలంగా ఉంది. నిత్యం ఇష్టదేవతా స్మరణ మరియు తూర్పు ముఖంగా దీపారాధన చేయండి.`
         : selectedLanguage === 'Hindi'
@@ -702,11 +808,12 @@ export default function ConsultationScreen() {
           : `Based on your birth chart, the planetary transits are supportive. Maintain mental peace and observe your daily remedies.`;
       setMessages((m) => [...m, { text: fallbackReply, isSystem: false, isUser: false, time: fmt(secondsRef.current) }]);
       scrollChat();
-      if (isAi && isSpeakerOn && !isMuted) {
+      if (isAi && isSpeakerOn && !isMuted && !callEndedRef.current) {
         speakAstrologerText(fallbackReply, {
           astrologerName: astro.name,
+          gender: astroGender,
           language: selectedLanguage,
-          onStart: () => setIsAiSpeaking(true),
+          onStart: () => { if (!callEndedRef.current) setIsAiSpeaking(true); },
           onDone: () => setIsAiSpeaking(false),
         });
       }
@@ -866,14 +973,36 @@ export default function ConsultationScreen() {
               </View>
             </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 1, borderColor: 'rgba(201,168,76,0.4)' }}>
+            {/* Language Selection Button */}
+            <Pressable
+              onPress={() => setLanguageModalVisible(true)}
+              hitSlop={8}
+              style={{
+                marginRight: 6,
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 8,
+                paddingVertical: 5,
+                borderRadius: 16,
+                backgroundColor: 'rgba(201, 168, 76, 0.2)',
+                borderWidth: 1,
+                borderColor: '#C9A84C',
+              }}
+            >
+              <AppIcon name="language" color="#FFD700" size={13} />
+              <Text style={{ marginLeft: 3, color: '#FFD700', fontSize: 11, fontWeight: '800' }}>
+                {selectedLanguage.substring(0, 3).toUpperCase()}
+              </Text>
+            </Pressable>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 1, borderColor: 'rgba(201,168,76,0.4)' }}>
               <AppIcon name="timer_outlined" color="#FFD700" size={13} />
               <Text testID="consultation.timer" style={{ marginLeft: 4, color: '#FFD700', fontSize: 12.5, fontWeight: '800', letterSpacing: 0.5 }}>
                 {fmt(seconds)}
               </Text>
             </View>
 
-            <View style={{ marginLeft: 8, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 1, borderColor: balance < 50 ? 'rgba(239,68,68,0.6)' : 'rgba(201,168,76,0.4)' }}>
+            <View style={{ marginLeft: 6, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 1, borderColor: balance < 50 ? 'rgba(239,68,68,0.6)' : 'rgba(201,168,76,0.4)' }}>
               <AppIcon name="account_balance_wallet_outlined" color={balance < 50 ? '#EF4444' : '#FFD700'} size={13} />
               <Text testID="consultation.balance" style={{ marginLeft: 4, color: balance < 50 ? '#EF4444' : '#FFD700', fontSize: 12.5, fontWeight: '800' }}>
                 {formatPrice(balance)}
@@ -1170,10 +1299,12 @@ export default function ConsultationScreen() {
                               {!m.isUser ? (
                                 <Pressable
                                   onPress={() => {
+                                    if (callEndedRef.current) return;
                                     speakAstrologerText(m.text, {
                                       astrologerName: astro.name,
+                                      gender: astroGender,
                                       language: selectedLanguage,
-                                      onStart: () => setIsAiSpeaking(true),
+                                      onStart: () => { if (!callEndedRef.current) setIsAiSpeaking(true); },
                                       onDone: () => setIsAiSpeaking(false),
                                     });
                                   }}
@@ -1606,7 +1737,8 @@ export default function ConsultationScreen() {
             try {
               const data = JSON.parse(event.nativeEvent.data);
               if (data.type === 'RESULT' && data.transcript) {
-                setSpokenTranscript(data.transcript);
+                const clean = deduplicateTranscript(data.transcript);
+                setSpokenTranscript(clean);
               } else if (data.type === 'ERROR') {
                 console.warn('SpeechRecognition note:', data.error);
               }
@@ -1743,6 +1875,126 @@ export default function ConsultationScreen() {
           </Pressable>
         </ScrollView>
       </Dialog>
+
+      {/* Dynamic Language Change Modal */}
+      <Modal
+        visible={languageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLanguageModalVisible(false)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.72)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 24,
+          }}
+          onPress={() => setLanguageModalVisible(false)}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: 360,
+              borderRadius: 22,
+              backgroundColor: colors.surface,
+              borderWidth: 1.5,
+              borderColor: colors.goldAccent,
+              padding: 20,
+              elevation: 16,
+            }}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <AppIcon name="translate" size={20} color={colors.goldAccent} style={{ marginRight: 8 }} />
+                <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800' }}>
+                  Choose Voice & Chat Language
+                </Text>
+              </View>
+              <Pressable onPress={() => setLanguageModalVisible(false)} hitSlop={8}>
+                <AppIcon name="close" size={20} color={colors.textMuted} />
+              </Pressable>
+            </View>
+
+            <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 14 }}>
+              Voices, live speech recitations, chat transcripts, and the final consultation report will instantly adapt to your selected language.
+            </Text>
+
+            <View style={{ gap: 8 }}>
+              {[
+                { name: 'Telugu', native: 'తెలుగు', flag: '🇮🇳' },
+                { name: 'Hindi', native: 'हिन्दी', flag: '🇮🇳' },
+                { name: 'English', native: 'English', flag: '🌐' },
+                { name: 'Tamil', native: 'தமிழ்', flag: '🇮🇳' },
+                { name: 'Kannada', native: 'ಕನ್ನಡ', flag: '🇮🇳' },
+                { name: 'Malayalam', native: 'മലയാളം', flag: '🇮🇳' },
+              ].map((lang) => {
+                const isSelected = selectedLanguage === lang.name;
+                return (
+                  <Pressable
+                    key={lang.name}
+                    onPress={() => {
+                      setSelectedLanguage(lang.name);
+                      useLanguageStore.getState().setLanguage(lang.name as any);
+                      setLanguageModalVisible(false);
+                      stopAstrologerSpeech();
+
+                      const switchMsg = lang.name === 'Telugu'
+                        ? `భాషను తెలుగులోకి మార్చారు. నేను మీ జ్యోతిష ప్రశ్నలకు సమాధానం ఇవ్వడానికి సిద్ధంగా ఉన్నాను.`
+                        : lang.name === 'Hindi'
+                          ? `भाषा बदलकर हिन्दी कर दी गई है। मैं आपकी कुंडली के विश्लेषण हेतु तत्पर हूँ।`
+                          : lang.name === 'Tamil'
+                            ? `மொழி தமிழுக்கு மாற்றப்பட்டது.`
+                            : `Language changed to ${lang.name}. I am ready to answer your astrological questions.`;
+
+                      setMessages((m) => [
+                        ...m,
+                        { text: switchMsg, isSystem: false, isUser: false, time: fmt(secondsRef.current) }
+                      ]);
+
+                      if (isSpeakerOn && !isMuted && !callEndedRef.current) {
+                        speakAstrologerText(switchMsg, {
+                          astrologerName: astro.name,
+                          gender: astroGender,
+                          language: lang.name,
+                          onStart: () => { if (!callEndedRef.current) setIsAiSpeaking(true); },
+                          onDone: () => setIsAiSpeaking(false),
+                        });
+                      }
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      backgroundColor: isSelected ? withAlpha(colors.goldAccent, 20) : colors.surfaceVariant,
+                      borderWidth: 1.5,
+                      borderColor: isSelected ? colors.goldAccent : colors.cardBorder,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 16, marginRight: 10 }}>{lang.flag}</Text>
+                      <View>
+                        <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>
+                          {lang.native}
+                        </Text>
+                        <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                          {lang.name}
+                        </Text>
+                      </View>
+                    </View>
+                    {isSelected && <AppIcon name="check_circle" size={18} color={colors.goldAccent} />}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }

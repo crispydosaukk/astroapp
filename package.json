@@ -1,6 +1,6 @@
 {
   "name": "astroparihar",
-  "version": "2.4.8",
+  "version": "2.5.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {

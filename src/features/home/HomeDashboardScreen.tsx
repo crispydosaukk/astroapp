@@ -1607,7 +1607,7 @@ function RealAstrologersCarousel({ realAstrologers = [] }: { realAstrologers?: L
 function AiAstrologersCarousel({ aiAstrologers = [] }: { aiAstrologers?: LiveAstrologer[] }) {
   const colors = useThemeColors();
   const formatRate = useCurrencyStore((s) => s.formatRate);
-  const aiChatPrice = useCurrencyStore((s) => s.pricingSettings.aiChatPricePerMinute) || 5;
+  const aiChatPrice = useCurrencyStore((s) => s.pricingSettings.aiChatPricePerMinute) || 25;
   const displayList = aiAstrologers && aiAstrologers.length > 0 ? aiAstrologers : DEFAULT_AI_ASTROLOGERS;
 
   return (
@@ -1744,7 +1744,7 @@ function AiAstrologersCarousel({ aiAstrologers = [] }: { aiAstrologers?: LiveAst
 
               <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '700' }}>
-                  {formatRate(a.price || 25)}
+                  {formatRate(aiChatPrice)}
                 </Text>
                 <View
                   style={{

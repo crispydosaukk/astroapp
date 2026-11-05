@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_ENDPOINTS, resolveMediaUrl } from '@/config/api';
+import { useCurrencyStore } from '@/services/currencyStore';
 
 export interface CosmicInsight {
   id: string;
@@ -625,8 +626,10 @@ export async function fetchAiAstrologers(): Promise<LiveAstrologer[]> {
           : null;
 
         if (list && list.length > 0) {
+          const dynamicAiRate = useCurrencyStore.getState().pricingSettings.aiChatPricePerMinute || 25;
           const resolved = list.map((a: any) => ({
             ...a,
+            price: dynamicAiRate,
             isAi: true,
             imageUrl: resolveMediaUrl(a.imageUrl),
           }));
@@ -637,8 +640,10 @@ export async function fetchAiAstrologers(): Promise<LiveAstrologer[]> {
     } catch {}
 
     if (parsedCache && parsedCache.length > 0) {
+      const dynamicAiRate = useCurrencyStore.getState().pricingSettings.aiChatPricePerMinute || 25;
       return parsedCache.map((a: any) => ({
         ...a,
+        price: dynamicAiRate,
         isAi: true,
         imageUrl: resolveMediaUrl(a.imageUrl),
       }));
@@ -647,7 +652,8 @@ export async function fetchAiAstrologers(): Promise<LiveAstrologer[]> {
     console.warn('Error fetching AI astrologers:', err);
   }
 
-  return DEFAULT_AI_ASTROLOGERS;
+  const dynamicAiRate = useCurrencyStore.getState().pricingSettings.aiChatPricePerMinute || 25;
+  return DEFAULT_AI_ASTROLOGERS.map((a) => ({ ...a, price: dynamicAiRate }));
 }
 
 /**
