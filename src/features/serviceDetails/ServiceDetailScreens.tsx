@@ -42,26 +42,48 @@ export function useDynamicService(serviceId: string) {
 
   useEffect(() => {
     let isMounted = true;
+    const cleanId = (serviceId || '').toLowerCase().trim();
+
+    // 1. Instant load from local cache
     AsyncStorage.getItem(STORAGE_SERVICES_KEY).then((cached) => {
       if (cached && isMounted) {
         try {
           const list = JSON.parse(cached);
           if (Array.isArray(list)) {
-            const found = list.find((s: any) => s.id === serviceId);
+            const found = list.find(
+              (s: any) =>
+                s.id?.toLowerCase() === cleanId ||
+                (s.route && s.route.toLowerCase().includes(cleanId.replace('gui-', ''))) ||
+                (s.name && s.name.toLowerCase().includes(cleanId.replace('gui-', '')))
+            );
             if (found) setData(found);
           }
         } catch {}
       }
     });
 
+    // 2. Fetch live configuration from backend API
     fetch(API_ENDPOINTS.services)
       .then((res) => res.json())
       .then((json) => {
-        if (json?.success && Array.isArray(json.services)) {
-          AsyncStorage.setItem(STORAGE_SERVICES_KEY, JSON.stringify(json.services)).catch(() => {});
-          if (isMounted) {
-            const found = json.services.find((s: any) => s.id === serviceId);
-            if (found) setData(found);
+        if (json?.success) {
+          const allItems: any[] = Array.isArray(json.services) && json.services.length > 0
+            ? json.services
+            : Array.isArray(json.categories)
+            ? json.categories.flatMap((c: any) => c.items || [])
+            : [];
+
+          if (allItems.length > 0) {
+            AsyncStorage.setItem(STORAGE_SERVICES_KEY, JSON.stringify(allItems)).catch(() => {});
+            if (isMounted) {
+              const found = allItems.find(
+                (s: any) =>
+                  s.id?.toLowerCase() === cleanId ||
+                  (s.route && s.route.toLowerCase().includes(cleanId.replace('gui-', ''))) ||
+                  (s.name && s.name.toLowerCase().includes(cleanId.replace('gui-', '')))
+              );
+              if (found) setData(found);
+            }
           }
         }
       })

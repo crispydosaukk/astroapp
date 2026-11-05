@@ -90,7 +90,7 @@ export function AppNavigation({ state, navigation }: BottomTabBarProps) {
     };
   }, []);
 
-  if (isKeyboardVisible) return null;
+  if (isKeyboardVisible || currentName === 'ai-chat-screen') return null;
 
   const onTabTap = (spec: TabSpec) => {
     const route = state.routes.find((r) => r.name === spec.route);

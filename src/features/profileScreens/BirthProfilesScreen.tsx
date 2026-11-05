@@ -13,7 +13,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
-import { ElevatedButton, OutlinedButton } from '@/components/common';
+import { ElevatedButton } from '@/components/common';
 import { BottomSheet, PopupMenu, showSnackBar } from '@/components/overlays';
 import { formatTimeOfDay, pickDate, pickTime } from '@/components/pickers';
 import { LocationSearchInput } from '@/components/LocationSearchInput';
@@ -50,25 +50,41 @@ function DetailRow({ emoji, label, value, colors }: { emoji: string; label: stri
   );
 }
 
-function AstroChip({ symbol, value, label, colors }: { symbol: string; value: string; label: string; colors: any }) {
+function AstroChip({
+  symbol,
+  value,
+  label,
+  colors,
+  style,
+}: {
+  symbol: string;
+  value: string;
+  label: string;
+  colors: any;
+  style?: any;
+}) {
   return (
     <View
-      style={{
-        marginRight: 8,
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 10,
-        backgroundColor: colors.surfaceVariant,
-        borderWidth: 1,
-        borderColor: colors.cardBorder,
-      }}
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 10,
+          paddingVertical: 7,
+          borderRadius: 12,
+          backgroundColor: colors.surfaceVariant,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+        },
+        style,
+      ]}
     >
-      <Text style={{ fontSize: 12 }}>{symbol}</Text>
-      <View style={{ marginLeft: 6 }}>
-        <Text style={{ color: colors.textPrimary, fontSize: 11, fontWeight: '700' }}>{value}</Text>
-        <Text style={{ color: colors.textMuted, fontSize: 9 }}>{label}</Text>
+      <Text style={{ fontSize: 13 }}>{symbol}</Text>
+      <View style={{ marginLeft: 6, flex: 1 }}>
+        <Text numberOfLines={1} style={{ color: colors.textPrimary, fontSize: 11, fontWeight: '700' }}>
+          {value}
+        </Text>
+        <Text style={{ color: colors.textMuted, fontSize: 9.5 }}>{label}</Text>
       </View>
     </View>
   );
@@ -143,7 +159,7 @@ export default function BirthProfilesScreen() {
         const d = String(chosen.getDate()).padStart(2, '0');
         setFormDob(`${y}-${m}-${d}`);
       }
-    } catch {}
+    } catch { }
   };
 
   const handlePickTime = async () => {
@@ -154,7 +170,7 @@ export default function BirthProfilesScreen() {
       if (chosen) {
         setFormTime(formatTimeOfDay(chosen));
       }
-    } catch {}
+    } catch { }
   };
 
   const onMenu = async (index: number, val: 'edit' | 'set_active' | 'delete') => {
@@ -278,6 +294,7 @@ export default function BirthProfilesScreen() {
               shadowOpacity: p.active ? 0.2 : 0.04,
               shadowRadius: 10,
               elevation: p.active ? 4 : 1,
+              overflow: 'hidden',
             }}
           >
             <View style={{ padding: 16, flexDirection: 'row', alignItems: 'center' }}>
@@ -349,10 +366,14 @@ export default function BirthProfilesScreen() {
 
             <View style={{ height: 1, backgroundColor: colors.divider }} />
 
-            <View style={{ paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-              <AstroChip symbol="♈" value={p.sign || p.zodiac} label="Rashi" colors={colors} />
-              <AstroChip symbol="⭐" value={p.nakshatra} label="Nakshatra" colors={colors} />
-              <View style={{ flex: 1 }} />
+            {/* Astro Chips: 2 equal-width columns that fit 100% of card width */}
+            <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8, flexDirection: 'row', gap: 8 }}>
+              <AstroChip symbol="♈" value={p.sign || p.zodiac || 'Rashi'} label="Rashi" colors={colors} style={{ flex: 1 }} />
+              <AstroChip symbol="⭐" value={p.nakshatra || 'Nakshatra'} label="Nakshatra" colors={colors} style={{ flex: 1 }} />
+            </View>
+
+            {/* Prominent Action Button: View Kundli Chart */}
+            <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
               <Pressable
                 testID={`birthProfiles.card.${i}.viewKundli`}
                 onPress={async () => {
@@ -361,18 +382,24 @@ export default function BirthProfilesScreen() {
                   }
                   push(AppRoutes.myKundliScreen);
                 }}
-                style={{
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingVertical: 10,
                   paddingHorizontal: 14,
-                  paddingVertical: 7,
-                  borderRadius: 20,
-                  borderWidth: 1,
+                  borderRadius: 14,
+                  borderWidth: 1.2,
                   borderColor: colors.goldAccent,
-                  backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 15 : 20),
-                }}
+                  backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 14 : 22),
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                })}
               >
-                <Text style={{ color: colors.goldAccent, fontSize: 12, fontWeight: '700' }}>
-                  {t('profile.myKundli', 'View Kundli')}
+                <AppIcon name="auto_awesome" size={15} color={colors.goldAccent} style={{ marginRight: 6 }} />
+                <Text style={{ color: colors.goldAccent, fontSize: 12.5, fontWeight: '800' }}>
+                  {t('profile.myKundli', 'View Kundli Chart')}
                 </Text>
+                <AppIcon name="arrow_forward_ios_rounded" size={10} color={colors.goldAccent} style={{ marginLeft: 6 }} />
               </Pressable>
             </View>
           </View>
@@ -460,13 +487,13 @@ export default function BirthProfilesScreen() {
           <ScrollView
             ref={sheetScrollRef}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
+            keyboardDismissMode="none"
             showsVerticalScrollIndicator={true}
-            style={{ flexShrink: 1 }}
+            style={{ flexGrow: 1, flexShrink: 1 }}
             contentContainerStyle={{
               paddingHorizontal: 24,
               paddingTop: 16,
-              paddingBottom: Math.max(insets.bottom + 16, 20),
+              paddingBottom: 220,
             }}
           >
             {/* Relationship */}
@@ -607,15 +634,21 @@ export default function BirthProfilesScreen() {
               onChangeText={setFormPlace}
               required
               label="Birth Place (City, State, Country)"
-              placeholder="Enter birth place (e.g. Mumbai)"
-              onFocus={() => {
-                setTimeout(() => {
-                  sheetScrollRef.current?.scrollToEnd({ animated: true });
-                }, 100);
-              }}
+              placeholder="Enter birth place (e.g. Hyderabad, Guntur)"
             />
+          </ScrollView>
 
-            {/* Save Button */}
+          {/* Pinned Action Footer */}
+          <View
+            style={{
+              paddingHorizontal: 24,
+              paddingTop: 12,
+              paddingBottom: Math.max(insets.bottom, 16),
+              borderTopWidth: 1,
+              borderTopColor: colors.cardBorder,
+              backgroundColor: colors.surface,
+            }}
+          >
             <ElevatedButton
               label={saving ? 'Calculating Chart...' : sheetMode === 'add' ? 'Save Birth Profile' : 'Update Profile Details'}
               onPress={handleSaveProfile}
@@ -623,9 +656,8 @@ export default function BirthProfilesScreen() {
               loading={saving}
               radius={14}
               paddingV={14}
-              style={{ marginTop: 8 }}
             />
-          </ScrollView>
+          </View>
         </View>
       </BottomSheet>
     </View>

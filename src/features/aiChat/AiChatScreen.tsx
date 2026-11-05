@@ -37,7 +37,9 @@ import { withAlpha } from '@/theme/colors';
 import { useController } from '@/utils/anim';
 import {
   sendLiveAIChatMessage,
+  stripTrailingAstrologerQuestions,
 } from '@/services/astrologyService';
+import { generateConsultationSummaryReport } from '@/services/reportService';
 import { AppLanguage, useLanguageStore, useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
 import {
@@ -348,38 +350,369 @@ function TypingIndicator() {
   );
 }
 
-function StructuredAnalysisCard({ structured }: { structured: ChatMessage['structured'] }) {
+export const STRUCTURED_CARD_STRINGS: Record<string, {
+  activeDasha: string;
+  hideEvidence: string;
+  viewEvidence: string;
+  recommendedHomam: string;
+  mantra: string;
+}> = {
+  Telugu: {
+    activeDasha: '✦ ప్రస్తుత దశ:',
+    hideEvidence: '▲ జ్యోతిష్య ఆధారాలను దాచు',
+    viewEvidence: '▼ జ్యోతిష్య ఆధారాన్ని చూడండి',
+    recommendedHomam: '🕉️ సూచించిన హోమం:',
+    mantra: 'మంత్రం:',
+  },
+  te: {
+    activeDasha: '✦ ప్రస్తుత దశ:',
+    hideEvidence: '▲ జ్యోతిష్య ఆధారాలను దాచు',
+    viewEvidence: '▼ జ్యోతిష్య ఆధారాన్ని చూడండి',
+    recommendedHomam: '🕉️ సూచించిన హోమం:',
+    mantra: 'మంత్రం:',
+  },
+  Hindi: {
+    activeDasha: '✦ सक्रिय दशा:',
+    hideEvidence: '▲ ज्योतिषीय प्रमाण छिपाएं',
+    viewEvidence: '▼ ज्योतिषीय आधार देखें',
+    recommendedHomam: '🕉️ अनुशंसित हवन / होम:',
+    mantra: 'मंत्र:',
+  },
+  hi: {
+    activeDasha: '✦ सक्रिय दशा:',
+    hideEvidence: '▲ ज्योतिषीय प्रमाण छिपाएं',
+    viewEvidence: '▼ ज्योतिषीय आधार देखें',
+    recommendedHomam: '🕉️ अनुशंसित हवन / होम:',
+    mantra: 'मंत्र:',
+  },
+  Tamil: {
+    activeDasha: '✦ தற்போதைய தசை:',
+    hideEvidence: '▲ ஜோதிட ஆதாரங்களை மறைக்கவும்',
+    viewEvidence: '▼ ஜோதிட அடிப்படையைக் காண்க',
+    recommendedHomam: '🕉️ பரிந்துரைக்கப்பட்ட ஹோமம்:',
+    mantra: 'மந்திரம்:',
+  },
+  ta: {
+    activeDasha: '✦ தற்போதைய தசை:',
+    hideEvidence: '▲ ஜோதிட ஆதாரங்களை மறைக்கவும்',
+    viewEvidence: '▼ ஜோதிட அடிப்படையைக் காண்க',
+    recommendedHomam: '🕉️ பரிந்துரைக்கப்பட்ட ஹோமம்:',
+    mantra: 'மந்திரம்:',
+  },
+  Kannada: {
+    activeDasha: '✦ ಪ್ರಸ್ತುತ ದಶೆ:',
+    hideEvidence: '▲ ಜ್ಯೋತಿಷ್ಯ ಪುರಾವೆ ಮರೆಮಾಡಿ',
+    viewEvidence: '▼ ಜ್ಯೋತಿಷ್ಯ ಆಧಾರ ನೋಡಿ',
+    recommendedHomam: '🕉️ ಸೂಚಿಸಿದ ಹೋಮ:',
+    mantra: 'ಮಂತ್ರ:',
+  },
+  kn: {
+    activeDasha: '✦ ಪ್ರಸ್ತುತ ದಶೆ:',
+    hideEvidence: '▲ ಜ್ಯೋತಿಷ್ಯ ಪುರಾವೆ ಮರೆಮಾಡಿ',
+    viewEvidence: '▼ ಜ್ಯೋತಿಷ್ಯ ಆಧಾರ ನೋಡಿ',
+    recommendedHomam: '🕉️ ಸೂಚಿಸಿದ ಹೋಮ:',
+    mantra: 'ಮಂತ್ರ:',
+  },
+  Malayalam: {
+    activeDasha: '✦ നിലവിലെ ദശ:',
+    hideEvidence: '▲ ജ്യോതിഷ തെളിവുകൾ മറയ്ക്കുക',
+    viewEvidence: '▼ ജ്യോതിഷ അടിസ്ഥാനം കാണുക',
+    recommendedHomam: '🕉️ നിർദ്ദേശിച്ച ഹോമം:',
+    mantra: 'മന്ത്രം:',
+  },
+  ml: {
+    activeDasha: '✦ നിലവിലെ ദശ:',
+    hideEvidence: '▲ ജ്യോതിഷ തെളിവുകൾ മറയ്ക്കുക',
+    viewEvidence: '▼ ജ്യോതിഷ അടിസ്ഥാനം കാണുക',
+    recommendedHomam: '🕉️ നിർദ്ദേശിച്ച ഹോമം:',
+    mantra: 'മന്ത്രം:',
+  },
+  English: {
+    activeDasha: '✦ Active Dasha:',
+    hideEvidence: '▲ Hide Astrological Evidence',
+    viewEvidence: '▼ View Astrological Basis',
+    recommendedHomam: '🕉️ Recommended Homam:',
+    mantra: 'Mantra:',
+  },
+  en: {
+    activeDasha: '✦ Active Dasha:',
+    hideEvidence: '▲ Hide Astrological Evidence',
+    viewEvidence: '▼ View Astrological Basis',
+    recommendedHomam: '🕉️ Recommended Homam:',
+    mantra: 'Mantra:',
+  },
+};
+
+export const SUBTITLE_BY_LANG: Record<string, string> = {
+  Telugu: 'ఆన్‌లైన్ • సర్టిఫైడ్ వేద AI జ్యోతిష్యులు',
+  Hindi: 'ऑनलाइन • प्रमाणित वैदिक एआई ज्योतिषी',
+  Tamil: 'ஆன்லைன் • சான்றளிக்கப்பட்ட வேத AI ஜோதிடர்',
+  Kannada: 'ಆನ್‌ಲೈನ್ • ಪ್ರಮಾಣೀಕೃತ ವೈದಿಕ AI ಜ್ಯೋತಿಷಿ',
+  Malayalam: 'ഓൺലൈൻ • സർട്ടിഫൈഡ് വൈദിക AI ജ്യോതിഷി',
+  English: 'Online • Certified Vedic AI Astrologer',
+};
+
+export const BALANCE_LABEL_BY_LANG: Record<string, string> = {
+  Telugu: 'బ్యాలెన్స్: ',
+  Hindi: 'बैलेंस: ',
+  Tamil: 'இருப்பு: ',
+  Kannada: 'ಬ್ಯಾಲೆನ್ಸ್: ',
+  Malayalam: 'ബാലൻസ്: ',
+  English: 'Balance: ',
+};
+
+export const FREE_PROMPTS_LABEL: Record<string, (n: number) => string> = {
+  Telugu: (n) => `⚡ ${n} ఉచిత ప్రశ్నలు`,
+  Hindi: (n) => `⚡ ${n} मुफ्त प्रश्न`,
+  Tamil: (n) => `⚡ ${n} இலவச கேள்விகள்`,
+  Kannada: (n) => `⚡ ${n} ಉಚಿತ ಪ್ರಶ್ನೆಗಳು`,
+  Malayalam: (n) => `⚡ ${n} സൗജന്യ ചോദ്യങ്ങൾ`,
+  English: (n) => `⚡ ${n} Free Prompts`,
+};
+
+export const PROMPT_COST_LABEL: Record<string, (cost: string) => string> = {
+  Telugu: (cost) => `⚡ ${cost} / ప్రశ్న`,
+  Hindi: (cost) => `⚡ ${cost} / प्रश्न`,
+  Tamil: (cost) => `⚡ ${cost} / கேள்வி`,
+  Kannada: (cost) => `⚡ ${cost} / ಪ್ರಶ್ನೆ`,
+  Malayalam: (cost) => `⚡ ${cost} / ചോദ്യം`,
+  English: (cost) => `⚡ ${cost} / prompt`,
+};
+
+export const RECHARGE_LABEL_BY_LANG: Record<string, string> = {
+  Telugu: '+ రీఛార్జ్ ↗',
+  Hindi: '+ रिचार्ज ↗',
+  Tamil: '+ ரீசார்ஜ் ↗',
+  Kannada: '+ ರೀಚಾರ್ಜ್ ↗',
+  Malayalam: '+ റീചാർജ് ↗',
+  English: '+ Recharge ↗',
+};
+
+export const AUDIO_LABEL_BY_LANG: Record<string, { listen: string; stop: string }> = {
+  Telugu: { listen: 'వినండి', stop: 'ఆపండి' },
+  Hindi: { listen: 'सुनें', stop: 'रोकें' },
+  Tamil: { listen: 'கேளுங்கள்', stop: 'நிறுத்து' },
+  Kannada: { listen: 'ಕೇಳಿ', stop: 'ನಿಲ್ಲಿಸಿ' },
+  Malayalam: { listen: 'കേൾക്കുക', stop: 'നിർത്തുക' },
+  English: { listen: 'Listen', stop: 'Stop' },
+};
+
+export const AUTH_PLACEHOLDER: Record<string, string> = {
+  Telugu: 'ప్రశ్నలు అడగడానికి సైన్ ఇన్ చేయండి...',
+  Hindi: 'प्रश्न पूछने के लिए साइन इन करें...',
+  Tamil: 'கேள்விகள் கேட்க உள்நுழையவும்...',
+  Kannada: 'ಪ್ರಶ್ನೆ ಕೇಳಲು ಸೈನ್ ಇನ್ ಮಾಡಿ...',
+  Malayalam: 'ചോദ്യങ്ങൾ ചോദിക്കാൻ സൈൻ ഇൻ ചെയ്യുക...',
+  English: 'Sign in to ask questions...',
+};
+
+export function localizeAstrologicalString(text: string, lang: string): string {
+  if (!text) return '';
+  const normLang =
+    /telugu|^te$/i.test(lang || '') ? 'Telugu' :
+    /hindi|^hi$/i.test(lang || '') ? 'Hindi' :
+    /tamil|^ta$/i.test(lang || '') ? 'Tamil' :
+    /kannada|^kn$/i.test(lang || '') ? 'Kannada' :
+    /malayalam|^ml$/i.test(lang || '') ? 'Malayalam' : 'English';
+
+  if (normLang === 'English') return text;
+
+  const EXACT_MAP: Record<string, Record<string, string>> = {
+    'Next 3 to 6 Months (Auspicious Transit Window)': {
+      Telugu: 'రాబోయే 3 నుండి 6 నెలలు (శుభ గోచార సమయం)',
+      Hindi: 'आगामी 3 से 6 महीने (शुभ गोचर कालखंड)',
+      Tamil: 'அடுத்த 3 முதல் 6 மாதங்கள் (சுப பெயர்ச்சி காலம்)',
+      Kannada: 'ಮುಂದಿನ 3 ರಿಂದ 6 ತಿಂಗಳು (ಶುಭ ಸಂಚಾರ ಕಾಲ)',
+      Malayalam: 'അടുത്ത 3 മുതൽ 6 മാസം വരെ (ശുഭ ഗ്രഹ സഞ്ചാര സമയം)',
+    },
+    'Lagna and Moon sign equilibrium provides emotional stability.': {
+      Telugu: 'లగ్నం మరియు చంద్ర రాశి సమతుల్యత మానసిక స్థిరత్వాన్ని మరియు స్పష్టతను ఇస్తుంది.',
+      Hindi: 'लग्न और चंद्र राशि का संतुलन मानसिक शांति और स्पष्टता प्रदान करता है।',
+      Tamil: 'லக்னம் மற்றும் சந்திர ராசியின் சமநிலை மன அமைதியைத் தருகிறது.',
+      Kannada: 'ಲಗ್ನ ಮತ್ತು ಚಂದ್ರ ರಾಶಿಯ ಸಮತೋಲನವು ಮಾನಸಿಕ ಸ್ಥಿರತೆಯನ್ನು ನೀಡುತ್ತದೆ.',
+      Malayalam: 'ലഗ്നത്തിന്റെയും ചന്ദ്ര രാശിയുടെയും സന്തുലിതാവസ്ഥ മാനസിക സ്ഥിരത നൽകുന്നു.',
+    },
+    'Mahadasha lord aligns with core enterprise.': {
+      Telugu: 'మహాదశాధిపతి మీ ప్రధాన లక్ష్యాలు మరియు కార్యసిద్ధికి అనుకూలంగా ఉన్నారు.',
+      Hindi: 'महादशाधिपति मुख्य कार्यों और उन्नति के अनुकूल संरेखित हैं।',
+      Tamil: 'மகாதிசாதிபதி முக்கிய முயற்சிகளுக்கு சாதகமாக உள்ளார்.',
+      Kannada: 'ಮಹಾದಶಾಧಿಪತಿಯು ಮುಖ್ಯ ಕಾರ್ಯಸಾಧನೆಗೆ ಪೂರಕವಾಗಿದ್ದಾರೆ.',
+      Malayalam: 'മഹാദശാധിപൻ നിങ്ങളുടെ പ്രധാന ലക്ഷ്യങ്ങൾക്ക് അനുകൂലമായി നിലകൊള്ളുന്നു.',
+    },
+    'Remedial resonance accelerates obstacle dissolution.': {
+      Telugu: 'వేద పరిహారాల ఆచరణ ఆటంకాలను వేగంగా తొలగిస్తుంది.',
+      Hindi: 'शास्त्रोक्त वैदिक उपायों का अनुष्ठान बाधाओं का शीघ्र निवारण करता है।',
+      Tamil: 'பரிகாரங்களின் சக்தி தடைகளை விரைவாக நீக்குகிறது.',
+      Kannada: 'ಪರಿಹಾರಗಳ ಆಚರಣೆಯು ಅಡೆತಡೆಗಳನ್ನು ಶೀಘ್ರವಾಗಿ ನಿವಾರಿಸುತ್ತದೆ.',
+      Malayalam: 'പരിഹാര ക്രിയകൾ തടസ്സങ്ങളെ വേഗത്തിൽ ഇല്ലാതാക്കുന്നു.',
+    },
+    'Lagna Lord (Benefic) in favorable quadrant': {
+      Telugu: 'లగ్నాధిపతి కేంద్ర స్థానంలో శుభ బలాన్ని కలిగి ఉన్నారు.',
+      Hindi: 'लग्नेश केंद्र भाव में शुभ स्थिति में हैं।',
+      Tamil: 'லக்னாதிபதி கேந்திர ஸ்தானத்தில் சுப பலத்துடன் உள்ளார்.',
+      Kannada: 'ಲಗ್ನಾಧಿಪತಿಯು ಕೇಂದ್ರ ಸ್ಥಾನದಲ್ಲಿ ಶುಭ ಬಲ ಹೊಂದಿದ್ದಾರೆ.',
+      Malayalam: 'ലഗ്നാധിപൻ കേന്ദ്ര സ്ഥാനത്ത് ശുഭ ബലത്തോടെ സ്ഥിതി ചെയ്യുന്നു.',
+    },
+    'Benefic transit of Jupiter amplifying auspicious results': {
+      Telugu: 'గురు శుభ సంచారం సత్ఫలితాలను మరింత వృద్ధి చేస్తోంది.',
+      Hindi: 'बृहस्पति का शुभ गोचर सकारात्मक परिणामों को बढ़ा रहा है।',
+      Tamil: 'குருவின் சுப பெயர்ச்சி நற்பலன்களை அதிகரிக்கிறது.',
+      Kannada: 'ಗುರುವಿನ ಶುಭ ಸಂಚಾರವು ಸತ್ಫಲಗಳನ್ನು ವೃದ್ಧಿಸುತ್ತಿದೆ.',
+      Malayalam: 'വ്യാഴത്തിന്റെ ശുഭ സഞ്ചാരം സത്ഫലങ്ങൾ വർദ്ധിപ്പിക്കുന്നു.',
+    },
+  };
+
+  const trimmed = text.trim();
+  if (EXACT_MAP[trimmed]?.[normLang]) {
+    return EXACT_MAP[trimmed][normLang];
+  }
+
+  let result = text;
+
+  const PLANET_MAP: Record<string, Record<string, string>> = {
+    Jupiter: { Telugu: 'గురు', Hindi: 'गुरु', Tamil: 'குரு', Kannada: 'ಗುರು', Malayalam: 'വ്യാഴ' },
+    Mercury: { Telugu: 'బుధ', Hindi: 'बुध', Tamil: 'புதன்', Kannada: 'ಬುಧ', Malayalam: 'ബുധ' },
+    Saturn: { Telugu: 'శని', Hindi: 'शनि', Tamil: 'சனி', Kannada: 'ಶನಿ', Malayalam: 'ശനി' },
+    Venus: { Telugu: 'శుక్ర', Hindi: 'शुक्र', Tamil: 'சுக்கிர', Kannada: 'ಶುಕ್ರ', Malayalam: 'ശുക്ര' },
+    Mars: { Telugu: 'కుజ', Hindi: 'मंगल', Tamil: 'செவ்வாய்', Kannada: 'ಮಂಗಳ', Malayalam: 'ചൊവ്വ' },
+    Sun: { Telugu: 'సూర్య', Hindi: 'सूर्य', Tamil: 'சூரிய', Kannada: 'ಸೂರ್ಯ', Malayalam: 'സൂര്യ' },
+    Moon: { Telugu: 'చంద్ర', Hindi: 'चंद्र', Tamil: 'சந்திர', Kannada: 'ಚಂದ್ರ', Malayalam: 'ചന്ദ്ര' },
+    Rahu: { Telugu: 'రాహు', Hindi: 'राहु', Tamil: 'ராகு', Kannada: 'ರಾಹು', Malayalam: 'രാഹു' },
+    Ketu: { Telugu: 'కేతు', Hindi: 'केतु', Tamil: 'கேது', Kannada: 'ಕೇತು', Malayalam: 'കേതു' },
+  };
+
+  const DASHA_MAP: Record<string, Record<string, string>> = {
+    Mahadasha: { Telugu: 'మహాదశ', Hindi: 'महादशा', Tamil: 'மகாதிசை', Kannada: 'ಮಹಾದಶೆ', Malayalam: 'മഹാദശ' },
+    Antardasha: { Telugu: 'అంతర్దశ', Hindi: 'अंतर्दशा', Tamil: 'புத்தி', Kannada: 'ಅಂತರ್ದಶೆ', Malayalam: 'അപഹാരം' },
+    Bhukti: { Telugu: 'భుక్తి', Hindi: 'भुक्ति', Tamil: 'புக்தி', Kannada: 'ಭುಕ್ತಿ', Malayalam: 'ഭുക്തി' },
+  };
+
+  const ZODIAC_MAP: Record<string, Record<string, string>> = {
+    Aries: { Telugu: 'మేషం (Mesha)', Hindi: 'मेष', Tamil: 'மேஷம்', Kannada: 'ಮೇಷ', Malayalam: 'മേടം' },
+    Taurus: { Telugu: 'వృషభం (Vrishabha)', Hindi: 'वृषभ', Tamil: 'ரிஷபம்', Kannada: 'ವೃಷಭ', Malayalam: 'ഇടവം' },
+    Gemini: { Telugu: 'మిథునం (Mithuna)', Hindi: 'मिथुन', Tamil: 'மிதுனம்', Kannada: 'ಮಿಥುನ', Malayalam: 'മിഥുനം' },
+    Cancer: { Telugu: 'కర్కాటకం (Karkataka)', Hindi: 'कर्क', Tamil: 'கடகம்', Kannada: 'ಕರ್ಕಾಟಕ', Malayalam: 'കർക്കടകം' },
+    Leo: { Telugu: 'సింహం (Simha)', Hindi: 'सिंह', Tamil: 'சிம்மம்', Kannada: 'ಸಿಂಹ', Malayalam: 'ചിങ്ങം' },
+    Virgo: { Telugu: 'కన్య (Kanya)', Hindi: 'कन्या', Tamil: 'கன்னி', Kannada: 'ಕನ್ಯಾ', Malayalam: 'കന്നി' },
+    Libra: { Telugu: 'తుల (Tula)', Hindi: 'तुला', Tamil: 'துலாம்', Kannada: 'ತುಲಾ', Malayalam: 'തുലാം' },
+    Scorpio: { Telugu: 'వృశ్చికం (Vrischika)', Hindi: 'वृश्चिक', Tamil: 'விருச்சிகம்', Kannada: 'ವೃಶ್ಚಿಕ', Malayalam: 'വൃശ്ചികം' },
+    Sagittarius: { Telugu: 'ధనుస్సు (Dhanu)', Hindi: 'धनु', Tamil: 'தனுசு', Kannada: 'ಧನುಸ್ಸು', Malayalam: 'ധനു' },
+    Capricorn: { Telugu: 'మకరం (Makara)', Hindi: 'मकर', Tamil: 'மகரம்', Kannada: 'ಮಕರ', Malayalam: 'മകരം' },
+    Aquarius: { Telugu: 'కుంభం (Kumbha)', Hindi: 'कुंभ', Tamil: 'கும்பம்', Kannada: 'ಕುಂಭ', Malayalam: 'കുംഭം' },
+    Pisces: { Telugu: 'మీనం (Meena)', Hindi: 'मीन', Tamil: 'மீனம்', Kannada: 'ಮೀನ', Malayalam: 'മീനം' },
+  };
+
+  const HOMAM_MAP: Record<string, Record<string, string>> = {
+    'Navagraha Homam': { Telugu: 'నవగ్రహ హోమం', Hindi: 'नवग्रह हवन', Tamil: 'நவக்கிரக ஹோமம்', Kannada: 'ನವಗ್ರಹ ಹೋಮ', Malayalam: 'നവഗ്രഹ ഹോമം' },
+    'Maha Mrityunjaya Homam': { Telugu: 'మహా మృత్యుంజయ హోమం', Hindi: 'महामृत्युंजय हवन', Tamil: 'மகா மிருத்யுஞ்சய ஹோமம்', Kannada: 'ಮಹಾ ಮೃತ್ಯುಂಜಯ ಹೋಮ', Malayalam: 'മഹാ മൃത്യുഞ്ജയ ഹോമം' },
+    'Ganapathi Homam': { Telugu: 'గణపతి హోమం', Hindi: 'गणपति हवन', Tamil: 'கணபதி ஹோமம்', Kannada: 'ಗಣಪತಿ ಹೋಮ', Malayalam: 'ഗണപതി ഹോമം' },
+    'Chandi Homam': { Telugu: 'చండీ హోమం', Hindi: 'चंडी हवन', Tamil: 'சண்டி ஹோமம்', Kannada: 'ಚಂಡೀ ಹೋಮ', Malayalam: 'ചണ്ഡീ ഹോമം' },
+    'Sudarshana Homam': { Telugu: 'సుదర్శన హోమం', Hindi: 'सुदर्शन हवन', Tamil: 'சுதர்சன ஹோமம்', Kannada: 'ಸುದರ್ಶನ ಹೋಮ', Malayalam: 'സുദർശന ഹോമം' },
+  };
+
+  Object.keys(HOMAM_MAP).forEach((h) => {
+    const loc = HOMAM_MAP[h][normLang];
+    if (loc) result = result.replace(new RegExp(h, 'gi'), loc);
+  });
+
+  Object.keys(PLANET_MAP).forEach((planet) => {
+    const localized = PLANET_MAP[planet][normLang];
+    if (localized) {
+      result = result.replace(new RegExp(`\\b${planet}\\b`, 'g'), localized);
+    }
+  });
+
+  Object.keys(DASHA_MAP).forEach((d) => {
+    const localized = DASHA_MAP[d][normLang];
+    if (localized) {
+      result = result.replace(new RegExp(`\\b${d}\\b`, 'g'), localized);
+    }
+  });
+
+  Object.keys(ZODIAC_MAP).forEach((z) => {
+    const localized = ZODIAC_MAP[z][normLang];
+    if (localized) {
+      result = result.replace(new RegExp(`\\b${z}\\b`, 'g'), localized);
+    }
+  });
+
+  if (result.includes('Auspicious Transit Window') || result.includes('Transit Window')) {
+    const transMap: Record<string, string> = {
+      Telugu: 'శుభ గోచార సమయం',
+      Hindi: 'शुभ गोचर कालखंड',
+      Tamil: 'சுப பெயர்ச்சி காலம்',
+      Kannada: 'ಶುಭ ಸಂಚಾರ ಕಾಲ',
+      Malayalam: 'ശുഭ ഗ്രഹ സഞ്ചാര സമയം',
+    };
+    if (transMap[normLang]) {
+      result = result.replace(/Auspicious Transit Window/gi, transMap[normLang]);
+      result = result.replace(/Transit Window/gi, transMap[normLang]);
+    }
+  }
+
+  const nextMonthsMatch = result.match(/Next\s+(\d+)\s+to\s+(\d+)\s+Months/i);
+  if (nextMonthsMatch) {
+    const m1 = nextMonthsMatch[1];
+    const m2 = nextMonthsMatch[2];
+    const monthsMap: Record<string, string> = {
+      Telugu: `రాబోయే ${m1} నుండి ${m2} నెలలు`,
+      Hindi: `आगामी ${m1} से ${m2} महीने`,
+      Tamil: `அடுத்த ${m1} முதல் ${m2} மாதங்கள்`,
+      Kannada: `ಮುಂದಿನ ${m1} ರಿಂದ ${m2} ತಿಂಗಳು`,
+      Malayalam: `അടുത്ത ${m1} മുതൽ ${m2} മാസം വരെ`,
+    };
+    if (monthsMap[normLang]) {
+      result = result.replace(nextMonthsMatch[0], monthsMap[normLang]);
+    }
+  }
+
+  return result;
+}
+
+function StructuredAnalysisCard({ structured, language }: { structured: ChatMessage['structured']; language: string }) {
   const [expanded, setExpanded] = useState(false);
   if (!structured) return null;
 
+  const normLang =
+    /telugu|^te$/i.test(language || '') ? 'Telugu' :
+    /hindi|^hi$/i.test(language || '') ? 'Hindi' :
+    /tamil|^ta$/i.test(language || '') ? 'Tamil' :
+    /kannada|^kn$/i.test(language || '') ? 'Kannada' :
+    /malayalam|^ml$/i.test(language || '') ? 'Malayalam' : 'English';
+
+  const cardLabels = STRUCTURED_CARD_STRINGS[normLang] || STRUCTURED_CARD_STRINGS.English;
+  const timingWindowText = structured.timingWindow ? localizeAstrologicalString(structured.timingWindow, normLang) : null;
+  const conclusionText = structured.conclusion ? localizeAstrologicalString(structured.conclusion, normLang) : null;
+  const activeDashaText = structured.diagnosis?.activeDasha ? localizeAstrologicalString(structured.diagnosis.activeDasha, normLang) : null;
+
   return (
     <View style={{ marginTop: 8, borderRadius: 12, backgroundColor: '#FAF7F2', borderWidth: 1, borderColor: '#C9A84C', padding: 10 }}>
-      {structured.timingWindow ? (
+      {timingWindowText ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
           <Text style={{ fontSize: 13 }}>📅</Text>
           <Text style={{ marginLeft: 6, color: '#8B1A1A', fontSize: 12, fontWeight: '700' }}>
-            {structured.timingWindow}
+            {timingWindowText}
           </Text>
         </View>
       ) : null}
 
-      {structured.conclusion ? (
+      {conclusionText ? (
         <View style={{ padding: 8, borderRadius: 8, backgroundColor: 'rgba(201,168,76,0.15)', marginBottom: 6 }}>
           <Text style={{ color: '#5A3D0B', fontSize: 12, fontWeight: '600' }}>
-            {structured.conclusion}
+            {conclusionText}
           </Text>
         </View>
       ) : null}
 
-      {structured.diagnosis?.activeDasha ? (
+      {activeDashaText ? (
         <Text style={{ color: '#4A5568', fontSize: 11, marginBottom: 4 }}>
-          ✦ Active Dasha: <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>{structured.diagnosis.activeDasha}</Text>
+          {cardLabels.activeDasha} <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>{activeDashaText}</Text>
         </Text>
       ) : null}
 
       <Pressable onPress={() => setExpanded((e) => !e)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
         <Text style={{ color: '#8B1A1A', fontSize: 11, fontWeight: '600' }}>
-          {expanded ? '▲ Hide Astrological Evidence' : '▼ View Astrological Basis'}
+          {expanded ? cardLabels.hideEvidence : cardLabels.viewEvidence}
         </Text>
       </Pressable>
 
@@ -387,17 +720,19 @@ function StructuredAnalysisCard({ structured }: { structured: ChatMessage['struc
         <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#E2D9C8' }}>
           {structured.whyAstroPariharSaysThis.map((pt, i) => (
             <Text key={i} style={{ color: '#4A5568', marginBottom: 3, ...lh(11, 1.4) }}>
-              • {pt}
+              • {localizeAstrologicalString(pt, normLang)}
             </Text>
           ))}
           {structured.pariharProtocol?.recommendedHomam ? (
             <View style={{ marginTop: 6, padding: 6, borderRadius: 6, backgroundColor: '#FFF2E0' }}>
               <Text style={{ color: '#D97706', fontSize: 11, fontWeight: '700' }}>
-                🕉️ Recommended Homam: {structured.pariharProtocol.recommendedHomam}
+                {cardLabels.recommendedHomam} {localizeAstrologicalString(structured.pariharProtocol.recommendedHomam, normLang)}
               </Text>
-              <Text style={{ color: '#78350F', fontSize: 10, marginTop: 2 }}>
-                Mantra: {structured.pariharProtocol.dailyMantra}
-              </Text>
+              {structured.pariharProtocol.dailyMantra ? (
+                <Text style={{ color: '#78350F', fontSize: 10, marginTop: 2 }}>
+                  {cardLabels.mantra} {structured.pariharProtocol.dailyMantra}
+                </Text>
+              ) : null}
             </View>
           ) : null}
         </View>
@@ -412,12 +747,14 @@ function Bubble({
   onPromptTap,
   onVoiceTap,
   isSpeaking,
+  language = 'English',
 }: {
   msg: ChatMessage;
   index: number;
   onPromptTap: (s: string) => void;
   onVoiceTap?: (text: string, index: number) => void;
   isSpeaking?: boolean;
+  language?: string;
 }) {
   const { width } = useWindowDimensions();
   const p = useSharedValue(0);
@@ -431,6 +768,7 @@ function Bubble({
     return { opacity: fade, transform: [{ translateX: (1 - slide) * (msg.isUser ? 0.06 : -0.06) * width }] };
   });
   const bg = msg.isUser ? '#D9FDD3' : '#FFFFFF';
+  const displayedText = !msg.isUser ? stripTrailingAstrologerQuestions(msg.text, language) : msg.text;
 
   return (
     <Animated.View style={[{ marginBottom: 10, flexDirection: 'row', alignItems: 'flex-end', justifyContent: msg.isUser ? 'flex-end' : 'flex-start' }, anim]}>
@@ -456,7 +794,7 @@ function Bubble({
               </Text>
               <Pressable
                 testID={`aiChat.voice.${index}`}
-                onPress={() => onVoiceTap?.(msg.text, index)}
+                onPress={() => onVoiceTap?.(displayedText, index)}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -474,15 +812,15 @@ function Bubble({
                   color={isSpeaking ? '#C9A84C' : '#008069'}
                 />
                 <Text style={{ marginLeft: 3, color: isSpeaking ? '#C9A84C' : '#008069', fontSize: 10, fontWeight: '700' }}>
-                  {isSpeaking ? 'Stop' : 'Listen'}
+                  {isSpeaking ? (AUDIO_LABEL_BY_LANG[language]?.stop || 'Stop') : (AUDIO_LABEL_BY_LANG[language]?.listen || 'Listen')}
                 </Text>
               </Pressable>
             </View>
           ) : null}
 
-          <Text style={{ color: '#111B21', ...lh(14, 1.48) }}>{msg.text}</Text>
+          <Text style={{ color: '#111B21', ...lh(14, 1.48) }}>{displayedText}</Text>
 
-          {msg.structured ? <StructuredAnalysisCard structured={msg.structured} /> : null}
+          {msg.structured ? <StructuredAnalysisCard structured={msg.structured} language={language} /> : null}
 
           <View style={{ position: 'absolute', bottom: 4, right: 8, flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ color: '#667781', fontSize: 10 }}>{msg.time}</Text>
@@ -524,6 +862,7 @@ function Bubble({
 export interface TopicItem {
   id: string;
   label: string;
+  labelByLang?: Record<string, string>;
   emoji: string;
   promptByLang: Record<string, string>;
 }
@@ -532,12 +871,28 @@ export const TOPICS: TopicItem[] = [
   {
     id: 'All',
     label: 'All',
+    labelByLang: {
+      Telugu: 'అన్నీ',
+      Hindi: 'सभी',
+      Tamil: 'அனைத்தும்',
+      Kannada: 'ಎಲ್ಲವೂ',
+      Malayalam: 'എല്ലാം',
+      English: 'All',
+    },
     emoji: '🌐',
     promptByLang: {},
   },
   {
     id: 'Remedies',
     label: 'Remedies',
+    labelByLang: {
+      Telugu: 'పరిహారాలు',
+      Hindi: 'उपाय',
+      Tamil: 'பரிகாரங்கள்',
+      Kannada: 'ಪರಿಹಾರಗಳು',
+      Malayalam: 'പരിഹാരങ്ങൾ',
+      English: 'Remedies',
+    },
     emoji: '🕉️',
     promptByLang: {
       Telugu: 'నమస్కారం, నా జన్మ కుండలిని పరిశీలించి గ్రహ దోష నివారణకు తగిన అష్ట పరిహారాలు, నిత్య మంత్రాలు, మరియు రత్న ధారణ పూజా విధానాలు సూచించండి.',
@@ -551,6 +906,14 @@ export const TOPICS: TopicItem[] = [
   {
     id: 'Career',
     label: 'Career',
+    labelByLang: {
+      Telugu: 'కెరీర్',
+      Hindi: 'करियर',
+      Tamil: 'தொழில்',
+      Kannada: 'ವೃತ್ತಿ',
+      Malayalam: 'കരിയർ',
+      English: 'Career',
+    },
     emoji: '💼',
     promptByLang: {
       Telugu: 'నా జాతకంలో 10వ భావం మరియు ప్రస్తుతం నడుస్తున్న దశ ఆధారంగా ఉద్యోగ మార్పు, ప్రమోషన్ మరియు కెరీర్ పురోగతి ఎలా ఉందో చెప్పండి.',
@@ -564,6 +927,14 @@ export const TOPICS: TopicItem[] = [
   {
     id: 'Love',
     label: 'Love',
+    labelByLang: {
+      Telugu: 'ప్రేమ',
+      Hindi: 'प्रेम',
+      Tamil: 'காதல்',
+      Kannada: 'ಪ್ರೀತಿ',
+      Malayalam: 'പ്രണയം',
+      English: 'Love',
+    },
     emoji: '❤️',
     promptByLang: {
       Telugu: 'నా జాతకంలో 5వ మరియు 7వ స్థానాల ఆధారంగా ప్రేమ సంబంధాలు, అనుకూలత మరియు భవిష్యత్ దాంపత్య జీవితం ఎలా ఉంటుందో విశ్లేషించండి.',
@@ -577,6 +948,14 @@ export const TOPICS: TopicItem[] = [
   {
     id: 'Marriage',
     label: 'Marriage',
+    labelByLang: {
+      Telugu: 'వివాహం',
+      Hindi: 'विवाह',
+      Tamil: 'திருமணம்',
+      Kannada: 'ವಿವಾಹ',
+      Malayalam: 'വിവാഹം',
+      English: 'Marriage',
+    },
     emoji: '💍',
     promptByLang: {
       Telugu: 'నా జాతకంలో వివాహ యోగం ఎప్పుడు ఉంది? 7వ స్థానం ప్రకారం నా జీవిత భాగస్వామి స్వభావం మరియు వైవాహిక జీవితం ఎలా ఉంటుంది?',
@@ -590,6 +969,14 @@ export const TOPICS: TopicItem[] = [
   {
     id: 'Money',
     label: 'Money',
+    labelByLang: {
+      Telugu: 'ఆర్థికం',
+      Hindi: 'धन',
+      Tamil: 'தன யோகம்',
+      Kannada: 'ಧನ ಯೋಗ',
+      Malayalam: 'ധനം',
+      English: 'Money',
+    },
     emoji: '💰',
     promptByLang: {
       Telugu: 'నా జాతకంలో 2వ మరియు 11వ ధన స్థానాల ప్రకారం సంపద ప్రాప్తి, ఆర్థిక స్థిరత్వం మరియు పెట్టుబడుల లాభాలు ఎలా ఉన్నాయి?',
@@ -603,6 +990,14 @@ export const TOPICS: TopicItem[] = [
   {
     id: 'Health',
     label: 'Health',
+    labelByLang: {
+      Telugu: 'ఆరోగ్యం',
+      Hindi: 'स्वास्थ्य',
+      Tamil: 'ஆரோக்கியம்',
+      Kannada: 'ಆರೋಗ್ಯ',
+      Malayalam: 'ആരോഗ്യം',
+      English: 'Health',
+    },
     emoji: '🌿',
     promptByLang: {
       Telugu: 'నా జాతకంలో 6వ భావం మరియు గ్రహ గోచారం ప్రకారం శారీరక ఆరోగ్యం, రక్షణ మరియు శక్తి వృద్ధికి ఎలాంటి సూచనలు ఉన్నాయి?',
@@ -616,6 +1011,14 @@ export const TOPICS: TopicItem[] = [
   {
     id: 'Family',
     label: 'Family',
+    labelByLang: {
+      Telugu: 'కుటుంబం',
+      Hindi: 'परिवार',
+      Tamil: 'குடும்பம்',
+      Kannada: 'ಕುಟುಂಬ',
+      Malayalam: 'കുടുംബം',
+      English: 'Family',
+    },
     emoji: '👨‍👩‍👧',
     promptByLang: {
       Telugu: 'నా జాతకంలో 4వ స్థానం ప్రకారం కుటుంబ సామరస్యం, గృహ శాంతి మరియు తల్లిదండ్రుల ఆశీర్వాదం ఎలా ఉంది?',
@@ -810,25 +1213,79 @@ export default function AiChatScreen() {
     }
   };
 
-  // Set initial welcome message when language or astrologer changes
+  // Load saved chat history or set initial welcome message when language or astrologer changes
   useEffect(() => {
-    const userName = activeProfile?.name?.trim() || authUser?.name?.trim() || userProfile?.name?.trim() || 'Guest';
-    const welcome = getWelcomeMessage(selectedLanguage, userName, selectedAstrologer.name);
-    setMessages([
-      {
-        isUser: false,
-        text: welcome.content,
-        time: currentTime(),
-        recommendations: welcome.recommendations,
-        modelUsed: selectedAstrologer.name,
-      },
-    ]);
-  }, [selectedLanguage, selectedAstrologer, activeProfile?.name, userProfile?.name, authUser?.name]);
+    let isCancelled = false;
+    const storageKey = `astroparihar_chat_messages_${selectedAstrologer.id}`;
+
+    AsyncStorage.getItem(storageKey).then((saved) => {
+      if (isCancelled) return;
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(parsed);
+            return;
+          }
+        } catch {}
+      }
+      const userName = activeProfile?.name?.trim() || authUser?.name?.trim() || userProfile?.name?.trim() || 'Guest';
+      const welcome = getWelcomeMessage(selectedLanguage, userName, selectedAstrologer.name);
+      setMessages([
+        {
+          isUser: false,
+          text: welcome.content,
+          time: currentTime(),
+          recommendations: welcome.recommendations,
+          modelUsed: selectedAstrologer.name,
+        },
+      ]);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedLanguage, selectedAstrologer.id, activeProfile?.name, userProfile?.name, authUser?.name]);
+
+  // Persist messages whenever a new message is sent or received
+  useEffect(() => {
+    if (messages.length > 1 || messages.some((m) => m.isUser)) {
+      const storageKey = `astroparihar_chat_messages_${selectedAstrologer.id}`;
+      AsyncStorage.setItem(storageKey, JSON.stringify(messages)).catch(() => {});
+    }
+  }, [messages, selectedAstrologer.id]);
+
+  const itemLayoutOffsets = useRef<{ [key: string]: number }>({});
+  const lastUserQueryIndex = useRef<number>(-1);
 
   const scrollToBottom = () => {
     setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
       listRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
+  const scrollToMessageStart = () => {
+    // Exact message starting point: Anchor viewport so the user's query and the
+    // top/beginning of the AI reply are visible.
+    // NEVER jump to the top of the entire chat history (y=0), and NEVER jump to the ending.
+    setTimeout(() => {
+      if (!listRef.current) return;
+      const uIdx = lastUserQueryIndex.current;
+      const userOffset = uIdx >= 0 ? itemLayoutOffsets.current[String(uIdx)] : undefined;
+      const aiOffset = uIdx >= 0 ? itemLayoutOffsets.current[String(uIdx + 1)] : undefined;
+
+      const targetY =
+        typeof userOffset === 'number' && userOffset > 0
+          ? userOffset
+          : (typeof aiOffset === 'number' && aiOffset > 0 ? aiOffset : null);
+
+      if (targetY !== null && targetY > 0) {
+        listRef.current.scrollToOffset({
+          offset: Math.max(0, targetY - 6),
+          animated: true,
+        });
+      }
     }, 120);
   };
 
@@ -852,6 +1309,7 @@ export default function AiChatScreen() {
     const userMsgText = text.trim();
     const newMsg: ChatMessage = { isUser: true, text: userMsgText, time: currentTime() };
 
+    lastUserQueryIndex.current = messages.length;
     setMessages((prev) => [...prev, newMsg]);
     setIsTyping(true);
     setInput('');
@@ -914,7 +1372,67 @@ export default function AiChatScreen() {
           modelUsed: `${selectedAstrologer.name} (${res.modelUsed || 'AstroParihar AI'})`,
         },
       ]);
-      scrollToBottom();
+      scrollToMessageStart();
+
+      // Automatically record session and generate summary report
+      const sessionConsultId = `ai_chat_${Date.now()}`;
+      generateConsultationSummaryReport(
+        {
+          consultationId: sessionConsultId,
+          astrologerName: selectedAstrologer.name,
+          astrologerId: selectedAstrologer.id,
+          serviceType: 'AI Chat',
+          durationText: '10 min',
+          durationMinutes: 10,
+          amountCharged: 0,
+          devoteeName: effectiveUserInfo.name,
+          devoteeDob: effectiveUserInfo.dob,
+          devoteeTob: effectiveUserInfo.tob,
+          devoteePob: effectiveUserInfo.pob,
+          devoteeRashi: effectiveUserInfo.zodiac,
+          chatSummary: `User: ${userMsgText}\n\n${selectedAstrologer.name}: ${res.reply}`,
+          primaryConcern: userMsgText,
+        },
+        authUser?.uid || authUser?.phone
+      ).catch(() => {});
+
+      // Record in local consultation history
+      try {
+        const stored = await AsyncStorage.getItem('astroparihar_consultation_history');
+        const list = stored ? JSON.parse(stored) : [];
+        const dateFormatted = new Date().toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        const dateISO = new Date().toISOString();
+        const aiRecord = {
+          id: sessionConsultId,
+          customerId: authUser?.uid || 'anonymous_user',
+          customerPhone: authUser?.phone || '',
+          customerName: effectiveUserInfo.name,
+          astrologerName: selectedAstrologer.name,
+          astrologer: selectedAstrologer.name,
+          type: 'AI Chat',
+          topic: userMsgText.length > 50 ? `${userMsgText.substring(0, 50)}...` : userMsgText,
+          date: dateFormatted,
+          createdAt: dateISO,
+          duration: '10 min',
+          durationMinutes: 10,
+          amount: 0,
+          price: 0,
+          rawAmount: 0,
+          rating: 5,
+          status: 'completed',
+          source: 'ai',
+          emoji: '🤖',
+          color: '#81C784',
+          reportId: `rep_consult_${sessionConsultId}`,
+        };
+        await AsyncStorage.setItem('astroparihar_consultation_history', JSON.stringify([aiRecord, ...list.filter((x: any) => x.id !== sessionConsultId)]));
+      } catch {}
     } catch {
       if (!mounted.current) return;
       setIsTyping(false);
@@ -927,7 +1445,7 @@ export default function AiChatScreen() {
           recommendations: QUICK_PROMPTS_BY_LANG[selectedLanguage] || QUICK_PROMPTS_BY_LANG.English,
         },
       ]);
-      scrollToBottom();
+      scrollToMessageStart();
     }
   };
 
@@ -942,27 +1460,36 @@ export default function AiChatScreen() {
   }, [params.initialPrompt]);
 
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const inputRef = useRef<any>(null);
+
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvent, (e) => {
-      if (Platform.OS === 'android') {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      }
+    const s1 = Keyboard.addListener('keyboardDidShow', (e) => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setKeyboardHeight(e.endCoordinates.height);
       setTimeout(() => {
         listRef.current?.scrollToEnd({ animated: true });
-      }, 80);
+      }, 50);
     });
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      if (Platform.OS === 'android') {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      }
+    const s2 = Keyboard.addListener('keyboardWillShow', (e) => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const h1 = Keyboard.addListener('keyboardDidHide', () => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setKeyboardHeight(0);
+      setIsInputFocused(false);
+    });
+    const h2 = Keyboard.addListener('keyboardWillHide', () => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setKeyboardHeight(0);
+      setIsInputFocused(false);
     });
     return () => {
-      showSub.remove();
-      hideSub.remove();
+      s1.remove();
+      s2.remove();
+      h1.remove();
+      h2.remove();
     };
   }, []);
 
@@ -1012,7 +1539,7 @@ export default function AiChatScreen() {
                   {selectedAstrologer.name}
                 </Text>
                 <Text style={{ color: '#B2DFDB', fontSize: 10 }}>
-                  Online • Certified Vedic AI Astrologer
+                  {SUBTITLE_BY_LANG[selectedLanguage] || 'Online • Certified Vedic AI Astrologer'}
                 </Text>
               </View>
             </Pressable>
@@ -1082,7 +1609,9 @@ export default function AiChatScreen() {
             >
               <AppIcon name="account_balance_wallet" size={14} color="#8B1A1A" />
             </View>
-            <Text style={{ color: '#6B5E55', fontSize: 12, fontWeight: '500' }}>Balance: </Text>
+            <Text style={{ color: '#6B5E55', fontSize: 12, fontWeight: '500' }}>
+              {BALANCE_LABEL_BY_LANG[selectedLanguage] || 'Balance: '}
+            </Text>
             <Text
               style={{
                 fontSize: 13,
@@ -1107,7 +1636,9 @@ export default function AiChatScreen() {
               }}
             >
               <Text style={{ fontSize: 11, fontWeight: '700', color: freeChatsRemaining > 0 ? '#137333' : '#C9A84C' }}>
-                {freeChatsRemaining > 0 ? `⚡ ${freeChatsRemaining} Free Prompts` : `⚡ ${promptCost.label} / prompt`}
+                {freeChatsRemaining > 0
+                  ? (FREE_PROMPTS_LABEL[selectedLanguage] ? FREE_PROMPTS_LABEL[selectedLanguage](freeChatsRemaining) : `⚡ ${freeChatsRemaining} Free Prompts`)
+                  : (PROMPT_COST_LABEL[selectedLanguage] ? PROMPT_COST_LABEL[selectedLanguage](promptCost.label) : `⚡ ${promptCost.label} / prompt`)}
               </Text>
             </View>
             <Pressable
@@ -1124,7 +1655,7 @@ export default function AiChatScreen() {
               }}
             >
               <Text style={{ color: '#008069', fontSize: 11, fontWeight: '700' }}>
-                + Recharge ↗
+                {RECHARGE_LABEL_BY_LANG[selectedLanguage] || '+ Recharge ↗'}
               </Text>
             </Pressable>
           </View>
@@ -1175,7 +1706,7 @@ export default function AiChatScreen() {
                       fontWeight: (sel || isRemedies) ? '700' : '600',
                     }}
                   >
-                    {topic.label}
+                    {topic.labelByLang?.[selectedLanguage] || topic.label}
                   </Text>
                 </AnimatedPressable>
               );
@@ -1193,23 +1724,30 @@ export default function AiChatScreen() {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             renderItem={({ item, index }) => (
-              item === 'typing' ? (
-                <TypingIndicator />
-              ) : (
-                <Bubble
-                  msg={item}
-                  index={index}
-                  isSpeaking={speakingIndex === index}
-                  onVoiceTap={handleToggleVoice}
-                  onPromptTap={(promptText) => {
-                    if (!isAuth) {
-                      setShowAuthModal(true);
-                    } else {
-                      sendMessage(promptText);
-                    }
-                  }}
-                />
-              )
+              <View
+                onLayout={(e) => {
+                  itemLayoutOffsets.current[String(index)] = e.nativeEvent.layout.y;
+                }}
+              >
+                {item === 'typing' ? (
+                  <TypingIndicator />
+                ) : (
+                  <Bubble
+                    msg={item}
+                    index={index}
+                    isSpeaking={speakingIndex === index}
+                    onVoiceTap={handleToggleVoice}
+                    onPromptTap={(promptText) => {
+                      if (!isAuth) {
+                        setShowAuthModal(true);
+                      } else {
+                        sendMessage(promptText);
+                      }
+                    }}
+                    language={selectedLanguage}
+                  />
+                )}
+              </View>
             )}
           />
         </View>
@@ -1314,90 +1852,122 @@ export default function AiChatScreen() {
         )}
 
         {/* Chat Input Widget - Authentic WhatsApp layout sitting cleanly above keyboard */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 12,
-            paddingTop: 10,
-            paddingBottom: keyboardHeight > 0
-              ? (Platform.OS === 'android' ? keyboardHeight + 20 : 16)
-              : Math.max(12, insets.bottom + 84),
-            backgroundColor: '#EFEAE2',
-            borderTopWidth: 0.5,
-            borderTopColor: 'rgba(0,0,0,0.06)',
-          }}
-        >
-          <Pressable
-            onPress={() => {
-              if (!isAuth) setShowAuthModal(true);
-            }}
-            style={{
-              flex: 1,
-              minHeight: 44,
-              borderRadius: 24,
-              backgroundColor: '#FFFFFF',
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: 12,
-              shadowColor: '#000',
-              shadowOpacity: 0.06,
-              shadowRadius: 2,
-              elevation: 1,
-            }}
-          >
-            <AppIcon name="mood" size={22} color="#8696A0" style={{ marginRight: 6 }} />
-            <TextInput
-              testID="aiChat.input"
-              value={input}
-              onChangeText={setInput}
-              multiline
-              numberOfLines={4}
-              placeholder={!isAuth ? 'Sign in to ask questions...' : currentPlaceholder}
-              placeholderTextColor="#8A8A8A"
-              editable={isAuth}
-              onSubmitEditing={() => {
-                if (!isAuth) {
-                  setShowAuthModal(true);
-                } else if (walletBalance < 5) {
-                  setShowRechargeModal(true);
-                } else if (input.trim().length > 0) {
-                  sendMessage(input);
-                }
+        {(() => {
+          const isKeyboardUp = keyboardHeight > 0 || isInputFocused;
+          const effectiveKeyboardH = keyboardHeight > 0 ? keyboardHeight : (isInputFocused ? 330 : 0);
+          const keyboardSpacerHeight = Platform.OS === 'android'
+            ? (isKeyboardUp
+                ? effectiveKeyboardH + Math.max(insets.bottom, 24) + 12
+                : Math.max(insets.bottom, 10))
+            : Math.max(insets.bottom, 10);
+
+          return (
+            <View
+              style={{
+                backgroundColor: '#EFEAE2',
+                borderTopWidth: 0.5,
+                borderTopColor: 'rgba(0,0,0,0.06)',
               }}
-              style={{ flex: 1, paddingVertical: 10, color: '#111B21', fontSize: 14, maxHeight: 4 * 22 + 20 }}
-            />
-          </Pressable>
-          <Pressable
-            testID="aiChat.send"
-            onPress={() => {
-              if (!isAuth) {
-                setShowAuthModal(true);
-              } else if (walletBalance < 5) {
-                setShowRechargeModal(true);
-              } else if (input.trim().length > 0) {
-                sendMessage(input);
-              }
-            }}
-            disabled={isAuth && input.trim().length === 0 && walletBalance >= 5}
-            style={{
-              marginLeft: 8,
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: '#00A884',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: !isAuth || input.trim().length > 0 || walletBalance < 5 ? 1 : 0.6,
-              shadowColor: '#00A884',
-              shadowOpacity: 0.35,
-              shadowRadius: 4,
-              elevation: 2,
-            }}
-          >
-            <AppIcon name={!isAuth ? 'lock' : 'send_rounded'} color="#FFFFFF" size={19} />
-          </Pressable>
-        </View>
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 12,
+                  paddingTop: 8,
+                  paddingBottom: 8,
+                }}
+              >
+                <Pressable
+                  onPress={() => {
+                    if (!isAuth) {
+                      setShowAuthModal(true);
+                    } else {
+                      inputRef.current?.focus();
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    minHeight: 44,
+                    borderRadius: 24,
+                    backgroundColor: '#FFFFFF',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 12,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.06,
+                    shadowRadius: 2,
+                    elevation: 1,
+                  }}
+                >
+                  <AppIcon name="mood" size={22} color="#8696A0" style={{ marginRight: 6 }} />
+                  <TextInput
+                    ref={inputRef}
+                    testID="aiChat.input"
+                    value={input}
+                    onChangeText={setInput}
+                    multiline
+                    numberOfLines={4}
+                    placeholder={!isAuth ? (AUTH_PLACEHOLDER[selectedLanguage] || 'Sign in to ask questions...') : currentPlaceholder}
+                    placeholderTextColor="#8A8A8A"
+                    editable={isAuth}
+                    onFocus={() => {
+                      setIsInputFocused(true);
+                      setTimeout(() => {
+                        listRef.current?.scrollToEnd({ animated: true });
+                      }, 100);
+                    }}
+                    onBlur={() => {
+                      setIsInputFocused(false);
+                    }}
+                    onSubmitEditing={() => {
+                      if (!isAuth) {
+                        setShowAuthModal(true);
+                      } else if (walletBalance < 5) {
+                        setShowRechargeModal(true);
+                      } else if (input.trim().length > 0) {
+                        sendMessage(input);
+                      }
+                    }}
+                    style={{ flex: 1, paddingVertical: 10, color: '#111B21', fontSize: 14, maxHeight: 4 * 22 + 20 }}
+                  />
+                </Pressable>
+                <Pressable
+                  testID="aiChat.send"
+                  onPress={() => {
+                    if (!isAuth) {
+                      setShowAuthModal(true);
+                    } else if (walletBalance < 5) {
+                      setShowRechargeModal(true);
+                    } else if (input.trim().length > 0) {
+                      sendMessage(input);
+                    }
+                  }}
+                  disabled={isAuth && input.trim().length === 0 && walletBalance >= 5}
+                  style={{
+                    marginLeft: 8,
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: '#00A884',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: !isAuth || input.trim().length > 0 || walletBalance < 5 ? 1 : 0.6,
+                    shadowColor: '#00A884',
+                    shadowOpacity: 0.35,
+                    shadowRadius: 4,
+                    elevation: 2,
+                  }}
+                >
+                  <AppIcon name={!isAuth ? 'lock' : 'send_rounded'} color="#FFFFFF" size={19} />
+                </Pressable>
+              </View>
+
+              {/* Dedicated Keyboard Spacer that cleanly matches keyboard height */}
+              <View style={{ height: keyboardSpacerHeight }} />
+            </View>
+          );
+        })()}
       </KeyboardAvoidingView>
 
       {/* 1. Language Selection Modal */}

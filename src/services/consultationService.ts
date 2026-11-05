@@ -7,7 +7,7 @@
  */
 
 import { LIVE_BASE_URL } from '@/config/api';
-import { openZegoCallRoom, generateZegoRoomId } from './zegoService';
+import { generateZegoRoomId } from './zegoService';
 
 const FIREBASE_PROJECT_ID = 'astroparihar-85e2d';
 const FIREBASE_API_KEY = 'AIzaSyCXZ9S7Th0lpAVLMnZnRlgusCH1dPgF98g';
@@ -617,4 +617,134 @@ export async function fetchCustomerProfileAndReports(customerId: string): Promis
 
   return { customerDetails, customerReports };
 }
+
+/**
+ * 13. Query all consultations for a customer from Firestore (`consultations` & `ai_consultations`)
+ * Matches both `customerId` (Firebase Auth UID) and phone variants (`phone_XXXXXXXXXX`, `+XXXXXXXXXX`).
+ * Returns merged and sorted list with full astrologer, pricing, duration, and status details.
+ */
+export async function fetchCustomerConsultations(
+  customerId?: string | null,
+  phone?: string | null
+): Promise<Array<Record<string, any>>> {
+  const idsToTry = new Set<string>();
+  if (customerId) idsToTry.add(customerId);
+  if (phone) {
+    const clean = phone.replace(/\D/g, '');
+    if (clean) {
+      idsToTry.add(clean);
+      idsToTry.add(`+${clean}`);
+      idsToTry.add(`phone_${clean}`);
+    }
+  }
+
+  if (idsToTry.size === 0) return [];
+
+  const results: Array<Record<string, any>> = [];
+  const seenIds = new Set<string>();
+
+  // 1. Query human astrologer consultations
+  for (const id of idsToTry) {
+    try {
+      const queryBody = {
+        structuredQuery: {
+          from: [{ collectionId: 'consultations' }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: 'customerId' },
+              op: 'EQUAL',
+              value: { stringValue: id },
+            },
+          },
+          limit: 50,
+        },
+      };
+
+      const res = await fetch(`${FIRESTORE_BASE_URL}:runQuery?key=${FIREBASE_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(queryBody),
+      });
+
+      if (res.ok) {
+        const rows = await res.json();
+        if (Array.isArray(rows)) {
+          for (const r of rows) {
+            if (r.document) {
+              const doc = parseFirestoreDoc(r.document);
+              const docId = r.document.name?.split('/').pop() || doc.id || Math.random().toString();
+              if (!seenIds.has(docId)) {
+                seenIds.add(docId);
+                results.push({ ...doc, id: docId, source: 'human' });
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('fetchCustomerConsultations human error for ID:', id, err);
+    }
+  }
+
+  // 2. Query AI Astrologer consultations
+  for (const id of idsToTry) {
+    try {
+      const queryBody = {
+        structuredQuery: {
+          from: [{ collectionId: 'ai_consultations' }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: 'customerId' },
+              op: 'EQUAL',
+              value: { stringValue: id },
+            },
+          },
+          limit: 50,
+        },
+      };
+
+      const res = await fetch(`${FIRESTORE_BASE_URL}:runQuery?key=${FIREBASE_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(queryBody),
+      });
+
+      if (res.ok) {
+        const rows = await res.json();
+        if (Array.isArray(rows)) {
+          for (const r of rows) {
+            if (r.document) {
+              const doc = parseFirestoreDoc(r.document);
+              const docId = r.document.name?.split('/').pop() || doc.id || Math.random().toString();
+              if (!seenIds.has(docId)) {
+                seenIds.add(docId);
+                results.push({
+                  ...doc,
+                  id: docId,
+                  source: 'ai',
+                  astrologerName: doc.astrologerName || 'Acharya Devavrat (AI)',
+                  type: doc.type || 'ai_chat',
+                });
+              }
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // 3. Sort descending by creation date (newest first)
+  results.sort((a, b) => {
+    const parseTime = (item: any) => {
+      const raw = item.createdAt || item.startTime || item.date || item.timestamp;
+      if (!raw) return 0;
+      const t = new Date(raw).getTime();
+      return isNaN(t) ? 0 : t;
+    };
+    return parseTime(b) - parseTime(a);
+  });
+
+  return results;
+}
+
 

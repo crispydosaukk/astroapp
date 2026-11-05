@@ -37,40 +37,17 @@ export function generateAiSessionId(): string {
 }
 
 /**
- * Open the live ZegoCloud 1-on-1 audio/video call room
+ * Live call room identifier resolver - strictly in-app navigation only
  */
 export async function openZegoCallRoom(roomId: string): Promise<boolean> {
-  const url = `${ZEGO_CONFIG.webCallBaseUrl}${encodeURIComponent(roomId)}`;
-  try {
-    const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
-      await Linking.openURL(url);
-      return true;
-    }
-    // Fallback: try direct open without pre-check
-    await Linking.openURL(url);
-    return true;
-  } catch (err) {
-    console.error('Failed to open ZegoCloud call room:', err);
-    return false;
-  }
+  // Never redirect to external website; all consultations run 100% natively in-app
+  return true;
 }
 
 /**
- * Open the live AI Astrologer voice consultation session room
+ * AI Astrologer voice consultation session resolver - strictly in-app navigation only
  */
 export async function openAiCallRoom(sessionId: string): Promise<boolean> {
-  const url = `${ZEGO_CONFIG.aiCallBaseUrl}${encodeURIComponent(sessionId)}`;
-  try {
-    const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
-      await Linking.openURL(url);
-      return true;
-    }
-    await Linking.openURL(url);
-    return true;
-  } catch (err) {
-    console.error('Failed to open AI call room:', err);
-    return false;
-  }
+  // Never redirect to external website; all consultations run 100% natively in-app
+  return true;
 }

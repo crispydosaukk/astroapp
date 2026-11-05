@@ -77,7 +77,7 @@ export default function RemediesScreen() {
     );
     pulseLoop.start();
 
-    fetchLiveRemedies().catch(() => {});
+    fetchLiveRemedies().catch(() => { });
 
     let isMounted = true;
     AsyncStorage.getItem(STORAGE_REMEDIES_CACHE)
@@ -86,10 +86,10 @@ export default function RemediesScreen() {
           try {
             const parsed = JSON.parse(cached);
             if (Array.isArray(parsed) && parsed.length > 0) setRemediesList(parsed);
-          } catch {}
+          } catch { }
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     async function loadDynamicRemedies() {
       try {
@@ -149,10 +149,10 @@ export default function RemediesScreen() {
 
           if (isMounted) {
             setRemediesList(hydrated);
-            AsyncStorage.setItem(STORAGE_REMEDIES_CACHE, JSON.stringify(hydrated)).catch(() => {});
+            AsyncStorage.setItem(STORAGE_REMEDIES_CACHE, JSON.stringify(hydrated)).catch(() => { });
           }
         }
-      } catch {}
+      } catch { }
     }
 
     loadDynamicRemedies();
@@ -208,60 +208,95 @@ export default function RemediesScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Math.max(24, insets.bottom + 16) }}
       >
+        {/* Compact, Sleek Top Header Card (Significantly reduced vertical space) */}
         <LinearGradient
           colors={
             colors.isLight
-              ? ['#FFF9EE', colors.surfaceVariant, colors.surface]
-              : [withAlpha(AppColors.primary, 80), colors.surfaceVariant, colors.background]
+              ? ['#FFFBF0', colors.surfaceVariant]
+              : [withAlpha(colors.goldAccent, 22), colors.surfaceVariant]
           }
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          end={{ x: 1, y: 0 }}
           style={{
-            marginHorizontal: 20,
-            marginTop: 8,
-            marginBottom: 16,
-            padding: 24,
-            borderRadius: 24,
-            borderWidth: 1,
-            borderColor: colors.cardBorder,
+            marginHorizontal: 16,
+            marginTop: 6,
+            marginBottom: 10,
+            paddingVertical: 10,
+            paddingHorizontal: 14,
+            borderRadius: 16,
+            borderWidth: 1.2,
+            borderColor: withAlpha(colors.goldAccent, colors.isLight ? 45 : 65),
+            flexDirection: 'row',
             alignItems: 'center',
+            justifyContent: 'space-between',
           }}
         >
-          <Animated.Text style={[{ fontSize: 48 }, pulseStyle]}>🕉️</Animated.Text>
-          <Text style={{ marginTop: 16, color: colors.textPrimary, fontSize: 22, fontWeight: '800', textAlign: 'center' }}>
-            Sacred Vedic Remedies
-          </Text>
-          {authUser?.name ? (
-            <View style={{ marginTop: 8, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 100, backgroundColor: withAlpha(colors.goldAccent, 25), borderWidth: 1, borderColor: withAlpha(colors.goldAccent, 80), flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ fontSize: 11 }}>🪷</Text>
-              <Text style={{ marginLeft: 6, color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
-                {`Personalised for ${authUser.name}${authUser.zodiac ? ` • ${authUser.zodiac}` : ''}`}
+          {/* Left: Glowing Om Avatar */}
+          <View
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 19,
+              backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 25 : 35),
+              borderWidth: 1.5,
+              borderColor: colors.goldAccent,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 10,
+            }}
+          >
+            <Animated.Text style={[{ fontSize: 20 }, pulseStyle]}>🕉️</Animated.Text>
+          </View>
+
+          {/* Center: Devotee & Vedic Remedies Info */}
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ color: colors.goldAccent, fontSize: 10.5, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                {authUser?.name ? `Personalised for ${authUser.name}` : 'Sacred Remedies'}
               </Text>
+              {authUser?.zodiac ? (
+                <Text style={{ color: colors.textMuted, fontSize: 10.5, fontWeight: '600', marginLeft: 4 }}>
+                  • {authUser.zodiac}
+                </Text>
+              ) : null}
             </View>
-          ) : null}
-          <Text style={{ marginTop: 8, color: colors.textSecondary, textAlign: 'center', ...lh(13, 1.5) }}>
-            Personalised remedies aligned with your birth chart and planetary influences. Ancient wisdom for modern transformation.
-          </Text>
-          <ElevatedButton
+            <Text style={{ color: colors.textPrimary, fontSize: 12.5, fontWeight: '700', marginTop: 1 }}>
+              Ashta-Digbandhana Remedies
+            </Text>
+          </View>
+
+          {/* Right: Sleek Sacred Gold Action Button */}
+          <Pressable
             testID="remedies.discover"
-            label="Discover Your Remedies ✨"
             onPress={onDiscoverRemedies}
-            bg="#713B32"
-            fg="#FFFFFF"
-            radius={100}
-            paddingV={14}
-            fontSize={14}
-            fontWeight="700"
-            style={{ marginTop: 20, alignSelf: 'stretch' }}
-          />
+            style={({ pressed }) => ({
+              paddingHorizontal: 12,
+              paddingVertical: 7,
+              borderRadius: 100,
+              backgroundColor: colors.goldAccent,
+              flexDirection: 'row',
+              alignItems: 'center',
+              opacity: pressed ? 0.85 : 1,
+              transform: [{ scale: pressed ? 0.96 : 1 }],
+              shadowColor: colors.goldAccent,
+              shadowOpacity: 0.3,
+              shadowRadius: 4,
+              elevation: 3,
+            })}
+          >
+            <Text style={{ color: '#0A0E1A', fontSize: 11.5, fontWeight: '800', marginRight: 3 }}>
+              Explore
+            </Text>
+            <AppIcon name="auto_awesome" size={13} color="#0A0E1A" />
+          </Pressable>
         </LinearGradient>
 
-        <View style={{ marginHorizontal: 20, marginVertical: 10, alignItems: 'center' }}>
-          <View style={{ width: '100%', marginBottom: 6 }}>
-            <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800' }}>
+        <View style={{ marginHorizontal: 16, marginTop: 4, marginBottom: 8, alignItems: 'center' }}>
+          <View style={{ width: '100%', marginBottom: 4 }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
               Ashta-Digbandhana
             </Text>
-            <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
+            <Text style={{ color: colors.textMuted, fontSize: 11.5, marginTop: 1 }}>
               The 8 Sacred Directions of Vedic Remedies
             </Text>
           </View>
@@ -505,50 +540,56 @@ export default function RemediesScreen() {
             </View>
           </View>
 
-            {/* Quick Consultation CTA */}
-            <LinearGradient
-              colors={
-                colors.isLight
-                  ? ['#FFFDF9', '#F9F5EC']
-                  : [withAlpha('#713B32', 40), colors.surfaceVariant]
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
-                marginTop: 14,
-                padding: 16,
-                borderRadius: 18,
-                borderWidth: 1.5,
-                borderColor: colors.goldAccent,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
+          {/* Quick Consultation CTA */}
+          <LinearGradient
+            colors={
+              colors.isLight
+                ? ['#FFFDF9', '#F9F5EC']
+                : [withAlpha(colors.goldAccent, 25), colors.surfaceVariant]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              marginTop: 14,
+              padding: 16,
+              borderRadius: 18,
+              borderWidth: 1.5,
+              borderColor: colors.goldAccent,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '800' }}>
+                Need Custom Prescription?
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 11.5, marginTop: 2 }}>
+                Get an astrologer to analyze your Mahadasha, Dasha Sandhi & doshas.
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => push(AppRoutes.liveAstrologersScreen)}
+              style={({ pressed }) => ({
+                paddingHorizontal: 15,
+                paddingVertical: 9,
+                borderRadius: 100,
+                backgroundColor: colors.goldAccent,
+                opacity: pressed ? 0.85 : 1,
+                transform: [{ scale: pressed ? 0.97 : 1 }],
+                shadowColor: colors.goldAccent,
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 2,
+              })}
             >
-              <View style={{ flex: 1, marginRight: 12 }}>
-                <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '800' }}>
-                  Need Custom Prescription?
-                </Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 11.5, marginTop: 2 }}>
-                  Get an astrologer to analyze your Mahadasha, Dasha Sandhi & doshas.
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => push(AppRoutes.liveAstrologersScreen)}
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 9,
-                  borderRadius: 100,
-                  backgroundColor: '#713B32',
-                }}
-              >
-                <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>
-                  Consult Now
-                </Text>
-              </Pressable>
-            </LinearGradient>
-          </View>
-        </ScrollView>
-      </View>
-    );
-  }
+              <Text style={{ color: '#0A0E1A', fontSize: 12, fontWeight: '800' }}>
+                Consult Now
+              </Text>
+            </Pressable>
+          </LinearGradient>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}

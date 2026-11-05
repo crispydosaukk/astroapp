@@ -413,9 +413,9 @@ export function FamilyProfileSwitcherModal({
             ref={formScrollRef}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
+            keyboardDismissMode="none"
             style={{ flexShrink: 1 }}
-            contentContainerStyle={{ paddingTop: 14, paddingBottom: 24 }}
+            contentContainerStyle={{ paddingTop: 14, paddingBottom: 220 }}
           >
             {/* Relationship Chips */}
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
@@ -575,11 +575,6 @@ export function FamilyProfileSwitcherModal({
               label="Place of Birth (City, Country)"
               placeholder="Enter birth place (e.g. Mumbai)"
               style={{ marginTop: 14 }}
-              onFocus={() => {
-                setTimeout(() => {
-                  formScrollRef.current?.scrollToEnd({ animated: true });
-                }, 100);
-              }}
             />
 
             {/* Toggle Set As Active (only for add mode) */}

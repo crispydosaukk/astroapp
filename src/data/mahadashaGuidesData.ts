@@ -500,27 +500,163 @@ export const MAHADASHA_GUIDES: Record<string, MahadashaGuide> = {
 };
 
 const STORAGE_PURCHASED_GUIDES = 'astroparihar_purchased_mahadasha_guides';
+const KNOWN_MAHADASHA_GUIDE_IDS = [
+  'rahu-stabilisation',
+  'rahu-survival',
+  'sani-stabilisation',
+  'sani-survival',
+];
 
+const FIREBASE_PROJECT_ID = 'astroparihar-85e2d';
+const FIREBASE_API_KEY = 'AIzaSyCXZ9S7Th0lpAVLMnZnRlgusCH1dPgF98g';
+const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
+
+/**
+ * Fetch all purchased Mahadasha guide IDs for the user.
+ * Checks both user-scoped local storage, universal storage, legacy inverse keys,
+ * and syncs with Firestore user_purchases to guarantee lifetime persistence.
+ */
 export async function getPurchasedGuideIds(userId?: string): Promise<string[]> {
+  const result = new Set<string>();
+
   try {
-    const key = userId ? `${STORAGE_PURCHASED_GUIDES}_${userId}` : STORAGE_PURCHASED_GUIDES;
-    const raw = await AsyncStorage.getItem(key);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+    // 1. Check universal base storage
+    const baseRaw = await AsyncStorage.getItem(STORAGE_PURCHASED_GUIDES);
+    if (baseRaw) {
+      try {
+        const parsed = JSON.parse(baseRaw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((id: string) => {
+            if (KNOWN_MAHADASHA_GUIDE_IDS.includes(id)) result.add(id);
+          });
+        }
+      } catch {}
     }
-  } catch {}
-  return [];
+
+    // 2. Check user-scoped storage key
+    if (userId) {
+      const uKey = `${STORAGE_PURCHASED_GUIDES}_${userId}`;
+      const userRaw = await AsyncStorage.getItem(uKey);
+      if (userRaw) {
+        try {
+          const parsed = JSON.parse(userRaw);
+          if (Array.isArray(parsed)) {
+            parsed.forEach((id: string) => {
+              if (KNOWN_MAHADASHA_GUIDE_IDS.includes(id)) result.add(id);
+            });
+          }
+        } catch {}
+      }
+
+      const cleanPhone = userId.replace(/\D/g, '');
+      if (cleanPhone && cleanPhone !== userId) {
+        const phoneRaw = await AsyncStorage.getItem(`${STORAGE_PURCHASED_GUIDES}_${cleanPhone}`);
+        if (phoneRaw) {
+          try {
+            const parsed = JSON.parse(phoneRaw);
+            if (Array.isArray(parsed)) {
+              parsed.forEach((id: string) => {
+                if (KNOWN_MAHADASHA_GUIDE_IDS.includes(id)) result.add(id);
+              });
+            }
+          } catch {}
+        }
+      }
+    }
+
+    // 3. Check legacy inverted keys (e.g. `astroparihar_purchased_mahadasha_guides_rahu-stabilisation`)
+    for (const guideId of KNOWN_MAHADASHA_GUIDE_IDS) {
+      const invKey = `${STORAGE_PURCHASED_GUIDES}_${guideId}`;
+      const invRaw = await AsyncStorage.getItem(invKey);
+      if (invRaw) {
+        try {
+          const parsed = JSON.parse(invRaw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            result.add(guideId);
+          }
+        } catch {}
+      }
+    }
+
+    // 4. Also check Firestore user_purchases for cross-device lifetime access
+    if (userId && userId !== 'guest') {
+      try {
+        const res = await fetch(`${FIRESTORE_BASE_URL}/user_purchases?key=${FIREBASE_API_KEY}`, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.documents && Array.isArray(data.documents)) {
+            for (const doc of data.documents) {
+              const f = doc.fields || {};
+              const docUid = f.userId?.stringValue;
+              const gId = f.guideId?.stringValue;
+              if (docUid && (docUid === userId || docUid.includes(userId) || userId.includes(docUid))) {
+                if (gId && KNOWN_MAHADASHA_GUIDE_IDS.includes(gId)) {
+                  result.add(gId);
+                }
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+  } catch (err) {
+    console.warn('getPurchasedGuideIds error:', err);
+  }
+
+  return Array.from(result);
 }
 
-export async function markGuidePurchased(guideId: string, userId?: string): Promise<void> {
+/**
+ * Mark a Mahadasha guide as purchased with lifetime persistence.
+ * Tolerant to either argument order: (guideId, userId) or (userId, guideId).
+ */
+export async function markGuidePurchased(arg1: string, arg2?: string): Promise<void> {
+  let guideId = arg1;
+  let userId = arg2;
+
+  // Auto-detect if argument order was inverted
+  if (KNOWN_MAHADASHA_GUIDE_IDS.includes(arg2 || '')) {
+    guideId = arg2!;
+    userId = arg1;
+  }
+
   try {
-    const key = userId ? `${STORAGE_PURCHASED_GUIDES}_${userId}` : STORAGE_PURCHASED_GUIDES;
-    const existing = await getPurchasedGuideIds(userId);
-    if (!existing.includes(guideId)) {
-      const updated = [...existing, guideId];
-      await AsyncStorage.setItem(key, JSON.stringify(updated));
+    // 1. Add to universal base storage
+    const currentBase = await getPurchasedGuideIds();
+    if (!currentBase.includes(guideId)) {
+      currentBase.push(guideId);
     }
-  } catch {}
+    await AsyncStorage.setItem(STORAGE_PURCHASED_GUIDES, JSON.stringify(currentBase));
+
+    // 2. Add to user-scoped storage key
+    if (userId) {
+      const uKey = `${STORAGE_PURCHASED_GUIDES}_${userId}`;
+      await AsyncStorage.setItem(uKey, JSON.stringify(currentBase));
+
+      const clean = userId.replace(/\D/g, '');
+      if (clean && clean !== userId) {
+        await AsyncStorage.setItem(`${STORAGE_PURCHASED_GUIDES}_${clean}`, JSON.stringify(currentBase));
+      }
+
+      // 3. Sync to Firestore for permanent cross-device & cross-session lifetime access
+      fetch(`${FIRESTORE_BASE_URL}/user_purchases?key=${FIREBASE_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            userId: { stringValue: userId },
+            guideId: { stringValue: guideId },
+            purchasedAt: { stringValue: new Date().toISOString() },
+            status: { stringValue: 'active' },
+            lifetimeAccess: { booleanValue: true },
+          },
+        }),
+      }).catch(() => {});
+    }
+  } catch (err) {
+    console.warn('markGuidePurchased error:', err);
+  }
 }
 

@@ -247,7 +247,7 @@ export function VedicKundliChart({
             marginBottom: 12,
             padding: 3,
             borderRadius: 14,
-            backgroundColor: 'rgba(20, 8, 5, 0.92)',
+            backgroundColor: 'rgba(13, 21, 39, 0.92)',
             borderWidth: 1.2,
             borderColor: 'rgba(201, 149, 43, 0.35)',
             width: chartOuterSize,
@@ -262,7 +262,7 @@ export function VedicKundliChart({
               justifyContent: 'center',
               paddingVertical: 7,
               borderRadius: 11,
-              backgroundColor: currentStyle === 'south-indian' ? '#713B32' : 'transparent',
+              backgroundColor: currentStyle === 'south-indian' ? '#C9952B' : 'transparent',
               borderWidth: currentStyle === 'south-indian' ? 1 : 0,
               borderColor: currentStyle === 'south-indian' ? '#C9952B' : 'transparent',
             }}
@@ -270,14 +270,14 @@ export function VedicKundliChart({
             <AppIcon
               name="crop_square"
               size={13}
-              color={currentStyle === 'south-indian' ? '#FFD700' : '#94A3B8'}
+              color={currentStyle === 'south-indian' ? '#0A0E1A' : '#94A3B8'}
               style={{ marginRight: 5 }}
             />
             <Text
               style={{
                 fontSize: 11.5,
                 fontWeight: '800',
-                color: currentStyle === 'south-indian' ? '#FFFFFF' : '#94A3B8',
+                color: currentStyle === 'south-indian' ? '#0A0E1A' : '#94A3B8',
               }}
             >
               South Indian (Square)
@@ -293,7 +293,7 @@ export function VedicKundliChart({
               justifyContent: 'center',
               paddingVertical: 7,
               borderRadius: 11,
-              backgroundColor: currentStyle === 'north-indian' ? '#713B32' : 'transparent',
+              backgroundColor: currentStyle === 'north-indian' ? '#C9952B' : 'transparent',
               borderWidth: currentStyle === 'north-indian' ? 1 : 0,
               borderColor: currentStyle === 'north-indian' ? '#C9952B' : 'transparent',
             }}
@@ -301,14 +301,14 @@ export function VedicKundliChart({
             <AppIcon
               name="diamond"
               size={13}
-              color={currentStyle === 'north-indian' ? '#FFD700' : '#94A3B8'}
+              color={currentStyle === 'north-indian' ? '#0A0E1A' : '#94A3B8'}
               style={{ marginRight: 5 }}
             />
             <Text
               style={{
                 fontSize: 11.5,
                 fontWeight: '800',
-                color: currentStyle === 'north-indian' ? '#FFFFFF' : '#94A3B8',
+                color: currentStyle === 'north-indian' ? '#0A0E1A' : '#94A3B8',
               }}
             >
               North Indian (Diamond)
@@ -325,7 +325,7 @@ export function VedicKundliChart({
           style={{
             width: chartOuterSize,
             height: chartOuterSize,
-            backgroundColor: '#0D0806',
+            backgroundColor: '#0A0E1A',
             borderRadius: 22,
             borderWidth: 1.5,
             borderColor: '#C9952B',
@@ -456,7 +456,7 @@ export function VedicKundliChart({
               width: centerBoxSize,
               height: centerBoxSize,
               borderRadius: 16,
-              backgroundColor: 'rgba(22, 9, 6, 0.95)',
+              backgroundColor: 'rgba(13, 21, 39, 0.96)',
               borderWidth: 1.5,
               borderColor: 'rgba(201, 149, 43, 0.45)',
               alignItems: 'center',
@@ -550,7 +550,7 @@ export function VedicKundliChart({
           style={{
             width: chartOuterSize,
             height: chartOuterSize,
-            backgroundColor: '#0D0806',
+            backgroundColor: '#0A0E1A',
             borderRadius: 22,
             borderWidth: 1.5,
             borderColor: '#C9952B',
@@ -691,7 +691,7 @@ export function VedicKundliChart({
                   paddingHorizontal: 10,
                   paddingVertical: 7,
                   borderRadius: 12,
-                  backgroundColor: 'rgba(28, 12, 9, 0.94)',
+                  backgroundColor: 'rgba(19, 29, 49, 0.95)',
                   borderWidth: 1,
                   borderColor: selectedHouse === p.houseNum ? '#FFD700' : 'rgba(201, 149, 43, 0.35)',
                   flexDirection: 'row',

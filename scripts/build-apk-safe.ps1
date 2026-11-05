@@ -23,12 +23,21 @@ Write-Host "[2/3] Building release APK (single worker, low memory, skipping lint
 cmd.exe /c "gradlew.bat assembleRelease --no-daemon --max-workers=1 --gradle-user-home C:\Users\PC\.gradle-cli -x lint -x lintVitalRelease -x lintVitalAnalyzeRelease"
 
 # 3. Check and copy the output APK to Desktop & project root
+$pkgFile = "C:\Users\PC\Desktop\astroparihar-app\package.json"
+$appVersion = "2.4.0"
+if (Test-Path $pkgFile) {
+    try {
+        $pkg = Get-Content $pkgFile -Raw | ConvertFrom-Json
+        if ($pkg.version) { $appVersion = $pkg.version }
+    } catch { }
+}
+
 $apkSource = "C:\Users\PC\Desktop\astroparihar-app\android\app\build\outputs\apk\release\app-release.apk"
 $apkDesktop = "C:\Users\PC\Desktop\AstroParihar-Latest.apk"
-$apkDesktopV = "C:\Users\PC\Desktop\AstroParihar-v2.4.0.apk"
+$apkDesktopV = "C:\Users\PC\Desktop\AstroParihar-v$appVersion.apk"
 $apkProjectLatest = "C:\Users\PC\Desktop\astroparihar-app\AstroParihar-Latest.apk"
 $apkProjectRelease = "C:\Users\PC\Desktop\astroparihar-app\astroparihar-release.apk"
-$apkProjectV = "C:\Users\PC\Desktop\astroparihar-app\AstroParihar-v2.4.0.apk"
+$apkProjectV = "C:\Users\PC\Desktop\astroparihar-app\AstroParihar-v$appVersion.apk"
 
 if (Test-Path $apkSource) {
     Copy-Item -Path $apkSource -Destination $apkDesktop -Force

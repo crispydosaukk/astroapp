@@ -16,7 +16,7 @@ export default function TabsLayout() {
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: background }, freezeOnBlur: false }}
     >
       <Tabs.Screen name="home-dashboard-screen" />
-      <Tabs.Screen name="ai-chat-screen" />
+      <Tabs.Screen name="ai-chat-screen" options={{ tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="live-astrologers-screen" />
       <Tabs.Screen name="services-screen" />
       <Tabs.Screen name="profile-screen" />

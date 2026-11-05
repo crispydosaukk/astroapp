@@ -2,7 +2,7 @@
  * Modal primitives replacing Flutter's showModalBottomSheet, showDialog and ScaffoldMessenger SnackBar.
  */
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Keyboard, KeyboardAvoidingView, LayoutAnimation, Modal, Platform, Pressable, StyleProp, Text as RNText, View, ViewStyle } from 'react-native';
+import { Dimensions, Keyboard, KeyboardAvoidingView, LayoutAnimation, Modal, Platform, Pressable, StyleProp, Text as RNText, useWindowDimensions, View, ViewStyle } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
@@ -28,7 +28,8 @@ export function BottomSheet({
   const [mounted, setMounted] = useState(visible);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const insets = useSafeAreaInsets();
-  const y = useSharedValue(SCREEN_H);
+  const { height: windowH } = useWindowDimensions();
+  const y = useSharedValue(windowH || SCREEN_H);
   const barrier = useSharedValue(0);
 
   useEffect(() => {
@@ -53,23 +54,47 @@ export function BottomSheet({
   }, []);
 
   useEffect(() => {
+    const h = windowH || SCREEN_H;
     if (visible) {
       setMounted(true);
       y.value = withTiming(0, { duration: 250, easing: Easing.out(Easing.cubic) });
       barrier.value = withTiming(1, { duration: 250 });
     } else if (mounted) {
       barrier.value = withTiming(0, { duration: 200 });
-      y.value = withTiming(SCREEN_H, { duration: 200, easing: Easing.in(Easing.cubic) }, (f) => {
+      y.value = withTiming(h, { duration: 200, easing: Easing.in(Easing.cubic) }, (f) => {
         if (f) runOnJS(setMounted)(false);
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
+  }, [visible, windowH]);
 
   const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
   const barrierStyle = useAnimatedStyle(() => ({ opacity: barrier.value }));
 
   if (!mounted) return null;
+
+  const currentWindowH = windowH || SCREEN_H;
+  const screenH = Dimensions.get('screen').height;
+  const topSafe = insets.top > 0 ? insets.top : 24;
+
+  // Detect whether Android OS has already resized the window for the keyboard (adjustResize)
+  const isAndroidWindowResized = Platform.OS === 'android' && currentWindowH < screenH - 120;
+
+  // On Android with adjustResize, window is already resized by the OS, so extra padding = 0!
+  // Only add paddingBottom if the OS did NOT resize the window.
+  const androidBottomPad = Platform.OS === 'android'
+    ? (isAndroidWindowResized ? 0 : keyboardHeight)
+    : 0;
+
+  // Available height calculation:
+  // If Android OS already resized the window, currentWindowH is ALREADY the space above the keyboard.
+  // Never subtract keyboardHeight again, otherwise it gets double-deducted and crushes the sheet.
+  const heightAboveKeyboard = isAndroidWindowResized
+    ? currentWindowH
+    : Math.max(300, currentWindowH - (keyboardHeight > 0 ? keyboardHeight : 0));
+
+  const maxAvailableH = Math.max(300, heightAboveKeyboard - topSafe - 12);
+  const availableHeight = Math.min(Math.floor(heightAboveKeyboard * maxHeightRatio), maxAvailableH);
 
   return (
     <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={onClose}>
@@ -87,7 +112,7 @@ export function BottomSheet({
           style={{
             width: '100%',
             justifyContent: 'flex-end',
-            paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0,
+            paddingBottom: androidBottomPad,
           }}
         >
           <Animated.View
@@ -95,7 +120,7 @@ export function BottomSheet({
             style={[
               {
                 width: '100%',
-                maxHeight: Math.max(280, SCREEN_H * maxHeightRatio - (Platform.OS === 'android' ? keyboardHeight : 0)),
+                maxHeight: availableHeight,
                 backgroundColor,
                 overflow: 'hidden',
               },

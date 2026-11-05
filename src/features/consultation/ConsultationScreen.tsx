@@ -17,7 +17,7 @@ import { WebView } from 'react-native-webview';
 import Svg, { Line, Rect, Text as SvgText } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedBox } from '@/components/AnimatedBox';
 import { AppIcon } from '@/components/AppIcon';
 import { AppImage } from '@/components/AppImage';
@@ -29,7 +29,7 @@ import { useBirthProfileStore } from '@/services/birthProfileStore';
 import { AppRoutes, go, push, useExtra } from '@/navigation/routes';
 import { submitConsultationReview } from '@/services/reviewService';
 import { deductWalletBalance, getWalletBalance, subscribeWallet } from '@/services/walletService';
-import { generateZegoRoomId, openAiCallRoom, openZegoCallRoom } from '@/services/zegoService';
+import { generateZegoRoomId } from '@/services/zegoService';
 import { useCurrencyStore } from '@/services/currencyStore';
 import {
   createConsultationBooking,
@@ -40,13 +40,77 @@ import {
 } from '@/services/consultationService';
 import { fetchCalculatedKundli, KundliChartData, sendLiveAIChatMessage } from '@/services/astrologyService';
 import { VedicKundliChart } from '@/components/VedicKundliChart';
+import { generateConsultationSummaryReport } from '@/services/reportService';
 import { speakAstrologerText, stopAstrologerSpeech } from '@/services/speechService';
 import { AppColors, argb, withAlpha } from '@/theme/colors';
+import { useLanguageStore } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
 import { useController } from '@/utils/anim';
 
-type Astro = { id?: string; name: string; title?: string; imageUrl: string; semanticLabel?: string; price?: number; isAi?: boolean; [k: string]: unknown };
+type Astro = { id?: string; name: string; title?: string; imageUrl: string; semanticLabel?: string; price?: number; isAi?: boolean;[k: string]: unknown };
 type Msg = { text: string; isSystem: boolean; isUser?: boolean; time: string };
+
+const SPEECH_RECOGNITION_HTML = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body>
+<script>
+  var rec = null;
+  function startListening(lang) {
+    try {
+      var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRec) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'UNSUPPORTED' }));
+        return;
+      }
+      if (rec) {
+        try { rec.abort(); } catch(e){}
+      }
+      rec = new SpeechRec();
+      rec.lang = lang || 'en-IN';
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.maxAlternatives = 1;
+
+      rec.onstart = function() {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'STARTED' }));
+      };
+      rec.onresult = function(event) {
+        var str = '';
+        for (var i = 0; i < event.results.length; ++i) {
+          str += event.results[i][0].transcript;
+        }
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'RESULT',
+          transcript: str,
+          isFinal: event.results[event.results.length - 1].isFinal
+        }));
+      };
+      rec.onerror = function(event) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', error: event.error }));
+      };
+      rec.onend = function() {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ENDED' }));
+      };
+      rec.start();
+    } catch(err) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', error: String(err) }));
+    }
+  }
+
+  function stopListening() {
+    if (rec) {
+      try { rec.stop(); } catch(e){}
+    }
+  }
+
+  window.startListening = startListening;
+  window.stopListening = stopListening;
+</script>
+</body>
+</html>
+`;
 
 const DEFAULT_ASTRO: Astro = {
   name: 'Swami Shankarananda Giri',
@@ -78,10 +142,10 @@ function Avatar({ uri, size, border = 0 }: { uri: string; size: number; border?:
 function ControlButton({ icon, label, isActive, activeColor, onTap, testID }: { icon: string; label: string; isActive: boolean; activeColor: string; onTap: () => void; testID: string }) {
   return (
     <Pressable testID={testID} onPress={onTap} style={{ alignItems: 'center' }}>
-      <AnimatedBox duration={200} style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', backgroundColor: isActive ? withAlpha(activeColor, 40) : 'rgba(38, 16, 11, 0.85)', borderColor: isActive ? activeColor : 'rgba(201, 168, 76, 0.4)' }}>
-        <AppIcon name={icon} color={isActive ? activeColor : '#D4C5A9'} size={22} />
+      <AnimatedBox duration={200} style={{ width: 48, height: 48, borderRadius: 24, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', backgroundColor: isActive ? withAlpha(activeColor, 40) : '#1E293B', borderColor: isActive ? activeColor : 'rgba(201, 168, 76, 0.35)' }}>
+        <AppIcon name={icon} color={isActive ? activeColor : '#E2E8F0'} size={22} />
       </AnimatedBox>
-      <Text style={{ marginTop: 4, color: isActive ? activeColor : '#D4C5A9', fontSize: 10, fontWeight: '600' }}>{label}</Text>
+      <Text style={{ marginTop: 4, color: isActive ? activeColor : '#E2E8F0', fontSize: 10, fontWeight: '600' }}>{label}</Text>
     </Pressable>
   );
 }
@@ -128,7 +192,7 @@ export default function ConsultationScreen() {
       .then((data) => {
         if (data) setChartData(data);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [activeProfile, authUser]);
 
   const [authModalVisible, setAuthModalVisible] = useState(false);
@@ -136,14 +200,18 @@ export default function ConsultationScreen() {
   const [consultationId, setConsultationId] = useState<string | null>(null);
   const roomID = useRef(extra?.roomID || generateZegoRoomId()).current;
 
+  const selectedLanguage = useLanguageStore((s) => s.selectedLanguage);
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
   // Real consultation states
   const [isWaitingAstrologer, setIsWaitingAstrologer] = useState(!isAi);
   const [acceptanceCountdown, setAcceptanceCountdown] = useState(60);
   const [connectionStatusText, setConnectionStatusText] = useState(
     isAi ? 'Connecting to AI Astrologer...' : 'Calling Astrologer... Waiting for acceptance'
   );
-  const [inAppVideoVisible, setInAppVideoVisible] = useState(false);
 
+  const insets = useSafeAreaInsets();
   const [isMuted, setMuted] = useState(false);
   const [isCameraOff, setCameraOff] = useState(false);
   const [isSpeakerOn, setSpeakerOn] = useState(true);
@@ -156,6 +224,12 @@ export default function ConsultationScreen() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [ended, setEnded] = useState(false);
+  const [lastGeneratedReportId, setLastGeneratedReportId] = useState<string>('');
+  const [voiceModalVisible, setVoiceModalVisible] = useState(false);
+  const [voiceQueryInput, setVoiceQueryInput] = useState('');
+  const [spokenTranscript, setSpokenTranscript] = useState('');
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const speechWebViewRef = useRef<any>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
@@ -221,25 +295,112 @@ export default function ConsultationScreen() {
     stopTimers();
     setEnded(true);
 
+    const consultId = consultationIdRef.current || `call_${Date.now()}`;
+    const durationSec = secondsRef.current;
+    const durationMins = Math.max(1, Math.round(durationSec / 60));
+    const durationText = fmt(durationSec);
+    const charged = totalCharged > 0 ? totalCharged : Number(ratePerMin.toFixed(2));
+    const dateFormatted = new Date().toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const dateISO = new Date().toISOString();
+
+    // 1. Generate & Save Consultation Summary Report
+    let genReportId = `rep_consult_${consultId}`;
+    try {
+      const rep = await generateConsultationSummaryReport(
+        {
+          consultationId: consultId,
+          astrologerName: astro.name,
+          astrologerId: String((astro as any).id || (astro as any).uid || 'astro_live'),
+          serviceType: isVideo ? 'Video Call' : 'Voice Call',
+          durationText,
+          durationMinutes: durationMins,
+          amountCharged: charged,
+          devoteeName,
+          devoteeDob,
+          devoteeTob,
+          devoteePob,
+          devoteeLagna,
+          devoteeRashi,
+          devoteeNakshatra,
+          chatSummary: messages.length > 0
+            ? messages.filter((m) => !m.isSystem).map((m) => `${m.isUser ? 'Devotee' : astro.name}: ${m.text}`).join('\n')
+            : undefined,
+        },
+        authUser?.uid || authUser?.phone
+      );
+      genReportId = rep.id;
+    } catch (err) {
+      console.warn('generateConsultationSummaryReport error:', err);
+    }
+    setLastGeneratedReportId(genReportId);
+
     if (consultationIdRef.current) {
-      completeConsultationBooking(consultationIdRef.current).catch(() => {});
+      completeConsultationBooking(consultationIdRef.current).catch(() => { });
     }
 
     try {
       const stored = await AsyncStorage.getItem('astroparihar_consultation_history');
       const list = stored ? JSON.parse(stored) : [];
       const record = {
-        id: consultationIdRef.current || `call_${Date.now()}`,
+        id: consultId,
+        customerId: authUser?.uid || 'anonymous_user',
+        customerPhone: authUser?.phone || '',
+        customerName: devoteeName,
         astrologerName: astro.name,
+        astrologer: astro.name,
         type: isVideo ? 'Video Call' : 'Voice Call',
-        date: 'Today',
-        duration: fmt(secondsRef.current),
-        amount: Number(totalCharged.toFixed(2)),
+        topic: 'Vedic Kundli & Parihar Consultation',
+        date: dateFormatted,
+        createdAt: dateISO,
+        duration: `${durationMins} min`,
+        durationMinutes: durationMins,
+        amount: charged,
+        price: charged,
+        rawAmount: charged,
         avatar: astro.imageUrl,
         roomID,
+        rating: 5,
+        status: 'completed',
+        source: isAi ? 'ai' : 'human',
+        emoji: isAi ? '🤖' : isVideo ? '📹' : '🔮',
+        color: isAi ? '#81C784' : isVideo ? '#FF6B6B' : '#FFD700',
+        reportId: genReportId,
       };
-      await AsyncStorage.setItem('astroparihar_consultation_history', JSON.stringify([record, ...list]));
-    } catch {}
+      const filtered = list.filter((item: any) => item.id !== consultId);
+      await AsyncStorage.setItem('astroparihar_consultation_history', JSON.stringify([record, ...filtered]));
+
+      // Also sync to Firestore
+      fetch(`https://firestore.googleapis.com/v1/projects/astroparihar-85e2d/databases/(default)/documents/${isAi ? 'ai_consultations' : 'consultations'}?key=AIzaSyCXZ9S7Th0lpAVLMnZnRlgusCH1dPgF98g`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            customerId: { stringValue: authUser?.uid || 'anonymous_user' },
+            customerPhone: { stringValue: authUser?.phone || '' },
+            customerName: { stringValue: devoteeName },
+            astrologerName: { stringValue: astro.name },
+            type: { stringValue: isVideo ? 'Video Call' : 'Voice Call' },
+            topic: { stringValue: 'Vedic Kundli & Parihar Consultation' },
+            duration: { stringValue: `${durationMins} min` },
+            durationMinutes: { integerValue: String(durationMins) },
+            price: { doubleValue: charged },
+            amount: { doubleValue: charged },
+            rating: { integerValue: '5' },
+            status: { stringValue: 'completed' },
+            createdAt: { stringValue: dateISO },
+            roomID: { stringValue: roomID },
+            reportId: { stringValue: genReportId },
+            source: { stringValue: isAi ? 'ai' : 'human' },
+          },
+        }),
+      }).catch(() => { });
+    } catch { }
   };
 
   const cancelCallBeforeAcceptance = async () => {
@@ -294,6 +455,10 @@ export default function ConsultationScreen() {
           setConnected(true);
           setIsWaitingAstrologer(false);
 
+          const activeConsultId = consultationIdRef.current || `ai_call_${Date.now()}_${roomID}`;
+          setConsultationId(activeConsultId);
+          consultationIdRef.current = activeConsultId;
+
           // Deduct 1st minute
           const firstMin = await deductWalletBalance(
             ratePerMin,
@@ -307,6 +472,23 @@ export default function ConsultationScreen() {
             setTotalCharged(Number(ratePerMin.toFixed(2)));
             addSystem(`AI Consultation connected. First minute (${formatPrice(ratePerMin)}) billed.`);
             addSystem(`Session: ${roomID}`);
+
+            const initialGreeting = selectedLanguage === 'Telugu'
+              ? `నమస్కారం! నేను మీ జ్యోతిష నిపుణుడు ${astro.name}. మీ కుండలి పరిశీలించడానికి సిద్ధంగా ఉన్నాను. మీ ఉద్యోగం, వివాహం, ఆర్థికం లేదా గ్రహ పరిహారాల గురించి ఏ ప్రశ్న అయినా అడగండి.`
+              : selectedLanguage === 'Hindi'
+                ? `नमस्ते! मैं आपका ज्योतिषी ${astro.name} हूँ। आपकी जन्म कुंडली के अनुसार करियर, विवाह, धन या ग्रह शांति के बारे में आप क्या जानना चाहते हैं?`
+                : `Namaste! I am your Vedic astrologer ${astro.name}. I am analyzing your birth chart. Please ask any question regarding career, marriage, finances, or planetary remedies.`;
+
+            setMessages((m) => [
+              ...m,
+              { text: initialGreeting, isSystem: false, isUser: false, time: fmt(0) }
+            ]);
+            speakAstrologerText(initialGreeting, {
+              astrologerName: astro.name,
+              language: selectedLanguage,
+              onStart: () => setIsAiSpeaking(true),
+              onDone: () => setIsAiSpeaking(false),
+            });
           }
 
           // Call timer
@@ -375,7 +557,7 @@ export default function ConsultationScreen() {
           if (countdownSec <= 0) {
             clearInterval(timers.current.countdown);
             clearInterval(timers.current.poll);
-            cancelConsultationBooking(activeConsultId, 'Astrologer timeout (60s)').catch(() => {});
+            cancelConsultationBooking(activeConsultId, 'Astrologer timeout (60s)').catch(() => { });
             showSnackBar(`${astro.name} is currently occupied with devotees. Please try again or select another astrologer.`, '#D97706');
             setTimeout(() => { if (router.canGoBack()) router.back(); }, 1500);
           }
@@ -398,7 +580,7 @@ export default function ConsultationScreen() {
             // Trigger server call billing
             try {
               await startCallBilling(activeConsultId);
-            } catch {}
+            } catch { }
 
             // Deduct 1st minute from live database
             const firstMin = await deductWalletBalance(
@@ -457,39 +639,133 @@ export default function ConsultationScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuth]);
 
-  const sendMessage = async () => {
-    const text = input.trim();
+  const QUICK_VOICE_TOPICS = selectedLanguage === 'Telugu' ? [
+    { label: '💼 ఉద్యోగం & కెరీర్', query: 'నా ఉద్యోగం మరియు కెరీర్ భవిష్యత్తు ఎలా ఉంది? ప్రమోషన్ ఎప్పుడు వస్తుంది?' },
+    { label: '💍 వివాహ సమయం', query: 'నా జాతకంలో వివాహ యోగం ఎప్పుడు ఉంది? ఎలాంటి సంబంధం కుదురుతుంది?' },
+    { label: '💰 ఆర్థిక వృద్ధి', query: 'నా ఆర్థిక పరిస్థితి ఎప్పుడు మెరుగుపడుతుంది? ధన లాభం ఎప్పుడు కలుగుతుంది?' },
+    { label: '🪐 రాహు-కేతు పరిహారం', query: 'నా జాతకంలో రాహు కేతు లేదా శని దోషాలు ఉన్నాయా? నివారణ పరిహారాలు ఏమిటి?' },
+    { label: '✨ అదృష్ట రత్నం', query: 'నా కుండలికి అత్యంత అనుకూలమైన అదృష్ట రత్నం మరియు రుద్రాక్ష ఏది?' },
+    { label: '🙏 శాంతి పరిహారం', query: 'ప్రస్తుతం నా గ్రహ శాంతికి ఏ దేవతా పూజ లేదా హోమం చేయాలి?' },
+  ] : selectedLanguage === 'Hindi' ? [
+    { label: '💼 करियर व नौकरी', query: 'मेरे करियर और नौकरी में पदोन्नति का समय कब बनेगा?' },
+    { label: '💍 विवाह योग', query: 'मेरी कुंडली में विवाह का शुभ योग कब बन रहा है?' },
+    { label: '💰 धन व समृद्धि', query: 'आर्थिक स्थिति में सुधार और धन लाभ का योग कब है?' },
+    { label: '🪐 ग्रह दोष शांति', query: 'क्या मेरी कुंडली में कोई ग्रह दोष है और उसका निवारण क्या है?' },
+    { label: '✨ शुभ रत्न व रुद्राक्ष', query: 'मेरी जन्म कुंडली के अनुसार मेरे लिए सबसे शुभ रत्न और रुद्राक्ष कौन सा है?' },
+    { label: '🙏 वैदिक उपाय', query: 'ग्रह शांति के लिए कौन सा सरल एवं सिद्ध उपाय करना चाहिए?' },
+  ] : [
+    { label: '💼 Career & Job', query: 'What does my birth chart indicate regarding my career progression and financial stability?' },
+    { label: '💍 Marriage Timing', query: 'When will the auspicious window for marriage or relationship harmony open in my chart?' },
+    { label: '💰 Wealth & Finance', query: 'What are the upcoming planetary indicators for wealth accumulation and prosperity?' },
+    { label: '🪐 Dosha Parihar', query: 'Are there any active planetary doshas affecting me, and what parihar is prescribed?' },
+    { label: '✨ Lucky Gemstone', query: 'Which gemstone and rudraksha best align with my ascendant and moon sign?' },
+    { label: '🙏 Vedic Remedies', query: 'Which daily mantra and deity sadhana is most potent for my current dasha?' },
+  ];
+
+  const sendMessage = async (customText?: string) => {
+    const text = (typeof customText === 'string' ? customText : input).trim();
     if (!text) return;
     setMessages((m) => [...m, { text, isSystem: false, isUser: true, time: fmt(secondsRef.current) }]);
-    setInput('');
+    if (typeof customText !== 'string') setInput('');
+    setIsListening(false);
     scrollChat();
 
     if (isAi) {
       try {
         const res = await sendLiveAIChatMessage({
           messages: [{ role: 'user', content: text }],
+          language: selectedLanguage,
           astrologerId: String((astro as any).id || 'acharya-devavrat'),
         });
         if (res.reply) {
           setMessages((m) => [...m, { text: res.reply, isSystem: false, isUser: false, time: fmt(secondsRef.current) }]);
           scrollChat();
           if (isSpeakerOn && !isMuted) {
-            speakAstrologerText(res.reply, { astrologerName: astro.name });
+            speakAstrologerText(res.reply, {
+              astrologerName: astro.name,
+              language: selectedLanguage,
+              onStart: () => setIsAiSpeaking(true),
+              onDone: () => setIsAiSpeaking(false),
+            });
           }
           return;
         }
-      } catch {}
+      } catch { }
     }
 
     setTimeout(() => {
       if (!mounted.current) return;
-      const reply = isAi ? REPLIES[Math.floor(Math.random() * REPLIES.length)] : 'The astrologer is listening directly on the live audio channel.';
-      setMessages((m) => [...m, { text: reply, isSystem: false, isUser: false, time: fmt(secondsRef.current) }]);
+      const fallbackReply = selectedLanguage === 'Telugu'
+        ? `మీ జన్మ కుండలిని పరిశీలించాను. గ్రహ గోచారాల ప్రభావం సానుకూలంగా ఉంది. నిత్యం ఇష్టదేవతా స్మరణ మరియు తూర్పు ముఖంగా దీపారాధన చేయండి.`
+        : selectedLanguage === 'Hindi'
+          ? `आपकी जन्म कुंडली के अनुसार देवगुरु बृहस्पति का गोचर शुभ है। प्रतिदिन सूर्य को अर्घ्य दें एवं वैदिक उपाय करें।`
+          : `Based on your birth chart, the planetary transits are supportive. Maintain mental peace and observe your daily remedies.`;
+      setMessages((m) => [...m, { text: fallbackReply, isSystem: false, isUser: false, time: fmt(secondsRef.current) }]);
       scrollChat();
       if (isAi && isSpeakerOn && !isMuted) {
-        speakAstrologerText(reply, { astrologerName: astro.name });
+        speakAstrologerText(fallbackReply, {
+          astrologerName: astro.name,
+          language: selectedLanguage,
+          onStart: () => setIsAiSpeaking(true),
+          onDone: () => setIsAiSpeaking(false),
+        });
       }
     }, 1500);
+  };
+
+  const handleQuickTopicVoiceConsult = (query: string) => {
+    sendMessage(query);
+  };
+
+  const startVoiceListening = () => {
+    stopAstrologerSpeech();
+    setIsAiSpeaking(false);
+    setIsListening(true);
+    setVoiceModalVisible(true);
+    setSpokenTranscript('');
+    setSpeechError(null);
+
+    const langCode =
+      selectedLanguage === 'Telugu'
+        ? 'te-IN'
+        : selectedLanguage === 'Hindi'
+          ? 'hi-IN'
+          : selectedLanguage === 'Tamil'
+            ? 'ta-IN'
+            : selectedLanguage === 'Kannada'
+              ? 'kn-IN'
+              : selectedLanguage === 'Malayalam'
+                ? 'ml-IN'
+                : 'en-IN';
+
+    speechWebViewRef.current?.injectJavaScript(`if (window.startListening) { window.startListening("${langCode}"); } true;`);
+  };
+
+  const stopVoiceListeningAndSend = (textToSend?: string) => {
+    speechWebViewRef.current?.injectJavaScript(`if (window.stopListening) { window.stopListening(); } true;`);
+    setIsListening(false);
+    setVoiceModalVisible(false);
+
+    const query = (textToSend !== undefined ? textToSend : spokenTranscript).trim();
+    if (query.length > 0) {
+      sendMessage(query);
+    }
+  };
+
+  const cancelVoiceListening = () => {
+    speechWebViewRef.current?.injectJavaScript(`if (window.stopListening) { window.stopListening(); } true;`);
+    setIsListening(false);
+    setVoiceModalVisible(false);
+    setSpokenTranscript('');
+    setSpeechError(null);
+  };
+
+  const handleMicToggle = () => {
+    if (isListening) {
+      stopVoiceListeningAndSend();
+    } else {
+      startVoiceListening();
+    }
   };
 
   /* animations */
@@ -513,8 +789,17 @@ export default function ConsultationScreen() {
         serviceType: isVideo ? 'Video Call' : 'Voice Call',
       });
       setReviewSubmitted(true);
+      showSnackBar('Review submitted! Redirecting to your Consultation Report...', '#075E54');
+      setTimeout(() => {
+        setEnded(false);
+        push(AppRoutes.kundliReportsScreen, { reportId: lastGeneratedReportId, autoOpen: true });
+      }, 900);
     } catch {
       setReviewSubmitted(true);
+      setTimeout(() => {
+        setEnded(false);
+        push(AppRoutes.kundliReportsScreen, { reportId: lastGeneratedReportId, autoOpen: true });
+      }, 900);
     } finally {
       setIsSubmittingReview(false);
     }
@@ -530,20 +815,20 @@ export default function ConsultationScreen() {
 
   const activePlanets = chartData?.planets && chartData.planets.length > 0
     ? chartData.planets.map((p) => ({
-        name: p.name,
-        symbol: p.symbol || p.name.substring(0, 2),
-        sign: p.sign,
-        house: p.house,
-        degree: p.degree,
-        color: p.name === 'Sun' ? '#FFB347' : p.name === 'Moon' ? '#E0E0E0' : p.name === 'Mars' ? '#FF6B6B' : p.name === 'Mercury' ? '#90EE90' : p.name === 'Jupiter' ? '#FFD700' : p.name === 'Venus' ? '#FFB6C1' : p.name === 'Saturn' ? '#9370DB' : '#CD853F',
-      }))
+      name: p.name,
+      symbol: p.symbol || p.name.substring(0, 2),
+      sign: p.sign,
+      house: p.house,
+      degree: p.degree,
+      color: p.name === 'Sun' ? '#FFB347' : p.name === 'Moon' ? '#E0E0E0' : p.name === 'Mars' ? '#FF6B6B' : p.name === 'Mercury' ? '#90EE90' : p.name === 'Jupiter' ? '#FFD700' : p.name === 'Venus' ? '#FFB6C1' : p.name === 'Saturn' ? '#9370DB' : '#CD853F',
+    }))
     : DEFAULT_KUNDLI_PLANETS;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#140604' }} testID="consultation.screen">
-      {/* Sacred Vedic Cosmic Background (Images 2 & 3 Fix) */}
+    <View style={{ flex: 1, backgroundColor: '#080D1A' }} testID="consultation.screen">
+      {/* Sacred Vedic Cosmic Background */}
       <LinearGradient
-        colors={['#160805', '#260F0A', '#120503']}
+        colors={['#080D1A', '#0D1527', '#111A30']}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
@@ -561,34 +846,34 @@ export default function ConsultationScreen() {
               alignItems: 'center',
               paddingHorizontal: 16,
               paddingVertical: 10,
-              backgroundColor: 'rgba(38,16,11,0.88)',
+              backgroundColor: 'rgba(13, 21, 39, 0.95)',
               borderBottomWidth: 1,
-              borderBottomColor: 'rgba(201,168,76,0.25)',
+              borderBottomColor: 'rgba(201, 168, 76, 0.3)',
             }}
           >
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
               <Avatar uri={astro.imageUrl} size={42} border={1.5} />
               <View style={{ marginLeft: 10, flex: 1 }}>
-                <Text numberOfLines={1} style={{ color: '#F0EAD6', fontSize: 14, fontWeight: '700' }}>
+                <Text numberOfLines={1} style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>
                   {astro.name}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
-                  <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: connected ? '#3DCB7A' : '#C9A84C' }} />
-                  <Text style={{ marginLeft: 4, color: connected ? '#3DCB7A' : '#C9A84C', fontSize: 11, fontWeight: '600' }}>
+                  <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: connected ? '#3DCB7A' : '#FFD700' }} />
+                  <Text style={{ marginLeft: 4, color: connected ? '#3DCB7A' : '#FFD700', fontSize: 11, fontWeight: '600' }}>
                     {connected ? (isVideo ? 'Live Video Call' : 'Live Voice Call') : 'Connecting...'}
                   </Text>
                 </View>
               </View>
             </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.4)', borderWidth: 1, borderColor: 'rgba(201,168,76,0.4)' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 1, borderColor: 'rgba(201,168,76,0.4)' }}>
               <AppIcon name="timer_outlined" color="#FFD700" size={13} />
               <Text testID="consultation.timer" style={{ marginLeft: 4, color: '#FFD700', fontSize: 12.5, fontWeight: '800', letterSpacing: 0.5 }}>
                 {fmt(seconds)}
               </Text>
             </View>
 
-            <View style={{ marginLeft: 8, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.4)', borderWidth: 1, borderColor: balance < 50 ? 'rgba(239,68,68,0.6)' : 'rgba(201,168,76,0.4)' }}>
+            <View style={{ marginLeft: 8, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 1, borderColor: balance < 50 ? 'rgba(239,68,68,0.6)' : 'rgba(201,168,76,0.4)' }}>
               <AppIcon name="account_balance_wallet_outlined" color={balance < 50 ? '#EF4444' : '#FFD700'} size={13} />
               <Text testID="consultation.balance" style={{ marginLeft: 4, color: balance < 50 ? '#EF4444' : '#FFD700', fontSize: 12.5, fontWeight: '800' }}>
                 {formatPrice(balance)}
@@ -605,13 +890,16 @@ export default function ConsultationScreen() {
               marginBottom: 4,
               padding: 3,
               borderRadius: 14,
-              backgroundColor: 'rgba(28, 12, 9, 0.9)',
+              backgroundColor: 'rgba(13, 21, 39, 0.9)',
               borderWidth: 1,
               borderColor: 'rgba(201, 168, 76, 0.3)',
             }}
           >
             <Pressable
-              onPress={() => setCallTab('chart')}
+              onPress={() => {
+                setCallTab('chart');
+                setChatOpen(false);
+              }}
               style={{
                 flex: 1,
                 flexDirection: 'row',
@@ -619,11 +907,11 @@ export default function ConsultationScreen() {
                 justifyContent: 'center',
                 paddingVertical: 7,
                 borderRadius: 11,
-                backgroundColor: callTab === 'chart' ? '#713B32' : 'transparent',
+                backgroundColor: callTab === 'chart' ? '#C9A84C' : 'transparent',
               }}
             >
-              <AppIcon name="auto_awesome" size={13} color={callTab === 'chart' ? '#FFD700' : '#A0A8C0'} style={{ marginRight: 5 }} />
-              <Text style={{ fontSize: 11.5, fontWeight: '700', color: callTab === 'chart' ? '#FFFFFF' : '#A0A8C0' }}>
+              <AppIcon name="auto_awesome" size={13} color={callTab === 'chart' ? '#0A0E1A' : '#94A3B8'} style={{ marginRight: 5 }} />
+              <Text style={{ fontSize: 11.5, fontWeight: '800', color: callTab === 'chart' ? '#0A0E1A' : '#94A3B8' }}>
                 Birth Chart (Kundli)
               </Text>
             </Pressable>
@@ -637,11 +925,11 @@ export default function ConsultationScreen() {
                 justifyContent: 'center',
                 paddingVertical: 7,
                 borderRadius: 11,
-                backgroundColor: callTab === 'stream' ? '#713B32' : 'transparent',
+                backgroundColor: callTab === 'stream' ? '#C9A84C' : 'transparent',
               }}
             >
-              <AppIcon name="headset_mic_rounded" size={13} color={callTab === 'stream' ? '#FFD700' : '#A0A8C0'} style={{ marginRight: 5 }} />
-              <Text style={{ fontSize: 11.5, fontWeight: '700', color: callTab === 'stream' ? '#FFFFFF' : '#A0A8C0' }}>
+              <AppIcon name="headset_mic_rounded" size={13} color={callTab === 'stream' ? '#0A0E1A' : '#94A3B8'} style={{ marginRight: 5 }} />
+              <Text style={{ fontSize: 11.5, fontWeight: '800', color: callTab === 'stream' ? '#0A0E1A' : '#94A3B8' }}>
                 Voice Stream
               </Text>
             </Pressable>
@@ -666,16 +954,16 @@ export default function ConsultationScreen() {
                 >
                   <AppIcon name="phone_in_talk" size={32} color="#FFD700" />
                 </View>
-                <Text style={{ color: '#F0EAD6', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
                   Connecting to {astro.name}...
                 </Text>
-                <Text style={{ color: '#D4C5A9', fontSize: 12, textAlign: 'center', marginTop: 6, lineHeight: 18 }}>
+                <Text style={{ color: '#CBD5E1', fontSize: 12, textAlign: 'center', marginTop: 6, lineHeight: 18 }}>
                   Establishing secure Vedic consultation session & computing Janam Kundli
                 </Text>
               </View>
             )}
 
-            {connected && !isChatOpen && (
+            {connected && (
               callTab === 'chart' ? (
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 6, paddingBottom: 28 }}>
                   {/* Devotee Birth Details Header Card */}
@@ -685,10 +973,10 @@ export default function ConsultationScreen() {
                       paddingHorizontal: 16,
                       paddingVertical: 12,
                       borderRadius: 18,
-                      backgroundColor: 'rgba(32, 14, 10, 0.94)',
+                      backgroundColor: 'rgba(17, 26, 48, 0.95)',
                       borderWidth: 1.5,
-                      borderColor: '#C9952B',
-                      shadowColor: '#C9952B',
+                      borderColor: '#C9A84C',
+                      shadowColor: '#C9A84C',
                       shadowOpacity: 0.2,
                       shadowRadius: 8,
                       elevation: 4,
@@ -699,7 +987,7 @@ export default function ConsultationScreen() {
                       <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800' }}>
                         👤 {devoteeName}
                       </Text>
-                      <View style={{ paddingHorizontal: 9, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(201, 149, 43, 0.25)', borderWidth: 1, borderColor: '#C9952B' }}>
+                      <View style={{ paddingHorizontal: 9, paddingVertical: 3, borderRadius: 8, backgroundColor: 'rgba(201, 168, 76, 0.25)', borderWidth: 1, borderColor: '#C9A84C' }}>
                         <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '800' }}>
                           Lagna: {devoteeLagna}
                         </Text>
@@ -707,7 +995,7 @@ export default function ConsultationScreen() {
                     </View>
 
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, flexWrap: 'wrap', gap: 10 }}>
-                      <Text style={{ color: '#E2E8F0', fontSize: 11.5, fontWeight: '600' }}>
+                      <Text style={{ color: '#F8FAFC', fontSize: 11.5, fontWeight: '600' }}>
                         📅 {devoteeDob} • ⏰ {devoteeTob}
                       </Text>
                       <Text numberOfLines={1} style={{ color: '#CBD5E1', fontSize: 11.5, fontWeight: '500', flexShrink: 1 }}>
@@ -716,12 +1004,12 @@ export default function ConsultationScreen() {
                     </View>
 
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 7, flexWrap: 'wrap', gap: 8 }}>
-                      <View style={{ paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 7, backgroundColor: 'rgba(255, 255, 255, 0.08)', borderWidth: 0.8, borderColor: 'rgba(255, 255, 255, 0.22)' }}>
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 7, backgroundColor: 'rgba(255, 255, 255, 0.08)', borderWidth: 0.8, borderColor: 'rgba(201, 168, 76, 0.35)' }}>
                         <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '700' }}>
                           ♈ Rashi: {devoteeRashi}
                         </Text>
                       </View>
-                      <View style={{ paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 7, backgroundColor: 'rgba(255, 255, 255, 0.08)', borderWidth: 0.8, borderColor: 'rgba(255, 255, 255, 0.22)' }}>
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 7, backgroundColor: 'rgba(255, 255, 255, 0.08)', borderWidth: 0.8, borderColor: 'rgba(201, 168, 76, 0.35)' }}>
                         <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '700' }}>
                           🌟 Nakshatra: {devoteeNakshatra}
                         </Text>
@@ -729,7 +1017,7 @@ export default function ConsultationScreen() {
                     </View>
                   </View>
 
-                  {/* Fully Dynamic Vedic Kundli Chart (Matching Reference Image 2) */}
+                  {/* Fully Dynamic Vedic Kundli Chart */}
                   <VedicKundliChart
                     chartData={chartData}
                     devoteeName={devoteeName}
@@ -748,186 +1036,338 @@ export default function ConsultationScreen() {
                   />
                 </ScrollView>
               ) : (
-                /* Astrologer Voice Stream View */
-                <View style={{ alignItems: 'center', paddingHorizontal: 20 }}>
-                  <Animated.View style={[{ width: 140, height: 140, alignItems: 'center', justifyContent: 'center' }, pulseStyle]}>
-                    <View
-                      style={{
-                        position: 'absolute',
-                        width: 130,
-                        height: 130,
-                        borderRadius: 65,
-                        backgroundColor: 'rgba(201, 168, 76, 0.16)',
-                        borderWidth: 1.5,
-                        borderColor: 'rgba(201, 168, 76, 0.35)',
-                      }}
-                    />
-                    <Avatar uri={astro.imageUrl} size={100} border={2.5} />
-                  </Animated.View>
+                /* Native In-App Astrologer Voice Consultation View */
+                <View style={{ flex: 1, paddingHorizontal: 14 }}>
+                  {/* Astrologer Avatar & Speaking Wave Animation */}
+                  <View style={{ alignItems: 'center', marginTop: 2, marginBottom: 8 }}>
+                    <Animated.View style={[{ width: 104, height: 104, alignItems: 'center', justifyContent: 'center' }, isAiSpeaking ? pulseStyle : {}]}>
+                      <View
+                        style={{
+                          position: 'absolute',
+                          width: 98,
+                          height: 98,
+                          borderRadius: 49,
+                          backgroundColor: isAiSpeaking ? 'rgba(201, 168, 76, 0.28)' : 'rgba(201, 168, 76, 0.12)',
+                          borderWidth: 1.5,
+                          borderColor: isAiSpeaking ? '#FFD700' : 'rgba(201, 168, 76, 0.4)',
+                        }}
+                      />
+                      <Pressable onPress={handleMicToggle} style={{ alignItems: 'center' }}>
+                        <Avatar uri={astro.imageUrl} size={82} border={2.5} />
+                      </Pressable>
+                    </Animated.View>
 
-                  <View
-                    style={{
-                      width: '100%',
-                      marginTop: 14,
-                      padding: 16,
-                      borderRadius: 20,
-                      backgroundColor: 'rgba(38, 16, 11, 0.92)',
-                      borderWidth: 1.5,
-                      borderColor: '#C9A84C',
-                      shadowColor: '#C9A84C',
-                      shadowOpacity: 0.2,
-                      shadowRadius: 10,
-                      elevation: 4,
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#3DCB7A', marginRight: 8 }} />
-                        <Text style={{ color: '#F0EAD6', fontSize: 13, fontWeight: '700' }}>
-                          {isAi ? '⚡ AI Voice Stream Active' : '🎥 Live 1-on-1 Consultation'}
-                        </Text>
-                      </View>
-                      <View style={{ paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 8, backgroundColor: 'rgba(201,168,76,0.2)', borderWidth: 1, borderColor: '#C9A84C' }}>
-                        <Text style={{ color: '#C9A84C', fontSize: 10.5, fontWeight: '800' }}>
-                          {formatRate(ratePerMin)}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <Text style={{ color: '#D4C5A9', fontSize: 11.5, marginBottom: 12, lineHeight: 16 }}>
-                      {isAi
-                        ? 'Connected to autonomous AI Vedic ephemeris stream with real-time speech synthesis.'
-                        : 'Encrypted real-time audio/video stream with your verified master astrologer.'}
+                    <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800', marginTop: 4 }}>
+                      {astro.name}
                     </Text>
 
                     <Pressable
-                      testID="consultation.openInAppVideo"
-                      onPress={() => setInAppVideoVisible(true)}
+                      onPress={handleMicToggle}
                       style={{
-                        borderRadius: 12,
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <LinearGradient
-                        colors={['#C9A84C', '#713B32']}
-                        start={{ x: 0, y: 0.5 }}
-                        end={{ x: 1, y: 0.5 }}
-                        style={{
-                          paddingVertical: 11,
-                          paddingHorizontal: 16,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <AppIcon name="videocam_rounded" color="#FFFFFF" size={17} style={{ marginRight: 6 }} />
-                        <Text style={{ color: '#FFFFFF', fontSize: 12.5, fontWeight: '800' }}>
-                          {isVideo ? 'Open In-App Video Stream' : 'Live In-App Voice Call Stream'}
-                        </Text>
-                      </LinearGradient>
-                    </Pressable>
-
-                    {/* Quick Access to Kundli Birth Chart */}
-                    <Pressable
-                      onPress={() => setCallTab('chart')}
-                      style={{
-                        marginTop: 10,
-                        paddingVertical: 10,
-                        paddingHorizontal: 16,
-                        borderRadius: 12,
-                        backgroundColor: 'rgba(201, 168, 76, 0.15)',
-                        borderWidth: 1,
-                        borderColor: 'rgba(201, 168, 76, 0.35)',
                         flexDirection: 'row',
                         alignItems: 'center',
-                        justifyContent: 'center',
+                        marginTop: 4,
+                        paddingHorizontal: 12,
+                        paddingVertical: 4.5,
+                        borderRadius: 16,
+                        backgroundColor: 'rgba(201, 168, 76, 0.2)',
+                        borderWidth: 1,
+                        borderColor: '#C9A84C',
                       }}
                     >
-                      <AppIcon name="auto_awesome" size={15} color="#FFD700" style={{ marginRight: 6 }} />
-                      <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '700' }}>
-                        View Full Kundli & Birth Chart ↗
+                      <AppIcon name="mic_rounded" size={13} color="#FFD700" style={{ marginRight: 5 }} />
+                      <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '800' }}>
+                        {isAiSpeaking
+                          ? `🔊 ${astro.name} is speaking...`
+                          : selectedLanguage === 'Telugu'
+                            ? 'మాట్లాడటానికి ఇక్కడ నొక్కండి (Tap to Speak)'
+                            : selectedLanguage === 'Hindi'
+                              ? 'बोलने के लिए यहाँ दबाएं (Tap to Speak)'
+                              : 'Tap here to speak with astrologer'}
                       </Text>
                     </Pressable>
+
+                    {/* Animated Equalizer Wave Bars */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4, gap: 3 }}>
+                      {[0.3, 0.6, 0.9, 1.0, 0.8, 0.5, 0.7, 0.4].map((scale, i) => (
+                        <View
+                          key={i}
+                          style={{
+                            width: 3.5,
+                            height: isAiSpeaking ? Math.max(4, 16 * scale) : 4,
+                            borderRadius: 2,
+                            backgroundColor: isAiSpeaking ? '#FFD700' : 'rgba(255, 255, 255, 0.25)',
+                          }}
+                        />
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Native Live Transcript Card */}
+                  <View
+                    style={{
+                      flex: 1,
+                      borderRadius: 18,
+                      backgroundColor: 'rgba(13, 21, 39, 0.96)',
+                      borderWidth: 1.2,
+                      borderColor: 'rgba(201, 168, 76, 0.4)',
+                      padding: 10,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: 'rgba(201, 168, 76, 0.2)' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <AppIcon name="record_voice_over_rounded" size={14} color="#FFD700" style={{ marginRight: 5 }} />
+                        <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 }}>
+                          LIVE TRANSCRIPT ({selectedLanguage.toUpperCase()})
+                        </Text>
+                      </View>
+                      <Text style={{ color: '#94A3B8', fontSize: 10, fontWeight: '600' }}>
+                        {messages.filter((m) => !m.isSystem).length} exchanges
+                      </Text>
+                    </View>
+
+                    <FlatList
+                      ref={listRef}
+                      data={messages.filter((m) => !m.isSystem)}
+                      keyExtractor={(_, i) => String(i)}
+                      showsVerticalScrollIndicator={true}
+                      contentContainerStyle={{ paddingVertical: 4, flexGrow: 1 }}
+                      ListEmptyComponent={
+                        <View style={{ padding: 10, borderRadius: 12, backgroundColor: 'rgba(201, 168, 76, 0.12)', borderWidth: 1, borderColor: 'rgba(201, 168, 76, 0.25)' }}>
+                          <Text style={{ color: '#FFD700', fontSize: 10.5, fontWeight: '700', marginBottom: 2 }}>
+                            {astro.name} • {fmt(seconds)}
+                          </Text>
+                          <Text style={{ color: '#F8FAFC', fontSize: 11.5, lineHeight: 16 }}>
+                            {selectedLanguage === 'Telugu'
+                              ? `నమస్కారం! నేను మీ జ్యోతిష నిపుణుడు ${astro.name}. మీ కుండలి పరిశీలించడానికి సిద్ధంగా ఉన్నాను. మీ ఉద్యోగం, వివాహం, ఆర్థికం లేదా గ్రహ పరిహారాల గురించి ఏ ప్రశ్న అయినా అడగండి.`
+                              : `Namaste! I am ${astro.name}. I am actively examining your Janam Kundli. Ask any question regarding your career, marriage, finances, or planetary remedies.`}
+                          </Text>
+                        </View>
+                      }
+                      renderItem={({ item: m }) => (
+                        <View
+                          style={{
+                            marginBottom: 8,
+                            alignSelf: m.isUser ? 'flex-end' : 'flex-start',
+                            maxWidth: '90%',
+                          }}
+                        >
+                          <View
+                            style={{
+                              paddingHorizontal: 11,
+                              paddingVertical: 7,
+                              borderRadius: 14,
+                              backgroundColor: m.isUser ? '#C9A84C' : 'rgba(255, 255, 255, 0.08)',
+                              borderWidth: m.isUser ? 0 : 1,
+                              borderColor: 'rgba(201, 168, 76, 0.3)',
+                            }}
+                          >
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                              <Text style={{ color: m.isUser ? '#0A0E1A' : '#FFD700', fontSize: 9.5, fontWeight: '800' }}>
+                                {m.isUser ? 'You' : astro.name} • {m.time}
+                              </Text>
+                              {!m.isUser ? (
+                                <Pressable
+                                  onPress={() => {
+                                    speakAstrologerText(m.text, {
+                                      astrologerName: astro.name,
+                                      language: selectedLanguage,
+                                      onStart: () => setIsAiSpeaking(true),
+                                      onDone: () => setIsAiSpeaking(false),
+                                    });
+                                  }}
+                                  hitSlop={8}
+                                  style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}
+                                >
+                                  <AppIcon name="volume_up_rounded" size={12} color="#FFD700" />
+                                  <Text style={{ color: '#FFD700', fontSize: 9, fontWeight: '700', marginLeft: 2 }}>
+                                    {selectedLanguage === 'Telugu' ? 'వినండి' : 'Listen'}
+                                  </Text>
+                                </Pressable>
+                              ) : null}
+                            </View>
+                            <Text style={{ color: m.isUser ? '#0A0E1A' : '#F8FAFC', fontSize: 11.5, lineHeight: 16, fontWeight: m.isUser ? '700' : '500' }}>
+                              {m.text}
+                            </Text>
+                          </View>
+                        </View>
+                      )}
+                    />
+
+                    {/* Quick Voice Topics Bar */}
+                    <View style={{ marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.08)' }}>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
+                        {QUICK_VOICE_TOPICS.map((topic, tIdx) => (
+                          <Pressable
+                            key={tIdx}
+                            onPress={() => handleQuickTopicVoiceConsult(topic.query)}
+                            style={({ pressed }) => ({
+                              paddingHorizontal: 9,
+                              paddingVertical: 4.5,
+                              borderRadius: 12,
+                              backgroundColor: 'rgba(201, 168, 76, 0.18)',
+                              borderWidth: 1,
+                              borderColor: '#C9A84C',
+                              opacity: pressed ? 0.8 : 1,
+                            })}
+                          >
+                            <Text style={{ color: '#FFD700', fontSize: 10.5, fontWeight: '700' }}>
+                              {topic.label}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    </View>
+
+                    {/* Voice / Text Question Input Row */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                      <TextInput
+                        value={input}
+                        onChangeText={setInput}
+                        onSubmitEditing={() => sendMessage()}
+                        placeholder={
+                          selectedLanguage === 'Telugu'
+                            ? 'తెలుగులో ప్రశ్న అడగండి... (Ask in Telugu)'
+                            : selectedLanguage === 'Hindi'
+                              ? 'वैदिक प्रश्न यहाँ पूछें... (Ask in Hindi)'
+                              : 'Ask your question...'
+                        }
+                        placeholderTextColor="#94A3B8"
+                        style={{
+                          flex: 1,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                          borderWidth: 1,
+                          borderColor: 'rgba(201, 168, 76, 0.4)',
+                          paddingHorizontal: 12,
+                          color: '#FFFFFF',
+                          fontSize: 11.5,
+                        }}
+                      />
+                      <Pressable
+                        onPress={() => sendMessage()}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: '#C9A84C',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginLeft: 6,
+                        }}
+                      >
+                        <AppIcon name="send_rounded" size={16} color="#0A0E1A" />
+                      </Pressable>
+                    </View>
                   </View>
                 </View>
               )
             )}
           </View>
 
-          {isChatOpen ? (
-            <View testID="consultation.chatPanel" style={{ height: 280, marginHorizontal: 12, borderRadius: 20, backgroundColor: 'rgba(28, 12, 9, 0.96)', borderWidth: 1.5, borderColor: '#C9A84C', shadowColor: '#C9A84C', shadowOpacity: 0.25, shadowRadius: 10 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 }}>
-                <AppIcon name="chat_bubble_outline_rounded" color="#FFD700" size={16} />
-                <Text style={{ marginLeft: 8, flex: 1, color: '#F0EAD6', fontSize: 13, fontWeight: '700' }}>Session Chat</Text>
-                <Pressable testID="consultation.chatPanel.close" onPress={() => setChatOpen(false)}>
-                  <AppIcon name="keyboard_arrow_down_rounded" color="#D4C5A9" size={22} />
-                </Pressable>
-              </View>
-              <View style={{ height: 1, backgroundColor: 'rgba(201,168,76,0.3)' }} />
-              <View style={{ flex: 1 }}>
-                {messages.length === 0 ? (
-                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: '#D4C5A9', fontSize: 12, textAlign: 'center' }}>Chat with your astrologer during the session</Text>
-                  </View>
-                ) : (
-                  <FlatList
-                    ref={listRef}
-                    data={messages}
-                    keyExtractor={(_, i) => String(i)}
-                    contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
-                    renderItem={({ item }) =>
-                      item.isSystem ? (
-                        <View style={{ paddingVertical: 4, alignItems: 'center' }}>
-                          <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(201,168,76,0.2)' }}>
-                            <Text style={{ color: '#FFD700', fontSize: 11 }}>{item.text}</Text>
-                          </View>
-                        </View>
-                      ) : (
-                        <View style={{ paddingVertical: 3, flexDirection: 'row', justifyContent: item.isUser ? 'flex-end' : 'flex-start', alignItems: 'center' }}>
-                          {!item.isUser ? <View style={{ marginRight: 6 }}><Avatar uri={astro.imageUrl} size={24} /></View> : null}
-                          <View style={{ flexShrink: 1, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: item.isUser ? '#713B32' : 'rgba(45, 18, 12, 0.95)', borderTopLeftRadius: 16, borderTopRightRadius: 16, borderBottomLeftRadius: item.isUser ? 16 : 4, borderBottomRightRadius: item.isUser ? 4 : 16 }}>
-                            <Text style={{ color: '#F0EAD6', fontSize: 12 }}>{item.text}</Text>
-                          </View>
-                        </View>
-                      )
-                    }
-                  />
-                )}
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 6, paddingBottom: 10 }}>
-                <TextInput
-                  testID="consultation.chatInput"
-                  value={input}
-                  onChangeText={setInput}
-                  onSubmitEditing={sendMessage}
-                  placeholder="Type a message..."
-                  placeholderTextColor="#A0A8C0"
-                  style={{ flex: 1, fontSize: 13, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(201,168,76,0.3)', color: '#F0EAD6' }}
-                />
-                <Pressable testID="consultation.chatSend" onPress={sendMessage} style={{ marginLeft: 8, width: 38, height: 38, borderRadius: 19, overflow: 'hidden' }}>
-                  <LinearGradient colors={['#C9A84C', '#713B32']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <AppIcon name="send_rounded" color="#FFFFFF" size={18} />
-                  </LinearGradient>
-                </Pressable>
-              </View>
-            </View>
-          ) : null}
+          {/* Bottom Native Voice & Call Controls */}
+          <View
+            style={{
+              marginHorizontal: 14,
+              marginTop: 4,
+              marginBottom: 12,
+              paddingHorizontal: 10,
+              paddingVertical: 8,
+              borderRadius: 26,
+              backgroundColor: 'rgba(13, 21, 39, 0.96)',
+              borderWidth: 1.5,
+              borderColor: 'rgba(201, 168, 76, 0.4)',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              shadowColor: '#000',
+              shadowOpacity: 0.5,
+              shadowRadius: 16,
+              shadowOffset: { width: 0, height: 6 },
+              elevation: 8,
+            }}
+          >
+            {/* 1. Speak Mic Button */}
+            <Pressable
+              testID="consultation.micSpeak"
+              onPress={handleMicToggle}
+              style={({ pressed }) => ({
+                flex: 1,
+                height: 42,
+                borderRadius: 21,
+                backgroundColor: isListening ? '#10B981' : '#C9A84C',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingHorizontal: 8,
+                opacity: pressed ? 0.85 : 1,
+                shadowColor: isListening ? '#10B981' : '#C9A84C',
+                shadowOpacity: 0.45,
+                shadowRadius: 6,
+                elevation: 4,
+              })}
+            >
+              <AppIcon name={isListening ? 'graphic_eq' : 'mic_rounded'} color={isListening ? '#FFFFFF' : '#0A0E1A'} size={18} />
+              <Text style={{ marginLeft: 5, color: isListening ? '#FFFFFF' : '#0A0E1A', fontSize: 13, fontWeight: '800' }} numberOfLines={1}>
+                {isListening
+                  ? selectedLanguage === 'Telugu'
+                    ? 'వింటున్నాము...'
+                    : selectedLanguage === 'Hindi'
+                      ? 'सुन रहे हैं...'
+                      : 'Listening...'
+                  : selectedLanguage === 'Telugu'
+                    ? 'మాట్లాడండి'
+                    : selectedLanguage === 'Hindi'
+                      ? 'बोलें'
+                      : 'Speak'}
+              </Text>
+            </Pressable>
 
-          {/* controls */}
-          <View style={{ marginHorizontal: 16, marginTop: 4, marginBottom: 16, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 24, backgroundColor: 'rgba(34, 14, 10, 0.92)', borderWidth: 1.5, borderColor: 'rgba(201, 168, 76, 0.35)', flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'flex-start', shadowColor: '#000', shadowOpacity: 0.47, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 10 }}>
-            <ControlButton testID="consultation.mute" icon={isMuted ? 'mic_off_rounded' : 'mic_rounded'} label={isMuted ? 'Unmute' : 'Mute'} isActive={isMuted} activeColor={AppColors.error} onTap={() => setMuted((v) => { if (!v) stopAstrologerSpeech(); return !v; })} />
-            {isVideo ? (
-              <ControlButton testID="consultation.camera" icon={isCameraOff ? 'videocam_off_rounded' : 'videocam_rounded'} label={isCameraOff ? 'Cam Off' : 'Camera'} isActive={isCameraOff} activeColor={AppColors.error} onTap={() => setCameraOff((v) => !v)} />
-            ) : null}
-            <ControlButton testID="consultation.speaker" icon={isSpeakerOn ? 'volume_up_rounded' : 'volume_off_rounded'} label={isSpeakerOn ? 'Speaker' : 'Earpiece'} isActive={!isSpeakerOn} activeColor={AppColors.warning} onTap={() => setSpeakerOn((v) => { if (v) stopAstrologerSpeech(); return !v; })} />
-            <ControlButton testID="consultation.chat" icon="chat_bubble_outline_rounded" label="Chat" isActive={isChatOpen} activeColor="#FFD700" onTap={() => setChatOpen((v) => !v)} />
-            <Pressable testID="consultation.end" onPress={endCall} style={{ alignItems: 'center' }}>
-              <View style={{ width: 48, height: 48, borderRadius: 24, overflow: 'hidden', shadowColor: AppColors.error, shadowOpacity: 0.4, shadowRadius: 12, elevation: 6 }}>
-                <LinearGradient colors={['#CF4444', '#713B32']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                  <AppIcon name="call_end_rounded" color="#FFFFFF" size={24} />
-                </LinearGradient>
-              </View>
-              <Text style={{ marginTop: 4, color: AppColors.error, fontSize: 10, fontWeight: '600' }}>End</Text>
+            {/* 2. Speaker Audio Output Toggle */}
+            <Pressable
+              testID="consultation.speaker"
+              onPress={() => setSpeakerOn((v) => { if (v) stopAstrologerSpeech(); return !v; })}
+              style={({ pressed }) => ({
+                width: 42,
+                height: 42,
+                borderRadius: 21,
+                backgroundColor: isSpeakerOn ? 'rgba(201, 168, 76, 0.22)' : 'rgba(255, 255, 255, 0.08)',
+                borderWidth: 1.5,
+                borderColor: isSpeakerOn ? '#C9A84C' : 'rgba(255, 255, 255, 0.2)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <AppIcon name={isSpeakerOn ? 'volume_up_rounded' : 'volume_off_rounded'} color={isSpeakerOn ? '#FFD700' : '#94A3B8'} size={20} />
+            </Pressable>
+
+            {/* 3. End Call Button */}
+            <Pressable
+              testID="consultation.end"
+              onPress={endCall}
+              style={({ pressed }) => ({
+                flex: 1,
+                height: 42,
+                borderRadius: 21,
+                backgroundColor: '#EF4444',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingHorizontal: 8,
+                opacity: pressed ? 0.85 : 1,
+                shadowColor: '#EF4444',
+                shadowOpacity: 0.35,
+                shadowRadius: 6,
+                elevation: 4,
+              })}
+            >
+              <AppIcon name="call_end_rounded" color="#FFFFFF" size={17} style={{ marginRight: 5 }} />
+              <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }} numberOfLines={1}>
+                {selectedLanguage === 'Telugu' ? 'ముగించు' : selectedLanguage === 'Hindi' ? 'समाप्त' : 'End'}
+              </Text>
             </Pressable>
           </View>
         </KeyboardAvoidingView>
@@ -935,20 +1375,20 @@ export default function ConsultationScreen() {
 
       {/* Connecting & Astrologer Acceptance Radar Overlay */}
       {connecting ? (
-        <View testID="consultation.connecting" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(18, 6, 4, 0.96)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+        <View testID="consultation.connecting" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(8, 13, 26, 0.97)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
           <View style={{ width: 170, height: 170, alignItems: 'center', justifyContent: 'center' }}>
             <View style={{ position: 'absolute', width: 170, height: 170, borderRadius: 85, borderWidth: 2, borderColor: withAlpha(AppColors.goldAccent, Math.floor(90 * (1 - cv))), transform: [{ scale: 0.6 + cv * 0.6 }] }} />
             <Avatar uri={astro.imageUrl} size={110} border={2.5} />
           </View>
 
-          <Text style={{ marginTop: 24, color: AppColors.textPrimary, fontSize: 22, fontWeight: '700', textAlign: 'center' }}>{astro.name}</Text>
-          <Text style={{ marginTop: 6, color: AppColors.goldAccent, fontSize: 13, fontWeight: '600' }}>
+          <Text style={{ marginTop: 24, color: '#FFFFFF', fontSize: 22, fontWeight: '700', textAlign: 'center' }}>{astro.name}</Text>
+          <Text style={{ marginTop: 6, color: '#FFD700', fontSize: 13, fontWeight: '600' }}>
             {connectionStatusText}
           </Text>
 
           {isWaitingAstrologer ? (
             <View style={{ marginTop: 14, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(201,168,76,0.14)', borderWidth: 1, borderColor: AppColors.goldBorder, alignItems: 'center' }}>
-              <Text style={{ color: '#E2D9C8', fontSize: 12 }}>
+              <Text style={{ color: '#F8FAFC', fontSize: 12 }}>
                 Ringing astrologer dashboard... ({acceptanceCountdown}s)
               </Text>
             </View>
@@ -970,8 +1410,213 @@ export default function ConsultationScreen() {
         </View>
       ) : null}
 
+      {/* 100% Native Voice Listening Modal */}
+      <Modal visible={voiceModalVisible} transparent animationType="slide" onRequestClose={cancelVoiceListening}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.78)', justifyContent: 'flex-end' }}>
+          <Pressable style={{ flex: 1 }} onPress={cancelVoiceListening} />
+          <View
+            style={{
+              backgroundColor: '#0D1527',
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              borderWidth: 1.5,
+              borderBottomWidth: 0,
+              borderColor: '#C9A84C',
+              paddingHorizontal: 20,
+              paddingTop: 16,
+              paddingBottom: Math.max(insets.bottom, 20) + 16,
+            }}
+          >
+            {/* Drag Handle */}
+            <View style={{ width: 44, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)', alignSelf: 'center', marginBottom: 14 }} />
+
+            {/* Header: Astrologer + Live Listening Badge */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Avatar uri={astro.imageUrl} size={44} border={2} />
+                <View style={{ marginLeft: 12 }}>
+                  <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>
+                    {astro.name}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', marginRight: 6 }} />
+                    <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '700' }}>
+                      {selectedLanguage === 'Telugu' ? '🎙️ శ్రద్ధగా వింటున్నాము...' : selectedLanguage === 'Hindi' ? '🎙️ हम सुन रहे हैं...' : '🎙️ Listening to you speak...'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <Pressable
+                onPress={cancelVoiceListening}
+                style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <AppIcon name="close_rounded" size={18} color="#CBD5E1" />
+              </Pressable>
+            </View>
+
+            {/* Pulsing Mic & Audio Waveform Visualizer */}
+            <View style={{ alignItems: 'center', marginVertical: 10 }}>
+              <Animated.View
+                style={[
+                  pulseStyle,
+                  {
+                    width: 76,
+                    height: 76,
+                    borderRadius: 38,
+                    backgroundColor: 'rgba(201, 168, 76, 0.25)',
+                    borderWidth: 2,
+                    borderColor: '#C9A84C',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    shadowColor: '#C9A84C',
+                    shadowOpacity: 0.6,
+                    shadowRadius: 16,
+                    elevation: 6,
+                  },
+                ]}
+              >
+                <AppIcon name="mic_rounded" size={38} color="#FFD700" />
+              </Animated.View>
+
+              {/* Animated Audio Wave Bars */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 12 }}>
+                {[14, 24, 34, 26, 16, 28, 18].map((h, i) => (
+                  <View
+                    key={i}
+                    style={{
+                      width: 4,
+                      height: h,
+                      borderRadius: 2,
+                      backgroundColor: '#C9A84C',
+                      opacity: 0.85,
+                    }}
+                  />
+                ))}
+              </View>
+
+              <Text style={{ marginTop: 10, color: '#94A3B8', fontSize: 12, fontWeight: '600', textAlign: 'center' }}>
+                {selectedLanguage === 'Telugu'
+                  ? 'మీ ప్రశ్నను మాట్లాడండి — మీ మాటలు స్వయంచాలకంగా అక్షరాలుగా మారుతున్నాయి'
+                  : selectedLanguage === 'Hindi'
+                    ? 'अपना प्रश्न बोलें — आपकी आवाज़ शब्दों में बदल रही है'
+                    : 'Speak your question clearly — converting your voice to text in real-time'}
+              </Text>
+            </View>
+
+            {/* Live Speech-to-Text Transcription Box */}
+            <View
+              style={{
+                marginTop: 6,
+                padding: 14,
+                borderRadius: 18,
+                backgroundColor: 'rgba(255, 255, 255, 0.07)',
+                borderWidth: 1.5,
+                borderColor: spokenTranscript ? '#C9A84C' : 'rgba(201, 168, 76, 0.4)',
+                minHeight: 80,
+                justifyContent: 'center',
+              }}
+            >
+              <TextInput
+                value={spokenTranscript}
+                onChangeText={setSpokenTranscript}
+                multiline
+                placeholder={
+                  selectedLanguage === 'Telugu'
+                    ? 'మీరు మాట్లాడుతున్నది ఇక్కడ కనిపిస్తుంది... (లేదా ఇక్కడ టైప్ చేయవచ్చు)'
+                    : selectedLanguage === 'Hindi'
+                      ? 'आप जो बोल रहे हैं वह यहाँ दिखाई देगा... (या यहाँ टाइप कर सकते हैं)'
+                      : 'Your spoken words will appear here in real-time... (or type here)'
+                }
+                placeholderTextColor="#64748B"
+                style={{
+                  color: '#FFFFFF',
+                  fontSize: 14.5,
+                  fontWeight: '700',
+                  lineHeight: 22,
+                }}
+              />
+            </View>
+
+            {/* Action Buttons: Done Speaking & Cancel */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16 }}>
+              <Pressable
+                onPress={cancelVoiceListening}
+                style={{
+                  flex: 1,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ color: '#E2E8F0', fontSize: 13.5, fontWeight: '700' }}>
+                  {selectedLanguage === 'Telugu' ? 'రద్దు చేయి' : selectedLanguage === 'Hindi' ? 'रद्द करें' : 'Cancel'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => stopVoiceListeningAndSend()}
+                style={({ pressed }) => ({
+                  flex: 2,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: '#10B981',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.85 : 1,
+                  shadowColor: '#10B981',
+                  shadowOpacity: 0.45,
+                  shadowRadius: 8,
+                  elevation: 4,
+                })}
+              >
+                <AppIcon name="check_circle_rounded" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800' }}>
+                  {selectedLanguage === 'Telugu'
+                    ? 'ముగించు & అడగండి ✓'
+                    : selectedLanguage === 'Hindi'
+                      ? 'समाप्त करें और पूछें ✓'
+                      : 'Done Speaking — Ask ✓'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Hidden Speech-to-Text Recognition Engine */}
+      <View style={{ width: 0, height: 0, opacity: 0, position: 'absolute' }}>
+        <WebView
+          ref={speechWebViewRef}
+          source={{ html: SPEECH_RECOGNITION_HTML }}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          mediaPlaybackRequiresUserAction={false}
+          originWhitelist={['*']}
+          onPermissionRequest={(request: any) => {
+            try {
+              request.grant(request.resources);
+            } catch (e) { }
+          }}
+          onMessage={(event) => {
+            try {
+              const data = JSON.parse(event.nativeEvent.data);
+              if (data.type === 'RESULT' && data.transcript) {
+                setSpokenTranscript(data.transcript);
+              } else if (data.type === 'ERROR') {
+                console.warn('SpeechRecognition note:', data.error);
+              }
+            } catch (e) { }
+          }}
+        />
+      </View>
+
       {/* Session Ended Dialog with Rating */}
-      <Dialog visible={ended} onClose={() => {}} barrierDismissible={false} style={{ borderRadius: 20, maxHeight: '85%', backgroundColor: colors.surface }} testID="consultation.endDialog">
+      <Dialog visible={ended} onClose={() => { }} barrierDismissible={false} style={{ borderRadius: 20, maxHeight: '85%', backgroundColor: colors.surface }} testID="consultation.endDialog">
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
           <Text style={{ color: colors.textPrimary, fontSize: 22, fontWeight: '700' }}>Session Ended</Text>
           <View style={{ marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder, gap: 8 }}>
@@ -1043,79 +1688,61 @@ export default function ConsultationScreen() {
             )}
           </View>
 
+          {/* 1. Primary CTA: View Consultation Summary Report */}
+          <Pressable
+            testID="consultation.viewReport"
+            onPress={() => {
+              setEnded(false);
+              push(AppRoutes.kundliReportsScreen, { reportId: lastGeneratedReportId, autoOpen: true });
+            }}
+            style={{
+              marginTop: 16,
+              height: 48,
+              paddingHorizontal: 16,
+              borderRadius: 14,
+              backgroundColor: '#C9A84C',
+              alignItems: 'center',
+              flexDirection: 'row',
+              justifyContent: 'center',
+              shadowColor: '#C9A84C',
+              shadowOpacity: 0.35,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
+          >
+            <AppIcon name="description" color="#0A0E1A" size={18} style={{ marginRight: 8 }} />
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={{ color: '#0A0E1A', fontSize: 14, fontWeight: '800', textAlign: 'center' }}
+            >
+              View Summary Report
+            </Text>
+          </Pressable>
+
+          {/* 2. Secondary CTA: Go to Profile Reports & History */}
           <Pressable
             testID="consultation.done"
             onPress={() => {
               setEnded(false);
-              go(AppRoutes.homeDashboardScreen);
+              push(AppRoutes.kundliReportsScreen, { reportId: lastGeneratedReportId, autoOpen: true });
             }}
             style={{
-              marginTop: 16,
-              paddingVertical: 14,
+              marginTop: 10,
+              paddingVertical: 12,
               borderRadius: 14,
-              backgroundColor: AppColors.primary,
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              borderWidth: 1,
+              borderColor: 'rgba(201, 168, 76, 0.35)',
               alignItems: 'center',
             }}
           >
-            <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>Done</Text>
+            <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>
+              Go to Profile Reports & History →
+            </Text>
           </Pressable>
         </ScrollView>
       </Dialog>
-
-      {/* Fullscreen In-App Video Call Modal (100% Inside the App) */}
-      <Modal visible={inAppVideoVisible} animationType="slide" onRequestClose={() => setInAppVideoVisible(false)}>
-        <View style={{ flex: 1, backgroundColor: '#080D1A' }}>
-          <SafeAreaView edges={['top']} style={{ backgroundColor: 'rgba(8,13,26,0.98)', borderBottomWidth: 1, borderBottomColor: AppColors.goldBorder }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 }}>
-              <Pressable
-                onPress={() => setInAppVideoVisible(false)}
-                style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)' }}
-              >
-                <AppIcon name="arrow_back_ios_new" color={AppColors.goldAccent} size={16} />
-                <Text style={{ color: AppColors.goldAccent, fontSize: 12, fontWeight: '700', marginLeft: 4 }}>Minimize</Text>
-              </Pressable>
-              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 1, borderColor: AppColors.goldBorder }}>
-                <AppIcon name="timer_outlined" color={AppColors.goldAccent} size={14} />
-                <Text style={{ color: AppColors.goldAccent, fontSize: 12, fontWeight: '700', marginLeft: 4 }}>{fmt(seconds)}</Text>
-              </View>
-              <Pressable
-                onPress={() => {
-                  setInAppVideoVisible(false);
-                  endCall();
-                }}
-                style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 12, backgroundColor: AppColors.error }}
-              >
-                <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>End Call</Text>
-              </Pressable>
-            </View>
-          </SafeAreaView>
-
-          {Platform.OS !== 'web' ? (
-            <WebView
-              source={{
-                uri: isAi
-                  ? `https://astroparihar.com/ai-call/${roomID}?embedded=true`
-                  : `https://astroparihar.com/call/${roomID}?embedded=true`,
-              }}
-              style={{ flex: 1, backgroundColor: '#080D1A' }}
-              allowsInlineMediaPlayback={true}
-              mediaPlaybackRequiresUserAction={false}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              originWhitelist={['*']}
-              onPermissionRequest={(event: any) => {
-                event.grant(event.resources);
-              }}
-            />
-          ) : (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <Avatar uri={astro.imageUrl} size={120} border={3} />
-              <Text style={{ color: '#FFFFFF', marginTop: 14, fontSize: 16, fontWeight: '700' }}>{astro.name}</Text>
-              <Text style={{ color: AppColors.goldAccent, marginTop: 6, fontSize: 13 }}>Live 1-on-1 In-App Consultation</Text>
-            </View>
-          )}
-        </View>
-      </Modal>
     </View>
   );
 }

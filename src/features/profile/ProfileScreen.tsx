@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Keyboard,
   Modal,
   Pressable,
   RefreshControl,
@@ -31,6 +32,7 @@ import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, go, push } from '@/navigation/routes';
 import { fetchCalculatedKundli } from '@/services/astrologyService';
 import { useBirthProfileStore } from '@/services/birthProfileStore';
+import packageJson from '../../../package.json';
 import { useCurrencyStore } from '@/services/currencyStore';
 import { getWalletBalance, subscribeWallet } from '@/services/walletService';
 import { AppColors, withAlpha } from '@/theme/colors';
@@ -38,9 +40,10 @@ import { AppLanguage, useLanguageStore, useTranslation } from '@/theme/languageS
 import { useThemeColors, useThemeStore } from '@/theme/themeStore';
 
 export const APP_VERSION =
+  packageJson?.version ||
   Constants.expoConfig?.version ||
   Constants.nativeAppVersion ||
-  '2.4.0';
+  '2.4.2';
 
 const STORAGE_PROFILE_CONFIG_KEY = 'astroparihar_app_profile_config_v3';
 
@@ -209,7 +212,7 @@ export const DEFAULT_PROFILE_CONFIG: DynamicProfileConfig = {
         { id: 'myKundli', order: 1, labelKey: 'profile.myKundli', defaultLabel: 'My Kundli', subtitle: 'Your detailed birth chart & planetary positions', icon: 'auto_stories', route: AppRoutes.myKundliScreen, active: true },
         { id: 'myRemedies', order: 2, labelKey: 'profile.myRemedies', defaultLabel: 'My Remedies (अष्ट परिहार)', subtitle: 'Personalised 8-directional remedial remedies', icon: 'auto_awesome', route: AppRoutes.remediesScreen, badge: '8 in 1', active: true },
         { id: 'birthProfiles', order: 3, labelKey: 'profile.birthProfiles', defaultLabel: 'Birth Profiles', subtitle: 'Family, partner & seeker kundli profiles', icon: 'person_outline_rounded', route: AppRoutes.birthProfilesScreen, active: true },
-        { id: 'kundliReports', order: 4, labelKey: 'profile.kundliReports', defaultLabel: 'Mahadasha PDF Guides', subtitle: 'Official Rahu & Sani Mahadasha PDF guides', icon: 'description_outlined', route: AppRoutes.kundliReportsScreen, active: true },
+        { id: 'kundliReports', order: 4, labelKey: 'profile.kundliReports', defaultLabel: 'Reports & Guides', subtitle: 'Vedic consultation summaries, Parihara & PDF guides', icon: 'description_outlined', route: AppRoutes.kundliReportsScreen, active: true },
         { id: 'matchReports', order: 5, labelKey: 'profile.matchReports', defaultLabel: 'Match Reports', subtitle: '36 Guna Ashtakoot matrimonial reports', icon: 'favorite_border', route: AppRoutes.matchReportsScreen, active: true },
         { id: 'panchangReports', order: 6, labelKey: 'profile.panchangReports', defaultLabel: 'Panchang & Muhurat', subtitle: 'Daily Vedic almanac, tithi & auspicious timings', icon: 'calendar_today_outlined', route: AppRoutes.panchangScreen, active: true },
         { id: 'savedAstrologers', order: 7, labelKey: 'profile.savedAstrologers', defaultLabel: 'Saved Astrologers', subtitle: 'Your favorite verified Vedic consultants', icon: 'star_outline', route: AppRoutes.savedAstrologersScreen, active: true },
@@ -646,6 +649,7 @@ export default function ProfileScreen() {
       ...prev,
       ...updated,
     }));
+    Keyboard.dismiss();
     setEditSheetOpen(false);
     showSnackBar('Profile details saved successfully!', colors.surfaceVariant);
     loadUserData();
@@ -1530,7 +1534,14 @@ export default function ProfileScreen() {
       </Modal>
 
       {/* Edit Profile Sheet - 100% Dynamic Labels & Full Keyboard Scroll Support */}
-      <BottomSheet visible={editSheetOpen} onClose={() => setEditSheetOpen(false)} testID="profile.editSheet">
+      <BottomSheet
+        visible={editSheetOpen}
+        onClose={() => {
+          Keyboard.dismiss();
+          setEditSheetOpen(false);
+        }}
+        testID="profile.editSheet"
+      >
         <View
           style={{
             backgroundColor: colors.surface,
@@ -1584,17 +1595,17 @@ export default function ProfileScreen() {
             </Pressable>
           </View>
 
-          {/* Scrollable Form Body with Keyboard Handling */}
+          {/* Scrollable Form Body with Clean Keyboard Handling */}
           <ScrollView
             ref={editScrollRef}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
+            keyboardDismissMode="none"
             showsVerticalScrollIndicator={true}
-            style={{ flexShrink: 1 }}
+            style={{ flexGrow: 1, flexShrink: 1 }}
             contentContainerStyle={{
               paddingHorizontal: 24,
               paddingTop: 16,
-              paddingBottom: Math.max(insets.bottom + 16, 20),
+              paddingBottom: 220,
             }}
           >
             {/* Full Name */}
@@ -1620,11 +1631,6 @@ export default function ProfileScreen() {
                 onChangeText={setEditName}
                 placeholder="Full Name"
                 placeholderTextColor={colors.textMuted}
-                onFocus={() => {
-                  setTimeout(() => {
-                    editScrollRef.current?.scrollTo({ y: 0, animated: true });
-                  }, 100);
-                }}
                 style={{
                   flex: 1,
                   fontSize: 14,
@@ -1660,11 +1666,6 @@ export default function ProfileScreen() {
                 placeholderTextColor={colors.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                onFocus={() => {
-                  setTimeout(() => {
-                    editScrollRef.current?.scrollTo({ y: 80, animated: true });
-                  }, 100);
-                }}
                 style={{
                   flex: 1,
                   fontSize: 14,
@@ -1731,15 +1732,21 @@ export default function ProfileScreen() {
               value={editPob}
               onChangeText={setEditPob}
               label={config.editPobLabel || 'Place of Birth (City, State, Country)'}
-              placeholder="Enter birth place (e.g. Mumbai)"
-              onFocus={() => {
-                setTimeout(() => {
-                  editScrollRef.current?.scrollToEnd({ animated: true });
-                }, 100);
-              }}
+              placeholder="Enter birth place (e.g. Hyderabad, Guntur)"
             />
+          </ScrollView>
 
-            {/* Save Button */}
+          {/* Fixed Pinned Footer with Save Action Button - Always visible, never covered */}
+          <View
+            style={{
+              paddingHorizontal: 24,
+              paddingTop: 12,
+              paddingBottom: Math.max(insets.bottom, 16),
+              borderTopWidth: 1,
+              borderTopColor: colors.cardBorder,
+              backgroundColor: colors.surface,
+            }}
+          >
             <ElevatedButton
               label={config.editSaveButtonText || 'Save Profile Details'}
               onPress={saveProfileEdits}
@@ -1747,9 +1754,8 @@ export default function ProfileScreen() {
               paddingV={14}
               fontSize={14}
               fontWeight="800"
-              style={{ marginTop: 8 }}
             />
-          </ScrollView>
+          </View>
         </View>
       </BottomSheet>
 

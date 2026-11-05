@@ -552,6 +552,91 @@ export interface AIChatResponse {
   newBalance?: number;
 }
 
+export function stripTrailingAstrologerQuestions(text: string, language?: string): string {
+  if (!text) return '';
+  let cleaned = text.trim();
+
+  const normLang =
+    /telugu|^te$/i.test(language || '') ? 'Telugu' :
+    /hindi|^hi$/i.test(language || '') ? 'Hindi' :
+    /tamil|^ta$/i.test(language || '') ? 'Tamil' :
+    /kannada|^kn$/i.test(language || '') ? 'Kannada' :
+    /malayalam|^ml$/i.test(language || '') ? 'Malayalam' : 'English';
+
+  const isQuestionSentence = (s: string) => {
+    const t = s.trim();
+    if (!t) return false;
+    if (/[?？]/.test(t)) return true;
+    return /తెలుసుకోవాలనుకుంటున్నారా|అనుభవిస్తున్నారా|కలిగి ఉన్నారా|వివరించగలరా|ఉన్నారా\?|जानना चाहते हैं|अनुभव कर रहे हैं|बता सकते हैं|Would you like to|Do you want to|Are you experiencing|Can you tell me/i.test(t);
+  };
+
+  // Repeatedly strip trailing question lines / sentences
+  let changed = true;
+  while (changed && cleaned.length > 0) {
+    changed = false;
+    // Strip trailing line if it contains/ends in question
+    const lines = cleaned.split('\n');
+    const lastLine = lines[lines.length - 1].trim();
+    if (isQuestionSentence(lastLine)) {
+      lines.pop();
+      cleaned = lines.join('\n').trim();
+      changed = true;
+      continue;
+    }
+
+    // Strip trailing sentence within the last line
+    const sentenceDelim = /([.!?।॥])/;
+    const parts = lastLine.split(sentenceDelim);
+    if (parts.length > 2) {
+      const sentences: string[] = [];
+      for (let i = 0; i < parts.length - 1; i += 2) {
+        sentences.push((parts[i] + parts[i + 1]).trim());
+      }
+      if (parts[parts.length - 1].trim()) {
+        sentences.push(parts[parts.length - 1].trim());
+      }
+      const lastSent = sentences[sentences.length - 1];
+      if (isQuestionSentence(lastSent)) {
+        sentences.pop();
+        lines[lines.length - 1] = sentences.join(' ').trim();
+        cleaned = lines.filter((l) => l.trim().length > 0).join('\n\n').trim();
+        changed = true;
+      }
+    }
+  }
+
+  // Remove any lingering question marks and their clauses at the end
+  cleaned = cleaned.replace(/[—–-]\s*[^\n.!?]*[?？]\s*$/g, '').trim();
+  cleaned = cleaned.replace(/[?？]\s*$/g, '.').trim();
+
+  // If text became empty or was only questions to begin with, provide auspicious response
+  if (!cleaned || cleaned.length < 20) {
+    if (normLang === 'Telugu') {
+      cleaned = 'మీ జన్మ కుండలి ప్రకారం గ్రహాల స్థితులు పరిశీలించబడ్డాయి. ప్రస్తుత గోచారంలో బృహస్పతి అనుకూలంగా ఉండటంతో కార్యసిద్ధి, మనశ్శాంతి లభిస్తాయి. నిత్యం ఇష్టదేవతా ప్రార్థన మరియు వేద పరిహారాల ఆచరణ శ్రేయస్కరం.';
+    } else if (normLang === 'Hindi') {
+      cleaned = 'आपकी जन्म पत्रिका के अनुसार ग्रह स्थितियां अनुकूल हैं। देवगुरु बृहस्पति की शुभ दृष्टि से आपके कार्यों में प्रगति और मानसिक शांति प्राप्त होगी। नित्य इष्टदेव की उपासना एवं वैदिक उपाय कल्याणकारी सिद्ध होंगे।';
+    } else {
+      cleaned = 'Based on your Vedic birth chart, planetary transits are aligning favorably. Consecrated remedial rituals and regular spiritual practices will illuminate your highest pathway with peace and prosperity.';
+    }
+  }
+
+  const BLESSINGS: Record<string, string> = {
+    Telugu: 'సర్వే జనాః సుఖినో భవంతు. శుభం భూయాత్! 🙏',
+    Hindi: 'सर्वे भवन्तु सुखिनः। शुभं भवतु! 🙏',
+    Tamil: 'ஓம் சாந்தி. சுப மங்களம் உண்டாகட்டும்! 🙏',
+    Kannada: 'ಸರ್ವೇ ಜನಾಃ ಸುಖಿನೋ ಭವಂತು. ಶುಭವಾಗಲಿ! 🙏',
+    Malayalam: 'സർവ്വേ ഭവന്തു സുഖിനഃ. ശുഭം ഭവിക്കട്ടെ! 🙏',
+    English: 'May cosmic grace illuminate your path with peace and prosperity. Om Tat Sat! 🙏',
+  };
+
+  const blessing = BLESSINGS[normLang] || BLESSINGS.English;
+  if (!cleaned.includes('🙏') && !cleaned.includes('శుభం') && !cleaned.includes('शुभं') && !cleaned.includes('Blessings')) {
+    cleaned += `\n\n${blessing}`;
+  }
+
+  return cleaned;
+}
+
 export async function sendLiveAIChatMessage(params: {
   messages: AIChatMessagePayload[];
   language?: string;
@@ -612,8 +697,10 @@ export async function sendLiveAIChatMessage(params: {
     if (res.ok) {
       const data = await res.json();
       if (data.success && (data.reply || data.message?.content)) {
+        const rawText = data.reply || data.message?.content || '';
+        const cleanedReply = stripTrailingAstrologerQuestions(rawText, data.language || lang);
         return {
-          reply: data.reply || data.message?.content,
+          reply: cleanedReply,
           conclusion: data.conclusion || data.structured?.conclusion,
           timingWindow: data.timingWindow || data.structured?.timingWindow,
           structured: data.structured,
@@ -701,10 +788,28 @@ export async function sendLiveAIChatMessage(params: {
     ];
   }
 
+  const timingByLang: Record<string, string> = {
+    Telugu: 'రాబోయే 3 నుండి 6 నెలలు (శుభ గోచార సమయం)',
+    Hindi: 'आगामी 3 से 6 महीने (शुभ गोचर कालखंड)',
+    Tamil: 'அடுத்த 3 முதல் 6 மாதங்கள் (சுப பெயர்ச்சி காலம்)',
+    Kannada: 'ಮುಂದಿನ 3 ರಿಂದ 6 ತಿಂಗಳು (ಶುಭ ಸಂಚಾರ ಕಾಲ)',
+    Malayalam: 'അടുത്ത 3 മുതൽ 6 മാസം വരെ (ശുഭ ഗ്രഹ സഞ്ചാര സമയം)',
+    English: 'Next 3 to 6 Months (Auspicious Transit Window)',
+  };
+
+  const conclusionByLang: Record<string, string> = {
+    Telugu: 'మీ జన్మ కుండలి గ్రహ బలం మరియు దశా కాలం వేద పరిహారాలతో శీఘ్ర ఫలితాలను ఇస్తాయి.',
+    Hindi: 'आपकी जन्म पत्रिका में ग्रह स्थिति एवं दशा काल वैदिक उपायों के साथ शीघ्र सफलता देने में समर्थ हैं।',
+    Tamil: 'உங்கள் ஜாதக கிரக அமைப்புகளும் தசா காலமும் பரிகாரங்களால் சுப பலன்களைத் தரும்.',
+    Kannada: 'ನಿಮ್ಮ ಜನ್ಮ ಕುಂಡಲಿಯ ಗ್ರಹ ಬಲ ಮತ್ತು ದಶಾ ಕಾಲವು ಪರಿಹಾರಗಳಿಂದ ಸತ್ಫಲಗಳನ್ನು ನೀಡುತ್ತವೆ.',
+    Malayalam: 'നിങ്ങളുടെ ജാതകത്തിലെ ഗ്രഹ നിലകളും ദശാ കാലവും പരിഹാരങ്ങളിലൂടെ ശുഭ ഫലങ്ങൾ നൽകും.',
+    English: 'Planetary alignments and active dasha cycles support timely progress with consecrated remedies.',
+  };
+
   return {
     reply: fallbackReply,
-    conclusion: 'Planetary alignments and active dasha cycles support timely progress with consecrated remedies.',
-    timingWindow: 'Next 3 to 6 Months (Auspicious Transit Window)',
+    conclusion: conclusionByLang[lang] || conclusionByLang.English,
+    timingWindow: timingByLang[lang] || timingByLang.English,
     recommendations: fallbackRecs,
     modelUsed: 'Vedic Ephemeris Engine',
     language: lang,
