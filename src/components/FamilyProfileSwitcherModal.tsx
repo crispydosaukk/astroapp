@@ -413,9 +413,9 @@ export function FamilyProfileSwitcherModal({
             ref={formScrollRef}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="none"
-            style={{ flex: 1, minHeight: 240 }}
-            contentContainerStyle={{ paddingTop: 14, paddingBottom: 220 }}
+            keyboardDismissMode="interactive"
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingTop: 14, paddingBottom: 40 }}
           >
             {/* Relationship Chips */}
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>

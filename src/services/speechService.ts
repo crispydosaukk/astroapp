@@ -126,15 +126,35 @@ async function resolveVoiceIdentifier(langCode: string, isFemale: boolean): Prom
 
     if (matching.length === 0) return undefined;
 
-    const targetGender = isFemale ? 'female' : 'male';
-    const altGender = isFemale ? 'f' : 'm';
+    if (isFemale) {
+      // Find female voice
+      const femaleKeywords = [
+        'female', 'woman', 'girl', 'zira', 'swara', 'heera', 'shruti', 'pallavi',
+        'kalpana', 'tef', 'hia', 'hib', 'enf', 'ene', '-f-', '#female'
+      ];
+      const preferred = matching.find((v) => {
+        const lower = `${v.name} ${v.identifier}`.toLowerCase();
+        return femaleKeywords.some((k) => lower.includes(k));
+      });
+      return preferred?.identifier || matching[0]?.identifier;
+    } else {
+      // Find male voice
+      const maleKeywords = [
+        'male', 'man', 'boy', 'guy', 'david', 'ravi', 'mohan', 'madhav', 'kumar',
+        'narayan', 'valluvar', 'george', 'mark', 'end-network', 'enc-network',
+        'hid-network', 'hic-network', 'tem-network', 'tam-network', 'tac-network',
+        'tad-network', '-m-', '#male'
+      ];
+      const preferred = matching.find((v) => {
+        const lower = `${v.name} ${v.identifier}`.toLowerCase();
+        return maleKeywords.some((k) => lower.includes(k));
+      });
 
-    const preferred = matching.find((v) => {
-      const lower = `${v.name} ${v.identifier}`.toLowerCase();
-      return lower.includes(targetGender) || lower.includes(`-${altGender}-`);
-    });
-
-    return preferred?.identifier || matching[0]?.identifier;
+      // CRITICAL: If no native male voice exists for this language, DO NOT return matching[0]!
+      // In Google TTS on Android, matching[0] is almost always the female voice (e.g. tef).
+      // Returning undefined allows the OS TTS engine to synthesize using deep pitch modulation without locking to female formants.
+      return preferred?.identifier;
+    }
   } catch {
     return undefined;
   }
@@ -172,10 +192,10 @@ export async function speakAstrologerText(
   const isFemale = isFemaleAstrologer(options.astrologerName, options.gender);
 
   // Strict male vs female acoustic parameters
-  // Male: 0.70 deep Pandit baritone timbre
-  // Female: 1.28 melodic serene Devi cadence
-  const pitch = isFemale ? 1.28 : 0.70;
-  const rate = isFemale ? 0.88 : 0.85;
+  // Male: 0.52 deep masculine Pandit baritone register
+  // Female: 1.25 melodic serene Devi cadence
+  const pitch = isFemale ? 1.25 : 0.52;
+  const rate = isFemale ? 0.90 : 0.82;
 
   const voiceId = await resolveVoiceIdentifier(langCode, isFemale);
 

@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Dimensions,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -1066,6 +1067,7 @@ export const TOPICS: TopicItem[] = [
 
 export default function AiChatScreen() {
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const colors = useThemeColors();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ initialPrompt?: string; astrologerName?: string; astrologerId?: string; avatarUrl?: string }>();
@@ -1887,15 +1889,18 @@ export default function AiChatScreen() {
           </View>
         )}
 
-        {/* Chat Input Widget - Authentic WhatsApp layout sitting cleanly above keyboard */}
+        {/* Chat Input Widget - Responsive layout sitting cleanly above keyboard on all devices */}
         {(() => {
-          const isKeyboardUp = keyboardHeight > 0 || isInputFocused;
-          const effectiveKeyboardH = keyboardHeight > 0 ? keyboardHeight : (isInputFocused ? 330 : 0);
+          const isKeyboardUp = keyboardHeight > 0;
+          const currentWindowH = windowHeight;
+          const screenH = Dimensions.get('screen').height;
+          const isAndroidWindowResized = Platform.OS === 'android' && currentWindowH < screenH - 120;
+
           const keyboardSpacerHeight = Platform.OS === 'android'
             ? (isKeyboardUp
-                ? effectiveKeyboardH + Math.max(insets.bottom, 24) + 12
+                ? (isAndroidWindowResized ? 6 : keyboardHeight + 6)
                 : Math.max(insets.bottom, 10))
-            : Math.max(insets.bottom, 10);
+            : (isKeyboardUp ? 4 : Math.max(insets.bottom, 10));
 
           return (
             <View

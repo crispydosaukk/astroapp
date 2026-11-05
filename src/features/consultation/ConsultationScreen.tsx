@@ -12,7 +12,20 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { BackHandler, FlatList, Keyboard, KeyboardAvoidingView, LayoutAnimation, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
+import {
+  BackHandler,
+  Dimensions,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  LayoutAnimation,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { WebView } from 'react-native-webview';
 import Svg, { Line, Rect, Text as SvgText } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -304,6 +317,12 @@ export default function ConsultationScreen() {
   const [speechError, setSpeechError] = useState<string | null>(null);
   const speechWebViewRef = useRef<any>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const { height: windowH } = useWindowDimensions();
+  const screenH = Dimensions.get('screen').height;
+  const isAndroidWindowResized = Platform.OS === 'android' && windowH < screenH - 120;
+  const androidBottomPad = Platform.OS === 'android'
+    ? (isAndroidWindowResized ? 0 : keyboardHeight)
+    : 0;
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -493,6 +512,17 @@ export default function ConsultationScreen() {
     }
     showSnackBar('Consultation request cancelled. No amount was deducted.', '#D97706');
     if (router.canGoBack()) router.back();
+  };
+
+  const handleCloseEndedPopup = () => {
+    setEnded(false);
+    stopTimers();
+    stopAstrologerSpeech();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      go(AppRoutes.homeDashboardScreen);
+    }
   };
 
   // 1. Initial wallet subscription & real-time balance sync
@@ -943,7 +973,7 @@ export default function ConsultationScreen() {
 
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
-          style={{ flex: 1, paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0 }}
+          style={{ flex: 1, paddingBottom: androidBottomPad }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           {/* Top Bar: Astrologer Info, Live Timer, Wallet Balance */}
@@ -1541,10 +1571,13 @@ export default function ConsultationScreen() {
         </View>
       ) : null}
 
-      {/* 100% Native Voice Listening Modal */}
-      <Modal visible={voiceModalVisible} transparent animationType="slide" onRequestClose={cancelVoiceListening}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.78)', justifyContent: 'flex-end' }}>
-          <Pressable style={{ flex: 1 }} onPress={cancelVoiceListening} />
+      {/* 100% Native Responsive Voice Listening Modal */}
+      <Modal visible={voiceModalVisible} transparent statusBarTranslucent animationType="slide" onRequestClose={cancelVoiceListening}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.78)', justifyContent: 'flex-end' }}
+        >
+          <Pressable style={{ flex: 1 }} onPress={() => { Keyboard.dismiss(); cancelVoiceListening(); }} />
           <View
             style={{
               backgroundColor: '#0D1527',
@@ -1553,170 +1586,194 @@ export default function ConsultationScreen() {
               borderWidth: 1.5,
               borderBottomWidth: 0,
               borderColor: '#C9A84C',
-              paddingHorizontal: 20,
-              paddingTop: 16,
-              paddingBottom: Math.max(insets.bottom, 20) + 16,
+              maxHeight: Math.min(620, windowH - 30),
+              overflow: 'hidden',
             }}
           >
-            {/* Drag Handle */}
-            <View style={{ width: 44, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)', alignSelf: 'center', marginBottom: 14 }} />
-
-            {/* Header: Astrologer + Live Listening Badge */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Avatar uri={astro.imageUrl} size={44} border={2} />
-                <View style={{ marginLeft: 12 }}>
-                  <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>
-                    {astro.name}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', marginRight: 6 }} />
-                    <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '700' }}>
-                      {selectedLanguage === 'Telugu' ? '🎙️ శ్రద్ధగా వింటున్నాము...' : selectedLanguage === 'Hindi' ? '🎙️ हम सुन रहे हैं...' : '🎙️ Listening to you speak...'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-              <Pressable
-                onPress={cancelVoiceListening}
-                style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <AppIcon name="close_rounded" size={18} color="#CBD5E1" />
-              </Pressable>
-            </View>
-
-            {/* Pulsing Mic & Audio Waveform Visualizer */}
-            <View style={{ alignItems: 'center', marginVertical: 10 }}>
-              <Animated.View
-                style={[
-                  pulseStyle,
-                  {
-                    width: 76,
-                    height: 76,
-                    borderRadius: 38,
-                    backgroundColor: 'rgba(201, 168, 76, 0.25)',
-                    borderWidth: 2,
-                    borderColor: '#C9A84C',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    shadowColor: '#C9A84C',
-                    shadowOpacity: 0.6,
-                    shadowRadius: 16,
-                    elevation: 6,
-                  },
-                ]}
-              >
-                <AppIcon name="mic_rounded" size={38} color="#FFD700" />
-              </Animated.View>
-
-              {/* Animated Audio Wave Bars */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 12 }}>
-                {[14, 24, 34, 26, 16, 28, 18].map((h, i) => (
-                  <View
-                    key={i}
-                    style={{
-                      width: 4,
-                      height: h,
-                      borderRadius: 2,
-                      backgroundColor: '#C9A84C',
-                      opacity: 0.85,
-                    }}
-                  />
-                ))}
-              </View>
-
-              <Text style={{ marginTop: 10, color: '#94A3B8', fontSize: 12, fontWeight: '600', textAlign: 'center' }}>
-                {selectedLanguage === 'Telugu'
-                  ? 'మీ ప్రశ్నను మాట్లాడండి — మీ మాటలు స్వయంచాలకంగా అక్షరాలుగా మారుతున్నాయి'
-                  : selectedLanguage === 'Hindi'
-                    ? 'अपना प्रश्न बोलें — आपकी आवाज़ शब्दों में बदल रही है'
-                    : 'Speak your question clearly — converting your voice to text in real-time'}
-              </Text>
-            </View>
-
-            {/* Live Speech-to-Text Transcription Box */}
-            <View
-              style={{
-                marginTop: 6,
-                padding: 14,
-                borderRadius: 18,
-                backgroundColor: 'rgba(255, 255, 255, 0.07)',
-                borderWidth: 1.5,
-                borderColor: spokenTranscript ? '#C9A84C' : 'rgba(201, 168, 76, 0.4)',
-                minHeight: 80,
-                justifyContent: 'center',
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              bounces={false}
+              contentContainerStyle={{
+                paddingHorizontal: 20,
+                paddingTop: 16,
+                paddingBottom: Math.max(insets.bottom, 16) + 16,
               }}
             >
-              <TextInput
-                value={spokenTranscript}
-                onChangeText={setSpokenTranscript}
-                multiline
-                placeholder={
-                  selectedLanguage === 'Telugu'
-                    ? 'మీరు మాట్లాడుతున్నది ఇక్కడ కనిపిస్తుంది... (లేదా ఇక్కడ టైప్ చేయవచ్చు)'
-                    : selectedLanguage === 'Hindi'
-                      ? 'आप जो बोल रहे हैं वह यहाँ दिखाई देगा... (या यहाँ टाइप कर सकते हैं)'
-                      : 'Your spoken words will appear here in real-time... (or type here)'
-                }
-                placeholderTextColor="#64748B"
-                style={{
-                  color: '#FFFFFF',
-                  fontSize: 14.5,
-                  fontWeight: '700',
-                  lineHeight: 22,
-                }}
-              />
-            </View>
+              {/* Drag Handle */}
+              <View style={{ width: 44, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)', alignSelf: 'center', marginBottom: 14 }} />
 
-            {/* Action Buttons: Done Speaking & Cancel */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16 }}>
-              <Pressable
-                onPress={cancelVoiceListening}
-                style={{
-                  flex: 1,
-                  height: 48,
-                  borderRadius: 24,
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  borderWidth: 1,
-                  borderColor: 'rgba(255, 255, 255, 0.2)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{ color: '#E2E8F0', fontSize: 13.5, fontWeight: '700' }}>
-                  {selectedLanguage === 'Telugu' ? 'రద్దు చేయి' : selectedLanguage === 'Hindi' ? 'रद्द करें' : 'Cancel'}
-                </Text>
-              </Pressable>
+              {/* Header: Astrologer + Live Listening Badge */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Avatar uri={astro.imageUrl} size={44} border={2} />
+                  <View style={{ marginLeft: 12 }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>
+                      {astro.name}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', marginRight: 6 }} />
+                      <Text style={{ color: '#FFD700', fontSize: 12, fontWeight: '700' }}>
+                        {selectedLanguage === 'Telugu' ? '🎙️ శ్రద్ధగా వింటున్నాము...' : selectedLanguage === 'Hindi' ? '🎙️ हम सुन रहे हैं...' : '🎙️ Listening to you speak...'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                <Pressable
+                  onPress={cancelVoiceListening}
+                  style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <AppIcon name="close_rounded" size={18} color="#CBD5E1" />
+                </Pressable>
+              </View>
 
-              <Pressable
-                onPress={() => stopVoiceListeningAndSend()}
-                style={({ pressed }) => ({
-                  flex: 2,
-                  height: 48,
-                  borderRadius: 24,
-                  backgroundColor: '#10B981',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: pressed ? 0.85 : 1,
-                  shadowColor: '#10B981',
-                  shadowOpacity: 0.45,
-                  shadowRadius: 8,
-                  elevation: 4,
-                })}
-              >
-                <AppIcon name="check_circle_rounded" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800' }}>
+              {/* Pulsing Mic & Audio Waveform Visualizer */}
+              <View style={{ alignItems: 'center', marginVertical: 8 }}>
+                <Animated.View
+                  style={[
+                    pulseStyle,
+                    {
+                      width: 72,
+                      height: 72,
+                      borderRadius: 36,
+                      backgroundColor: 'rgba(201, 168, 76, 0.25)',
+                      borderWidth: 2,
+                      borderColor: '#C9A84C',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      shadowColor: '#C9A84C',
+                      shadowOpacity: 0.6,
+                      shadowRadius: 16,
+                      elevation: 6,
+                    },
+                  ]}
+                >
+                  <AppIcon name="mic_rounded" size={36} color="#FFD700" />
+                </Animated.View>
+
+                {/* Animated Audio Wave Bars */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10 }}>
+                  {[14, 24, 34, 26, 16, 28, 18].map((h, i) => (
+                    <View
+                      key={i}
+                      style={{
+                        width: 4,
+                        height: h,
+                        borderRadius: 2,
+                        backgroundColor: '#C9A84C',
+                        opacity: 0.85,
+                      }}
+                    />
+                  ))}
+                </View>
+
+                <Text style={{ marginTop: 8, color: '#94A3B8', fontSize: 11.5, fontWeight: '600', textAlign: 'center' }}>
                   {selectedLanguage === 'Telugu'
-                    ? 'ముగించు & అడగండి ✓'
+                    ? 'మీ ప్రశ్నను మాట్లాడండి — మీ మాటలు స్వయంచాలకంగా అక్షరాలుగా మారుతున్నాయి'
                     : selectedLanguage === 'Hindi'
-                      ? 'समाप्त करें और पूछें ✓'
-                      : 'Done Speaking — Ask ✓'}
+                      ? 'अपना प्रश्न बोलें — आपकी आवाज़ शब्दों में बदल रही है'
+                      : 'Speak your question clearly — converting your voice to text in real-time'}
                 </Text>
-              </Pressable>
-            </View>
+              </View>
+
+              {/* Live Speech-to-Text Transcription Box */}
+              <View
+                style={{
+                  marginTop: 6,
+                  padding: 12,
+                  borderRadius: 18,
+                  backgroundColor: 'rgba(255, 255, 255, 0.07)',
+                  borderWidth: 1.5,
+                  borderColor: spokenTranscript ? '#C9A84C' : 'rgba(201, 168, 76, 0.4)',
+                  minHeight: 74,
+                  justifyContent: 'center',
+                }}
+              >
+                <TextInput
+                  value={spokenTranscript}
+                  onChangeText={setSpokenTranscript}
+                  multiline
+                  autoFocus={false}
+                  placeholder={
+                    selectedLanguage === 'Telugu'
+                      ? 'మీరు మాట్లాడుతున్నది ఇక్కడ కనిపిస్తుంది... (లేదా ఇక్కడ టైప్ చేయవచ్చు)'
+                      : selectedLanguage === 'Hindi'
+                        ? 'आप जो बोल रहे हैं वह यहाँ दिखाई देगा... (या यहाँ टाइप कर सकते हैं)'
+                        : 'Your spoken words will appear here in real-time... (or type here)'
+                  }
+                  placeholderTextColor="#64748B"
+                  style={{
+                    color: '#FFFFFF',
+                    fontSize: 14,
+                    fontWeight: '700',
+                    lineHeight: 22,
+                  }}
+                />
+              </View>
+
+              {/* Optional Dismiss Keypad shortcut when keypad is open */}
+              {keyboardHeight > 0 && (
+                <Pressable
+                  onPress={Keyboard.dismiss}
+                  style={{ alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center', paddingVertical: 4, marginTop: 4 }}
+                >
+                  <AppIcon name="keyboard_hide" size={16} color="#C9A84C" />
+                  <Text style={{ color: '#C9A84C', fontSize: 11, fontWeight: '700', marginLeft: 4 }}>
+                    {selectedLanguage === 'Telugu' ? 'కీప్యాడ్ మూసివేయి' : 'Hide Keypad'}
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Action Buttons: Done Speaking & Cancel */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14 }}>
+                <Pressable
+                  onPress={cancelVoiceListening}
+                  style={{
+                    flex: 1,
+                    height: 46,
+                    borderRadius: 23,
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ color: '#E2E8F0', fontSize: 13, fontWeight: '700' }}>
+                    {selectedLanguage === 'Telugu' ? 'రద్దు చేయి' : selectedLanguage === 'Hindi' ? 'रद्द करें' : 'Cancel'}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => stopVoiceListeningAndSend()}
+                  style={({ pressed }) => ({
+                    flex: 2,
+                    height: 46,
+                    borderRadius: 23,
+                    backgroundColor: '#10B981',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: pressed ? 0.85 : 1,
+                    shadowColor: '#10B981',
+                    shadowOpacity: 0.45,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  })}
+                >
+                  <AppIcon name="check_circle_rounded" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={{ color: '#FFFFFF', fontSize: 13.5, fontWeight: '800' }}>
+                    {selectedLanguage === 'Telugu'
+                      ? 'ముగించు & అడగండి ✓'
+                      : selectedLanguage === 'Hindi'
+                        ? 'समाप्त करें और पूछें ✓'
+                        : 'Done Speaking — Ask ✓'}
+                  </Text>
+                </Pressable>
+              </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Hidden Speech-to-Text Recognition Engine */}
@@ -1748,9 +1805,36 @@ export default function ConsultationScreen() {
       </View>
 
       {/* Session Ended Dialog with Rating */}
-      <Dialog visible={ended} onClose={() => { }} barrierDismissible={false} style={{ borderRadius: 20, maxHeight: '85%', backgroundColor: colors.surface }} testID="consultation.endDialog">
+      <Dialog
+        visible={ended}
+        onClose={handleCloseEndedPopup}
+        barrierDismissible={true}
+        style={{ borderRadius: 20, maxHeight: '85%', backgroundColor: colors.surface }}
+        testID="consultation.endDialog"
+      >
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
-          <Text style={{ color: colors.textPrimary, fontSize: 22, fontWeight: '700' }}>Session Ended</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 22, fontWeight: '700' }}>
+              {selectedLanguage === 'Telugu' ? 'సెషన్ ముగిసింది' : selectedLanguage === 'Hindi' ? 'सत्र समाप्त' : 'Session Ended'}
+            </Text>
+            <Pressable
+              onPress={handleCloseEndedPopup}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              style={({ pressed }) => ({
+                width: 34,
+                height: 34,
+                borderRadius: 17,
+                backgroundColor: colors.surfaceVariant,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <AppIcon name="close_rounded" size={20} color={colors.textSecondary} />
+            </Pressable>
+          </View>
           <View style={{ marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder, gap: 8 }}>
             {[
               ['Duration', fmt(seconds)],

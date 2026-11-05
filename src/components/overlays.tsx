@@ -93,8 +93,9 @@ export function BottomSheet({
     ? currentWindowH
     : Math.max(300, currentWindowH - (keyboardHeight > 0 ? keyboardHeight : 0));
 
-  const maxAvailableH = Math.max(300, heightAboveKeyboard - topSafe - 12);
-  const availableHeight = Math.min(Math.floor(heightAboveKeyboard * maxHeightRatio), maxAvailableH);
+  const effectiveRatio = keyboardHeight > 0 ? 0.98 : maxHeightRatio;
+  const maxAvailableH = Math.max(300, heightAboveKeyboard - topSafe - 8);
+  const availableHeight = Math.min(Math.floor(heightAboveKeyboard * effectiveRatio), maxAvailableH);
 
   return (
     <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={onClose}>

@@ -1599,13 +1599,13 @@ export default function ProfileScreen() {
           <ScrollView
             ref={editScrollRef}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="none"
+            keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={true}
-            style={{ flex: 1, minHeight: 240 }}
+            style={{ flex: 1 }}
             contentContainerStyle={{
               paddingHorizontal: 24,
               paddingTop: 16,
-              paddingBottom: 220,
+              paddingBottom: 40,
             }}
           >
             {/* Full Name */}
