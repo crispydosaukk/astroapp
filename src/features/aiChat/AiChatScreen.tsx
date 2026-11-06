@@ -1156,7 +1156,26 @@ export default function AiChatScreen() {
   const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
 
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const currentLang = useLanguageStore.getState().selectedLanguage || 'English';
+    const initName =
+      useBirthProfileStore.getState().activeProfile?.name?.trim() ||
+      useAuthStore.getState().user?.name?.trim() ||
+      'Devotee';
+    const initialAstro = params.astrologerName
+      ? { name: params.astrologerName, id: params.astrologerId || 'ai-custom' }
+      : (ASTROLOGER_PERSONAS.find((a) => a.id === params.astrologerId) || ASTROLOGER_PERSONAS[0]);
+    const welcome = getWelcomeMessage(currentLang, initName, initialAstro.name);
+    return [
+      {
+        isUser: false,
+        text: welcome.content,
+        time: currentTime(),
+        recommendations: welcome.recommendations,
+        modelUsed: initialAstro.name,
+      },
+    ];
+  });
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState('All');
@@ -1309,7 +1328,12 @@ export default function AiChatScreen() {
           }
         } catch {}
       }
-      const userName = activeProfile?.name?.trim() || authUser?.name?.trim() || userProfile?.name?.trim() || 'Guest';
+      const userName =
+        activeProfile?.name?.trim() ||
+        useBirthProfileStore.getState().activeProfile?.name?.trim() ||
+        authUser?.name?.trim() ||
+        userProfile?.name?.trim() ||
+        'Devotee';
       const welcome = getWelcomeMessage(selectedLanguage, userName, selectedAstrologer.name);
       setMessages([
         {

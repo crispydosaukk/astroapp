@@ -8,7 +8,8 @@
  */
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedPressable } from '@/components/AnimatedBox';
@@ -144,14 +145,14 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     name: 'Acharya Devavrat (AI)',
     specialty: 'Parashara Vedic Astrology, Dasha Analysis & Remedies',
     title: 'Autonomous Vedic Ephemeris Grandmaster',
-    experience: '1,20,000+ charts',
+    experience: '32+ Yrs',
     rating: 4.99,
     reviews: '38,420',
     consultations: '38k+',
     price: 25,
     isOnline: true,
     languages: 'English, Hindi, Telugu, Tamil, Kannada',
-    imageUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&fit=crop',
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/acharya-devavrat.png',
     semanticLabel: 'Revered Vedic Acharya with sacred saffron robes',
     category: 'Vedic',
     isAi: true,
@@ -159,37 +160,37 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     discount: 'Free 3 min trial',
   },
   {
-    id: 'vedika',
-    name: 'AstroParihar AI',
-    specialty: 'Sub-Second Planetary Math, Gochara & KP Astrology',
-    title: 'Precision Astronomical Vedic Engine',
-    experience: '2,50,000+ calculations',
+    id: 'ai-acharya-joshi-remedies',
+    name: 'Acharya Joshi Dosh Nivaran (AI)',
+    specialty: 'Navagraha Shanti, Dosh Nivaran & Vedic Rituals',
+    title: 'Grand Master of Navagraha Shanti & Vedic Anushthan',
+    experience: '34+ Yrs',
     rating: 4.98,
-    reviews: '42,100',
-    consultations: '42k+',
+    reviews: '25,200',
+    consultations: '25k+',
     price: 25,
     isOnline: true,
-    languages: 'English, Hindi, Telugu, Tamil',
-    imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&fit=crop',
-    semanticLabel: 'Celestial luminous AI seer with planetary rings',
-    category: 'KP',
+    languages: 'Hindi, English, Marathi, Sanskrit',
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/acharya-joshi.png',
+    semanticLabel: 'Authority on Vedic Dosh Nivaran from Ujjain',
+    category: 'Remedies',
     isAi: true,
     isFeatured: true,
     discount: 'Instant <1s reply',
   },
   {
     id: 'ai-guru-brihaspati',
-    name: 'Guru Brihaspati (AI)',
+    name: 'Swami Shankarananda Giri (AI)',
     specialty: 'Higher Dharma, Dasha Transits & Spiritual Sadhana',
     title: 'Autonomous Celestial AI Mentor • Instant Voice',
-    experience: '95,000+ charts',
+    experience: '40+ Yrs',
     rating: 4.99,
-    reviews: '29,800',
-    consultations: '29k+',
+    reviews: '52,100',
+    consultations: '52k+',
     price: 25,
     isOnline: true,
-    languages: 'Hindi, English, Sanskrit',
-    imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&fit=crop',
+    languages: 'Hindi, English, Telugu, Sanskrit',
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/swami-ji.png',
     semanticLabel: 'Autonomous celestial AI sage',
     category: 'Spirituality',
     isAi: true,
@@ -201,14 +202,14 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     name: 'Astro Ananya (AI)',
     specialty: 'Love, Marriage Compatibility & Nadi Dosha Parihars',
     title: 'Nadi & Kundli Seer • Relationship Expert',
-    experience: '80,000+ matchings',
+    experience: '18+ Yrs',
     rating: 4.97,
     reviews: '24,600',
     consultations: '24k+',
     price: 25,
     isOnline: true,
     languages: 'English, Hindi, Telugu, Tamil',
-    imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&fit=crop',
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/astro-ananya.png',
     semanticLabel: 'Warm compassionate female Vedic astrologer',
     category: 'Marriage',
     isAi: true,
@@ -220,38 +221,19 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     name: 'Arjun Pandit (AI)',
     specialty: 'Career Growth, Business Timing & Wealth Astrology',
     title: 'Vedic Kundli Prodigy & Financial Strategist',
-    experience: '65,000+ career charts',
+    experience: '20+ Yrs',
     rating: 4.96,
     reviews: '18,900',
     consultations: '18k+',
     price: 25,
     isOnline: true,
     languages: 'English, Hindi, Gujarati, Marathi',
-    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&fit=crop',
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/arjun-pandit.png',
     semanticLabel: 'Sharp modern Vedic astrologer in traditional attire',
     category: 'Career',
     isAi: true,
     isFeatured: false,
     discount: 'Promotion & Job Timing',
-  },
-  {
-    id: 'pandit-raghav',
-    name: 'Pandit Raghavendra (AI)',
-    specialty: 'Lal Kitab Upaay, Gemstones, Rudraksha & Homa Parihar',
-    title: 'Lal Kitab Master & Vedic Remedies Authority',
-    experience: '75,000+ remedies prescribed',
-    rating: 4.98,
-    reviews: '22,300',
-    consultations: '22k+',
-    price: 25,
-    isOnline: true,
-    languages: 'Hindi, Telugu, Kannada, English',
-    imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&fit=crop',
-    semanticLabel: 'Elderly priest with sacred tilak and yellow scarf',
-    category: 'Remedies',
-    isAi: true,
-    isFeatured: false,
-    discount: 'Custom 48-day Upaay',
   },
 ];
 
@@ -929,11 +911,40 @@ export default function LiveAstrologersScreen() {
   const [aiAstrologers, setAiAstrologers] = useState<AstrologerData[]>(() =>
     AI_ASTROLOGERS_DATA.map((a) => ({ ...a, isAi: true, category: getCategoryForAstrologer(a.specialty, a.category) }))
   );
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [onlineOnly, setOnlineOnly] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const mapRealAstrologers = (realList: any[]): AstrologerData[] => {
+    return realList.map((a) => ({
+      id: a.id,
+      name: a.name,
+      specialty: a.specialty,
+      title: [a.specialty, a.experience].filter(Boolean).join(' • '),
+      experience: a.experience,
+      rating: a.rating,
+      reviews: a.reviews,
+      consultations: a.consultations || a.reviews,
+      price: a.price,
+      isOnline: Boolean(a.isOnline),
+      languages: a.languages,
+      imageUrl: a.imageUrl,
+      semanticLabel: a.semanticLabel || a.name,
+      category: getCategoryForAstrologer(a.specialty),
+      isAi: false,
+      bio: a.bio || a.about,
+      education: a.education,
+      certifications: a.certifications,
+      learningSource: a.learningSource,
+      dailyHours: a.dailyHours,
+      city: a.city,
+      badge: a.badge,
+      status: a.status,
+    }));
+  };
 
   const fetchAstrologers = async () => {
     try {
@@ -942,34 +953,8 @@ export default function LiveAstrologersScreen() {
         fetchAiAstrologers(),
       ]);
 
-      if (realList) {
-        const liveMapped: AstrologerData[] = realList.map((a) => ({
-          id: a.id,
-          name: a.name,
-          specialty: a.specialty,
-          title: [a.specialty, a.experience].filter(Boolean).join(' • '),
-          experience: a.experience,
-          rating: a.rating,
-          reviews: a.reviews,
-          consultations: a.consultations || a.reviews,
-          price: a.price,
-          isOnline: Boolean(a.isOnline),
-          languages: a.languages,
-          imageUrl: a.imageUrl,
-          semanticLabel: a.semanticLabel || a.name,
-          category: getCategoryForAstrologer(a.specialty),
-          isAi: false,
-          bio: a.bio || a.about,
-          education: a.education,
-          certifications: a.certifications,
-          learningSource: a.learningSource,
-          dailyHours: a.dailyHours,
-          city: a.city,
-          badge: a.badge,
-          status: a.status,
-        }));
-
-        setRealAstrologers(liveMapped);
+      if (realList && realList.length > 0) {
+        setRealAstrologers(mapRealAstrologers(realList));
       }
 
       if (aiList && aiList.length > 0) {
@@ -999,9 +984,31 @@ export default function LiveAstrologersScreen() {
   };
 
   useEffect(() => {
-    fetchAstrologers();
-    const pollInterval = setInterval(fetchAstrologers, 4000);
-    return () => clearInterval(pollInterval);
+    let isMounted = true;
+
+    // 1. Immediately read cached real astrologers from AsyncStorage for instant 0ms display
+    AsyncStorage.getItem('@astroparihar_real_astrologers_live').then((cached) => {
+      if (!isMounted || !cached) return;
+      try {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          setRealAstrologers(mapRealAstrologers(list));
+          setLoading(false);
+        }
+      } catch {}
+    });
+
+    // 2. Fetch fresh live statuses
+    fetchAstrologers().finally(() => {
+      if (isMounted) setLoading(false);
+    });
+
+    // 3. Spaced polling every 25 seconds instead of 4 seconds
+    const pollInterval = setInterval(fetchAstrologers, 25000);
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const activePool = astrologerType === 'ai' ? aiAstrologers : realAstrologers;
@@ -1113,7 +1120,17 @@ export default function LiveAstrologersScreen() {
 
       <CategoryChips selected={selectedCategory} onSelect={setSelectedCategory} />
       <View style={{ flex: 1 }}>
-        {filtered.length === 0 ? (
+        {loading && filtered.length === 0 ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
+            <ActivityIndicator size="large" color="#C9A84C" />
+            <Text style={{ marginTop: 16, color: colors.goldAccent, fontSize: 15, fontWeight: '700' }}>
+              Connecting with Vedic Astrologers...
+            </Text>
+            <Text style={{ marginTop: 6, color: colors.textMuted, fontSize: 13 }}>
+              Loading verified astrological profiles
+            </Text>
+          </View>
+        ) : filtered.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} testID="liveAstrologers.empty">
             <Text style={{ fontSize: 48 }}>🔍</Text>
             <Text style={{ marginTop: 16, color: colors.textPrimary, fontSize: 18, fontWeight: '700' }}>No astrologers found</Text>

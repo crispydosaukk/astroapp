@@ -95,41 +95,41 @@ export const DEFAULT_AI_ASTROLOGERS: LiveAstrologer[] = [
     id: 'ai-acharya-devavrat',
     name: 'Acharya Devavrat (AI)',
     specialty: 'Parashara Vedic Astrology, Dasha Analysis & Remedies',
-    experience: '1,20,000+ charts',
+    experience: '32+ Yrs',
     rating: 4.99,
     reviews: '38.4k',
     price: 25,
     isOnline: true,
     isAi: true,
-    imageUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&fit=crop',
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/acharya-devavrat.png',
     languages: 'English, Hindi, Telugu, Tamil, Kannada',
-    semanticLabel: 'Autonomous Vedic Ephemeris Grandmaster',
+    semanticLabel: 'Revered Vedic Acharya with sacred saffron robes',
   },
   {
-    id: 'ai-vedika',
-    name: 'AstroParihar AI Engine',
-    specialty: 'Sub-Second Planetary Math & KP Astrology',
-    experience: '2,50,000+ calculations',
+    id: 'ai-acharya-joshi-remedies',
+    name: 'Acharya Joshi Dosh Nivaran (AI)',
+    specialty: 'Navagraha Shanti, Dosh Nivaran & Vedic Rituals',
+    experience: '34+ Yrs',
     rating: 4.98,
-    reviews: '42.1k',
+    reviews: '25.2k',
     price: 25,
     isOnline: true,
     isAi: true,
-    imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&fit=crop',
-    languages: 'English, Hindi, Telugu, Tamil',
-    semanticLabel: 'Precision Astronomical Vedic Engine',
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/acharya-joshi.png',
+    languages: 'Hindi, English, Marathi, Sanskrit',
+    semanticLabel: 'Authority on Vedic Dosh Nivaran from Ujjain',
   },
   {
     id: 'ai-ananya',
     name: 'Astro Ananya (AI)',
     specialty: 'Love, Marriage Compatibility & Nadi Dosha',
-    experience: '80,000+ matchings',
+    experience: '18+ Yrs',
     rating: 4.97,
     reviews: '24.6k',
     price: 25,
     isOnline: true,
     isAi: true,
-    imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&fit=crop',
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/astro-ananya.png',
     languages: 'English, Hindi, Telugu, Tamil',
     semanticLabel: 'Nadi & Kundli Seer, Relationship Expert',
   },
@@ -137,15 +137,29 @@ export const DEFAULT_AI_ASTROLOGERS: LiveAstrologer[] = [
     id: 'ai-arjun',
     name: 'Arjun Pandit (AI)',
     specialty: 'Career Growth, Business Timing & Wealth Astrology',
-    experience: '65,000+ career charts',
+    experience: '20+ Yrs',
     rating: 4.96,
     reviews: '18.9k',
     price: 25,
     isOnline: true,
     isAi: true,
-    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&fit=crop',
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/arjun-pandit.png',
     languages: 'English, Hindi, Gujarati, Marathi',
     semanticLabel: 'Vedic Kundli Prodigy & Financial Strategist',
+  },
+  {
+    id: 'ai-swami-shankarananda',
+    name: 'Swami Shankarananda Giri (AI)',
+    specialty: 'Vedic Astrologer & Dasha Expert',
+    experience: '40+ Yrs',
+    rating: 4.99,
+    reviews: '52.1k',
+    price: 25,
+    isOnline: true,
+    isAi: true,
+    imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/swami-ji.png',
+    languages: 'English, Hindi, Telugu, Sanskrit',
+    semanticLabel: 'Elderly Indian sage with white beard and traditional orange robes',
   },
 ];
 
@@ -548,112 +562,193 @@ async function fetchDirectFirestoreRealAstrologers(): Promise<LiveAstrologer[]> 
   }
 }
 
+// In-memory cache & request coalescing for high concurrency
+let memoryCachedRealAstrologers: LiveAstrologer[] | null = null;
+let lastRealFetchTime = 0;
+let inFlightRealPromise: Promise<LiveAstrologer[]> | null = null;
+
+let memoryCachedAiAstrologers: LiveAstrologer[] | null = null;
+let lastAiFetchTime = 0;
+let inFlightAiPromise: Promise<LiveAstrologer[]> | null = null;
+
+async function fetchDirectFirestoreAiAstrologers(): Promise<LiveAstrologer[]> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4500);
+    const res = await fetch(
+      `https://firestore.googleapis.com/v1/projects/astroparihar-85e2d/databases/(default)/documents/ai_astrologers?pageSize=50`,
+      {
+        signal: controller.signal,
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
+      }
+    );
+    clearTimeout(timer);
+    if (!res.ok) return [];
+    const json = await res.json();
+    if (!Array.isArray(json.documents)) return [];
+
+    const dynamicAiRate = useCurrencyStore.getState().pricingSettings.aiChatPricePerMinute || 25;
+    const aiList: LiveAstrologer[] = [];
+
+    for (const doc of json.documents) {
+      const id = doc.name ? doc.name.split('/').pop() : '';
+      const f = doc.fields || {};
+      const isActive = f.isActive?.booleanValue !== false;
+      if (!isActive) continue;
+
+      const name = f.name?.stringValue || 'AI Astrologer';
+      const specialty =
+        f.primaryDiscipline?.stringValue ||
+        f.tagline?.stringValue ||
+        (f.specialities?.arrayValue?.values ? f.specialities.arrayValue.values.map((v: any) => v.stringValue).join(', ') : 'Vedic Astrology');
+
+      const expNum = f.experienceYears?.integerValue ? parseInt(f.experienceYears.integerValue, 10) : 20;
+      const rating = f.rating?.doubleValue || (f.rating?.integerValue ? parseFloat(f.rating.integerValue) : 4.95);
+      const totalConsultations = f.totalConsultations?.integerValue || '15k';
+
+      let languages = 'English, Hindi';
+      if (f.languages?.arrayValue?.values) {
+        languages = f.languages.arrayValue.values.map((v: any) => v.stringValue).filter(Boolean).join(', ');
+      } else if (f.languages?.stringValue) {
+        languages = f.languages.stringValue;
+      }
+
+      const rawAvatar = f.avatar?.stringValue || '/assets/images/ai-astrologers/acharya-devavrat.png';
+      const imageUrl = resolveMediaUrl(rawAvatar);
+      const isOnline = f.availability?.stringValue !== 'offline';
+
+      aiList.push({
+        id: id || name.toLowerCase().replace(/\s+/g, '-'),
+        name,
+        specialty,
+        experience: `${expNum}+ Yrs`,
+        rating: Number(rating.toFixed(2)),
+        reviews: String(totalConsultations),
+        consultations: `${totalConsultations}+`,
+        price: dynamicAiRate,
+        isOnline,
+        isAi: true,
+        imageUrl,
+        languages,
+        semanticLabel: `${name} - AI Vedic Astrologer`,
+        bio: f.bio?.stringValue || f.systemPersonaPrompt?.stringValue || '',
+        about: f.bio?.stringValue || f.systemPersonaPrompt?.stringValue || '',
+      });
+    }
+
+    return aiList.length > 0 ? aiList : DEFAULT_AI_ASTROLOGERS;
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Fetch strictly REAL human astrologers directly from live Firestore.
  * Zero static fallback data — reflects live Online/Offline status and profile fields.
  */
-export async function fetchRealAstrologers(): Promise<LiveAstrologer[]> {
-  try {
-    // 1. Direct Firestore REST dynamic sync first (instant reflection of Online/Offline & profile edits)
-    const directLive = await fetchDirectFirestoreRealAstrologers();
-    if (directLive.length > 0) {
-      await AsyncStorage.setItem(STORAGE_REAL_ASTROLOGERS_KEY, JSON.stringify(directLive));
-      return directLive;
-    }
-
-    // 2. Fallback to Next.js API endpoint if direct Firestore call fails
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 3500);
-      const res = await fetch(`${API_ENDPOINTS.astrologers}?type=real&_t=${Date.now()}`, {
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-      if (res.ok) {
-        const data = await res.json();
-        const list = Array.isArray(data.realAstrologers) && data.realAstrologers.length > 0
-          ? data.realAstrologers
-          : Array.isArray(data.astrologers)
-          ? data.astrologers.filter((a: any) => !a.isAi && !a.id?.startsWith('ai-'))
-          : null;
-
-        if (list && list.length > 0) {
-          const resolved = list.map((a: any) => ({
-            ...a,
-            isAi: false,
-            isOnline: Boolean(a.isOnline),
-            imageUrl: resolveMediaUrl(a.profileImageUrl || a.imageUrl || a.photoURL || a.avatar),
-          }));
-          await AsyncStorage.setItem(STORAGE_REAL_ASTROLOGERS_KEY, JSON.stringify(resolved));
-          return resolved;
-        }
-      }
-    } catch {}
-  } catch (err) {
-    console.warn('Error fetching real astrologers:', err);
+export async function fetchRealAstrologers(forceFresh = false): Promise<LiveAstrologer[]> {
+  const now = Date.now();
+  if (!forceFresh && memoryCachedRealAstrologers && (now - lastRealFetchTime < 25000)) {
+    return memoryCachedRealAstrologers;
   }
 
-  return [];
+  if (inFlightRealPromise) {
+    return inFlightRealPromise;
+  }
+
+  inFlightRealPromise = (async () => {
+    try {
+      // 1. If memory cache empty, check AsyncStorage cache first
+      if (!memoryCachedRealAstrologers) {
+        try {
+          const cached = await AsyncStorage.getItem(STORAGE_REAL_ASTROLOGERS_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              memoryCachedRealAstrologers = parsed;
+            }
+          }
+        } catch {}
+      }
+
+      // 2. Direct Firestore REST dynamic sync
+      const directLive = await fetchDirectFirestoreRealAstrologers();
+      if (directLive.length > 0) {
+        memoryCachedRealAstrologers = directLive;
+        lastRealFetchTime = Date.now();
+        await AsyncStorage.setItem(STORAGE_REAL_ASTROLOGERS_KEY, JSON.stringify(directLive));
+        return directLive;
+      }
+
+      if (memoryCachedRealAstrologers && memoryCachedRealAstrologers.length > 0) {
+        return memoryCachedRealAstrologers;
+      }
+    } catch (err) {
+      console.warn('Error fetching real astrologers:', err);
+    } finally {
+      inFlightRealPromise = null;
+    }
+
+    return memoryCachedRealAstrologers || [];
+  })();
+
+  return inFlightRealPromise;
 }
 
 /**
  * Fetch strictly AI Astrologers.
  * Never mixed with real astrologers!
  */
-export async function fetchAiAstrologers(): Promise<LiveAstrologer[]> {
-  try {
-    const cached = await AsyncStorage.getItem(STORAGE_AI_ASTROLOGERS_KEY);
-    let parsedCache: LiveAstrologer[] | null = null;
-    if (cached) {
-      try {
-        parsedCache = JSON.parse(cached);
-      } catch {}
-    }
+export async function fetchAiAstrologers(forceFresh = false): Promise<LiveAstrologer[]> {
+  const dynamicAiRate = useCurrencyStore.getState().pricingSettings.aiChatPricePerMinute || 25;
+  const now = Date.now();
 
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 3500);
-      const res = await fetch(`${API_ENDPOINTS.astrologers}?type=ai`, {
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-      if (res.ok) {
-        const data = await res.json();
-        const list = Array.isArray(data.aiAstrologers) && data.aiAstrologers.length > 0
-          ? data.aiAstrologers
-          : Array.isArray(data.astrologers)
-          ? data.astrologers.filter((a: any) => a.isAi)
-          : null;
-
-        if (list && list.length > 0) {
-          const dynamicAiRate = useCurrencyStore.getState().pricingSettings.aiChatPricePerMinute || 25;
-          const resolved = list.map((a: any) => ({
-            ...a,
-            price: dynamicAiRate,
-            isAi: true,
-            imageUrl: resolveMediaUrl(a.imageUrl),
-          }));
-          await AsyncStorage.setItem(STORAGE_AI_ASTROLOGERS_KEY, JSON.stringify(resolved));
-          return resolved;
-        }
-      }
-    } catch {}
-
-    if (parsedCache && parsedCache.length > 0) {
-      const dynamicAiRate = useCurrencyStore.getState().pricingSettings.aiChatPricePerMinute || 25;
-      return parsedCache.map((a: any) => ({
-        ...a,
-        price: dynamicAiRate,
-        isAi: true,
-        imageUrl: resolveMediaUrl(a.imageUrl),
-      }));
-    }
-  } catch (err) {
-    console.warn('Error fetching AI astrologers:', err);
+  if (!forceFresh && memoryCachedAiAstrologers && (now - lastAiFetchTime < 30000)) {
+    return memoryCachedAiAstrologers.map((a) => ({ ...a, price: dynamicAiRate }));
   }
 
-  const dynamicAiRate = useCurrencyStore.getState().pricingSettings.aiChatPricePerMinute || 25;
-  return DEFAULT_AI_ASTROLOGERS.map((a) => ({ ...a, price: dynamicAiRate }));
+  if (inFlightAiPromise) {
+    return inFlightAiPromise;
+  }
+
+  inFlightAiPromise = (async () => {
+    try {
+      // 1. If memory cache empty, load from AsyncStorage first
+      if (!memoryCachedAiAstrologers) {
+        try {
+          const cached = await AsyncStorage.getItem(STORAGE_AI_ASTROLOGERS_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              memoryCachedAiAstrologers = parsed;
+            }
+          }
+        } catch {}
+      }
+
+      // 2. Direct Firestore query for ai_astrologers collection
+      const firestoreAi = await fetchDirectFirestoreAiAstrologers();
+      if (firestoreAi.length > 0) {
+        const resolved = firestoreAi.map((a) => ({ ...a, price: dynamicAiRate, isAi: true }));
+        memoryCachedAiAstrologers = resolved;
+        lastAiFetchTime = Date.now();
+        await AsyncStorage.setItem(STORAGE_AI_ASTROLOGERS_KEY, JSON.stringify(resolved));
+        return resolved;
+      }
+
+      if (memoryCachedAiAstrologers && memoryCachedAiAstrologers.length > 0) {
+        return memoryCachedAiAstrologers.map((a) => ({ ...a, price: dynamicAiRate }));
+      }
+    } catch (err) {
+      console.warn('Error fetching AI astrologers:', err);
+    } finally {
+      inFlightAiPromise = null;
+    }
+
+    return DEFAULT_AI_ASTROLOGERS.map((a) => ({ ...a, price: dynamicAiRate }));
+  })();
+
+  return inFlightAiPromise;
 }
 
 /**

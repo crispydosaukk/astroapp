@@ -66,15 +66,45 @@ type Msg = { text: string; isSystem: boolean; isUser?: boolean; time: string };
 
 function deduplicateTranscript(text: string): string {
   if (!text) return '';
-  const words = text.trim().split(/\s+/);
+  let words = text.trim().split(/\s+/);
   if (words.length <= 1) return text.trim();
 
+  // Step 1: Clean progressive hypothesis restarts (when speech recognizer restarts sentence with more words)
+  for (let minWords = 5; minWords >= 2; minWords--) {
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let i = 0; i < words.length - minWords; i++) {
+        const needle = words.slice(i, i + minWords).join(' ').toLowerCase();
+        for (let j = i + minWords; j <= words.length - minWords; j++) {
+          const candidate = words.slice(j, j + minWords).join(' ').toLowerCase();
+          if (needle === candidate) {
+            let matchLen = 0;
+            while (
+              i + matchLen < j &&
+              j + matchLen < words.length &&
+              words[i + matchLen].toLowerCase() === words[j + matchLen].toLowerCase()
+            ) {
+              matchLen++;
+            }
+            if (matchLen >= minWords) {
+              words.splice(i, j - i);
+              changed = true;
+              break;
+            }
+          }
+        }
+        if (changed) break;
+      }
+    }
+  }
+
+  // Step 2: Clean consecutive duplicate phrase blocks and single repeated words
   const out: string[] = [];
   let i = 0;
   while (i < words.length) {
     let matchedLen = 0;
-    // Check for adjacent duplicate phrase blocks up to 15 words
-    const maxLen = Math.min(15, Math.floor((words.length - i) / 2));
+    const maxLen = Math.min(20, Math.floor((words.length - i) / 2));
     for (let len = maxLen; len >= 1; len--) {
       if (i + 2 * len <= words.length) {
         const p1 = words.slice(i, i + len).join(' ').toLowerCase();
@@ -91,9 +121,8 @@ function deduplicateTranscript(text: string): string {
       }
       i += 2 * matchedLen;
     } else {
-      // Check if out already ends with words[i ... i+tLen] (repeated prefix overlap)
       let isTrailingDup = false;
-      const checkMax = Math.min(15, out.length);
+      const checkMax = Math.min(20, out.length);
       for (let tLen = checkMax; tLen >= 1; tLen--) {
         if (i + tLen <= words.length) {
           const prevTail = out.slice(out.length - tLen).join(' ').toLowerCase();
@@ -127,15 +156,46 @@ const SPEECH_RECOGNITION_HTML = `
     var words = text.trim().split(/\\s+/);
     if (words.length <= 1) return text.trim();
 
+    // Step 1: Clean progressive hypothesis restarts
+    for (var minWords = 5; minWords >= 2; minWords--) {
+      var changed = true;
+      while (changed) {
+        changed = false;
+        for (var i = 0; i < words.length - minWords; i++) {
+          var needle = words.slice(i, i + minWords).join(' ').toLowerCase();
+          for (var j = i + minWords; j <= words.length - minWords; j++) {
+            var candidate = words.slice(j, j + minWords).join(' ').toLowerCase();
+            if (needle === candidate) {
+              var matchLen = 0;
+              while (
+                i + matchLen < j &&
+                j + matchLen < words.length &&
+                words[i + matchLen].toLowerCase() === words[j + matchLen].toLowerCase()
+              ) {
+                matchLen++;
+              }
+              if (matchLen >= minWords) {
+                words.splice(i, j - i);
+                changed = true;
+                break;
+              }
+            }
+          }
+          if (changed) break;
+        }
+      }
+    }
+
+    // Step 2: Clean consecutive duplicate phrase blocks
     var out = [];
-    var i = 0;
-    while (i < words.length) {
+    var k = 0;
+    while (k < words.length) {
       var matchedLen = 0;
-      var maxLen = Math.min(15, Math.floor((words.length - i) / 2));
+      var maxLen = Math.min(20, Math.floor((words.length - k) / 2));
       for (var len = maxLen; len >= 1; len--) {
-        if (i + 2 * len <= words.length) {
-          var p1 = words.slice(i, i + len).join(' ').toLowerCase();
-          var p2 = words.slice(i + len, i + 2 * len).join(' ').toLowerCase();
+        if (k + 2 * len <= words.length) {
+          var p1 = words.slice(k, k + len).join(' ').toLowerCase();
+          var p2 = words.slice(k + len, k + 2 * len).join(' ').toLowerCase();
           if (p1 === p2) {
             matchedLen = len;
             break;
@@ -143,27 +203,27 @@ const SPEECH_RECOGNITION_HTML = `
         }
       }
       if (matchedLen > 0) {
-        for (var k = 0; k < matchedLen; k++) {
-          out.push(words[i + k]);
+        for (var m = 0; m < matchedLen; m++) {
+          out.push(words[k + m]);
         }
-        i += 2 * matchedLen;
+        k += 2 * matchedLen;
       } else {
         var isTrailingDup = false;
-        var checkMax = Math.min(15, out.length);
+        var checkMax = Math.min(20, out.length);
         for (var tLen = checkMax; tLen >= 1; tLen--) {
-          if (i + tLen <= words.length) {
+          if (k + tLen <= words.length) {
             var prevTail = out.slice(out.length - tLen).join(' ').toLowerCase();
-            var currHead = words.slice(i, i + tLen).join(' ').toLowerCase();
+            var currHead = words.slice(k, k + tLen).join(' ').toLowerCase();
             if (prevTail === currHead) {
               isTrailingDup = true;
-              i += tLen;
+              k += tLen;
               break;
             }
           }
         }
         if (!isTrailingDup) {
-          out.push(words[i]);
-          i += 1;
+          out.push(words[k]);
+          k += 1;
         }
       }
     }
@@ -192,47 +252,81 @@ const SPEECH_RECOGNITION_HTML = `
 
       rec.onresult = function(event) {
         var finals = [];
-        var interims = [];
+        var latestInterim = '';
+
         for (var i = 0; i < event.results.length; ++i) {
           var item = event.results[i];
           if (!item || !item[0] || !item[0].transcript) continue;
           var t = item[0].transcript.trim();
           if (!t) continue;
+
           if (item.isFinal) {
             finals.push(t);
           } else {
-            interims.push(t);
+            // Non-final items are progressive hypotheses; keep only the latest hypothesis
+            latestInterim = t;
           }
         }
 
-        var finalStr = finals.join(' ').replace(/\\s+/g, ' ').trim();
-        var interimStr = interims.join(' ').replace(/\\s+/g, ' ').trim();
-        var combined = '';
-
-        if (!finalStr) {
-          combined = interimStr;
-        } else if (!interimStr) {
-          combined = finalStr;
-        } else {
-          if (interimStr.toLowerCase().indexOf(finalStr.toLowerCase()) === 0) {
-            combined = interimStr;
+        var finalCombined = '';
+        for (var f = 0; f < finals.length; f++) {
+          var fText = finals[f];
+          if (!finalCombined) {
+            finalCombined = fText;
           } else {
-            var fWords = finalStr.split(' ');
-            var iWords = interimStr.split(' ');
-            var maxOverlap = Math.min(fWords.length, iWords.length);
-            var overlapCount = 0;
-            for (var k = maxOverlap; k > 0; k--) {
-              var fEnd = fWords.slice(fWords.length - k).join(' ').toLowerCase();
-              var iStart = iWords.slice(0, k).join(' ').toLowerCase();
-              if (fEnd === iStart) {
-                overlapCount = k;
+            if (fText.toLowerCase().indexOf(finalCombined.toLowerCase()) === 0) {
+              finalCombined = fText;
+            } else if (finalCombined.toLowerCase().indexOf(fText.toLowerCase()) !== -1) {
+              // already included
+            } else {
+              var fcWords = finalCombined.split(/\\s+/);
+              var ftWords = fText.split(/\\s+/);
+              var maxOv = Math.min(fcWords.length, ftWords.length);
+              var ovCount = 0;
+              for (var ov = maxOv; ov > 0; ov--) {
+                var fcEnd = fcWords.slice(fcWords.length - ov).join(' ').toLowerCase();
+                var ftStart = ftWords.slice(0, ov).join(' ').toLowerCase();
+                if (fcEnd === ftStart) {
+                  ovCount = ov;
+                  break;
+                }
+              }
+              if (ovCount > 0) {
+                finalCombined = finalCombined + ' ' + ftWords.slice(ovCount).join(' ');
+              } else {
+                finalCombined = finalCombined + ' ' + fText;
+              }
+            }
+          }
+        }
+
+        var combined = '';
+        if (!finalCombined) {
+          combined = latestInterim;
+        } else if (!latestInterim) {
+          combined = finalCombined;
+        } else {
+          if (latestInterim.toLowerCase().indexOf(finalCombined.toLowerCase()) === 0) {
+            combined = latestInterim;
+          } else if (finalCombined.toLowerCase().indexOf(latestInterim.toLowerCase()) !== -1) {
+            combined = finalCombined;
+          } else {
+            var fcWords2 = finalCombined.split(/\\s+/);
+            var liWords = latestInterim.split(/\\s+/);
+            var maxOv2 = Math.min(fcWords2.length, liWords.length);
+            var ovCount2 = 0;
+            for (var ov2 = maxOv2; ov2 > 0; ov2--) {
+              var fcEnd2 = fcWords2.slice(fcWords2.length - ov2).join(' ').toLowerCase();
+              var liStart = liWords.slice(0, ov2).join(' ').toLowerCase();
+              if (fcEnd2 === liStart) {
+                ovCount2 = ov2;
                 break;
               }
             }
-            if (overlapCount > 0) {
-              combined = finalStr + ' ' + iWords.slice(overlapCount).join(' ');
+            if (ovCount2 > 0) {
+              combined = finalCombined + ' ' + liWords.slice(ovCount2).join(' ');
             } else {
-              combined = finalStr + ' ' + interimStr;
+              combined = finalCombined + ' ' + latestInterim;
             }
           }
         }
@@ -390,6 +484,19 @@ export default function ConsultationScreen() {
   const [balance, setBalance] = useState(0);
   const [totalCharged, setTotalCharged] = useState(0);
   const [messages, setMessages] = useState<Msg[]>([]);
+  const messagesRef = useRef<Msg[]>([]);
+  const isHoldPressRef = useRef(false);
+  const lastSentTextRef = useRef('');
+  const lastSentTimestampRef = useRef(0);
+
+  const updateMessages = (updater: Msg[] | ((prev: Msg[]) => Msg[])) => {
+    setMessages((prev) => {
+      const next = typeof updater === 'function' ? (updater as (p: Msg[]) => Msg[])(prev) : updater;
+      messagesRef.current = next;
+      return next;
+    });
+  };
+
   const [input, setInput] = useState('');
   const [ended, setEnded] = useState(false);
   const [lastGeneratedReportId, setLastGeneratedReportId] = useState<string>('');
@@ -465,7 +572,7 @@ export default function ConsultationScreen() {
 
   const scrollChat = () => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 0);
   const addSystem = (text: string) => {
-    setMessages((m) => [...m, { text, isSystem: true, time: fmt(secondsRef.current) }]);
+    updateMessages((m) => [...m, { text, isSystem: true, time: fmt(secondsRef.current) }]);
     scrollChat();
   };
 
@@ -486,7 +593,6 @@ export default function ConsultationScreen() {
     setIsWaitingAstrologer(false);
     setIsAiSpeaking(false);
     setIsListening(false);
-    setEnded(true);
 
     const consultId = consultationIdRef.current || `call_${Date.now()}`;
     const durationSec = secondsRef.current;
@@ -502,13 +608,21 @@ export default function ConsultationScreen() {
     });
     const dateISO = new Date().toISOString();
 
-    // 1. Generate & Save Consultation Summary Report ONLY if user actually participated & asked questions
-    const userExchanges = messages.filter((m) => m.isUser && m.text && m.text.trim().length > 0);
+    // 1. Generate & Save Consultation Summary Report ONLY if user asked questions
+    // Read from messagesRef to ensure we have the live, un-staled messages
+    const allMsgs = messagesRef.current.length > 0 ? messagesRef.current : messages;
+    const userExchanges = allMsgs.filter((m) => m.isUser && m.text && m.text.trim().length > 0);
     const hasUserAskedQuestions = userExchanges.length > 0;
+    // Generate report strictly if user asked questions
+    const shouldGenerateReport = hasUserAskedQuestions;
 
     let genReportId = '';
-    if (hasUserAskedQuestions) {
+    if (shouldGenerateReport) {
       try {
+        const chatSummary = allMsgs.filter((m) => !m.isSystem).length > 0
+          ? allMsgs.filter((m) => !m.isSystem).map((m) => `${m.isUser ? 'Devotee' : astro.name}:\n${m.text}`).join('\n\n')
+          : `Devotee ${devoteeName} consulted with Vedic Astrologer ${astro.name} regarding Kundli analysis, planetary transits, and Vedic remedies.`;
+
         const rep = await generateConsultationSummaryReport(
           {
             consultationId: consultId,
@@ -526,7 +640,7 @@ export default function ConsultationScreen() {
             devoteeRashi,
             devoteeNakshatra,
             language: selectedLanguage,
-            chatSummary: messages.filter((m) => !m.isSystem).map((m) => `${m.isUser ? 'Devotee' : astro.name}: ${m.text}`).join('\n'),
+            chatSummary,
             primaryConcern: userExchanges[0]?.text || undefined,
           },
           authUser?.uid || authUser?.phone
@@ -537,6 +651,7 @@ export default function ConsultationScreen() {
       }
     }
     setLastGeneratedReportId(genReportId);
+    setEnded(true);
 
     if (consultationIdRef.current) {
       completeConsultationBooking(consultationIdRef.current).catch(() => { });
@@ -665,7 +780,7 @@ export default function ConsultationScreen() {
           : `Namaste! I am your Vedic astrologer ${astro.name}. I am analyzing your birth chart. Please ask any question regarding career, marriage, finances, or planetary remedies.`;
 
       // 1. Instantly display greeting in live transcript (0ms)
-      setMessages([
+      updateMessages([
         { text: initialGreeting, isSystem: false, isUser: false, time: fmt(0) }
       ]);
 
@@ -916,9 +1031,18 @@ export default function ConsultationScreen() {
     if (callEndedRef.current) return;
     const text = (typeof customText === 'string' ? customText : input).trim();
     if (!text) return;
+
+    // Strict deduplication guard: prevent same text being sent within 2.5 seconds
+    const now = Date.now();
+    if (lastSentTextRef.current === text && now - lastSentTimestampRef.current < 2500) {
+      return;
+    }
+    lastSentTextRef.current = text;
+    lastSentTimestampRef.current = now;
+
     Keyboard.dismiss();
     setIsChatInputFocused(false);
-    setMessages((m) => [...m, { text, isSystem: false, isUser: true, time: fmt(secondsRef.current) }]);
+    updateMessages((m) => [...m, { text, isSystem: false, isUser: true, time: fmt(secondsRef.current) }]);
     if (typeof customText !== 'string') setInput('');
     setIsListening(false);
     scrollChat();
@@ -941,7 +1065,7 @@ export default function ConsultationScreen() {
         if (callEndedRef.current) return;
         if (res.reply) {
           setIsAiAnalyzing(false);
-          setMessages((m) => [...m, { text: res.reply, isSystem: false, isUser: false, time: fmt(secondsRef.current) }]);
+          updateMessages((m) => [...m, { text: res.reply, isSystem: false, isUser: false, time: fmt(secondsRef.current) }]);
           scrollChat();
           if (isSpeakerOn && !isMuted && !callEndedRef.current) {
             speakAstrologerText(res.reply, {
@@ -968,7 +1092,7 @@ export default function ConsultationScreen() {
         : selectedLanguage === 'Hindi'
           ? `आपकी जन्म कुंडली के अनुसार देवगुरु बृहस्पति का गोचर शुभ है। प्रतिदिन सूर्य को अर्घ्य दें एवं वैदिक उपाय करें।`
           : `Based on your birth chart, the planetary transits are supportive. Maintain mental peace and observe your daily remedies.`;
-      setMessages((m) => [...m, { text: fallbackReply, isSystem: false, isUser: false, time: fmt(secondsRef.current) }]);
+      updateMessages((m) => [...m, { text: fallbackReply, isSystem: false, isUser: false, time: fmt(secondsRef.current) }]);
       scrollChat();
       if (isAi && isSpeakerOn && !isMuted && !callEndedRef.current) {
         speakAstrologerText(fallbackReply, {
@@ -1021,6 +1145,10 @@ export default function ConsultationScreen() {
     setVoiceModalVisible(false);
 
     const query = (textToSend !== undefined ? textToSend : (spokenTranscriptRef.current || spokenTranscript)).trim();
+    // Clear transcript immediately so it cannot be double-sent
+    setSpokenTranscript('');
+    spokenTranscriptRef.current = '';
+
     if (query.length > 0) {
       sendMessage(query);
     }
@@ -1039,6 +1167,7 @@ export default function ConsultationScreen() {
   };
 
   const handleHoldMicStart = () => {
+    isHoldPressRef.current = false;
     holdStartTimeRef.current = Date.now();
     setIsHoldingMic(true);
     startVoiceListening();
@@ -1050,8 +1179,9 @@ export default function ConsultationScreen() {
 
     // If held for 400ms or longer, it was a hold-to-speak action (just like ChatGPT)
     if (elapsed >= 400) {
+      isHoldPressRef.current = true;
       setTimeout(() => {
-        const text = spokenTranscriptRef.current.trim();
+        const text = (spokenTranscriptRef.current || spokenTranscript).trim();
         if (text.length > 0) {
           stopVoiceListeningAndSend(text);
         }
@@ -1060,6 +1190,11 @@ export default function ConsultationScreen() {
   };
 
   const handleMicToggle = () => {
+    // Suppress if this was already handled as a hold-to-speak gesture
+    if (isHoldPressRef.current) {
+      isHoldPressRef.current = false;
+      return;
+    }
     if (isListening) {
       stopVoiceListeningAndSend();
     } else {
@@ -1442,18 +1577,28 @@ export default function ConsultationScreen() {
                         paddingVertical: 4,
                         paddingHorizontal: 6,
                         marginBottom: 6,
+                        overflow: 'hidden',
                       }}
                     >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, marginRight: 8 }}>
                         <Avatar uri={astro.imageUrl} size={28} border={1.5} />
-                        <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800', marginLeft: 8 }} numberOfLines={1}>
-                          {astro.name}
-                        </Text>
-                        {isAiSpeaking && (
-                          <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '700', marginLeft: 6 }}>
-                            • Speaking...
+                        <View style={{ marginLeft: 8, flex: 1, minWidth: 0 }}>
+                          <Text
+                            style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
+                            {astro.name}
                           </Text>
-                        )}
+                          {isAiSpeaking && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
+                              <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#FFD700', marginRight: 4 }} />
+                              <Text style={{ color: '#FFD700', fontSize: 10, fontWeight: '700' }} numberOfLines={1}>
+                                Speaking...
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
                       <Pressable
                         onPress={() => {
@@ -1461,10 +1606,11 @@ export default function ConsultationScreen() {
                           setIsChatInputFocused(false);
                         }}
                         style={{
+                          flexShrink: 0,
                           flexDirection: 'row',
                           alignItems: 'center',
                           paddingHorizontal: 10,
-                          paddingVertical: 4,
+                          paddingVertical: 5,
                           borderRadius: 14,
                           backgroundColor: 'rgba(255, 255, 255, 0.1)',
                           borderWidth: 1,
@@ -2434,7 +2580,7 @@ export default function ConsultationScreen() {
                             ? `மொழி தமிழுக்கு மாற்றப்பட்டது.`
                             : `Language changed to ${lang.name}. I am ready to answer your astrological questions.`;
 
-                      setMessages((m) => [
+                      updateMessages((m) => [
                         ...m,
                         { text: switchMsg, isSystem: false, isUser: false, time: fmt(secondsRef.current) }
                       ]);

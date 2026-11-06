@@ -1457,7 +1457,38 @@ function RealAstrologersCarousel({ realAstrologers = [] }: { realAstrologers?: L
         style={{ marginTop: 14 }}
         contentContainerStyle={{ paddingHorizontal: 20 }}
       >
-        {displayList.map((a) => {
+        {displayList.length === 0 ? (
+          <View style={{ flexDirection: 'row', gap: 14, paddingVertical: 4 }}>
+            {[1, 2, 3].map((k) => (
+              <View
+                key={k}
+                style={{
+                  width: 280,
+                  height: 124,
+                  borderRadius: 20,
+                  backgroundColor: colors.isLight ? '#FBF8F2' : 'rgba(201,168,76,0.06)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: colors.isLight ? 'rgba(201,168,76,0.25)' : 'rgba(201,168,76,0.15)',
+                  flexDirection: 'row',
+                  padding: 16,
+                }}
+              >
+                <ActivityIndicator size="small" color="#C9A84C" />
+                <View style={{ marginLeft: 14 }}>
+                  <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>
+                    Connecting Gurus...
+                  </Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>
+                    Loading Vedic profiles
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : (
+          displayList.map((a) => {
           const formattedName = (a.name || 'Astrologer')
             .split(' ')
             .map((w) => (w.length > 0 ? w[0].toUpperCase() + w.slice(1).toLowerCase() : ''))
@@ -1597,7 +1628,7 @@ function RealAstrologersCarousel({ realAstrologers = [] }: { realAstrologers?: L
               </View>
             </Pressable>
           );
-        })}
+        }))}
       </ScrollView>
     </View>
   );
@@ -2176,8 +2207,21 @@ export default function HomeDashboardScreen() {
   };
 
   useEffect(() => {
+    // 1. Instantly load cached real astrologers from AsyncStorage for 0ms initial render
+    AsyncStorage.getItem('@astroparihar_real_astrologers_live').then((cached) => {
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setRealAstrologers((prev) => (prev.length === 0 ? parsed : prev));
+          }
+        } catch {}
+      }
+    });
+
+    // 2. Fetch fresh live data and poll gently at 25s intervals to protect backend concurrency
     loadData();
-    const poll = setInterval(loadData, 5000);
+    const poll = setInterval(loadData, 25000);
     return () => clearInterval(poll);
   }, []);
 

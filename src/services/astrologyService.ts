@@ -4,6 +4,10 @@ import { useAuthStore } from '@/features/auth/authStore';
 
 export const API_BASE_URL = API_ENDPOINTS.appDynamic;
 
+// High-concurrency caching & request deduplication maps
+const inFlightRequests = new Map<string, Promise<any>>();
+const memoryTtlCache = new Map<string, { data: any; expiry: number }>();
+
 export interface CalculatedPlanet {
   name: string;
   symbol: string;
@@ -145,6 +149,12 @@ export async function fetchCalculatedKundli(profile?: {
       : '';
     const cacheKey = userUid ? `astroparihar_cached_kundli_${userUid}${profileKey}` : `astroparihar_cached_kundli${profileKey}`;
 
+    // 0. High-concurrency memory cache check (5 min TTL)
+    const memCached = memoryTtlCache.get(cacheKey);
+    if (memCached && memCached.expiry > Date.now()) {
+      return memCached.data;
+    }
+
     const payload = {
       dob: effectiveProfile?.dob || '1995-10-15',
       tob: effectiveProfile?.tob || '12:00 PM',
@@ -246,6 +256,7 @@ export async function fetchCalculatedKundli(profile?: {
             ],
           };
 
+          memoryTtlCache.set(cacheKey, { data: result, expiry: Date.now() + 300000 });
           await AsyncStorage.setItem(cacheKey, JSON.stringify(result));
           return result;
         }
@@ -254,7 +265,11 @@ export async function fetchCalculatedKundli(profile?: {
 
     // Check cached result
     const cached = await AsyncStorage.getItem(cacheKey);
-    if (cached) return JSON.parse(cached);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      memoryTtlCache.set(cacheKey, { data: parsed, expiry: Date.now() + 300000 });
+      return parsed;
+    }
   } catch (err) {
     console.warn('Error reading calculated kundli:', err);
   }
@@ -383,6 +398,12 @@ export async function calculateLiveKundliMatch(
 export async function fetchLivePanchang(dateStr?: string, locationStr?: string): Promise<PanchangLiveResult> {
   const d = dateStr || new Date().toISOString().split('T')[0];
   const loc = locationStr || 'New Delhi, India';
+  const cacheKey = `panchang_${d}_${loc}`;
+
+  const memCached = memoryTtlCache.get(cacheKey);
+  if (memCached && memCached.expiry > Date.now()) {
+    return memCached.data;
+  }
 
   try {
     const controller = new AbortController();
@@ -404,7 +425,7 @@ export async function fetchLivePanchang(dateStr?: string, locationStr?: string):
           good: c.type === 'Good',
         }));
 
-        return {
+        const result: PanchangLiveResult = {
           tithi: `${p.paksha || 'Shukla'} ${p.tithi || 'Dwitiya'}`,
           tithiSub: p.tithiEnd ? `Until ${p.tithiEnd}` : 'Throughout the day',
           nakshatra: p.nakshatra || 'Rohini',
@@ -431,6 +452,9 @@ export async function fetchLivePanchang(dateStr?: string, locationStr?: string):
             { period: '3:18 – 4:48 PM', name: 'Udveg', type: 'Inauspicious', ruler: 'Sun', good: false },
           ],
         };
+
+        memoryTtlCache.set(cacheKey, { data: result, expiry: Date.now() + 900000 });
+        return result;
       }
     }
   } catch (err) {
@@ -513,6 +537,14 @@ export async function fetchLiveRemedies(domain?: string): Promise<{
 // 5. Live 12 Signs Horoscope Service
 // ----------------------------------------------------------------------------
 export async function fetchLiveHoroscopes(): Promise<Record<string, LiveHoroscopeSignData>> {
+  const today = new Date().toISOString().split('T')[0];
+  const cacheKey = `horoscope_${today}`;
+
+  const memCached = memoryTtlCache.get(cacheKey);
+  if (memCached && memCached.expiry > Date.now()) {
+    return memCached.data;
+  }
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4000);
@@ -522,6 +554,7 @@ export async function fetchLiveHoroscopes(): Promise<Record<string, LiveHoroscop
     if (res.ok) {
       const data = await res.json();
       if (data.success && data.allSigns) {
+        memoryTtlCache.set(cacheKey, { data: data.allSigns, expiry: Date.now() + 1800000 });
         return data.allSigns;
       }
     }
