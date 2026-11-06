@@ -334,19 +334,49 @@ function WhatsAppBackground() {
   );
 }
 
-function TypingIndicator() {
+function TypingIndicator({ language = 'English', astrologerName = 'Astrologer' }: { language?: string; astrologerName?: string }) {
   const ctl = useController({ duration: 900, repeat: true, autoStart: true });
+  const tipText = language === 'Telugu' || language === 'te'
+    ? 'మీ జన్మ కుండలి మరియు గ్రహ గోచారాలను విశ్లేషిస్తున్నారు...'
+    : language === 'Hindi' || language === 'hi'
+      ? 'आपकी जन्म कुंडली और ग्रह गोचर का विश्लेषण हो रहा है...'
+      : 'Analyzing your Janam Kundli & planetary transits...';
+
   return (
-    <View style={{ paddingBottom: 8, paddingLeft: 4, flexDirection: 'row', alignItems: 'flex-end' }} testID="aiChat.typing">
-      <View style={{ width: 28, height: 28, borderRadius: 14, marginRight: 4, backgroundColor: '#8B1A1A', alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ paddingBottom: 8, paddingLeft: 4, flexDirection: 'row', alignItems: 'flex-start' }} testID="aiChat.typing">
+      <View style={{ width: 30, height: 30, borderRadius: 15, marginRight: 6, backgroundColor: '#8B1A1A', alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
         <Text style={{ fontSize: 13 }}>🔮</Text>
       </View>
-      <View style={{ paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#FFFFFF', borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomLeftRadius: 2, borderBottomRightRadius: 8, flexDirection: 'row', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 }}>
-        {[0, 1, 2].map((i) => {
-          const t = Math.min(1, Math.max(0, ctl.value - i * 0.33));
-          const bounce = t < 0.5 ? t * 2 : (1 - t) * 2;
-          return <View key={i} style={{ marginHorizontal: 2, width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#8A8A8A', transform: [{ translateY: -bounce * 5 }] }} />;
-        })}
+      <View style={{
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        borderBottomLeftRadius: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.08,
+        shadowRadius: 3,
+        shadowOffset: { width: 0, height: 1 },
+        elevation: 2,
+        maxWidth: '85%',
+        borderWidth: 1,
+        borderColor: 'rgba(201, 168, 76, 0.4)',
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+          <Text style={{ color: '#8B1A1A', fontSize: 11, fontWeight: '800', marginRight: 6 }}>
+            {astrologerName}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {[0, 1, 2].map((i) => {
+              const t = Math.min(1, Math.max(0, ctl.value - i * 0.33));
+              const bounce = t < 0.5 ? t * 2 : (1 - t) * 2;
+              return <View key={i} style={{ marginHorizontal: 1.5, width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#C9A84C', transform: [{ translateY: -bounce * 4 }] }} />;
+            })}
+          </View>
+        </View>
+        <Text style={{ color: '#4B5563', fontSize: 11, fontWeight: '600', lineHeight: 15 }}>
+          {tipText}
+        </Text>
       </View>
     </View>
   );
@@ -855,6 +885,19 @@ function Bubble({
           <Text style={{ color: '#111B21', ...lh(14, 1.48) }}>{displayedText}</Text>
 
           {msg.structured ? <StructuredAnalysisCard structured={msg.structured} language={language} /> : null}
+
+          {!msg.isUser ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, paddingTop: 4, borderTopWidth: 0.6, borderTopColor: 'rgba(0,128,105,0.18)' }}>
+              <AppIcon name="verified_rounded" size={11} color="#008069" style={{ marginRight: 4 }} />
+              <Text style={{ color: '#008069', fontSize: 10, fontWeight: '700' }}>
+                {language === 'Telugu' || language === 'te'
+                  ? 'వేద జ్యోతిష విశ్లేషణ • పైన "వినండి" నొక్కి ఆడియో వినవచ్చు'
+                  : language === 'Hindi' || language === 'hi'
+                    ? 'वैदिक ज्योतिषीय समाधान • ऊपर "Listen" दबाकर ऑडियो सुनें'
+                    : 'Vedic Astrological Guidance • Tap "Listen" above to hear audio'}
+              </Text>
+            </View>
+          ) : null}
 
           <View style={{ position: 'absolute', bottom: 4, right: 8, flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ color: '#667781', fontSize: 10 }}>{msg.time}</Text>
@@ -1768,7 +1811,7 @@ export default function AiChatScreen() {
                 }}
               >
                 {item === 'typing' ? (
-                  <TypingIndicator />
+                  <TypingIndicator language={selectedLanguage} astrologerName={selectedAstrologer.name} />
                 ) : (
                   <Bubble
                     msg={item}
@@ -1910,6 +1953,27 @@ export default function AiChatScreen() {
                 borderTopColor: 'rgba(0,0,0,0.06)',
               }}
             >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(0, 168, 132, 0.08)',
+                  paddingHorizontal: 14,
+                  paddingVertical: 5,
+                  borderBottomWidth: 0.5,
+                  borderBottomColor: 'rgba(0, 168, 132, 0.15)',
+                }}
+              >
+                <AppIcon name="lightbulb" size={13} color="#008069" style={{ marginRight: 6 }} />
+                <Text style={{ color: '#008069', fontSize: 11, fontWeight: '700', flex: 1 }} numberOfLines={1}>
+                  {selectedLanguage === 'Telugu'
+                    ? 'చిట్కా: కెరీర్, వివాహం, ఆర్థికం లేదా గ్రహ దోషాల గురించి అడగండి'
+                    : selectedLanguage === 'Hindi'
+                      ? 'सुझाव: करियर, विवाह, धन लाभ या ग्रह शांति उपाय पूछें'
+                      : 'Tip: Ask about your career, marriage timing, wealth or dosha remedies'}
+                </Text>
+              </View>
+
               <View
                 style={{
                   flexDirection: 'row',
