@@ -461,7 +461,14 @@ export default function ConsultationScreen() {
     useLanguageStore.getState().selectedLanguage || 'English'
   );
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [confirmEndCallVisible, setConfirmEndCallVisible] = useState(false);
   const callEndedRef = useRef(false);
+
+  const astroDisplayName = selectedLanguage === 'Telugu'
+    ? (astro.name.includes('Devavrat') ? 'ఆచార్య దేవవ్రత్ శాస్త్రి' : astro.name.includes('Dhananjay') ? 'ఆచార్య ధనంజయ్ శాస్త్రి' : 'వైదిక జ్యోతిష నిపుణుడిని')
+    : selectedLanguage === 'Hindi'
+      ? (astro.name.includes('Devavrat') ? 'आचार्य देवव्रत शास्त्री' : astro.name.includes('Dhananjay') ? 'आचार्य धनंजय शास्त्री' : 'वैदिक ज्योतिषी')
+      : astro.name;
 
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -488,10 +495,30 @@ export default function ConsultationScreen() {
   const isHoldPressRef = useRef(false);
   const lastSentTextRef = useRef('');
   const lastSentTimestampRef = useRef(0);
+  const isSendingMessageRef = useRef(false);
+  const holdEndTimerRef = useRef<any>(null);
+  const isVoiceSendingRef = useRef(false);
 
   const updateMessages = (updater: Msg[] | ((prev: Msg[]) => Msg[])) => {
     setMessages((prev) => {
-      const next = typeof updater === 'function' ? (updater as (p: Msg[]) => Msg[])(prev) : updater;
+      let next = typeof updater === 'function' ? (updater as (p: Msg[]) => Msg[])(prev) : updater;
+      // Filter out immediate consecutive duplicate messages (user messages or duplicate system alerts)
+      if (next.length > 1) {
+        const cleaned: Msg[] = [];
+        for (let i = 0; i < next.length; i++) {
+          const curr = next[i];
+          const prevMsg = cleaned[cleaned.length - 1];
+          if (
+            prevMsg &&
+            prevMsg.isUser === curr.isUser &&
+            prevMsg.text.trim().toLowerCase() === curr.text.trim().toLowerCase()
+          ) {
+            continue; // Skip consecutive duplicate message
+          }
+          cleaned.push(curr);
+        }
+        next = cleaned;
+      }
       messagesRef.current = next;
       return next;
     });
@@ -514,29 +541,29 @@ export default function ConsultationScreen() {
   const holdStartTimeRef = useRef(0);
   const spokenTranscriptRef = useRef('');
   const voiceScrollRef = useRef<ScrollView>(null);
-  const isKeypadActive = keyboardHeight > 0 || isVoiceInputFocused;
-  const isChatKeypadOpen = keyboardHeight > 0 || isChatInputFocused;
+  const isKeypadActive = keyboardHeight > 0;
+  const isChatKeypadOpen = keyboardHeight > 0;
   const { height: windowH } = useWindowDimensions();
   const screenH = Dimensions.get('screen').height;
-  const isAndroidWindowResized = Platform.OS === 'android' && windowH < screenH - 120;
+  const initialWindowH = useRef(Dimensions.get('window').height).current;
+  const isWindowResized = Platform.OS === 'android' && windowH < initialWindowH - 150;
   const androidBottomPad = Platform.OS === 'android'
-    ? (isAndroidWindowResized ? 0 : keyboardHeight)
+    ? (isWindowResized ? 0 : keyboardHeight + (keyboardHeight > 0 ? Math.max(insets.bottom, 0) + 8 : 0))
     : 0;
 
   useEffect(() => {
-    const updateKeyboard = (h: number) => {
-      if (Platform.OS === 'android') {
-        try {
-          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        } catch { }
-      }
-      setKeyboardHeight(h);
+    const onShow = (e: any) => {
+      const h = e?.endCoordinates?.height || 0;
+      if (h > 0) setKeyboardHeight((prev) => (prev === h ? prev : h));
+    };
+    const onHide = () => {
+      setKeyboardHeight((prev) => (prev === 0 ? prev : 0));
     };
 
-    const s1 = Keyboard.addListener('keyboardWillShow', (e) => updateKeyboard(e.endCoordinates.height));
-    const s2 = Keyboard.addListener('keyboardDidShow', (e) => updateKeyboard(e.endCoordinates.height));
-    const s3 = Keyboard.addListener('keyboardWillHide', () => updateKeyboard(0));
-    const s4 = Keyboard.addListener('keyboardDidHide', () => updateKeyboard(0));
+    const s1 = Keyboard.addListener('keyboardWillShow', onShow);
+    const s2 = Keyboard.addListener('keyboardDidShow', onShow);
+    const s3 = Keyboard.addListener('keyboardWillHide', onHide);
+    const s4 = Keyboard.addListener('keyboardDidHide', onHide);
 
     return () => {
       s1.remove();
@@ -586,13 +613,14 @@ export default function ConsultationScreen() {
 
   const endCall = async () => {
     callEndedRef.current = true;
+    setConnecting(false);
+    setConfirmEndCallVisible(false);
     stopTimers();
     stopAstrologerSpeech();
-    setConnected(false);
-    setConnecting(false);
     setIsWaitingAstrologer(false);
     setIsAiSpeaking(false);
     setIsListening(false);
+    setEnded(true);
 
     const consultId = consultationIdRef.current || `call_${Date.now()}`;
     const durationSec = secondsRef.current;
@@ -651,7 +679,7 @@ export default function ConsultationScreen() {
       }
     }
     setLastGeneratedReportId(genReportId);
-    setEnded(true);
+    setConnected(false);
 
     if (consultationIdRef.current) {
       completeConsultationBooking(consultationIdRef.current).catch(() => { });
@@ -763,52 +791,57 @@ export default function ConsultationScreen() {
 
     const minRequired = ratePerMin * 5;
 
-    // If this is an AI Astrologer: Connect IMMEDIATELY (0ms delay) so greeting & voice start instantly
+    // If this is an AI Astrologer: Connect and initialize
     if (isAi) {
-      setConnecting(false);
-      setConnected(true);
-      setIsWaitingAstrologer(false);
-
       const activeConsultId = consultationIdRef.current || `ai_call_${Date.now()}_${roomID}`;
       setConsultationId(activeConsultId);
       consultationIdRef.current = activeConsultId;
 
       const initialGreeting = selectedLanguage === 'Telugu'
-        ? `నమస్కారం! నేను మీ జ్యోతిష నిపుణుడు ${astro.name}. మీ కుండలి పరిశీలించడానికి సిద్ధంగా ఉన్నాను. మీ ఉద్యోగం, వివాహం, ఆర్థికం లేదా గ్రహ పరిహారాల గురించి ఏ ప్రశ్న అయినా అడగండి.`
+        ? `నమస్కారం! నేను మీ జ్యోతిష నిపుణుడు ${astroDisplayName}. మీ కుండలి పరిశీలించడానికి సిద్ధంగా ఉన్నాను. మీ ఉద్యోగం, వివాహం, ఆర్థికం లేదా గ్రహ పరిహారాల గురించి ఏ ప్రశ్న అయినా అడగండి.`
         : selectedLanguage === 'Hindi'
-          ? `नमस्ते! मैं आपका ज्योतिषी ${astro.name} हूँ। आपकी जन्म कुंडली के अनुसार करियर, विवाह, धन या ग्रह शांति के बारे में आप क्या जानना चाहते हैं?`
+          ? `नमस्ते! मैं आपका ज्योतिषी ${astroDisplayName} हूँ। आपकी जन्म कुंडली के अनुसार करियर, विवाह, धन या ग्रह शांति के बारे में आप क्या जानना चाहते हैं?`
           : `Namaste! I am your Vedic astrologer ${astro.name}. I am analyzing your birth chart. Please ask any question regarding career, marriage, finances, or planetary remedies.`;
 
-      // 1. Instantly display greeting in live transcript (0ms)
-      updateMessages([
-        { text: initialGreeting, isSystem: false, isUser: false, time: fmt(0) }
-      ]);
-
-      // 2. Instantly start audio speech
-      speakAstrologerText(initialGreeting, {
-        astrologerName: astro.name,
-        gender: astroGender,
-        language: selectedLanguage,
-        onStart: () => { if (!callEndedRef.current) setIsAiSpeaking(true); },
-        onDone: () => setIsAiSpeaking(false),
-      });
-
-      // 3. Start call timer right away
-      timers.current.call = setInterval(() => setSeconds((s) => s + 1), 1000);
-
-      // 4. Check wallet & deduct 1st minute asynchronously in background without delaying greeting
+      // 1. Verify 5-minute minimum balance BEFORE connecting
       (async () => {
         const curBal = await getWalletBalance();
         if (!mounted.current || callEndedRef.current) return;
         setBalance(curBal);
 
         if (curBal < minRequired) {
-          stopAstrologerSpeech();
+          // DO NOT connect: Stop all connection, speech, and timers; show professional low balance dialog
+          setConnecting(false);
+          setConnected(false);
+          setIsWaitingAstrologer(false);
           setIsAiSpeaking(false);
           setLowBalanceVisible(true);
           return;
         }
 
+        // If customer has at least 5 mins balance: Connect cleanly
+        setConnecting(false);
+        setConnected(true);
+        setIsWaitingAstrologer(false);
+
+        // 2. Display greeting in transcript
+        updateMessages([
+          { text: initialGreeting, isSystem: false, isUser: false, time: fmt(0) }
+        ]);
+
+        // 3. Audio speech starts once 5-min balance is verified (recites full greeting)
+        speakAstrologerText(initialGreeting, {
+          astrologerName: astro.name,
+          gender: astroGender,
+          language: selectedLanguage,
+          onStart: () => { if (!callEndedRef.current) setIsAiSpeaking(true); },
+          onDone: () => setIsAiSpeaking(false),
+        });
+
+        // 4. Start call timer
+        timers.current.call = setInterval(() => setSeconds((s) => s + 1), 1000);
+
+        // 5. Deduct 1st minute
         const firstMin = await deductWalletBalance(
           ratePerMin,
           `1st Min: AI Consultation with ${astro.name}`,
@@ -987,11 +1020,15 @@ export default function ConsultationScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuth]);
 
-  // Clean Android Hardware Back press handling
+  // Clean Android Hardware Back press handling: Prompts confirmation instead of abruptly ending or disconnecting
   useEffect(() => {
     const onBackPress = () => {
+      if (confirmEndCallVisible) {
+        setConfirmEndCallVisible(false);
+        return true;
+      }
       if (connected && !ended && !callEndedRef.current) {
-        endCall();
+        setConfirmEndCallVisible(true);
         return true;
       }
       stopTimers();
@@ -1002,7 +1039,7 @@ export default function ConsultationScreen() {
     return () => {
       backSub.remove();
     };
-  }, [connected, ended]);
+  }, [connected, ended, confirmEndCallVisible]);
 
   const QUICK_VOICE_TOPICS = selectedLanguage === 'Telugu' ? [
     { label: '💼 ఉద్యోగం & కెరీర్', query: 'నా ఉద్యోగం మరియు కెరీర్ భవిష్యత్తు ఎలా ఉంది? ప్రమోషన్ ఎప్పుడు వస్తుంది?' },
@@ -1032,11 +1069,16 @@ export default function ConsultationScreen() {
     const text = (typeof customText === 'string' ? customText : input).trim();
     if (!text) return;
 
-    // Strict deduplication guard: prevent same text being sent within 2.5 seconds
+    // Strict deduplication guard: prevent same text being sent within 3 seconds
     const now = Date.now();
-    if (lastSentTextRef.current === text && now - lastSentTimestampRef.current < 2500) {
+    if (
+      lastSentTextRef.current.trim().toLowerCase() === text.trim().toLowerCase() &&
+      now - lastSentTimestampRef.current < 3000
+    ) {
       return;
     }
+    if (isSendingMessageRef.current) return;
+    isSendingMessageRef.current = true;
     lastSentTextRef.current = text;
     lastSentTimestampRef.current = now;
 
@@ -1046,6 +1088,10 @@ export default function ConsultationScreen() {
     if (typeof customText !== 'string') setInput('');
     setIsListening(false);
     scrollChat();
+
+    setTimeout(() => {
+      isSendingMessageRef.current = false;
+    }, 600);
 
     if (isAi) {
       setIsAiAnalyzing(true);
@@ -1137,6 +1183,14 @@ export default function ConsultationScreen() {
   };
 
   const stopVoiceListeningAndSend = (textToSend?: string) => {
+    if (holdEndTimerRef.current) {
+      clearTimeout(holdEndTimerRef.current);
+      holdEndTimerRef.current = null;
+    }
+    if (isVoiceSendingRef.current) return;
+    isVoiceSendingRef.current = true;
+    setTimeout(() => { isVoiceSendingRef.current = false; }, 800);
+
     Keyboard.dismiss();
     setIsVoiceInputFocused(false);
     speechWebViewRef.current?.injectJavaScript(`if (window.stopListening) { window.stopListening(); } true;`);
@@ -1155,6 +1209,10 @@ export default function ConsultationScreen() {
   };
 
   const cancelVoiceListening = () => {
+    if (holdEndTimerRef.current) {
+      clearTimeout(holdEndTimerRef.current);
+      holdEndTimerRef.current = null;
+    }
     Keyboard.dismiss();
     setIsVoiceInputFocused(false);
     speechWebViewRef.current?.injectJavaScript(`if (window.stopListening) { window.stopListening(); } true;`);
@@ -1167,6 +1225,10 @@ export default function ConsultationScreen() {
   };
 
   const handleHoldMicStart = () => {
+    if (holdEndTimerRef.current) {
+      clearTimeout(holdEndTimerRef.current);
+      holdEndTimerRef.current = null;
+    }
     isHoldPressRef.current = false;
     holdStartTimeRef.current = Date.now();
     setIsHoldingMic(true);
@@ -1180,7 +1242,8 @@ export default function ConsultationScreen() {
     // If held for 400ms or longer, it was a hold-to-speak action (just like ChatGPT)
     if (elapsed >= 400) {
       isHoldPressRef.current = true;
-      setTimeout(() => {
+      if (holdEndTimerRef.current) clearTimeout(holdEndTimerRef.current);
+      holdEndTimerRef.current = setTimeout(() => {
         const text = (spokenTranscriptRef.current || spokenTranscript).trim();
         if (text.length > 0) {
           stopVoiceListeningAndSend(text);
@@ -1285,6 +1348,34 @@ export default function ConsultationScreen() {
               borderBottomColor: 'rgba(201, 168, 76, 0.3)',
             }}
           >
+            {/* Top Back Navigation Button */}
+            <Pressable
+              onPress={() => {
+                if (connected && !ended && !callEndedRef.current) {
+                  setConfirmEndCallVisible(true);
+                } else {
+                  if (router.canGoBack()) router.back();
+                  else router.replace(AppRoutes.homeDashboardScreen);
+                }
+              }}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 17,
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                borderWidth: 1,
+                borderColor: 'rgba(201, 168, 76, 0.3)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 8,
+              }}
+            >
+              <AppIcon name="arrow_back" size={18} color="#FFD700" />
+            </Pressable>
+
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
               <Avatar uri={astro.imageUrl} size={42} border={1.5} />
               <View style={{ marginLeft: 10, flex: 1 }}>
@@ -1292,9 +1383,25 @@ export default function ConsultationScreen() {
                   {astro.name}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
-                  <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: connected ? '#3DCB7A' : '#FFD700' }} />
-                  <Text style={{ marginLeft: 4, color: connected ? '#3DCB7A' : '#FFD700', fontSize: 11, fontWeight: '600' }}>
-                    {connected ? (isVideo ? 'Live Video Call' : 'Live Voice Call') : 'Connecting...'}
+                  <View
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: 3.5,
+                      backgroundColor: connected ? '#3DCB7A' : (ended || callEndedRef.current ? '#EF4444' : (connecting ? '#FFD700' : '#94A3B8')),
+                    }}
+                  />
+                  <Text
+                    style={{
+                      marginLeft: 4,
+                      color: connected ? '#3DCB7A' : (ended || callEndedRef.current ? '#EF4444' : (connecting ? '#FFD700' : '#94A3B8')),
+                      fontSize: 11,
+                      fontWeight: '600',
+                    }}
+                  >
+                    {connected
+                      ? (isVideo ? 'Live Video Call' : 'Live Voice Call')
+                      : (ended || callEndedRef.current ? 'Call Ended' : (connecting ? 'Connecting...' : 'Ready'))}
                   </Text>
                 </View>
               </View>
@@ -1397,7 +1504,7 @@ export default function ConsultationScreen() {
 
           {/* Middle Main View: Kundli Chart OR Astrologer Stream */}
           <View style={{ flex: 1, justifyContent: 'center' }}>
-            {!connected && (
+            {connecting && !connected && !ended && !callEndedRef.current && (
               <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
                 <View
                   style={{
@@ -1423,7 +1530,7 @@ export default function ConsultationScreen() {
               </View>
             )}
 
-            {connected && (
+            {(!connecting || connected || ended || callEndedRef.current) && (
               callTab === 'chart' ? (
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 6, paddingBottom: 28 }}>
                   {/* Devotee Birth Details Header Card */}
@@ -1574,13 +1681,17 @@ export default function ConsultationScreen() {
                         flexDirection: 'row',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        paddingVertical: 4,
-                        paddingHorizontal: 6,
+                        paddingVertical: 6,
+                        paddingHorizontal: 10,
                         marginBottom: 6,
+                        borderRadius: 14,
+                        backgroundColor: 'rgba(13, 21, 39, 0.88)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(201, 168, 76, 0.3)',
                         overflow: 'hidden',
                       }}
                     >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, marginRight: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, marginRight: 10 }}>
                         <Avatar uri={astro.imageUrl} size={28} border={1.5} />
                         <View style={{ marginLeft: 8, flex: 1, minWidth: 0 }}>
                           <Text
@@ -1594,7 +1705,7 @@ export default function ConsultationScreen() {
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
                               <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#FFD700', marginRight: 4 }} />
                               <Text style={{ color: '#FFD700', fontSize: 10, fontWeight: '700' }} numberOfLines={1}>
-                                Speaking...
+                                {selectedLanguage === 'Telugu' ? 'మాట్లాడుతున్నారు...' : selectedLanguage === 'Hindi' ? 'बोल रहे हैं...' : 'Speaking...'}
                               </Text>
                             </View>
                           )}
@@ -1612,14 +1723,14 @@ export default function ConsultationScreen() {
                           paddingHorizontal: 10,
                           paddingVertical: 5,
                           borderRadius: 14,
-                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          backgroundColor: 'rgba(201, 168, 76, 0.18)',
                           borderWidth: 1,
-                          borderColor: 'rgba(201, 168, 76, 0.3)',
+                          borderColor: 'rgba(201, 168, 76, 0.45)',
                         }}
                       >
                         <AppIcon name="keyboard_hide_rounded" size={14} color="#FFD700" />
                         <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '700', marginLeft: 4 }}>
-                          Hide Keypad
+                          {selectedLanguage === 'Telugu' ? 'కీప్యాడ్ దాచు' : selectedLanguage === 'Hindi' ? 'कीबोर्ड छिपाएं' : 'Hide Keypad'}
                         </Text>
                       </Pressable>
                     </View>
@@ -1662,8 +1773,10 @@ export default function ConsultationScreen() {
                           </Text>
                           <Text style={{ color: '#F8FAFC', fontSize: 11.5, lineHeight: 16 }}>
                             {selectedLanguage === 'Telugu'
-                              ? `నమస్కారం! నేను మీ జ్యోతిష నిపుణుడు ${astro.name}. మీ కుండలి పరిశీలించడానికి సిద్ధంగా ఉన్నాను. మీ ఉద్యోగం, వివాహం, ఆర్థికం లేదా గ్రహ పరిహారాల గురించి ఏ ప్రశ్న అయినా అడగండి.`
-                              : `Namaste! I am ${astro.name}. I am actively examining your Janam Kundli. Ask any question regarding your career, marriage, finances, or planetary remedies.`}
+                              ? `నమస్కారం! నేను మీ జ్యోతిష నిపుణుడు ${astroDisplayName}. మీ కుండలి పరిశీలించడానికి సిద్ధంగా ఉన్నాను. మీ ఉద్యోగం, వివాహం, ఆర్థికం లేదా గ్రహ పరిహారాల గురించి ఏ ప్రశ్న అయినా అడగండి.`
+                              : selectedLanguage === 'Hindi'
+                                ? `नमस्ते! मैं आपका ज्योतिषी ${astroDisplayName} हूँ। आपकी जन्म कुंडली के अनुसार करियर, विवाह, धन या ग्रह शांति के बारे में आप क्या जानना चाहते हैं?`
+                                : `Namaste! I am ${astro.name}. I am actively examining your Janam Kundli. Ask any question regarding your career, marriage, finances, or planetary remedies.`}
                           </Text>
                         </View>
                       }
@@ -1943,7 +2056,13 @@ export default function ConsultationScreen() {
               {/* 3. End Call Button */}
               <Pressable
                 testID="consultation.end"
-                onPress={endCall}
+                onPress={() => {
+                  if (connected && !ended && !callEndedRef.current) {
+                    setConfirmEndCallVisible(true);
+                  } else {
+                    endCall();
+                  }
+                }}
                 style={({ pressed }) => ({
                   flex: 1,
                   height: 42,
@@ -2625,6 +2744,423 @@ export default function ConsultationScreen() {
             </View>
           </Pressable>
         </Pressable>
+      </Modal>
+
+      {/* Professional Minimum 5-Min Balance Modal */}
+      <Modal
+        visible={lowBalanceVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setLowBalanceVisible(false);
+          if (router.canGoBack()) router.back();
+          else router.replace(AppRoutes.homeDashboardScreen);
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.78)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 22,
+          }}
+        >
+          <View
+            style={{
+              width: '100%',
+              maxWidth: 380,
+              backgroundColor: '#0D1527',
+              borderRadius: 24,
+              borderWidth: 1.5,
+              borderColor: '#C9A84C',
+              padding: 22,
+              shadowColor: '#C9A84C',
+              shadowOpacity: 0.35,
+              shadowRadius: 16,
+              elevation: 8,
+            }}
+          >
+            {/* Header Icon & Title */}
+            <View style={{ alignItems: 'center', marginBottom: 14 }}>
+              <View
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 32,
+                  backgroundColor: 'rgba(201, 168, 76, 0.18)',
+                  borderWidth: 1.5,
+                  borderColor: '#FFD700',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 12,
+                }}
+              >
+                <AppIcon name="account_balance_wallet" size={30} color="#FFD700" />
+              </View>
+
+              <Text
+                style={{
+                  color: '#FFFFFF',
+                  fontSize: 18,
+                  fontWeight: '800',
+                  textAlign: 'center',
+                  letterSpacing: 0.3,
+                }}
+              >
+                {selectedLanguage === 'Telugu'
+                  ? 'కనిష్ట బ్యాలెన్స్ అవసరం'
+                  : selectedLanguage === 'Hindi'
+                    ? 'न्यूनतम बैलेंस आवश्यक'
+                    : 'Minimum Balance Required'}
+              </Text>
+
+              <Text
+                style={{
+                  color: '#FFD700',
+                  fontSize: 12,
+                  fontWeight: '700',
+                  marginTop: 3,
+                  letterSpacing: 0.5,
+                }}
+              >
+                {selectedLanguage === 'Telugu'
+                  ? '5 నిమిషాల సంప్రదింపు బ్యాలెన్స్'
+                  : selectedLanguage === 'Hindi'
+                    ? '5 मिनट परामर्श बैलेंस'
+                    : '5 Minutes Consultation Balance'}
+              </Text>
+            </View>
+
+            {/* Breakdown Card */}
+            <View
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: 16,
+                padding: 14,
+                borderWidth: 1,
+                borderColor: 'rgba(201, 168, 76, 0.25)',
+                marginBottom: 14,
+                gap: 8,
+              }}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ color: '#94A3B8', fontSize: 12.5, fontWeight: '600' }}>
+                  {selectedLanguage === 'Telugu' ? 'ప్రస్తుత బ్యాలెన్స్:' : selectedLanguage === 'Hindi' ? 'वर्तमान बैलेंस:' : 'Current Balance:'}
+                </Text>
+                <Text style={{ color: balance < ratePerMin ? '#EF4444' : '#F59E0B', fontSize: 13.5, fontWeight: '800' }}>
+                  {formatPrice(balance)}
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ color: '#94A3B8', fontSize: 12.5, fontWeight: '600' }}>
+                  {selectedLanguage === 'Telugu' ? 'నిమిషానికి రుసుము:' : selectedLanguage === 'Hindi' ? 'प्रति मिनट दर:' : 'Rate per Minute:'}
+                </Text>
+                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>
+                  {formatPrice(ratePerMin)} / min
+                </Text>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: 'rgba(201, 168, 76, 0.2)', marginVertical: 2 }} />
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ color: '#FFD700', fontSize: 13, fontWeight: '800' }}>
+                  {selectedLanguage === 'Telugu' ? '5 నిమిషాలకు అవసరమైనది:' : selectedLanguage === 'Hindi' ? '5 मिनट हेतु आवश्यक:' : 'Required for 5 Min:'}
+                </Text>
+                <Text style={{ color: '#FFD700', fontSize: 15, fontWeight: '900' }}>
+                  {formatPrice(ratePerMin * 5)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Clear explanation text */}
+            <Text
+              style={{
+                color: '#CBD5E1',
+                fontSize: 12.5,
+                lineHeight: 18,
+                textAlign: 'center',
+                marginBottom: 18,
+              }}
+            >
+              {selectedLanguage === 'Telugu'
+                ? `జ్యోతిష నిపుణులతో నిరంతరాయంగా మాట్లాడటానికి కనీసం 5 నిమిషాల బ్యాలెన్స్ (${formatPrice(ratePerMin * 5)}) నిర్వహించాలి. దయచేసి రీఛార్జ్ చేయండి.`
+                : selectedLanguage === 'Hindi'
+                  ? `निर्बाध परामर्श हेतु वॉलेट में न्यूनतम 5 मिनट का बैलेंस (${formatPrice(ratePerMin * 5)}) होना आवश्यक है। कृपया आगे बढ़ने के लिए रिचार्ज करें।`
+                  : `To maintain an uninterrupted divine consultation, please maintain at least 5 minutes balance (${formatPrice(ratePerMin * 5)}) in your wallet.`}
+            </Text>
+
+            {/* Action Buttons */}
+            <Pressable
+              onPress={() => {
+                setLowBalanceVisible(false);
+                push(AppRoutes.walletScreen);
+              }}
+              style={({ pressed }) => ({
+                height: 48,
+                borderRadius: 14,
+                backgroundColor: '#C9A84C',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.9 : 1,
+                shadowColor: '#C9A84C',
+                shadowOpacity: 0.45,
+                shadowRadius: 8,
+                elevation: 4,
+                marginBottom: 10,
+              })}
+            >
+              <AppIcon name="flash_on" color="#0A0E1A" size={18} style={{ marginRight: 6 }} />
+              <Text style={{ color: '#0A0E1A', fontSize: 14, fontWeight: '800' }}>
+                {selectedLanguage === 'Telugu' ? '⚡ ఇప్పుడే రీఛార్జ్ చేయండి' : selectedLanguage === 'Hindi' ? '⚡ अभी रिचार्ज करें' : '⚡ Recharge Wallet Now'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                setLowBalanceVisible(false);
+                if (router.canGoBack()) router.back();
+                else router.replace(AppRoutes.homeDashboardScreen);
+              }}
+              style={{
+                paddingVertical: 10,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ color: '#94A3B8', fontSize: 13, fontWeight: '600' }}>
+                {selectedLanguage === 'Telugu' ? '← తిరిగి వెళ్ళు' : selectedLanguage === 'Hindi' ? '← वापस जाएं' : '← Go Back'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Authentication Prompt Modal for Guests */}
+      <Modal
+        visible={authModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setAuthModalVisible(false);
+          if (router.canGoBack()) router.back();
+          else router.replace(AppRoutes.homeDashboardScreen);
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.78)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 22,
+          }}
+        >
+          <View
+            style={{
+              width: '100%',
+              maxWidth: 380,
+              backgroundColor: '#0D1527',
+              borderRadius: 24,
+              borderWidth: 1.5,
+              borderColor: '#C9A84C',
+              padding: 24,
+              alignItems: 'center',
+              shadowColor: '#C9A84C',
+              shadowOpacity: 0.35,
+              shadowRadius: 16,
+              elevation: 8,
+            }}
+          >
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: 'rgba(201, 168, 76, 0.18)',
+                borderWidth: 1.5,
+                borderColor: '#FFD700',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 14,
+              }}
+            >
+              <AppIcon name="lock" color="#FFD700" size={30} />
+            </View>
+
+            <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
+              {selectedLanguage === 'Telugu' ? 'సంప్రదింపు కోసం లాగిన్ చేయండి' : selectedLanguage === 'Hindi' ? 'परामर्श हेतु लॉगिन करें' : 'Sign In to Consult'}
+            </Text>
+
+            <Text style={{ color: '#CBD5E1', fontSize: 13, lineHeight: 19, textAlign: 'center', marginBottom: 20 }}>
+              {selectedLanguage === 'Telugu'
+                ? 'జ్యోతిష నిపుణులతో లైవ్ కాల్ మాట్లాడటానికి దయచేసి మీ మొబైల్ నంబర్‌తో సైన్ ఇన్ అవ్వండి.'
+                : selectedLanguage === 'Hindi'
+                  ? 'ज्योतिषी के साथ लाइव कॉल शुरू करने के लिए कृपया अपने मोबाइल नंबर से साइन इन करें।'
+                  : 'Please sign in with your mobile number to connect live with certified Vedic astrologers.'}
+            </Text>
+
+            <Pressable
+              onPress={() => {
+                setAuthModalVisible(false);
+                push(AppRoutes.signInScreen);
+              }}
+              style={({ pressed }) => ({
+                width: '100%',
+                height: 48,
+                borderRadius: 14,
+                backgroundColor: '#C9A84C',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.9 : 1,
+                shadowColor: '#C9A84C',
+                shadowOpacity: 0.45,
+                shadowRadius: 8,
+                elevation: 4,
+                marginBottom: 10,
+              })}
+            >
+              <AppIcon name="login" color="#0A0E1A" size={18} style={{ marginRight: 6 }} />
+              <Text style={{ color: '#0A0E1A', fontSize: 14, fontWeight: '800' }}>
+                {selectedLanguage === 'Telugu' ? 'సైన్ ఇన్ అవ్వండి' : selectedLanguage === 'Hindi' ? 'साइन इन करें' : 'Sign In to Proceed'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                setAuthModalVisible(false);
+                if (router.canGoBack()) router.back();
+                else router.replace(AppRoutes.homeDashboardScreen);
+              }}
+              style={{ paddingVertical: 10 }}
+            >
+              <Text style={{ color: '#94A3B8', fontSize: 13, fontWeight: '600' }}>
+                {selectedLanguage === 'Telugu' ? '← తిరిగి వెళ్ళు' : selectedLanguage === 'Hindi' ? '← वापस जाएं' : '← Go Back'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 4. Professional Confirmation Modal when User taps Back or End Call */}
+      <Modal
+        visible={confirmEndCallVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmEndCallVisible(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.78)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 22,
+          }}
+        >
+          <View
+            style={{
+              width: '100%',
+              maxWidth: 380,
+              backgroundColor: '#0D1527',
+              borderRadius: 24,
+              borderWidth: 1.5,
+              borderColor: '#C9A84C',
+              padding: 24,
+              alignItems: 'center',
+              shadowColor: '#C9A84C',
+              shadowOpacity: 0.35,
+              shadowRadius: 16,
+              elevation: 8,
+            }}
+          >
+            {/* Warning Call End Icon */}
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                borderWidth: 1.5,
+                borderColor: '#EF4444',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 14,
+              }}
+            >
+              <AppIcon name="phone_disabled" color="#EF4444" size={30} />
+            </View>
+
+            <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
+              {selectedLanguage === 'Telugu'
+                ? 'కాల్ ముగించాలనుకుంటున్నారా?'
+                : selectedLanguage === 'Hindi'
+                  ? 'क्या आप परामर्श समाप्त करना चाहते हैं?'
+                  : 'End Consultation Session?'}
+            </Text>
+
+            <Text style={{ color: '#CBD5E1', fontSize: 13, lineHeight: 19, textAlign: 'center', marginBottom: 20 }}>
+              {selectedLanguage === 'Telugu'
+                ? `${astroDisplayName}తో మీ లైవ్ సంప్రదింపు సెషన్ ముగుస్తుంది. మీ పూర్తి జాతక చర్చ మరియు పరిహారాల నివేదిక వెంటనే సిద్ధం చేయబడుతుంది.`
+                : selectedLanguage === 'Hindi'
+                  ? `${astroDisplayName} के साथ आपका लाइव सत्र समाप्त हो जाएगा। आपके वार्तालाप की विस्तृत वैदिक रिपोर्ट तैयार की जाएगी।`
+                  : `Are you sure you want to end your active consultation with ${astro.name}? A comprehensive Vedic summary report will be prepared for you.`}
+            </Text>
+
+            {/* 1. Primary Button: Stay in Call (Golden) */}
+            <Pressable
+              onPress={() => setConfirmEndCallVisible(false)}
+              style={({ pressed }) => ({
+                width: '100%',
+                height: 48,
+                borderRadius: 14,
+                backgroundColor: '#C9A84C',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.9 : 1,
+                shadowColor: '#C9A84C',
+                shadowOpacity: 0.45,
+                shadowRadius: 8,
+                elevation: 4,
+                marginBottom: 10,
+              })}
+            >
+              <AppIcon name="phone_in_talk" color="#0A0E1A" size={18} style={{ marginRight: 6 }} />
+              <Text style={{ color: '#0A0E1A', fontSize: 14, fontWeight: '800' }}>
+                {selectedLanguage === 'Telugu' ? 'కాల్‌లో కొనసాగండి' : selectedLanguage === 'Hindi' ? 'कॉल जारी रखें' : 'Stay in Consultation'}
+              </Text>
+            </Pressable>
+
+            {/* 2. Secondary Button: End Call (Red border) */}
+            <Pressable
+              onPress={() => {
+                setConfirmEndCallVisible(false);
+                endCall();
+              }}
+              style={({ pressed }) => ({
+                width: '100%',
+                height: 44,
+                borderRadius: 14,
+                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                borderWidth: 1.5,
+                borderColor: '#EF4444',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.8 : 1,
+              })}
+            >
+              <AppIcon name="call_end" color="#EF4444" size={17} style={{ marginRight: 6 }} />
+              <Text style={{ color: '#EF4444', fontSize: 13.5, fontWeight: '800' }}>
+                {selectedLanguage === 'Telugu' ? 'అవును, ముగించండి' : selectedLanguage === 'Hindi' ? 'हाँ, समाप्त करें' : 'Yes, End Consultation'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
       </Modal>
     </View>
   );

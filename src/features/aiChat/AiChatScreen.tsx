@@ -1111,6 +1111,7 @@ export const TOPICS: TopicItem[] = [
 export default function AiChatScreen() {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
+  const initialWindowH = useRef(Dimensions.get('window').height).current;
   const colors = useThemeColors();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ initialPrompt?: string; astrologerName?: string; astrologerId?: string; avatarUrl?: string }>();
@@ -1569,32 +1570,29 @@ export default function AiChatScreen() {
   const inputRef = useRef<any>(null);
 
   useEffect(() => {
-    const s1 = Keyboard.addListener('keyboardDidShow', (e) => {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setKeyboardHeight(e.endCoordinates.height);
-      setTimeout(() => {
-        listRef.current?.scrollToEnd({ animated: true });
-      }, 50);
-    });
-    const s2 = Keyboard.addListener('keyboardWillShow', (e) => {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-    const h1 = Keyboard.addListener('keyboardDidHide', () => {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setKeyboardHeight(0);
-      setIsInputFocused(false);
-    });
-    const h2 = Keyboard.addListener('keyboardWillHide', () => {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setKeyboardHeight(0);
-      setIsInputFocused(false);
-    });
+    const onShow = (e: any) => {
+      const h = e?.endCoordinates?.height || 0;
+      if (h > 0) {
+        setKeyboardHeight((prev) => (prev === h ? prev : h));
+        setTimeout(() => {
+          listRef.current?.scrollToEnd({ animated: true });
+        }, 80);
+      }
+    };
+    const onHide = () => {
+      setKeyboardHeight((prev) => (prev === 0 ? prev : 0));
+    };
+
+    const s1 = Keyboard.addListener('keyboardWillShow', onShow);
+    const s2 = Keyboard.addListener('keyboardDidShow', onShow);
+    const s3 = Keyboard.addListener('keyboardWillHide', onHide);
+    const s4 = Keyboard.addListener('keyboardDidHide', onHide);
+
     return () => {
       s1.remove();
       s2.remove();
-      h1.remove();
-      h2.remove();
+      s3.remove();
+      s4.remove();
     };
   }, []);
 
@@ -1766,58 +1764,60 @@ export default function AiChatScreen() {
           </View>
         </View>
 
-        {/* Topic Chips with Remedies in First Position */}
-        <View style={{ height: 42, backgroundColor: '#EFE7DC', borderBottomWidth: 1, borderBottomColor: '#E2D9C8' }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10, paddingVertical: 5, alignItems: 'center' }}>
-            {TOPICS.map((topic) => {
-              const sel = selectedTopic === topic.id;
-              const isRemedies = topic.id === 'Remedies';
-              return (
-                <AnimatedPressable
-                  key={topic.id}
-                  testID={`aiChat.topic.${topic.id.toLowerCase()}`}
-                  onPress={() => {
-                    setSelectedTopic(topic.id);
-                    if (topic.id !== 'All') {
-                      const prompt =
-                        topic.promptByLang[selectedLanguage] ||
-                        topic.promptByLang.English ||
-                        `Tell me about my ${topic.label} prospects and astrological remedies.`;
-                      sendMessage(prompt);
-                    }
-                  }}
-                  duration={180}
-                  style={{
-                    marginRight: 8,
-                    paddingHorizontal: 13,
-                    paddingVertical: 5,
-                    borderRadius: 100,
-                    backgroundColor: sel ? (isRemedies ? '#8B1A1A' : '#008069') : '#FFFFFF',
-                    borderWidth: isRemedies ? 1.5 : 1,
-                    borderColor: isRemedies ? (sel ? '#C9A84C' : '#8B1A1A') : (sel ? '#008069' : '#E2D9C8'),
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    shadowColor: isRemedies ? '#8B1A1A' : '#000',
-                    shadowOpacity: isRemedies ? 0.12 : 0.06,
-                    shadowRadius: 2,
-                    elevation: 1,
-                  }}
-                >
-                  <Text style={{ fontSize: 12, marginRight: 5 }}>{topic.emoji}</Text>
-                  <Text
+        {/* Topic Chips with Remedies in First Position (hidden when typing to maximize screen real estate) */}
+        {!(keyboardHeight > 0 || isInputFocused) && (
+          <View style={{ height: 42, backgroundColor: '#EFE7DC', borderBottomWidth: 1, borderBottomColor: '#E2D9C8' }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 10, paddingVertical: 5, alignItems: 'center' }}>
+              {TOPICS.map((topic) => {
+                const sel = selectedTopic === topic.id;
+                const isRemedies = topic.id === 'Remedies';
+                return (
+                  <AnimatedPressable
+                    key={topic.id}
+                    testID={`aiChat.topic.${topic.id.toLowerCase()}`}
+                    onPress={() => {
+                      setSelectedTopic(topic.id);
+                      if (topic.id !== 'All') {
+                        const prompt =
+                          topic.promptByLang[selectedLanguage] ||
+                          topic.promptByLang.English ||
+                          `Tell me about my ${topic.label} prospects and astrological remedies.`;
+                        sendMessage(prompt);
+                      }
+                    }}
+                    duration={180}
                     style={{
-                      color: sel ? '#FFFFFF' : (isRemedies ? '#8B1A1A' : '#4A5568'),
-                      fontSize: 11,
-                      fontWeight: (sel || isRemedies) ? '700' : '600',
+                      marginRight: 8,
+                      paddingHorizontal: 13,
+                      paddingVertical: 5,
+                      borderRadius: 100,
+                      backgroundColor: sel ? (isRemedies ? '#8B1A1A' : '#008069') : '#FFFFFF',
+                      borderWidth: isRemedies ? 1.5 : 1,
+                      borderColor: isRemedies ? (sel ? '#C9A84C' : '#8B1A1A') : (sel ? '#008069' : '#E2D9C8'),
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      shadowColor: isRemedies ? '#8B1A1A' : '#000',
+                      shadowOpacity: isRemedies ? 0.12 : 0.06,
+                      shadowRadius: 2,
+                      elevation: 1,
                     }}
                   >
-                    {topic.labelByLang?.[selectedLanguage] || topic.label}
-                  </Text>
-                </AnimatedPressable>
-              );
-            })}
-          </ScrollView>
-        </View>
+                    <Text style={{ fontSize: 12, marginRight: 5 }}>{topic.emoji}</Text>
+                    <Text
+                      style={{
+                        color: sel ? '#FFFFFF' : (isRemedies ? '#8B1A1A' : '#4A5568'),
+                        fontSize: 11,
+                        fontWeight: (sel || isRemedies) ? '700' : '600',
+                      }}
+                    >
+                      {topic.labelByLang?.[selectedLanguage] || topic.label}
+                    </Text>
+                  </AnimatedPressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Message Feed */}
         <View style={{ flex: 1 }}>
@@ -1959,15 +1959,17 @@ export default function AiChatScreen() {
         {/* Chat Input Widget - Responsive layout sitting cleanly above keyboard on all devices */}
         {(() => {
           const isKeyboardUp = keyboardHeight > 0;
-          const currentWindowH = windowHeight;
-          const screenH = Dimensions.get('screen').height;
-          const isAndroidWindowResized = Platform.OS === 'android' && currentWindowH < screenH - 120;
+          const isWindowResized = Platform.OS === 'android' && windowHeight < initialWindowH - 150;
+
+          // On edge-to-edge Android, soft keyboard sits above the system navigation bar (insets.bottom).
+          // Therefore, the total offset from screen bottom to top of keyboard is keyboardHeight + insets.bottom + 8px cushion.
+          const androidKeyboardOffset = keyboardHeight + Math.max(insets.bottom, 0) + 8;
 
           const keyboardSpacerHeight = Platform.OS === 'android'
             ? (isKeyboardUp
-                ? (isAndroidWindowResized ? 6 : keyboardHeight + 6)
-                : Math.max(insets.bottom, 10))
-            : (isKeyboardUp ? 4 : Math.max(insets.bottom, 10));
+                ? (isWindowResized ? 8 : androidKeyboardOffset)
+                : Math.max(insets.bottom, 12))
+            : (isKeyboardUp ? 0 : Math.max(insets.bottom, 10));
 
           return (
             <View
@@ -2052,7 +2054,7 @@ export default function AiChatScreen() {
                     onSubmitEditing={() => {
                       if (!isAuth) {
                         setShowAuthModal(true);
-                      } else if (walletBalance < 5) {
+                      } else if (freeChatsRemaining <= 0 && walletBalance < promptCost.costINR) {
                         setShowRechargeModal(true);
                       } else if (input.trim().length > 0) {
                         sendMessage(input);
@@ -2066,13 +2068,13 @@ export default function AiChatScreen() {
                   onPress={() => {
                     if (!isAuth) {
                       setShowAuthModal(true);
-                    } else if (walletBalance < 5) {
+                    } else if (freeChatsRemaining <= 0 && walletBalance < promptCost.costINR) {
                       setShowRechargeModal(true);
                     } else if (input.trim().length > 0) {
                       sendMessage(input);
                     }
                   }}
-                  disabled={isAuth && input.trim().length === 0 && walletBalance >= 5}
+                  disabled={isAuth && input.trim().length === 0 && (freeChatsRemaining > 0 || walletBalance >= promptCost.costINR)}
                   style={{
                     marginLeft: 8,
                     width: 44,
@@ -2081,7 +2083,7 @@ export default function AiChatScreen() {
                     backgroundColor: '#00A884',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    opacity: !isAuth || input.trim().length > 0 || walletBalance < 5 ? 1 : 0.6,
+                    opacity: !isAuth || input.trim().length > 0 || (freeChatsRemaining <= 0 && walletBalance < promptCost.costINR) ? 1 : 0.6,
                     shadowColor: '#00A884',
                     shadowOpacity: 0.35,
                     shadowRadius: 4,

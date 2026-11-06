@@ -413,7 +413,15 @@ export async function saveUserReport(
     const uid = customUid || authUser?.uid || authUser?.phone || null;
     const storageKey = getStorageKey(uid);
 
-    const existing = await getUserReports(uid);
+    // Instant local-first persistence: read from cache directly without waiting on network queries
+    let existing: KundliReportItem[] = [];
+    try {
+      const stored = await AsyncStorage.getItem(storageKey);
+      if (stored) {
+        existing = JSON.parse(stored);
+      }
+    } catch {}
+
     const filtered = existing.filter((r) => r.id !== newReport.id && !String(r.id).startsWith('rep_seed_'));
     const updated = [{ ...newReport, status: 'Ready' as const }, ...filtered];
 

@@ -35,10 +35,11 @@ const EMOJI_REGEX =
  * Clean astrology response into pristine, 100% speakable text
  * Strips emojis, markdown, symbols, bullet artifacts, and HTML while preserving
  * all letters, numbers, full words, and natural phonetic punctuation.
+ * Also replaces English terms with native script in Telugu and Hindi so Indian TTS voices never crash.
  */
-export function cleanTextForSpeech(raw: string): string {
+export function cleanTextForSpeech(raw: string, lang?: string): string {
   if (!raw) return '';
-  return raw
+  let cleaned = raw
     .replace(/\*\*(.*?)\*\*/g, '$1') // Bold **text**
     .replace(/\*(.*?)\*/g, '$1')     // Italic *text*
     .replace(/#{1,6}\s?/g, '')       // Headers (#, ##)
@@ -47,19 +48,62 @@ export function cleanTextForSpeech(raw: string): string {
     .replace(EMOJI_REGEX, '')        // Strip all Unicode emojis
     .replace(/[✦•–—\-\|\/\\~`_^{}\[\]]/g, ' ') // Non-phonetic bullet marks & dashes
     .replace(/[;:]/g, ', ')          // Convert colons & semicolons to soft pauses
+    .replace(/!+/g, ', ')            // Convert exclamation marks to comma pauses (prevents OEM TTS cutoffs)
+    .replace(/\n+/g, '. ')           // Newlines to sentence breaks
     .replace(/\s+/g, ' ')            // Collapse multiple spaces
     .trim();
+
+  const l = (lang || '').toLowerCase().trim();
+  if (l.includes('telugu') || l === 'te') {
+    // Transliterate English names & astrological terms so Telugu TTS engine recites smoothly
+    cleaned = cleaned
+      .replace(/Acharya\s+Devavrat\s+Shastri/gi, 'ఆచార్య దేవవ్రత్ శాస్త్రి')
+      .replace(/Acharya\s+Devavrat/gi, 'ఆచార్య దేవవ్రత్')
+      .replace(/Acharya\s+Dhananjay\s+Shastri/gi, 'ఆచార్య ధనంజయ్ శాస్త్రి')
+      .replace(/Acharya\s+Dhananjay/gi, 'ఆచార్య ధనంజయ్')
+      .replace(/Pandit\s+Radha\s+Raman/gi, 'పండిట్ రాధారమణ్')
+      .replace(/Guruji\s+Sundararam/gi, 'గురూజీ సుందరరామ్')
+      .replace(/Acharya/gi, 'ఆచార్య')
+      .replace(/Shastri/gi, 'శాస్త్రి')
+      .replace(/Devavrat/gi, 'దేవవ్రత్')
+      .replace(/Dhananjay/gi, 'ధనంజయ్')
+      .replace(/Janam\s+Kundli/gi, 'జన్మ కుండలి')
+      .replace(/Kundli/gi, 'కుండలి')
+      .replace(/Parihar/gi, 'పరిహార')
+      .replace(/Vedic/gi, 'వేద')
+      .replace(/Devotee/gi, 'భక్తులు');
+  } else if (l.includes('hindi') || l === 'hi') {
+    // Transliterate English names & astrological terms so Hindi TTS engine recites smoothly
+    cleaned = cleaned
+      .replace(/Acharya\s+Devavrat\s+Shastri/gi, 'आचार्य देवव्रत शास्त्री')
+      .replace(/Acharya\s+Devavrat/gi, 'आचार्य देवव्रत')
+      .replace(/Acharya\s+Dhananjay\s+Shastri/gi, 'आचार्य धनंजय शास्त्री')
+      .replace(/Acharya\s+Dhananjay/gi, 'आचार्य धनंजय')
+      .replace(/Pandit\s+Radha\s+Raman/gi, 'पंडित राधा रमण')
+      .replace(/Guruji\s+Sundararam/gi, 'गुरुजी सुंदरराम')
+      .replace(/Acharya/gi, 'आचार्य')
+      .replace(/Shastri/gi, 'शास्त्री')
+      .replace(/Devavrat/gi, 'देवव्रत')
+      .replace(/Dhananjay/gi, 'धनंजय')
+      .replace(/Janam\s+Kundli/gi, 'जन्म कुंडली')
+      .replace(/Kundli/gi, 'कुंडली')
+      .replace(/Parihar/gi, 'परिहार')
+      .replace(/Vedic/gi, 'वैदिक')
+      .replace(/Devotee/gi, 'भक्त');
+  }
+
+  return cleaned.trim();
 }
 
 /**
- * Split very long texts (over 1000 chars) into large paragraphs
- * Avoids micro-chunking so Android TTS reads uninterruptedly without leaving single alphabets.
+ * Split speech text into natural, sentence-by-sentence chunks (max ~180 chars)
+ * Ensures Android TTS recites the 100% full response without ever cutting off at the first sentence.
  */
-export function splitIntoSpeechChunks(text: string, maxLen: number = 1000): string[] {
+export function splitIntoSpeechChunks(text: string, maxLen: number = 180): string[] {
   if (!text) return [];
-  if (text.length <= maxLen) return [text];
 
-  const sentences = text.split(/(?<=[.!?।॥\n])\s+/);
+  // Split on sentence terminators (. , ? । ॥ \n)
+  const sentences = text.split(/(?<=[.?,।॥\n])\s+/);
   const chunks: string[] = [];
   let currentChunk = '';
 
@@ -110,7 +154,8 @@ export function isFemaleAstrologer(name?: string, gender?: string): boolean {
 }
 
 /**
- * Find the optimal native OS voice identifier matching language and gender strictly
+ * Find the optimal native OS voice identifier matching language and gender strictly,
+ * prioritizing high-fidelity Neural, Natural, and Enhanced conversational voices (ChatGPT quality).
  */
 async function resolveVoiceIdentifier(langCode: string, isFemale: boolean): Promise<string | undefined> {
   try {
@@ -126,35 +171,75 @@ async function resolveVoiceIdentifier(langCode: string, isFemale: boolean): Prom
 
     if (matching.length === 0) return undefined;
 
-    if (isFemale) {
-      // Find female voice
-      const femaleKeywords = [
-        'female', 'woman', 'girl', 'zira', 'swara', 'heera', 'shruti', 'pallavi',
-        'kalpana', 'tef', 'hia', 'hib', 'enf', 'ene', '-f-', '#female'
-      ];
-      const preferred = matching.find((v) => {
-        const lower = `${v.name} ${v.identifier}`.toLowerCase();
-        return femaleKeywords.some((k) => lower.includes(k));
-      });
-      return preferred?.identifier || matching[0]?.identifier;
-    } else {
-      // Find male voice
-      const maleKeywords = [
-        'male', 'man', 'boy', 'guy', 'david', 'ravi', 'mohan', 'madhav', 'kumar',
-        'narayan', 'valluvar', 'george', 'mark', 'end-network', 'enc-network',
-        'hid-network', 'hic-network', 'tem-network', 'tam-network', 'tac-network',
-        'tad-network', '-m-', '#male'
-      ];
-      const preferred = matching.find((v) => {
-        const lower = `${v.name} ${v.identifier}`.toLowerCase();
-        return maleKeywords.some((k) => lower.includes(k));
-      });
+    // Male voice indicators (ChatGPT Cove / Echo / Onyx style)
+    const malePatterns = [
+      'male', 'man', 'boy', 'guy', 'david', 'ravi', 'mohan', 'madhav', 'kumar',
+      'narayan', 'valluvar', 'george', 'mark', 'daniel', 'alex', 'oliver', 'tom',
+      'evan', 'fred', 'nathan', 'aaron', 'cove', 'echo', 'onyx',
+      '-tem-', 'tem-network', 'tem-local', 'tem',
+      '-hid-', 'hid-network', 'hid-local', 'hid',
+      '-hie-', 'hie-network', 'hie-local', 'hie',
+      '-hic-', 'hic-network', 'hic-local', 'hic',
+      '-iom-', 'iom-network', 'iom-local', 'iom',
+      '-iol-', 'iol-network', 'iol-local', 'iol',
+      '-end-', 'end-network', 'end-local', 'end',
+      '-ene-', 'ene-network', 'ene-local', 'ene',
+      '-m-', '#male', 'gender:male'
+    ];
 
-      // CRITICAL: If no native male voice exists for this language, DO NOT return matching[0]!
-      // In Google TTS on Android, matching[0] is almost always the female voice (e.g. tef).
-      // Returning undefined allows the OS TTS engine to synthesize using deep pitch modulation without locking to female formants.
-      return preferred?.identifier;
-    }
+    // Female voice indicators (ChatGPT Juniper / Nova / Shimmer style)
+    const femalePatterns = [
+      'female', 'woman', 'girl', 'zira', 'swara', 'heera', 'shruti', 'pallavi',
+      'kalpana', 'samantha', 'ava', 'karen', 'moira', 'victoria', 'siri', 'juniper',
+      'nova', 'shimmer', 'breeze', 'allison', 'susan',
+      '-tef-', 'tef-network', 'tef-local', 'tef',
+      '-tee-', 'tee-network', 'tee-local', 'tee',
+      '-hia-', 'hia-network', 'hia-local', 'hia',
+      '-hib-', 'hib-network', 'hib-local', 'hib',
+      '-sfg-', 'sfg-network', 'sfg-local', 'sfg',
+      '-tpd-', 'tpd-network', 'tpd-local', 'tpd',
+      '-cxx-', 'cxx-network', 'cxx-local', 'cxx',
+      '-f-', '#female', 'gender:female'
+    ];
+
+    const targetPatterns = isFemale ? femalePatterns : malePatterns;
+    const oppositePatterns = isFemale ? malePatterns : femalePatterns;
+
+    // Premium quality indicators (ChatGPT / Neural / Wavenet / Studio caliber)
+    const premiumTags = ['enhanced', 'premium', 'natural', 'neural', 'wavenet', 'network', 'studio', 'high'];
+
+    // Score and rank all voices
+    const scored = matching.map((v) => {
+      const lower = `${v.name || ''} ${v.identifier || ''}`.toLowerCase();
+      let score = 0;
+
+      // 1. Gender matching
+      if (targetPatterns.some((k) => lower.includes(k))) {
+        score += 50;
+      } else if (oppositePatterns.some((k) => lower.includes(k))) {
+        score -= 40; // Penalize opposite gender
+      }
+
+      // 2. High-fidelity Neural / Enhanced quality
+      if (premiumTags.some((tag) => lower.includes(tag))) {
+        score += 30;
+      }
+      if ((v as any).quality === 'Enhanced' || (v as any).quality === 'Premium') {
+        score += 25;
+      }
+
+      // 3. Exact full locale match (e.g. te-IN over te)
+      if (v.language?.toLowerCase() === langCode.toLowerCase()) {
+        score += 15;
+      }
+
+      return { voice: v, score };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+
+    // Return the top-scoring voice
+    return scored[0]?.voice?.identifier;
   } catch {
     return undefined;
   }
@@ -168,7 +253,7 @@ export async function speakAstrologerText(
   text: string,
   options: AstrologerSpeechOptions = {}
 ): Promise<void> {
-  const clean = cleanTextForSpeech(text);
+  const clean = cleanTextForSpeech(text, options.language);
   if (!clean) {
     options.onDone?.();
     return;
@@ -182,7 +267,7 @@ export async function speakAstrologerText(
     await Speech.stop();
   } catch {}
 
-  const chunks = splitIntoSpeechChunks(clean, 1200);
+  const chunks = splitIntoSpeechChunks(clean, 180);
   if (chunks.length === 0) {
     options.onDone?.();
     return;
@@ -191,13 +276,14 @@ export async function speakAstrologerText(
   const langCode = getLanguageCode(options.language);
   const isFemale = isFemaleAstrologer(options.astrologerName, options.gender);
 
-  // Strict male vs female acoustic parameters
-  // Male: 0.52 deep masculine Pandit baritone register
-  // Female: 1.25 melodic serene Devi cadence
-  const pitch = isFemale ? 1.25 : 0.52;
-  const rate = isFemale ? 0.90 : 0.82;
+  // ChatGPT-style natural acoustic parameters:
+  // Male (Cove / Echo / Onyx style): 1.00 natural resonant pitch, 1.00 conversational cadence
+  // Female (Juniper / Nova / Shimmer style): 1.00 warm soothing pitch, 1.00 conversational cadence
+  // Eliminates all unnatural, robotic pitch downshifting/upshifting
+  const pitch = 1.00;
+  const rate = 1.00;
 
-  const voiceId = await resolveVoiceIdentifier(langCode, isFemale);
+  let currentVoiceId = await resolveVoiceIdentifier(langCode, isFemale);
 
   options.onStart?.();
 
@@ -216,7 +302,7 @@ export async function speakAstrologerText(
 
     Speech.speak(chunk, {
       language: langCode,
-      voice: voiceId,
+      voice: currentVoiceId,
       pitch,
       rate,
       onDone: () => {
@@ -226,17 +312,27 @@ export async function speakAstrologerText(
       },
       onError: (err) => {
         console.warn('Speech chunk error:', err);
+        // If an error happens, fallback voice to default OS voice to avoid complete stoppage
+        if (currentVoiceId) {
+          currentVoiceId = undefined;
+        }
         if (currentToken === activeSpeechId) {
           if (chunkIndex < chunks.length) {
             speakNext();
           } else {
-            options.onError?.(err);
+            options.onDone?.();
           }
         }
       },
       onStopped: () => {
         if (currentToken === activeSpeechId) {
-          options.onDone?.();
+          // On Android, OEM TTS engines report onStopped between sentences or when interrupted.
+          // Continue with next chunk so recitation never cuts off early.
+          if (chunkIndex < chunks.length) {
+            speakNext();
+          } else {
+            options.onDone?.();
+          }
         }
       },
     });

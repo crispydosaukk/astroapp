@@ -119,16 +119,11 @@ export default function SignInScreen() {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const showSub = Keyboard.addListener(showEvent, (e) => {
-      if (Platform.OS === 'android') {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      }
-      setKeyboardHeight(e.endCoordinates.height);
+      const h = e.endCoordinates.height;
+      setKeyboardHeight((prev) => (prev === h ? prev : h));
     });
     const hideSub = Keyboard.addListener(hideEvent, () => {
-      if (Platform.OS === 'android') {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      }
-      setKeyboardHeight(0);
+      setKeyboardHeight((prev) => (prev === 0 ? prev : 0));
     });
     return () => {
       showSub.remove();
@@ -283,7 +278,7 @@ export default function SignInScreen() {
       <StatusBar style={colors.isLight ? 'dark' : 'light'} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1, paddingBottom: Platform.OS === 'android' ? keyboardHeight : 0 }}
+        style={{ flex: 1, paddingBottom: Platform.OS === 'android' ? (keyboardHeight > 0 ? keyboardHeight + Math.max(insets.bottom, 0) : 0) : 0 }}
       >
         <ScrollView
           contentContainerStyle={{

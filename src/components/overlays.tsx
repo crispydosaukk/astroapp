@@ -36,16 +36,11 @@ export function BottomSheet({
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const showSub = Keyboard.addListener(showEvent, (e) => {
-      if (Platform.OS === 'android') {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      }
-      setKeyboardHeight(e.endCoordinates.height);
+      const h = e.endCoordinates.height;
+      setKeyboardHeight((prev) => (prev === h ? prev : h));
     });
     const hideSub = Keyboard.addListener(hideEvent, () => {
-      if (Platform.OS === 'android') {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      }
-      setKeyboardHeight(0);
+      setKeyboardHeight((prev) => (prev === 0 ? prev : 0));
     });
     return () => {
       showSub.remove();
