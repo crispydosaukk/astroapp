@@ -982,7 +982,7 @@ export const TOPICS: TopicItem[] = [
       Malayalam: 'എല്ലാം',
       English: 'All',
     },
-    emoji: '🌐',
+    emoji: '✨',
     promptByLang: {},
   },
   {
@@ -1783,37 +1783,40 @@ export default function AiChatScreen() {
     <View style={{ flex: 1, backgroundColor: '#EFE7DC' }} testID="aiChat.screen">
       <WhatsAppBackground />
       <KeyboardAvoidingView style={{ flex: 1, paddingTop: insets.top }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* Custom Rich Header with Language & Model Selector */}
-        <View style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 8, backgroundColor: '#008069', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, elevation: 4, zIndex: 2 }}>
+        {/* Custom Rich Header with Language & Reset */}
+        <View style={{ paddingLeft: 6, paddingRight: 10, paddingVertical: 8, backgroundColor: '#008069', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, elevation: 4, zIndex: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Pressable testID="aiChat.back" onPress={onBack} style={{ minWidth: 36, minHeight: 36, alignItems: 'center', justifyContent: 'center' }}>
+            <Pressable testID="aiChat.back" onPress={onBack} style={{ minWidth: 32, minHeight: 36, alignItems: 'center', justifyContent: 'center' }}>
               <AppIcon name="arrow_back" color="#FFFFFF" size={22} />
             </Pressable>
 
-            {/* Astrologer Avatar */}
-            <Pressable onPress={() => setShowModelModal(true)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: '#C9A84C', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0D1B2A' }}>
+            {/* Astrologer Avatar & Name */}
+            <Pressable
+              onPress={() => setShowModelModal(true)}
+              style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', marginLeft: 2, marginRight: 8 }}
+            >
+              <View style={{ width: 38, height: 38, borderRadius: 19, borderWidth: 1.5, borderColor: '#C9A84C', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0D1B2A' }}>
                 {selectedAstrologer.avatarUrl ? (
                   <AppImage
                     uri={selectedAstrologer.avatarUrl}
-                    width={40}
-                    height={40}
+                    width={38}
+                    height={38}
                     fit="cover"
                     errorWidget={
-                      <View style={{ width: 40, height: 40, backgroundColor: '#8B1A1A', alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ fontSize: 18 }}>{selectedAstrologer.emoji || '🔮'}</Text>
+                      <View style={{ width: 38, height: 38, backgroundColor: '#8B1A1A', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 16 }}>{selectedAstrologer.emoji || '🔮'}</Text>
                       </View>
                     }
                   />
                 ) : (
                   <>
                     <LinearGradient colors={['#8B1A1A', '#3D0A0A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
-                    <Text style={{ fontSize: 20 }}>{selectedAstrologer.emoji || '🔮'}</Text>
+                    <Text style={{ fontSize: 18 }}>{selectedAstrologer.emoji || '🔮'}</Text>
                   </>
                 )}
               </View>
-              <View style={{ marginLeft: 10, flex: 1, minWidth: 0 }}>
-                <Text numberOfLines={1} ellipsizeMode="tail" style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>
+              <View style={{ marginLeft: 8, flex: 1, minWidth: 0 }}>
+                <Text numberOfLines={1} ellipsizeMode="tail" style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>
                   {selectedAstrologer.name}
                 </Text>
                 <Text numberOfLines={1} ellipsizeMode="tail" style={{ color: '#B2DFDB', fontSize: 10 }}>
@@ -1822,72 +1825,56 @@ export default function AiChatScreen() {
               </View>
             </Pressable>
 
-            {/* Language Selector Pill */}
-            <Pressable
-              testID="aiChat.langPill"
-              onPress={() => setShowLanguageModal(true)}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 7,
-                paddingVertical: 4.5,
-                borderRadius: 12,
-                backgroundColor: 'rgba(255,255,255,0.18)',
-                borderWidth: 1,
-                borderColor: '#C9A84C',
-                marginRight: 5,
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Select Language"
-            >
-              <AppIcon name="language" color="#FFD700" size={13} />
-              <Text style={{ marginLeft: 3, fontSize: 11, color: '#FFFFFF', fontWeight: '800' }}>
-                {selectedLanguage.substring(0, 3).toUpperCase()}
-              </Text>
-            </Pressable>
+            {/* Right Group: Language Selector Pill + Chat Reset Button */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 0, gap: 6 }}>
+              {/* Language Selector Pill */}
+              <Pressable
+                testID="aiChat.langPill"
+                onPress={() => setShowLanguageModal(true)}
+                hitSlop={8}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 8,
+                  paddingVertical: 5,
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(255,255,255,0.22)',
+                  borderWidth: 1.2,
+                  borderColor: '#FFD700',
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Select Language"
+              >
+                <AppIcon name="language" color="#FFD700" size={13} />
+                <Text style={{ marginLeft: 3, fontSize: 11, color: '#FFFFFF', fontWeight: '800' }}>
+                  {selectedLanguage.substring(0, 3).toUpperCase()}
+                </Text>
+              </Pressable>
 
-            {/* Chat Reset Button */}
-            <Pressable
-              testID="aiChat.resetChat"
-              onPress={handleResetChat}
-              hitSlop={8}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 7,
-                paddingVertical: 4.5,
-                borderRadius: 12,
-                backgroundColor: 'rgba(255,255,255,0.14)',
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.35)',
-                marginRight: 5,
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Reset Chat"
-            >
-              <AppIcon name="restart_alt" color="#FFFFFF" size={13} />
-              <Text style={{ marginLeft: 2.5, fontSize: 10.5, color: '#FFFFFF', fontWeight: '700' }}>
-                Reset
-              </Text>
-            </Pressable>
-
-            {/* Model Selector Pill */}
-            <Pressable
-              testID="aiChat.modelPill"
-              onPress={() => setShowModelModal(true)}
-              style={{
-                paddingHorizontal: 7,
-                paddingVertical: 4.5,
-                borderRadius: 12,
-                backgroundColor: 'rgba(201,168,76,0.25)',
-                borderWidth: 1,
-                borderColor: '#C9A84C',
-              }}
-            >
-              <Text style={{ fontSize: 10.5, color: '#FFD700', fontWeight: '700' }}>
-                {selectedModel === 'vedika-ai' ? '🔮 Ephemeris' : selectedModel === 'openai-gpt4o' ? '🧠 Deep AI' : '⚡ Auto'}
-              </Text>
-            </Pressable>
+              {/* Chat Reset Button */}
+              <Pressable
+                testID="aiChat.resetChat"
+                onPress={handleResetChat}
+                hitSlop={8}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 8,
+                  paddingVertical: 5,
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(255,255,255,0.16)',
+                  borderWidth: 1.2,
+                  borderColor: 'rgba(255,255,255,0.45)',
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Reset Chat"
+              >
+                <AppIcon name="restart_alt" color="#FFFFFF" size={13} />
+                <Text style={{ marginLeft: 3, fontSize: 11, color: '#FFFFFF', fontWeight: '700' }}>
+                  Reset
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </View>
 

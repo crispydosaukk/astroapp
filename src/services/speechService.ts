@@ -457,27 +457,27 @@ export async function speakAstrologerText(
   const resolved = await resolveVoiceIdentifier(meta.bcp47, isFemale);
   let currentVoiceId = resolved.voiceId;
 
-  // Strict Acoustic Timbre Modulation:
+  // Natural Acoustic Timbre Modulation (ChatGPT-style smooth, clear human voices):
   let pitch = 1.00;
-  let rate = 0.95;
+  let rate = 0.98;
 
   if (!isFemale) {
     // MALE ASTROLOGER (Acharya Devavrat / Dhananjay / Swami / Pandit / Bhaskar)
     if (resolved.isNativeGenderMatched) {
-      pitch = 0.92;
-      rate = 0.95;
+      pitch = 0.96;
+      rate = 0.98;
     } else {
-      // Language lacks native male voice pack: Pitch-shift down by 28% directly into an authentic Pandit male baritone (140-145Hz)
-      pitch = 0.72;
-      rate = 0.88;
+      // Natural, warm Pandit baritone without robotic slowdown or distortion
+      pitch = 0.88;
+      rate = 0.96;
     }
   } else {
     // FEMALE ASTROLOGER (Devi / Mata / Ananya / Vedika / Priya)
     if (resolved.isNativeGenderMatched) {
-      pitch = 1.05;
+      pitch = 1.02;
       rate = 0.98;
     } else {
-      pitch = 1.15;
+      pitch = 1.08;
       rate = 0.98;
     }
   }
