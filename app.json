@@ -9,7 +9,23 @@
     "backgroundColor": "#FAF9F6",
     "icon": "./assets/images/app_logo_emblem.png",
     "newArchEnabled": true,
-    "ios": { "supportsTablet": false, "bundleIdentifier": "com.example.astroparihar", "icon": "./assets/images/app_logo_emblem.png" },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.astroparihar.app",
+      "icon": "./assets/images/app_logo_emblem.png",
+      "infoPlist": {
+        "CFBundleDisplayName": "AstroParihar",
+        "NSCameraUsageDescription": "AstroParihar requires camera access for live 1-on-1 video consultations with verified Vedic astrologers.",
+        "NSMicrophoneUsageDescription": "AstroParihar requires microphone access for live voice consultations and interactive astrological voice queries.",
+        "NSLocationWhenInUseUsageDescription": "AstroParihar uses your location to compute accurate Vedic planetary ascendants (Lagna), Janam Kundli charts, and local sunrise timings.",
+        "NSPhotoLibraryUsageDescription": "AstroParihar requires photo library access to allow uploading birth charts and setting your devotee profile picture.",
+        "NSSpeechRecognitionUsageDescription": "AstroParihar uses speech recognition to convert your spoken astrological queries into text in real time.",
+        "UIBackgroundModes": [
+          "audio"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
     "android": {
       "package": "com.example.astroparihar",
       "edgeToEdgeEnabled": true,
