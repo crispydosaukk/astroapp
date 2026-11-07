@@ -819,10 +819,23 @@ function Bubble({
       <View style={{ maxWidth: maxW, flexShrink: 1 }}>
         <View
           style={{
-            paddingLeft: 12, paddingRight: 12, paddingTop: 9, paddingBottom: 22, backgroundColor: bg,
-            borderTopLeftRadius: 12, borderTopRightRadius: 12, borderBottomLeftRadius: msg.isUser ? 12 : 2, borderBottomRightRadius: msg.isUser ? 2 : 12,
-            shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1,
-            borderWidth: 0.5, borderColor: msg.isUser ? 'rgba(0,128,105,0.15)' : 'rgba(0,0,0,0.06)',
+            minWidth: 96,
+            paddingLeft: 12,
+            paddingRight: 12,
+            paddingTop: msg.isUser ? 8 : 9,
+            paddingBottom: 6,
+            backgroundColor: bg,
+            borderTopLeftRadius: 14,
+            borderTopRightRadius: 14,
+            borderBottomLeftRadius: msg.isUser ? 14 : 2,
+            borderBottomRightRadius: msg.isUser ? 2 : 14,
+            shadowColor: '#000',
+            shadowOpacity: 0.06,
+            shadowRadius: 2,
+            shadowOffset: { width: 0, height: 1 },
+            elevation: 1,
+            borderWidth: 0.5,
+            borderColor: msg.isUser ? 'rgba(0,128,105,0.18)' : 'rgba(0,0,0,0.06)',
           }}
         >
           {!msg.isUser ? (
@@ -899,8 +912,9 @@ function Bubble({
             </View>
           ) : null}
 
-          <View style={{ position: 'absolute', bottom: 4, right: 8, flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ color: '#667781', fontSize: 10 }}>{msg.time}</Text>
+          {/* Time & Delivery Status - in normal flow so it never overlaps text or wraps awkwardly */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', marginTop: 3, marginLeft: 8 }}>
+            <Text style={{ color: '#667781', fontSize: 10, fontWeight: '500' }}>{msg.time}</Text>
             {msg.isUser ? <AppIcon name="done_all" size={14} color="#53BDEB" style={{ marginLeft: 3 }} /> : null}
           </View>
         </View>
@@ -2249,170 +2263,208 @@ export default function AiChatScreen() {
               paddingBottom: Math.max(24, insets.bottom + 12),
               borderWidth: 1.5,
               borderColor: '#C9A84C',
+              maxHeight: '92%',
             }}
           >
-            {/* Header */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(201,168,76,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 10, borderWidth: 1, borderColor: '#C9A84C' }}>
-                  <Text style={{ fontSize: 18 }}>⚡</Text>
+            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+              {/* Header */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(201,168,76,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 10, borderWidth: 1, borderColor: '#C9A84C' }}>
+                    <Text style={{ fontSize: 18 }}>⚡</Text>
+                  </View>
+                  <View>
+                    <Text style={{ color: colors.isLight ? '#1F1535' : '#FFFFFF', fontSize: 18, fontWeight: '800' }}>{t('Recharge Wallet', 'Recharge Wallet')}</Text>
+                    <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 11 }}>{t('Instant credit for AI & Astrologer Consultations', 'Instant credit for AI & Astrologer Consultations')}</Text>
+                  </View>
                 </View>
+                <Pressable onPress={() => setShowRechargeModal(false)} style={{ padding: 4 }}>
+                  <AppIcon name="close" color={colors.isLight ? '#5A6A85' : '#A0A8C0'} size={22} />
+                </Pressable>
+              </View>
+
+              {/* Current Balance & Prompt Cost Bar */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: 12,
+                  borderRadius: 14,
+                  backgroundColor: colors.isLight ? '#FAF5E8' : '#16253B',
+                  borderWidth: 1,
+                  borderColor: 'rgba(201,168,76,0.3)',
+                  marginBottom: 16,
+                }}
+              >
                 <View>
-                  <Text style={{ color: colors.isLight ? '#1F1535' : '#FFFFFF', fontSize: 18, fontWeight: '800' }}>{t('Recharge Wallet', 'Recharge Wallet')}</Text>
-                  <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 11 }}>{t('Instant credit for AI & Astrologer Consultations', 'Instant credit for AI & Astrologer Consultations')}</Text>
+                  <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 11 }}>{t('Current Balance', 'Current Balance')}</Text>
+                  <Text style={{ color: walletBalance < promptCost.costINR ? '#FF6B6B' : (colors.isLight ? '#B45309' : '#FFD700'), fontSize: 20, fontWeight: '800', marginTop: 2 }}>
+                    {formatPrice(walletBalance)}
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 11 }}>{t('Consultation Rate', 'Consultation Rate')}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                    <Text style={{ color: '#C9A84C', fontSize: 13, fontWeight: '700' }}>{promptCost.label} per prompt</Text>
+                  </View>
                 </View>
               </View>
-              <Pressable onPress={() => setShowRechargeModal(false)} style={{ padding: 4 }}>
-                <AppIcon name="close" color={colors.isLight ? '#5A6A85' : '#A0A8C0'} size={22} />
-              </Pressable>
-            </View>
 
-            {/* Current Balance & Prompt Cost Bar */}
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: 12,
-                borderRadius: 14,
-                backgroundColor: colors.isLight ? '#FAF5E8' : '#16253B',
-                borderWidth: 1,
-                borderColor: 'rgba(201,168,76,0.3)',
-                marginBottom: 16,
-              }}
-            >
-              <View>
-                <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 11 }}>{t('Current Balance', 'Current Balance')}</Text>
-                <Text style={{ color: walletBalance < promptCost.costINR ? '#FF6B6B' : (colors.isLight ? '#B45309' : '#FFD700'), fontSize: 20, fontWeight: '800', marginTop: 2 }}>
-                  {formatPrice(walletBalance)}
-                </Text>
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 11 }}>{t('Consultation Rate', 'Consultation Rate')}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                  <Text style={{ color: '#C9A84C', fontSize: 13, fontWeight: '700' }}>{promptCost.label} per prompt</Text>
-                </View>
-              </View>
-            </View>
+              {/* Select Recharge Amount */}
+              <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>
+                {t('Select Amount', 'Select Amount')}
+              </Text>
 
-            {/* Select Recharge Amount */}
-            <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
-              {t('Select Amount', 'Select Amount')}
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-              {rechargeOptions.slice(0, 5).map((opt, idx) => {
-                const isSel = selectedRechargeIdx === idx;
-                return (
-                  <Pressable
-                    key={opt.amount}
-                    onPress={() => setSelectedRechargeIdx(idx)}
-                    style={{
-                      flex: 1,
-                      minWidth: '28%',
-                      paddingVertical: 10,
-                      paddingHorizontal: 8,
-                      borderRadius: 12,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: isSel ? 'rgba(201,168,76,0.25)' : (colors.isLight ? '#F5F5F7' : '#16253B'),
-                      borderWidth: isSel ? 2 : 1,
-                      borderColor: isSel ? '#C9A84C' : (colors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'),
-                    }}
-                  >
-                    <Text style={{ color: isSel ? '#C9A84C' : (colors.isLight ? '#1F1535' : '#FFFFFF'), fontSize: 15, fontWeight: '800' }}>
-                      {opt.amount}
-                    </Text>
-                    {opt.bonus ? (
-                      <Text style={{ color: '#16A34A', fontSize: 9, fontWeight: '700', marginTop: 2 }}>
-                        {opt.bonus}
+              {/* Row 1: Top 3 amounts (e.g. ₹100, ₹200, ₹500) */}
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                {rechargeOptions.slice(0, 3).map((opt, idx) => {
+                  const isSel = selectedRechargeIdx === idx;
+                  return (
+                    <Pressable
+                      key={opt.amount}
+                      onPress={() => setSelectedRechargeIdx(idx)}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        paddingHorizontal: 6,
+                        borderRadius: 14,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: isSel ? 'rgba(201,168,76,0.25)' : (colors.isLight ? '#F5F5F7' : '#16253B'),
+                        borderWidth: isSel ? 2 : 1,
+                        borderColor: isSel ? '#C9A84C' : (colors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'),
+                      }}
+                    >
+                      <Text style={{ color: isSel ? '#C9A84C' : (colors.isLight ? '#1F1535' : '#FFFFFF'), fontSize: 15, fontWeight: '800' }}>
+                        {opt.amount}
                       </Text>
-                    ) : null}
-                  </Pressable>
-                );
-              })}
-            </View>
+                      {opt.bonus ? (
+                        <Text style={{ color: '#16A34A', fontSize: 9.5, fontWeight: '700', marginTop: 2 }}>
+                          {opt.bonus}
+                        </Text>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
 
-            {/* Payment Method Selector */}
-            <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
-              {t('Select Payment Method', 'Select Payment Method')}
-            </Text>
-            <View style={{ gap: 8, marginBottom: 18 }}>
-              {(currencyCode === 'INR'
-                ? [
-                    { id: 'UPI', label: 'Google Pay / PhonePe / Paytm (UPI)', icon: '📱' },
-                    { id: 'Card', label: 'Credit / Debit Card (Visa, RuPay, Master)', icon: '💳' },
-                    { id: 'Net Banking', label: 'Net Banking (All Major Indian Banks)', icon: '🏦' },
-                  ]
-                : [
-                    { id: 'Card', label: 'Credit / Debit Card (Visa, Master, Amex)', icon: '💳' },
-                    { id: 'PayPal', label: 'PayPal / Apple Pay / Google Pay', icon: '🌐' },
-                    { id: 'Wire', label: 'International Wire Transfer', icon: '🏦' },
-                  ]
-              ).map((pm) => {
-                const isSel = selectedPaymentMethod === pm.id;
-                return (
-                  <Pressable
-                    key={pm.id}
-                    onPress={() => setSelectedPaymentMethod(pm.id)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: 12,
-                      borderRadius: 12,
-                      backgroundColor: isSel ? 'rgba(201,168,76,0.18)' : (colors.isLight ? '#F8F9FA' : '#16253B'),
-                      borderWidth: 1,
-                      borderColor: isSel ? '#C9A84C' : (colors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)'),
-                    }}
-                  >
-                    <Text style={{ fontSize: 18, marginRight: 10 }}>{pm.icon}</Text>
-                    <Text style={{ flex: 1, color: isSel ? '#C9A84C' : (colors.isLight ? '#1F1535' : '#FFFFFF'), fontSize: 13, fontWeight: isSel ? '700' : '500' }}>
-                      {pm.label}
-                    </Text>
-                    {isSel ? (
-                      <AppIcon name="check_circle" color="#C9A84C" size={18} />
-                    ) : (
-                      <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: colors.isLight ? '#9CA3AF' : '#A0A8C0' }} />
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
+              {/* Row 2: Next 2 popular amounts (e.g. ₹1000, ₹2000) */}
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                {rechargeOptions.slice(3, 5).map((opt, idx) => {
+                  const actualIdx = idx + 3;
+                  const isSel = selectedRechargeIdx === actualIdx;
+                  return (
+                    <Pressable
+                      key={opt.amount}
+                      onPress={() => setSelectedRechargeIdx(actualIdx)}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        paddingHorizontal: 8,
+                        borderRadius: 14,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: isSel ? 'rgba(201,168,76,0.25)' : (colors.isLight ? '#F5F5F7' : '#16253B'),
+                        borderWidth: isSel ? 2 : 1,
+                        borderColor: isSel ? '#C9A84C' : (colors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'),
+                      }}
+                    >
+                      <Text style={{ color: isSel ? '#C9A84C' : (colors.isLight ? '#1F1535' : '#FFFFFF'), fontSize: 15, fontWeight: '800' }}>
+                        {opt.amount}
+                      </Text>
+                      {opt.bonus ? (
+                        <Text style={{ color: '#16A34A', fontSize: 9.5, fontWeight: '700', marginTop: 2 }}>
+                          {opt.bonus}
+                        </Text>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
 
-            {/* Pay Button */}
-            <Pressable
-              onPress={handleExecuteRecharge}
-              disabled={isRecharging}
-              style={{
-                paddingVertical: 14,
-                borderRadius: 14,
-                backgroundColor: '#C9A84C',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'row',
-                shadowColor: '#C9A84C',
-                shadowOpacity: 0.35,
-                shadowRadius: 6,
-                elevation: 3,
-                opacity: isRecharging ? 0.7 : 1,
-              }}
-            >
-              <Text style={{ color: '#080D1A', fontSize: 15, fontWeight: '800' }}>
-                {isRecharging ? t('Processing Secure Payment...', 'Processing Secure Payment...') : `${t('Pay & Recharge', 'Pay & Recharge')} ${activeRecharge.amount}`}
+              {/* Payment Method Selector */}
+              <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+                {t('Select Payment Method', 'Select Payment Method')}
               </Text>
-            </Pressable>
+              <View style={{ gap: 8, marginBottom: 18 }}>
+                {(currencyCode === 'INR'
+                  ? [
+                      { id: 'UPI', label: 'Google Pay / PhonePe / Paytm (UPI)', icon: '📱' },
+                      { id: 'Card', label: 'Credit / Debit Card (Visa, RuPay, Master)', icon: '💳' },
+                      { id: 'Net Banking', label: 'Net Banking (All Major Indian Banks)', icon: '🏦' },
+                    ]
+                  : [
+                      { id: 'Card', label: 'Credit / Debit Card (Visa, Master, Amex)', icon: '💳' },
+                      { id: 'PayPal', label: 'PayPal / Apple Pay / Google Pay', icon: '🌐' },
+                      { id: 'Wire', label: 'International Wire Transfer', icon: '🏦' },
+                    ]
+                ).map((pm) => {
+                  const isSel = selectedPaymentMethod === pm.id;
+                  return (
+                    <Pressable
+                      key={pm.id}
+                      onPress={() => setSelectedPaymentMethod(pm.id)}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        padding: 12,
+                        borderRadius: 12,
+                        backgroundColor: isSel ? 'rgba(201,168,76,0.18)' : (colors.isLight ? '#F8F9FA' : '#16253B'),
+                        borderWidth: 1,
+                        borderColor: isSel ? '#C9A84C' : (colors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)'),
+                      }}
+                    >
+                      <Text style={{ fontSize: 18, marginRight: 10 }}>{pm.icon}</Text>
+                      <Text style={{ flex: 1, color: isSel ? '#C9A84C' : (colors.isLight ? '#1F1535' : '#FFFFFF'), fontSize: 13, fontWeight: isSel ? '700' : '500' }}>
+                        {pm.label}
+                      </Text>
+                      {isSel ? (
+                        <AppIcon name="check_circle" color="#C9A84C" size={18} />
+                      ) : (
+                        <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: colors.isLight ? '#9CA3AF' : '#A0A8C0' }} />
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
 
-            {/* Redirect to full wallet screen */}
-            <Pressable
-              onPress={() => {
-                setShowRechargeModal(false);
-                push(AppRoutes.walletScreen);
-              }}
-              style={{ marginTop: 12, alignItems: 'center', paddingVertical: 4 }}
-            >
-              <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 12, textDecorationLine: 'underline' }}>
-                {t('View Full Wallet & Transaction History →', 'View Full Wallet & Transaction History →')}
-              </Text>
-            </Pressable>
+              {/* Pay Button */}
+              <Pressable
+                onPress={handleExecuteRecharge}
+                disabled={isRecharging}
+                style={{
+                  paddingVertical: 14,
+                  borderRadius: 14,
+                  backgroundColor: '#C9A84C',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                  shadowColor: '#C9A84C',
+                  shadowOpacity: 0.35,
+                  shadowRadius: 6,
+                  elevation: 3,
+                  opacity: isRecharging ? 0.7 : 1,
+                }}
+              >
+                <Text style={{ color: '#080D1A', fontSize: 15, fontWeight: '800' }}>
+                  {isRecharging ? t('Processing Secure Payment...', 'Processing Secure Payment...') : `${t('Pay & Recharge', 'Pay & Recharge')} ${activeRecharge.amount}`}
+                </Text>
+              </Pressable>
+
+              {/* Redirect to full wallet screen */}
+              <Pressable
+                onPress={() => {
+                  setShowRechargeModal(false);
+                  push(AppRoutes.walletScreen);
+                }}
+                style={{ marginTop: 12, alignItems: 'center', paddingVertical: 4 }}
+              >
+                <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 12, textDecorationLine: 'underline' }}>
+                  {t('View Full Wallet & Transaction History →', 'View Full Wallet & Transaction History →')}
+                </Text>
+              </Pressable>
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>

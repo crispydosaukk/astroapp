@@ -468,7 +468,13 @@ export default function ConsultationScreen() {
     ? (astro.name.includes('Devavrat') ? 'ఆచార్య దేవవ్రత్ శాస్త్రి' : astro.name.includes('Dhananjay') ? 'ఆచార్య ధనంజయ్ శాస్త్రి' : 'వైదిక జ్యోతిష నిపుణుడిని')
     : selectedLanguage === 'Hindi'
       ? (astro.name.includes('Devavrat') ? 'आचार्य देवव्रत शास्त्री' : astro.name.includes('Dhananjay') ? 'आचार्य धनंजय शास्त्री' : 'वैदिक ज्योतिषी')
-      : astro.name;
+      : selectedLanguage === 'Tamil'
+        ? (astro.name.includes('Devavrat') ? 'ஆச்சார்ய தேவவ்ரத் சாஸ்திரி' : astro.name.includes('Dhananjay') ? 'ஆச்சார்ய தனஞ்சய் சாஸ்திரி' : 'வேத ஜோதிடர்')
+        : selectedLanguage === 'Kannada'
+          ? (astro.name.includes('Devavrat') ? 'ಆಚಾರ್ಯ ದೇವವ್ರತ್ ಶಾಸ್ತ್ರಿ' : astro.name.includes('Dhananjay') ? 'ಆಚಾರ್ಯ ಧನಂಜಯ್ ಶಾಸ್ತ್ರಿ' : 'ವೈದಿಕ ಜ್ಯೋತಿಷಿ')
+          : selectedLanguage === 'Malayalam'
+            ? (astro.name.includes('Devavrat') ? 'ആചാര്യ ദേവവ്രത് ശാസ്ത്രി' : astro.name.includes('Dhananjay') ? 'ആചാര്യ ധനഞ്ജയ് ശാസ്ത്രി' : 'വൈദിക ജ്യോതിഷി')
+            : astro.name;
 
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -801,7 +807,13 @@ export default function ConsultationScreen() {
         ? `నమస్కారం! నేను మీ జ్యోతిష నిపుణుడు ${astroDisplayName}. మీ కుండలి పరిశీలించడానికి సిద్ధంగా ఉన్నాను. మీ ఉద్యోగం, వివాహం, ఆర్థికం లేదా గ్రహ పరిహారాల గురించి ఏ ప్రశ్న అయినా అడగండి.`
         : selectedLanguage === 'Hindi'
           ? `नमस्ते! मैं आपका ज्योतिषी ${astroDisplayName} हूँ। आपकी जन्म कुंडली के अनुसार करियर, विवाह, धन या ग्रह शांति के बारे में आप क्या जानना चाहते हैं?`
-          : `Namaste! I am your Vedic astrologer ${astro.name}. I am analyzing your birth chart. Please ask any question regarding career, marriage, finances, or planetary remedies.`;
+          : selectedLanguage === 'Tamil'
+            ? `வணக்கம்! நான் உங்கள் வேத ஜோதிடர் ${astroDisplayName}. உங்கள் ஜாதகத்தை கணிக்க தயாராக உள்ளேன். உங்கள் தொழில், திருமணம், நிதி அல்லது கிரக பரிகாரங்கள் குறித்து கேளுங்கள்.`
+            : selectedLanguage === 'Kannada'
+              ? `ನಮಸ್ಕಾರ! ನಾನು ನಿಮ್ಮ ವೈದಿಕ ಜ್ಯೋತಿಷಿ ${astroDisplayName}. ನಿಮ್ಮ ಜನ್ಮ ಕುಂಡಲಿಯನ್ನು ವಿಶ್ಲೇಷಿಸಲು ಸಿದ್ಧನಾಗಿದ್ದೇನೆ. ನಿಮ್ಮ ಉದ್ಯೋಗ, ವಿವಾಹ, ಆರ್ಥಿಕ ಅಥವಾ ಪರಿಹಾರಗಳ ಬಗ್ಗೆ ಪ್ರಶ್ನೆಗಳನ್ನು ಕೇಳಬಹುದು.`
+              : selectedLanguage === 'Malayalam'
+                ? `നമസ്കാരം! ഞാൻ നിങ്ങളുടെ വൈദിക ജ്യോതിഷി ${astroDisplayName}. നിങ്ങളുടെ ജാതകം പരിശോധിക്കാൻ തയ്യാറാണ്. കരിയർ, വിവാഹം, ധനം, പരിഹാരങ്ങൾ എന്നിവയെക്കുറിച്ച് ചോദിക്കാം.`
+                : `Namaste! I am your Vedic astrologer ${astro.name}. I am analyzing your birth chart. Please ask any question regarding career, marriage, finances, or planetary remedies.`;
 
       // 1. Verify 5-minute minimum balance BEFORE connecting
       (async () => {
@@ -1055,6 +1067,27 @@ export default function ConsultationScreen() {
     { label: '🪐 ग्रह दोष शांति', query: 'क्या मेरी कुंडली में कोई ग्रह दोष है और उसका निवारण क्या है?' },
     { label: '✨ शुभ रत्न व रुद्राक्ष', query: 'मेरी जन्म कुंडली के अनुसार मेरे लिए सबसे शुभ रत्न और रुद्राक्ष कौन सा है?' },
     { label: '🙏 वैदिक उपाय', query: 'ग्रह शांति के लिए कौन सा सरल एवं सिद्ध उपाय करना चाहिए?' },
+  ] : selectedLanguage === 'Tamil' ? [
+    { label: '💼 வேலை & தொழில்', query: 'எனது தொழில் மற்றும் வேலை வாய்ப்புகள் எப்படி உள்ளன? பதவி உயர்வு எப்போது கிடைக்கும்?' },
+    { label: '💍 திருமண நேரம்', query: 'எனது ஜாதகத்தில் திருமண யோகம் எப்போது கூடிவரும்?' },
+    { label: '💰 பண வரவு & செல்வம்', query: 'எனது நிதி நிலைமை எப்போது சீராகும் மற்றும் பண வரவு எப்போது உண்டாகும்?' },
+    { label: '🪐 ராகு-கேது பரிகாரம்', query: 'எனது ஜாதகத்தில் ஏழரை சனி அல்லது ராகு தோஷம் உள்ளதா? எளிய பரிகாரங்கள் என்ன?' },
+    { label: '✨ அதிர்ஷ்ட ரத்தினம்', query: 'என் ராசி மற்றும் லக்னத்திற்கு உகந்த அதிர்ஷ்ட ரத்தினம் எது?' },
+    { label: '🙏 பரிகார பூஜை', query: 'கிரக தோஷ சாந்திக்கு நான் என்ன தெய்வ வழிபாடு செய்ய வேண்டும்?' },
+  ] : selectedLanguage === 'Kannada' ? [
+    { label: '💼 ಉದ್ಯೋಗ & ವೃತ್ತಿ', query: 'ನನ್ನ ಉದ್ಯೋಗ ಮತ್ತು ವೃತ್ತಿ ಭವಿಷ್ಯ ಹೇಗಿದೆ? ಬಡ್ತಿ ಯಾವಾಗ ಸಿಗಬಹುದು?' },
+    { label: '💍 ವಿವಾಹ ಯೋಗ', query: 'ನನ್ನ ಜಾತಕದಲ್ಲಿ ವಿವಾಹ ಯೋಗ ಯಾವಾಗ ಕೂಡಿಬರಲಿದೆ?' },
+    { label: '💰 ಆರ್ಥಿಕ ಪ್ರಗತಿ', query: 'ನನ್ನ ಆರ್ಥಿಕ ಪರಿಸ್ಥಿತಿ ಯಾವಾಗ ಸುಧಾರಿಸಲಿದೆ ಮತ್ತು ಧನ ಲಾಭ ಯಾವಾಗ?' },
+    { label: '🪐 ರಾಹು-ಕೇತು ಪರಿಹಾರ', query: 'ನನ್ನ ಜಾತಕದಲ್ಲಿ ರಾಹು ಕೇತು ಅಥವಾ ಶನಿ ದೋಷವಿದೆಯೇ? ಸರಳ ಪರಿಹಾರಗಳೇನು?' },
+    { label: '✨ ಅದೃಷ್ಟ ರತ್ನ', query: 'ನನ್ನ ಕುಂಡಲಿಗೆ ಅತ್ಯಂತ ಸೂಕ್ತವಾದ ಅದೃಷ್ಟ ರತ್ನ ಮತ್ತು ರುದ್ರಾಕ್ಷಿ ಯಾವುದು?' },
+    { label: '🙏 ಶಾಂತಿ ಪರಿಹಾರ', query: 'ಗ್ರಹ ಶಾಂತಿಗಾಗಿ ಯಾವ ದೇವರ ಆರಾಧನೆ ಅಥವಾ ಪೂಜೆ ಮಾಡಬೇಕು?' },
+  ] : selectedLanguage === 'Malayalam' ? [
+    { label: '💼 ജോലി & കരിയർ', query: 'എന്റെ കരിയറും ജോലിയും എങ്ങനെയുണ്ടാകും? പ്രമോഷൻ എപ്പോഴാണ് ലഭിക്കുക?' },
+    { label: '💍 വിവാഹ സമയം', query: 'എന്റെ ജാതകത്തിൽ വിവാഹ സമയം എപ്പോഴാണ് അനുകൂലമാകുന്നത്?' },
+    { label: '💰 സാമ്പത്തിക വളർച്ച', query: 'എന്റെ സാമ്പത്തിക സ്ഥിതി എപ്പോൾ മെച്ചപ്പെടും?' },
+    { label: '🪐 ദോഷ പരിഹാരം', query: 'എന്റെ ജാതകത്തിൽ എന്തെങ്കിലും ഗ്രഹദോഷങ്ങൾ ഉണ്ടോ? എന്ത് പരിഹാരമാണ് വേണ്ടത്?' },
+    { label: '✨ ഭാഗ്യ രത്നം', query: 'എന്റെ നക്ഷത്രത്തിനും ലഗ്നത്തിനും അനുയോജ്യമായ രത്നം ഏതാണ്?' },
+    { label: '🙏 വൈദിക പൂജ', query: 'ഗ്രഹശാന്തിക്കായി ഞാൻ ഏത് ദേവതയെയാണ് ഭജിക്കേണ്ടത്?' },
   ] : [
     { label: '💼 Career & Job', query: 'What does my birth chart indicate regarding my career progression and financial stability?' },
     { label: '💍 Marriage Timing', query: 'When will the auspicious window for marriage or relationship harmony open in my chart?' },
@@ -1100,7 +1133,13 @@ export default function ConsultationScreen() {
           ? `🔮 మీ జన్మ కుండలి మరియు గ్రహ గోచారాలను విశ్లేషిస్తున్నారు...`
           : selectedLanguage === 'Hindi'
             ? `🔮 आपकी जन्म कुंडली और ग्रह गोचर का विश्लेषण हो रहा है...`
-            : `🔮 Analyzing your Janam Kundli & planetary transits...`
+            : selectedLanguage === 'Tamil'
+              ? `🔮 உங்கள் ஜாதகம் மற்றும் கிரக நிலைகள் ஆராயப்படுகின்றன...`
+              : selectedLanguage === 'Kannada'
+                ? `🔮 ನಿಮ್ಮ ಜನ್ಮ ಕುಂಡಲಿ ಮತ್ತು ಗ್ರಹ ಸಂಚಾರಗಳನ್ನು ವಿಶ್ಲೇಷಿಸಲಾಗುತ್ತಿದೆ...`
+                : selectedLanguage === 'Malayalam'
+                  ? `🔮 നിങ്ങളുടെ ജാതകവും ഗ്രഹ നിലയും വിശകലനം ചെയ്യുന്നു...`
+                  : `🔮 Analyzing your Janam Kundli & planetary transits...`
       );
       try {
         const res = await sendLiveAIChatMessage({
@@ -1137,7 +1176,13 @@ export default function ConsultationScreen() {
         ? `మీ జన్మ కుండలిని పరిశీలించాను. గ్రహ గోచారాల ప్రభావం సానుకూలంగా ఉంది. నిత్యం ఇష్టదేవతా స్మరణ మరియు తూర్పు ముఖంగా దీపారాధన చేయండి.`
         : selectedLanguage === 'Hindi'
           ? `आपकी जन्म कुंडली के अनुसार देवगुरु बृहस्पति का गोचर शुभ है। प्रतिदिन सूर्य को अर्घ्य दें एवं वैदिक उपाय करें।`
-          : `Based on your birth chart, the planetary transits are supportive. Maintain mental peace and observe your daily remedies.`;
+          : selectedLanguage === 'Tamil'
+            ? `உங்கள் ஜாதகத்தை கணித்ததில் கிரக நிலைகள் சுபமாக உள்ளன. தினமும் இஷ்ட தெய்வ வழிபாடு மற்றும் விளக்கேற்றி பிரார்த்தனை செய்யவும்.`
+            : selectedLanguage === 'Kannada'
+              ? `ನಿಮ್ಮ ಜನ್ಮ ಕುಂಡಲಿಯನ್ನು ಪರಿಶೀಲಿಸಿದ್ದೇನೆ. ಗ್ರಹ ಸಂಚಾರಗಳು ಅನುಕೂಲಕರವಾಗಿವೆ. ನಿತ್ಯವೂ ಇಷ್ಟ ದೇವತಾ ಪ್ರಾರ್ಥನೆ ಮತ್ತು ತುಳಸಿ ಪೂಜೆ ಮಾಡಿ.`
+              : selectedLanguage === 'Malayalam'
+                ? `നിങ്ങളുടെ ജാതകം പരിശോധിച്ചു. ഗ്രഹങ്ങളുടെ സ്വാധീനം അനുകൂലമാണ്. ദിവസവും ഇഷ്ടദേവതാ പ്രാർത്ഥന നടത്തുക.`
+                : `Based on your birth chart, the planetary transits are supportive. Maintain mental peace and observe your daily remedies.`;
       updateMessages((m) => [...m, { text: fallbackReply, isSystem: false, isUser: false, time: fmt(secondsRef.current) }]);
       scrollChat();
       if (isAi && isSpeakerOn && !isMuted && !callEndedRef.current) {
@@ -2696,8 +2741,12 @@ export default function ConsultationScreen() {
                         : lang.name === 'Hindi'
                           ? `भाषा बदलकर हिन्दी कर दी गई है। मैं आपकी कुंडली के विश्लेषण हेतु तत्पर हूँ।`
                           : lang.name === 'Tamil'
-                            ? `மொழி தமிழுக்கு மாற்றப்பட்டது.`
-                            : `Language changed to ${lang.name}. I am ready to answer your astrological questions.`;
+                            ? `மொழி தமிழுக்கு மாற்றப்பட்டது. உங்கள் ஜாதகத்தை பகுப்பாய்வு செய்து பதிலளிக்க தயாராக உள்ளேன்.`
+                            : lang.name === 'Kannada'
+                              ? `ಭಾಷೆಯನ್ನು ಕನ್ನಡಕ್ಕೆ ಬದಲಾಯಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಜನ್ಮ ಕುಂಡಲಿಯನ್ನು ವಿಶ್ಲೇಷಿಸಿ ಮಾರ್ಗದರ್ಶನ ನೀಡಲು ಸಿದ್ಧನಾಗಿದ್ದೇನೆ.`
+                              : lang.name === 'Malayalam'
+                                ? `ഭാഷ മലയാളത്തിലേക്ക് മാറ്റിയിരിക്കുന്നു. നിങ്ങളുടെ ജാതകം വിശകലനം ചെയ്ത് മറുപടി നൽകാൻ ഞാൻ തയ്യാറാണ്.`
+                                : `Language changed to ${lang.name}. I am ready to answer your astrological questions.`;
 
                       updateMessages((m) => [
                         ...m,
