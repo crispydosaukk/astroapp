@@ -1218,20 +1218,27 @@ export default function AiChatScreen() {
 
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
 
-  const handleToggleVoice = (text: string, idx: number) => {
+  const handleToggleVoice = async (text: string, idx: number) => {
     if (speakingIndex === idx) {
-      stopAstrologerSpeech();
-      setSpeakingIndex(null);
+      await stopAstrologerSpeech();
+      if (mounted.current) setSpeakingIndex(null);
     } else {
-      setSpeakingIndex(idx);
+      await stopAstrologerSpeech();
+      if (mounted.current) setSpeakingIndex(idx);
       const isFemale = selectedAstrologer.gender === 'female' || isFemaleAstrologer(selectedAstrologer.name);
       speakAstrologerText(text, {
         language: selectedLanguage,
         astrologerName: selectedAstrologer.name,
         gender: isFemale ? 'female' : 'male',
-        onStart: () => setSpeakingIndex(idx),
-        onDone: () => setSpeakingIndex(null),
-        onError: () => setSpeakingIndex(null),
+        onStart: () => {
+          if (mounted.current) setSpeakingIndex(idx);
+        },
+        onDone: () => {
+          if (mounted.current) setSpeakingIndex(null);
+        },
+        onError: () => {
+          if (mounted.current) setSpeakingIndex(null);
+        },
       });
     }
   };

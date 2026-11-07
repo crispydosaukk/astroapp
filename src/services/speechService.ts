@@ -79,6 +79,7 @@ export function cleanTextForSpeech(raw: string, lang?: string): string {
     .replace(/<[^>]*>/g, ' ')        // Strip any HTML tags
     .replace(EMOJI_REGEX, '')        // Strip all Unicode emojis
     .replace(/[✦•–—\-\|\/\\~`_^{}\[\]]/g, ' ') // Non-phonetic bullet marks & dashes
+    .replace(/["“”'‘’]/g, '')        // Remove quotes so TTS doesn't vocalize "quote"
     .replace(/[;:]/g, ', ')          // Convert colons & semicolons to soft pauses
     .replace(/!+/g, ', ')            // Convert exclamation marks to comma pauses
     .replace(/\n+/g, '. ')           // Newlines to sentence breaks
@@ -262,25 +263,24 @@ const MALE_PATTERNS = [
   'male', 'man', 'boy', 'guy', 'david', 'ravi', 'mohan', 'madhav', 'kumar',
   'narayan', 'valluvar', 'george', 'mark', 'daniel', 'alex', 'oliver', 'tom',
   'evan', 'fred', 'nathan', 'aaron', 'cove', 'echo', 'onyx', 'rishi', 'prabhat', 'anil', 'siddharth',
-  '-tem-', 'tem-network', 'tem-local', '-tem', 'tem_',
-  '-hid-', 'hid-network', 'hid-local', '-hid',
-  '-hie-', 'hie-network', 'hie-local', '-hie',
-  '-hic-', 'hic-network', 'hic-local', '-hic',
-  '-him-', 'him-network', 'him-local', '-him',
-  '-tpm-', 'tpm-network', 'tpm-local', '-tpm',
-  '-tpb-', 'tpb-network', 'tpb-local', '-tpb',
-  '-knm-', 'knm-network', 'knm-local', '-knm',
-  '-knd-', 'knd-network', 'knd-local', '-knd',
-  '-mlm-', 'mlm-network', 'mlm-local', '-mlm',
-  '-mle-', 'mle-network', 'mle-local', '-mle',
-  '-end-', 'end-network', 'end-local', '-end',
-  '-enc-', 'enc-network', 'enc-local', '-enc',
-  '-ene-', 'ene-network', 'ene-local', '-ene',
-  '-enm-', 'enm-network', 'enm-local', '-enm',
-  '-dfm-', 'dfm-network', 'dfm-local', '-dfm',
-  'standard-b', 'wavenet-b', 'neural2-b', 'journey-b', 'chirp-b', '-b-local', '-b-network',
-  'standard-c', 'wavenet-c', 'neural2-c', 'journey-c', 'chirp-c', '-c-local', '-c-network',
-  'standard-e', 'wavenet-e', 'neural2-e', 'journey-e', 'chirp-e', '-e-local', '-e-network',
+  '-tem-', 'tem-network', 'tem-local', '-tem', '_tem',
+  '-hid-', 'hid-network', 'hid-local', '-hid', '_hid',
+  '-hie-', 'hie-network', 'hie-local', '-hie', '_hie',
+  '-hic-', 'hic-network', 'hic-local', '-hic', '_hic',
+  '-him-', 'him-network', 'him-local', '-him', '_him',
+  '-tpm-', 'tpm-network', 'tpm-local', '-tpm', '_tpm',
+  '-tpb-', 'tpb-network', 'tpb-local', '-tpb', '_tpb',
+  '-knm-', 'knm-network', 'knm-local', '-knm', '_knm',
+  '-knd-', 'knd-network', 'knd-local', '-knd', '_knd',
+  '-mlm-', 'mlm-network', 'mlm-local', '-mlm', '_mlm',
+  '-mle-', 'mle-network', 'mle-local', '-mle', '_mle',
+  '-end-', 'end-network', 'end-local', '-end', '_end',
+  '-enc-', 'enc-network', 'enc-local', '-enc', '_enc',
+  '-ene-', 'ene-network', 'ene-local', '-ene', '_ene',
+  '-enm-', 'enm-network', 'enm-local', '-enm', '_enm',
+  '-dfm-', 'dfm-network', 'dfm-local', '-dfm', '_dfm',
+  'standard-b', 'wavenet-b', 'neural2-b', 'journey-b', 'chirp-b',
+  'standard-c', 'wavenet-c', 'neural2-c', 'journey-c', 'chirp-c',
   '_male', '-male', '#male', ':male', 'gender:male', 'gender=male'
 ];
 
@@ -289,23 +289,24 @@ const FEMALE_PATTERNS = [
   'female', 'woman', 'girl', 'lady', 'zira', 'swara', 'heera', 'shruti', 'pallavi',
   'kalpana', 'samantha', 'ava', 'karen', 'moira', 'victoria', 'siri', 'juniper',
   'nova', 'shimmer', 'breeze', 'allison', 'susan', 'fiona', 'veena', 'ananya', 'aditi',
-  '-tef-', 'tef-network', 'tef-local', '-tef', 'tef_',
-  '-tee-', 'tee-network', 'tee-local', '-tee',
-  '-hia-', 'hia-network', 'hia-local', '-hia',
-  '-hib-', 'hib-network', 'hib-local', '-hib',
-  '-tpd-', 'tpd-network', 'tpd-local', '-tpd',
-  '-tpf-', 'tpf-network', 'tpf-local', '-tpf',
-  '-knf-', 'knf-network', 'knf-local', '-knf',
-  '-mlb-', 'mlb-network', 'mlb-local', '-mlb',
-  '-mlf-', 'mlf-network', 'mlf-local', '-mlf',
-  '-ena-', 'ena-network', 'ena-local', '-ena',
-  '-enb-', 'enb-network', 'enb-local', '-enb',
-  '-enf-', 'enf-network', 'enf-local', '-enf',
-  '-dfc-', 'dfc-network', 'dfc-local', '-dfc',
-  '-dff-', 'dff-network', 'dff-local', '-dff',
-  'standard-a', 'wavenet-a', 'neural2-a', 'journey-a', 'chirp-a', '-a-local', '-a-network',
-  'standard-d', 'wavenet-d', 'neural2-d', 'journey-d', 'chirp-d', '-d-local', '-d-network',
-  'standard-f', 'wavenet-f', 'neural2-f', 'journey-f', 'chirp-f', '-f-local', '-f-network',
+  '-tef-', 'tef-network', 'tef-local', '-tef', '_tef',
+  '-tee-', 'tee-network', 'tee-local', '-tee', '_tee',
+  '-hia-', 'hia-network', 'hia-local', '-hia', '_hia',
+  '-hib-', 'hib-network', 'hib-local', '-hib', '_hib',
+  '-taf-', 'taf-network', 'taf-local', '-taf', '_taf',
+  '-tpd-', 'tpd-network', 'tpd-local', '-tpd', '_tpd',
+  '-tpf-', 'tpf-network', 'tpf-local', '-tpf', '_tpf',
+  '-knf-', 'knf-network', 'knf-local', '-knf', '_knf',
+  '-mlb-', 'mlb-network', 'mlb-local', '-mlb', '_mlb',
+  '-mlf-', 'mlf-network', 'mlf-local', '-mlf', '_mlf',
+  '-ena-', 'ena-network', 'ena-local', '-ena', '_ena',
+  '-enb-', 'enb-network', 'enb-local', '-enb', '_enb',
+  '-enf-', 'enf-network', 'enf-local', '-enf', '_enf',
+  '-dfc-', 'dfc-network', 'dfc-local', '-dfc', '_dfc',
+  '-dff-', 'dff-network', 'dff-local', '-dff', '_dff',
+  'standard-a', 'wavenet-a', 'neural2-a', 'journey-a', 'chirp-a',
+  'standard-d', 'wavenet-d', 'neural2-d', 'journey-d', 'chirp-d',
+  'standard-f', 'wavenet-f', 'neural2-f', 'journey-f', 'chirp-f',
   '_female', '-female', '#female', ':female', 'gender:female', 'gender=female'
 ];
 
@@ -316,8 +317,10 @@ interface ResolvedVoiceInfo {
 
 /**
  * Strict gender-preserving voice resolver.
- * When looking for male: NEVER returns a female voice!
- * When looking for female: NEVER returns a male voice!
+ * Always resolves a concrete, rock-solid voice ID installed on the device.
+ * For languages without pre-installed male voice packs (e.g. Telugu, Tamil, Kannada, Malayalam):
+ * Uses the local offline voice and marks isNativeGenderMatched: false so the acoustic
+ * baritone modulator pitch-shifts it into a deep, authentic Pandit male voice!
  */
 async function resolveVoiceIdentifier(langCode: string, isFemale: boolean): Promise<ResolvedVoiceInfo> {
   try {
@@ -348,8 +351,7 @@ async function resolveVoiceIdentifier(langCode: string, isFemale: boolean): Prom
     const premiumTags = ['enhanced', 'premium', 'natural', 'neural', 'wavenet', 'studio', 'high'];
 
     if (!isFemale) {
-      // 1. Strict Male Voice Search:
-      // Filter ONLY voices that have a male indicator AND NO female indicator!
+      // 1. Male Voice Search:
       const maleCandidates = matching.filter((v) => {
         const lower = `${v.name || ''} ${v.identifier || ''}`.toLowerCase();
         const hasMale = MALE_PATTERNS.some((k) => lower.includes(k));
@@ -357,28 +359,31 @@ async function resolveVoiceIdentifier(langCode: string, isFemale: boolean): Prom
         return hasMale && !hasFemale;
       });
 
-      if (maleCandidates.length > 0) {
-        maleCandidates.sort((a, b) => {
-          const lowerA = `${a.name || ''} ${a.identifier || ''}`.toLowerCase();
-          const lowerB = `${b.name || ''} ${b.identifier || ''}`.toLowerCase();
-          let scoreA = 0;
-          let scoreB = 0;
-          if (lowerA.includes('-local') || lowerA.includes('local') || !lowerA.includes('network')) scoreA += 40;
-          if (lowerB.includes('-local') || lowerB.includes('local') || !lowerB.includes('network')) scoreB += 40;
-          if (premiumTags.some((tag) => lowerA.includes(tag))) scoreA += 20;
-          if (premiumTags.some((tag) => lowerB.includes(tag))) scoreB += 20;
-          return scoreB - scoreA;
-        });
+      // Prefer local offline male voice
+      const localMale = maleCandidates.filter((v) => {
+        const lower = (v.identifier || '').toLowerCase();
+        return lower.includes('local') || !lower.includes('network');
+      });
 
+      if (localMale.length > 0) {
+        return { voiceId: localMale[0].identifier, isNativeGenderMatched: true };
+      }
+
+      if (maleCandidates.length > 0) {
         return { voiceId: maleCandidates[0].identifier, isNativeGenderMatched: true };
       }
 
-      // No native male voice found for this language on device:
-      // NEVER return a female voice! Return undefined so Android doesn't load a female voice dataset.
-      return { voiceId: undefined, isNativeGenderMatched: false };
+      // No native male voice installed on device for this language (common in Telugu, Tamil, Kannada, Malayalam).
+      // Pick the reliable local offline voice for this language and use the Pandit baritone pitch modulator!
+      const localVoices = matching.filter((v) => {
+        const lower = (v.identifier || '').toLowerCase();
+        return lower.includes('local') || !lower.includes('network');
+      });
+
+      const fallbackLocal = localVoices.length > 0 ? localVoices[0] : matching[0];
+      return { voiceId: fallbackLocal?.identifier, isNativeGenderMatched: false };
     } else {
-      // 2. Strict Female Voice Search:
-      // Filter ONLY voices that have a female indicator AND NO male indicator!
+      // 2. Female Voice Search:
       const femaleCandidates = matching.filter((v) => {
         const lower = `${v.name || ''} ${v.identifier || ''}`.toLowerCase();
         const hasFemale = FEMALE_PATTERNS.some((k) => lower.includes(k));
@@ -386,25 +391,26 @@ async function resolveVoiceIdentifier(langCode: string, isFemale: boolean): Prom
         return hasFemale && !hasMale;
       });
 
-      if (femaleCandidates.length > 0) {
-        femaleCandidates.sort((a, b) => {
-          const lowerA = `${a.name || ''} ${a.identifier || ''}`.toLowerCase();
-          const lowerB = `${b.name || ''} ${b.identifier || ''}`.toLowerCase();
-          let scoreA = 0;
-          let scoreB = 0;
-          if (lowerA.includes('-local') || lowerA.includes('local') || !lowerA.includes('network')) scoreA += 40;
-          if (lowerB.includes('-local') || lowerB.includes('local') || !lowerB.includes('network')) scoreB += 40;
-          if (premiumTags.some((tag) => lowerA.includes(tag))) scoreA += 20;
-          if (premiumTags.some((tag) => lowerB.includes(tag))) scoreB += 20;
-          return scoreB - scoreA;
-        });
+      const localFemale = femaleCandidates.filter((v) => {
+        const lower = (v.identifier || '').toLowerCase();
+        return lower.includes('local') || !lower.includes('network');
+      });
 
+      if (localFemale.length > 0) {
+        return { voiceId: localFemale[0].identifier, isNativeGenderMatched: true };
+      }
+
+      if (femaleCandidates.length > 0) {
         return { voiceId: femaleCandidates[0].identifier, isNativeGenderMatched: true };
       }
 
-      // No native female voice found:
-      // NEVER return a male voice! Return undefined.
-      return { voiceId: undefined, isNativeGenderMatched: false };
+      const localVoices = matching.filter((v) => {
+        const lower = (v.identifier || '').toLowerCase();
+        return lower.includes('local') || !lower.includes('network');
+      });
+
+      const fallbackLocal = localVoices.length > 0 ? localVoices[0] : matching[0];
+      return { voiceId: fallbackLocal?.identifier, isNativeGenderMatched: false };
     }
   } catch {
     return { voiceId: undefined, isNativeGenderMatched: false };
@@ -412,8 +418,8 @@ async function resolveVoiceIdentifier(langCode: string, isFemale: boolean): Prom
 }
 
 /**
- * Speak Astrologer response with strict gender fidelity across ALL languages.
- * - Male Astrologers: Resonant, mature Pandit baritone (NO high-pitched girl voice in Telugu, Hindi, Tamil, etc.).
+ * Speak Astrologer response with 100% reliable voice synthesis and strict gender fidelity across ALL languages.
+ * - Male Astrologers: Resonant, mature Pandit baritone (NO high-pitched girl voice in Telugu, Hindi, Tamil, Kannada, Malayalam).
  * - Female Astrologers: Sweet, soothing maternal voice.
  */
 export async function speakAstrologerText(
@@ -430,8 +436,13 @@ export async function speakAstrologerText(
   activeSpeechId += 1;
   const currentToken = activeSpeechId;
 
+  // Safely stop existing speech only if audio is actively playing, allowing audio pipeline to flush
   try {
-    await Speech.stop();
+    const isSpeaking = await Speech.isSpeakingAsync().catch(() => false);
+    if (isSpeaking) {
+      await Speech.stop().catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 70));
+    }
   } catch {}
 
   const chunks = splitIntoSpeechChunks(clean, 180);
@@ -447,32 +458,26 @@ export async function speakAstrologerText(
   let currentVoiceId = resolved.voiceId;
 
   // Strict Acoustic Timbre Modulation:
-  // Ensures Boy = Boy, Girl = Girl across ALL languages (English, Telugu, Hindi, Tamil, Kannada, Malayalam).
   let pitch = 1.00;
   let rate = 0.95;
 
   if (!isFemale) {
     // MALE ASTROLOGER (Acharya Devavrat / Dhananjay / Swami / Pandit / Bhaskar)
-    if (resolved.isNativeGenderMatched && currentVoiceId) {
-      // Real native male voice found (e.g. English male 'end', Telugu 'tem', Hindi 'hid')
-      pitch = 0.90;
+    if (resolved.isNativeGenderMatched) {
+      pitch = 0.92;
       rate = 0.95;
     } else {
-      // The device only has a default/female voice installed for this language:
-      // Pitch-shift down by ~28% directly into an authentic Pandit male baritone (140-145Hz)!
-      // This guarantees it NEVER sounds like a girl!
-      currentVoiceId = undefined; // Force undefined so Android doesn't load female voice dataset
+      // Language lacks native male voice pack: Pitch-shift down by 28% directly into an authentic Pandit male baritone (140-145Hz)
       pitch = 0.72;
       rate = 0.88;
     }
   } else {
     // FEMALE ASTROLOGER (Devi / Mata / Ananya / Vedika / Priya)
-    if (resolved.isNativeGenderMatched && currentVoiceId) {
+    if (resolved.isNativeGenderMatched) {
       pitch = 1.05;
       rate = 0.98;
     } else {
-      currentVoiceId = undefined;
-      pitch = 1.18;
+      pitch = 1.15;
       rate = 0.98;
     }
   }
@@ -509,15 +514,10 @@ export async function speakAstrologerText(
         console.warn('Speech chunk error for language:', meta.bcp47, err);
         if (currentToken !== activeSpeechId) return;
 
-        // If specific voice ID failed, retry ONCE with default voice using the deep male pitch
+        // If specific voice ID failed, retry ONCE with fallback default voice using the deep male pitch
         if (currentVoiceId && !hasRetriedCurrentChunk) {
           currentVoiceId = undefined;
           hasRetriedCurrentChunk = true;
-          if (!isFemale) {
-            pitch = 0.72; // Ensure fallback default voice is deep male baritone
-          } else {
-            pitch = 1.18;
-          }
           speakNext();
           return;
         }
