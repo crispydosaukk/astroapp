@@ -282,3 +282,4 @@ function getUnrelatedClarification(query: string, language: string, astroName: s
       return `I am your personal Vedic Astrologer specializing in Janam Kundli analysis, career, and relationships. Could you please clarify how "${query}" relates to your life or astrology consultation?`;
   }
 }
+
