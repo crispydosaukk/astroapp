@@ -393,31 +393,30 @@ export async function speakAstrologerText(
   const resolved = await resolveVoiceIdentifier(meta.bcp47, isFemale);
   let currentVoiceId = resolved.voiceId;
 
-  // Strict Acoustic Timbre Modulation:
+  // Strict Acoustic Timbre Modulation (Gemini / ChatGPT natural conversational cadence):
   // Ensures Boy = Boy, Girl = Girl across ALL languages (English, Telugu, Hindi, Tamil, Kannada, Malayalam).
   let pitch = 1.00;
-  let rate = 0.95;
+  let rate = 0.98;
 
   if (!isFemale) {
     // MALE ASTROLOGER (Acharya Devavrat / Dhananjay / Swami / Pandit / Bhaskar)
     if (resolved.isNativeGenderMatched && currentVoiceId) {
       // Natural native male voice found (e.g. English male 'end', Telugu 'tem', Hindi 'hid')
-      pitch = 0.94;
-      rate = 0.94;
+      pitch = 0.96;
+      rate = 0.98;
     } else {
-      // The device only has a default/female voice installed for this language (e.g. Telugu on devices without tem pack):
-      // Pitch-shift down by ~18% to transform vocal tract formants from feminine pitch directly into an authentic Pandit male baritone!
-      // Guarantees it NEVER sounds like a girl!
-      pitch = 0.82;
-      rate = 0.90;
+      // The device only has a default/female voice installed for this language:
+      // Modulate pitch naturally into an authentic, clear male Pandit baritone
+      pitch = 0.85;
+      rate = 0.94;
     }
   } else {
     // FEMALE ASTROLOGER (Devi / Mata / Ananya / Vedika / Priya)
     if (resolved.isNativeGenderMatched && currentVoiceId) {
-      pitch = 1.05;
-      rate = 0.95;
+      pitch = 1.02;
+      rate = 0.98;
     } else {
-      pitch = 1.15;
+      pitch = 1.10;
       rate = 0.98;
     }
   }

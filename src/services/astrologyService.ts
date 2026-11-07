@@ -711,7 +711,7 @@ export async function sendLiveAIChatMessage(params: {
 
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
+    const timer = setTimeout(() => controller.abort(), 25000);
     const res = await fetch(`${API_BASE_URL}/ai-chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

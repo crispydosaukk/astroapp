@@ -170,6 +170,41 @@ const PLACEHOLDERS_BY_LANG: Record<string, string> = {
   English: 'Ask Acharya Devavrat...',
 };
 
+const INVALID_QUERY_MESSAGE: Record<string, string> = {
+  Telugu: 'దయచేసి జ్యోతిష్యం, జన్మ కుండలి, రాశిఫలాలు, కెరీర్, వివాహం లేదా వేద పరిహారాలకు సంబంధించిన సరైన ప్రశ్నను అడగండి.',
+  Hindi: 'कृपया ज्योतिष, जन्म कुंडली, राशिफल, करियर, विवाह या वैदिक उपायों से संबंधित प्रश्न पूछें।',
+  Tamil: 'தயவுசெய்து ஜோதிடம், ஜாதகம், ராசி பலன், தொழில், திருமணம் அல்லது பரிகாரங்கள் தொடர்பான சரியான கேள்வியைக் கேளுங்கள்.',
+  Kannada: 'ದಯವಿಟ್ಟು ಜ್ಯೋತಿಷ್ಯ, ಜನ್ಮ ಕುಂಡಲಿ, ರಾಶಿ ಭವಿಷ್ಯ, ವೃತ್ತಿ, ವಿವಾಹ ಅಥವಾ ವೈದಿಕ ಪರಿಹಾರಗಳಿಗೆ ಸಂಬಂಧಿಸಿದ ಪ್ರಶ್ನೆಯನ್ನು ಕೇಳಿ.',
+  Malayalam: 'ദയവായി ജ്യോതിഷം, ജനന ജാതകം, രാശിഫലം, തൊഴിൽ, വിവാഹം അല്ലെങ്കിൽ പരിഹാരങ്ങൾ സംബന്ധിച്ച ശരിയായ ചോദ്യം ചോദിക്കുക.',
+  English: 'Please enter a valid question related to astrology, Janam Kundli, horoscope, career, marriage, or Vedic remedies.',
+};
+
+function isInvalidAstrologyQuery(rawText: string): boolean {
+  const text = (rawText || '').trim().toLowerCase();
+  // Too short (< 3 chars)
+  if (text.length < 3) return true;
+
+  // Pure numbers or special symbols (e.g. "333", "???", "12345")
+  if (/^[\d\s.,!?@#$%^&*()_+=\-\[\]{}|\\:;"'<>~`]+$/.test(text)) return true;
+
+  // Single character repeated 3+ times (e.g. "aaa", "ssss", "111")
+  if (/^(.)\1{2,}$/.test(text.replace(/\s+/g, ''))) return true;
+
+  // Common random keyboard mash / test words
+  const gibberish = ['asdf', 'ghjk', 'qwerty', 'zxcv', 'lkjh', 'poiuy', 'mnbvc', 'test', 'testing', 'check', 'checking', 'blah'];
+  if (gibberish.some((g) => text === g || text.replace(/\s+/g, '') === g)) return true;
+
+  // Obvious non-astrological tasks
+  const nonAstroPrefixes = [
+    'write code', 'python code', 'javascript code', 'html code', 'calculate',
+    'tell me a joke', 'sing a song', 'what is the capital of', 'who is the president',
+    'solve math', 'write an essay', 'recipe for', 'cook food'
+  ];
+  if (nonAstroPrefixes.some((p) => text.startsWith(p))) return true;
+
+  return false;
+}
+
 function getWelcomeMessage(lang: string, name: string, astroName: string = 'Acharya Devavrat') {
   const currentYear = new Date().getFullYear();
   if (lang === 'Telugu') {
@@ -1359,6 +1394,20 @@ export default function AiChatScreen() {
           modelUsed: selectedAstrologer.name,
         },
       ]);
+
+      // Automatically read greeting message
+      setTimeout(() => {
+        if (!mounted.current) return;
+        setSpeakingIndex(0);
+        speakAstrologerText(welcome.content, {
+          language: selectedLanguage,
+          astrologerName: selectedAstrologer.name,
+          gender: isFemaleAstrologer(selectedAstrologer.name) ? 'female' : 'male',
+          onStart: () => { if (mounted.current) setSpeakingIndex(0); },
+          onDone: () => { if (mounted.current) setSpeakingIndex(null); },
+          onError: () => { if (mounted.current) setSpeakingIndex(null); },
+        });
+      }, 500);
     });
 
     return () => {
@@ -1411,9 +1460,55 @@ export default function AiChatScreen() {
   const sendMessage = async (text: string) => {
     if (text.trim().length === 0) return;
 
-    // 0. Gate on authentication: Without sign in, AI Astro chat cannot be used
+    // 0. Stop any ongoing voice speech immediately
+    stopAstrologerSpeech();
+    setSpeakingIndex(null);
+
+    // 0b. Gate on authentication: Without sign in, AI Astro chat cannot be used
     if (!isAuth) {
       setShowAuthModal(true);
+      return;
+    }
+
+    const userMsgText = text.trim();
+    const newMsg: ChatMessage = { isUser: true, text: userMsgText, time: currentTime() };
+
+    lastUserQueryIndex.current = messages.length;
+    setMessages((prev) => [...prev, newMsg]);
+    setInput('');
+    scrollToBottom();
+
+    // Check for Invalid / Unrelated Questions (e.g. "ss", "333", gibberish, non-astrological)
+    if (isInvalidAstrologyQuery(userMsgText)) {
+      setIsTyping(true);
+      setTimeout(() => {
+        if (!mounted.current) return;
+        setIsTyping(false);
+        const invalidMsg =
+          INVALID_QUERY_MESSAGE[selectedLanguage] || INVALID_QUERY_MESSAGE.English;
+        const msgIdx = messages.length + 1;
+        setMessages((prev) => [
+          ...prev,
+          {
+            isUser: false,
+            text: invalidMsg,
+            time: currentTime(),
+            recommendations: QUICK_PROMPTS_BY_LANG[selectedLanguage] || QUICK_PROMPTS_BY_LANG.English,
+            modelUsed: selectedAstrologer.name,
+          },
+        ]);
+        scrollToMessageStart();
+        // Speak guidance message
+        setSpeakingIndex(msgIdx);
+        speakAstrologerText(invalidMsg, {
+          language: selectedLanguage,
+          astrologerName: selectedAstrologer.name,
+          gender: isFemaleAstrologer(selectedAstrologer.name) ? 'female' : 'male',
+          onStart: () => { if (mounted.current) setSpeakingIndex(msgIdx); },
+          onDone: () => { if (mounted.current) setSpeakingIndex(null); },
+          onError: () => { if (mounted.current) setSpeakingIndex(null); },
+        });
+      }, 350);
       return;
     }
 
@@ -1425,16 +1520,9 @@ export default function AiChatScreen() {
       return;
     }
 
-    const userMsgText = text.trim();
-    const newMsg: ChatMessage = { isUser: true, text: userMsgText, time: currentTime() };
-
-    lastUserQueryIndex.current = messages.length;
-    setMessages((prev) => [...prev, newMsg]);
     setIsTyping(true);
-    setInput('');
-    scrollToBottom();
 
-    // 2. Real-time amount deduction: Deduct ₹5 only if NOT a free prompt
+    // 2. Real-time amount deduction: Deduct only if NOT a free prompt
     if (!hasFreePrompt) {
       try {
         const deductRes = await deductWalletBalance(
@@ -1651,11 +1739,11 @@ export default function AiChatScreen() {
                   </>
                 )}
               </View>
-              <View style={{ marginLeft: 10, flex: 1 }}>
-                <Text numberOfLines={1} style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>
+              <View style={{ marginLeft: 10, flex: 1, minWidth: 0 }}>
+                <Text numberOfLines={1} ellipsizeMode="tail" style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>
                   {selectedAstrologer.name}
                 </Text>
-                <Text style={{ color: '#B2DFDB', fontSize: 10 }}>
+                <Text numberOfLines={1} ellipsizeMode="tail" style={{ color: '#B2DFDB', fontSize: 10 }}>
                   {SUBTITLE_BY_LANG[selectedLanguage] || 'Online • Certified Vedic AI Astrologer'}
                 </Text>
               </View>
