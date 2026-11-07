@@ -56,6 +56,7 @@ import { fetchCalculatedKundli, KundliChartData, sendLiveAIChatMessage } from '@
 import { VedicKundliChart } from '@/components/VedicKundliChart';
 import { generateConsultationSummaryReport } from '@/services/reportService';
 import { isFemaleAstrologer, speakAstrologerText, stopAstrologerSpeech } from '@/services/speechService';
+import { analyzeQueryClarification } from '@/features/aiChat/aiChatClarification';
 import { AppColors, argb, withAlpha } from '@/theme/colors';
 import { useLanguageStore } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
@@ -1127,6 +1128,24 @@ export default function ConsultationScreen() {
     }, 600);
 
     if (isAi) {
+      // ChatGPT-style intelligent clarification for unclear or single-letter queries (e.g. "A", "Vee see", "Dizi ZZ")
+      const clarification = analyzeQueryClarification(text, selectedLanguage, astro.name);
+      if (clarification && clarification.needsClarification) {
+        setIsAiAnalyzing(false);
+        updateMessages((m) => [...m, { text: clarification.message, isSystem: false, isUser: false, time: fmt(secondsRef.current) }]);
+        scrollChat();
+        if (isSpeakerOn && !isMuted && !callEndedRef.current) {
+          speakAstrologerText(clarification.message, {
+            astrologerName: astro.name,
+            gender: astroGender,
+            language: selectedLanguage,
+            onStart: () => { if (!callEndedRef.current) setIsAiSpeaking(true); },
+            onDone: () => setIsAiSpeaking(false),
+          });
+        }
+        return;
+      }
+
       setIsAiAnalyzing(true);
       setAnalyzingTipText(
         selectedLanguage === 'Telugu'
@@ -1386,8 +1405,8 @@ export default function ConsultationScreen() {
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              paddingHorizontal: 12,
-              paddingVertical: 8,
+              paddingHorizontal: 8,
+              paddingVertical: 6,
               backgroundColor: 'rgba(13, 21, 39, 0.95)',
               borderBottomWidth: 1,
               borderBottomColor: 'rgba(201, 168, 76, 0.3)',
@@ -1407,28 +1426,28 @@ export default function ConsultationScreen() {
               accessibilityRole="button"
               accessibilityLabel="Back"
               style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
+                width: 30,
+                height: 30,
+                borderRadius: 15,
                 backgroundColor: 'rgba(255, 255, 255, 0.08)',
                 borderWidth: 1,
                 borderColor: 'rgba(201, 168, 76, 0.3)',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginRight: 6,
+                marginRight: 5,
               }}
             >
-              <AppIcon name="arrow_back" size={17} color="#FFD700" />
+              <AppIcon name="arrow_back" size={16} color="#FFD700" />
             </Pressable>
 
             {/* Astrologer Avatar & Name */}
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 0, marginRight: 6 }}>
-              <Avatar uri={astro.imageUrl} size={36} border={1.5} />
-              <View style={{ marginLeft: 7, flex: 1, minWidth: 0, justifyContent: 'center' }}>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 0, marginRight: 5 }}>
+              <Avatar uri={astro.imageUrl} size={32} border={1.5} />
+              <View style={{ marginLeft: 6, flex: 1, minWidth: 0, justifyContent: 'center' }}>
                 <Text
                   numberOfLines={1}
                   ellipsizeMode="tail"
-                  style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}
+                  style={{ color: '#FFFFFF', fontSize: 12.5, fontWeight: '700' }}
                 >
                   {astro.name}
                 </Text>
@@ -1447,12 +1466,12 @@ export default function ConsultationScreen() {
                     style={{
                       marginLeft: 3.5,
                       color: connected ? '#3DCB7A' : (ended || callEndedRef.current ? '#EF4444' : (connecting ? '#FFD700' : '#94A3B8')),
-                      fontSize: 10,
+                      fontSize: 9.5,
                       fontWeight: '600',
                     }}
                   >
                     {connected
-                      ? (isVideo ? 'Live Video' : 'Live Call')
+                      ? (isVideo ? 'Video' : 'Live')
                       : (ended || callEndedRef.current ? 'Ended' : (connecting ? 'Connecting...' : 'Ready'))}
                   </Text>
                 </View>
@@ -1460,25 +1479,24 @@ export default function ConsultationScreen() {
             </View>
 
             {/* Right Status Actions: Language, Live Timer, Wallet Balance */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 0, gap: 3.5 }}>
               {/* Language Selection Button */}
               <Pressable
                 onPress={() => setLanguageModalVisible(true)}
                 hitSlop={8}
                 style={{
-                  marginRight: 4,
                   flexDirection: 'row',
                   alignItems: 'center',
-                  paddingHorizontal: 6,
-                  paddingVertical: 4.5,
-                  borderRadius: 12,
+                  paddingHorizontal: 5,
+                  paddingVertical: 3.5,
+                  borderRadius: 10,
                   backgroundColor: 'rgba(201, 168, 76, 0.2)',
                   borderWidth: 1,
                   borderColor: '#C9A84C',
                 }}
               >
-                <AppIcon name="language" color="#FFD700" size={12} />
-                <Text style={{ marginLeft: 2.5, color: '#FFD700', fontSize: 10.5, fontWeight: '800' }}>
+                <AppIcon name="language" color="#FFD700" size={11} />
+                <Text style={{ marginLeft: 2, color: '#FFD700', fontSize: 10, fontWeight: '800' }}>
                   {selectedLanguage.substring(0, 3).toUpperCase()}
                 </Text>
               </Pressable>
@@ -1488,16 +1506,16 @@ export default function ConsultationScreen() {
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  paddingHorizontal: 6.5,
-                  paddingVertical: 4.5,
-                  borderRadius: 12,
+                  paddingHorizontal: 5.5,
+                  paddingVertical: 3.5,
+                  borderRadius: 10,
                   backgroundColor: 'rgba(0,0,0,0.5)',
                   borderWidth: 1,
                   borderColor: 'rgba(201,168,76,0.4)',
                 }}
               >
-                <AppIcon name="timer_outlined" color="#FFD700" size={12} />
-                <Text testID="consultation.timer" style={{ marginLeft: 3, color: '#FFD700', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.3 }}>
+                <AppIcon name="timer_outlined" color="#FFD700" size={11} />
+                <Text testID="consultation.timer" style={{ marginLeft: 2.5, color: '#FFD700', fontSize: 10.5, fontWeight: '800', letterSpacing: 0.2 }}>
                   {fmt(seconds)}
                 </Text>
               </View>
@@ -1505,19 +1523,18 @@ export default function ConsultationScreen() {
               {/* Wallet Balance Pill */}
               <View
                 style={{
-                  marginLeft: 4,
                   flexDirection: 'row',
                   alignItems: 'center',
-                  paddingHorizontal: 6.5,
-                  paddingVertical: 4.5,
-                  borderRadius: 12,
+                  paddingHorizontal: 5.5,
+                  paddingVertical: 3.5,
+                  borderRadius: 10,
                   backgroundColor: 'rgba(0,0,0,0.5)',
                   borderWidth: 1,
                   borderColor: balance < 50 ? 'rgba(239,68,68,0.6)' : 'rgba(201,168,76,0.4)',
                 }}
               >
-                <AppIcon name="account_balance_wallet_outlined" color={balance < 50 ? '#EF4444' : '#FFD700'} size={12} />
-                <Text testID="consultation.balance" style={{ marginLeft: 3, color: balance < 50 ? '#EF4444' : '#FFD700', fontSize: 11.5, fontWeight: '800' }}>
+                <AppIcon name="account_balance_wallet_outlined" color={balance < 50 ? '#EF4444' : '#FFD700'} size={11} />
+                <Text testID="consultation.balance" style={{ marginLeft: 2.5, color: balance < 50 ? '#EF4444' : '#FFD700', fontSize: 10.5, fontWeight: '800' }}>
                   {formatPrice(balance)}
                 </Text>
               </View>

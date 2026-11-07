@@ -48,6 +48,7 @@ import {
   speakAstrologerText,
   stopAstrologerSpeech,
 } from '@/services/speechService';
+import { analyzeQueryClarification } from './aiChatClarification';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -170,40 +171,7 @@ const PLACEHOLDERS_BY_LANG: Record<string, string> = {
   English: 'Ask Acharya Devavrat...',
 };
 
-const INVALID_QUERY_MESSAGE: Record<string, string> = {
-  Telugu: 'దయచేసి జ్యోతిష్యం, జన్మ కుండలి, రాశిఫలాలు, కెరీర్, వివాహం లేదా వేద పరిహారాలకు సంబంధించిన సరైన ప్రశ్నను అడగండి.',
-  Hindi: 'कृपया ज्योतिष, जन्म कुंडली, राशिफल, करियर, विवाह या वैदिक उपायों से संबंधित प्रश्न पूछें।',
-  Tamil: 'தயவுசெய்து ஜோதிடம், ஜாதகம், ராசி பலன், தொழில், திருமணம் அல்லது பரிகாரங்கள் தொடர்பான சரியான கேள்வியைக் கேளுங்கள்.',
-  Kannada: 'ದಯವಿಟ್ಟು ಜ್ಯೋತಿಷ್ಯ, ಜನ್ಮ ಕುಂಡಲಿ, ರಾಶಿ ಭವಿಷ್ಯ, ವೃತ್ತಿ, ವಿವಾಹ ಅಥವಾ ವೈದಿಕ ಪರಿಹಾರಗಳಿಗೆ ಸಂಬಂಧಿಸಿದ ಪ್ರಶ್ನೆಯನ್ನು ಕೇಳಿ.',
-  Malayalam: 'ദയവായി ജ്യോതിഷം, ജനന ജാതകം, രാശിഫലം, തൊഴിൽ, വിവാഹം അല്ലെങ്കിൽ പരിഹാരങ്ങൾ സംബന്ധിച്ച ശരിയായ ചോദ്യം ചോദിക്കുക.',
-  English: 'Please enter a valid question related to astrology, Janam Kundli, horoscope, career, marriage, or Vedic remedies.',
-};
 
-function isInvalidAstrologyQuery(rawText: string): boolean {
-  const text = (rawText || '').trim().toLowerCase();
-  // Too short (< 3 chars)
-  if (text.length < 3) return true;
-
-  // Pure numbers or special symbols (e.g. "333", "???", "12345")
-  if (/^[\d\s.,!?@#$%^&*()_+=\-\[\]{}|\\:;"'<>~`]+$/.test(text)) return true;
-
-  // Single character repeated 3+ times (e.g. "aaa", "ssss", "111")
-  if (/^(.)\1{2,}$/.test(text.replace(/\s+/g, ''))) return true;
-
-  // Common random keyboard mash / test words
-  const gibberish = ['asdf', 'ghjk', 'qwerty', 'zxcv', 'lkjh', 'poiuy', 'mnbvc', 'test', 'testing', 'check', 'checking', 'blah'];
-  if (gibberish.some((g) => text === g || text.replace(/\s+/g, '') === g)) return true;
-
-  // Obvious non-astrological tasks
-  const nonAstroPrefixes = [
-    'write code', 'python code', 'javascript code', 'html code', 'calculate',
-    'tell me a joke', 'sing a song', 'what is the capital of', 'who is the president',
-    'solve math', 'write an essay', 'recipe for', 'cook food'
-  ];
-  if (nonAstroPrefixes.some((p) => text.startsWith(p))) return true;
-
-  return false;
-}
 
 function getWelcomeMessage(lang: string, name: string, astroName: string = 'Acharya Devavrat') {
   const currentYear = new Date().getFullYear();
@@ -1478,29 +1446,29 @@ export default function AiChatScreen() {
     setInput('');
     scrollToBottom();
 
-    // Check for Invalid / Unrelated Questions (e.g. "ss", "333", gibberish, non-astrological)
-    if (isInvalidAstrologyQuery(userMsgText)) {
+    // ChatGPT-style intelligent clarification for unclear, single-letter, or unrelated queries (e.g. "A", "Vee see", "Dizi ZZ")
+    const clarification = analyzeQueryClarification(userMsgText, selectedLanguage, selectedAstrologer.name);
+    if (clarification && clarification.needsClarification) {
       setIsTyping(true);
       setTimeout(() => {
         if (!mounted.current) return;
         setIsTyping(false);
-        const invalidMsg =
-          INVALID_QUERY_MESSAGE[selectedLanguage] || INVALID_QUERY_MESSAGE.English;
+        const replyText = clarification.message;
         const msgIdx = messages.length + 1;
         setMessages((prev) => [
           ...prev,
           {
             isUser: false,
-            text: invalidMsg,
+            text: replyText,
             time: currentTime(),
             recommendations: QUICK_PROMPTS_BY_LANG[selectedLanguage] || QUICK_PROMPTS_BY_LANG.English,
             modelUsed: selectedAstrologer.name,
           },
         ]);
         scrollToMessageStart();
-        // Speak guidance message
+        // Speak clarification naturally in astrologer's authentic voice
         setSpeakingIndex(msgIdx);
-        speakAstrologerText(invalidMsg, {
+        speakAstrologerText(replyText, {
           language: selectedLanguage,
           astrologerName: selectedAstrologer.name,
           gender: isFemaleAstrologer(selectedAstrologer.name) ? 'female' : 'male',
