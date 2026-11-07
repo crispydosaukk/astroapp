@@ -657,6 +657,7 @@ export default function ProfileScreen() {
 
   const handleConfirmSignOut = async () => {
     await logout();
+    await useBirthProfileStore.getState().clearProfiles();
     setProfileData({
       name: 'Guest',
       email: config.guestSubtitle,

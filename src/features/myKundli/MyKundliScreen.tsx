@@ -362,6 +362,10 @@ export default function MyKundliScreen() {
   const houseSheet = useSheet<number>();
 
   useEffect(() => {
+    if (!isUserLoggedIn) {
+      setChartData(null);
+      return;
+    }
     const profileParams = activeProfile?.dob
       ? {
           name: activeProfile.name,
@@ -375,7 +379,7 @@ export default function MyKundliScreen() {
     fetchCalculatedKundli(profileParams).then((data) => {
       if (data) setChartData(data);
     });
-  }, [authUser, activeProfile]);
+  }, [isUserLoggedIn, authUser, activeProfile]);
 
   const chart = useSharedValue(0);
   useEffect(() => { chart.value = withTiming(1, { duration: 1200, easing: Easing.out(Easing.cubic) }); }, [chart]);
@@ -475,12 +479,12 @@ export default function MyKundliScreen() {
           </View>
           <View style={{ flex: 1, marginLeft: 16 }}>
             <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700', marginBottom: 4 }}>
-              {chartData?.name || activeProfile?.name || authUser?.name || 'Guest'}
+              {isUserLoggedIn ? (chartData?.name || activeProfile?.name || authUser?.name || 'Devotee') : 'Guest'}
             </Text>
             {[
-              ['📅', chartData?.dob || activeProfile?.dob || authUser?.dob || 'Not specified'],
-              ['⏰', chartData?.tob || activeProfile?.time || authUser?.tob || 'Not specified'],
-              ['📍', chartData?.pob || activeProfile?.place || authUser?.pob || 'Not specified'],
+              ['📅', isUserLoggedIn ? (chartData?.dob || activeProfile?.dob || authUser?.dob || 'Not specified') : 'Sign in to view'],
+              ['⏰', isUserLoggedIn ? (chartData?.tob || activeProfile?.time || authUser?.tob || 'Not specified') : 'Sign in to view'],
+              ['📍', isUserLoggedIn ? (chartData?.pob || activeProfile?.place || authUser?.pob || 'Not specified') : 'Sign in to view'],
             ].map(([e, tText]) => (
               <View key={tText} style={{ marginTop: 2, flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 11 }}>{e}</Text>
@@ -497,10 +501,10 @@ export default function MyKundliScreen() {
         <Animated.View style={[{ marginHorizontal: 16, marginVertical: 8, alignItems: 'center' }, chartStyle]}>
           <VedicKundliChart
             chartData={chartData}
-            devoteeName={chartData?.name || activeProfile?.name || authUser?.name || 'Devotee'}
-            dob={chartData?.dob || activeProfile?.dob || authUser?.dob || '1995-10-15'}
-            tob={chartData?.tob || activeProfile?.time || authUser?.tob || '12:00 PM'}
-            pob={chartData?.pob || activeProfile?.place || authUser?.pob || 'New Delhi, India'}
+            devoteeName={isUserLoggedIn ? (chartData?.name || activeProfile?.name || authUser?.name || 'Devotee') : 'Guest'}
+            dob={isUserLoggedIn ? (chartData?.dob || activeProfile?.dob || authUser?.dob || '1995-10-15') : '1995-10-15'}
+            tob={isUserLoggedIn ? (chartData?.tob || activeProfile?.time || authUser?.tob || '12:00 PM') : '12:00 PM'}
+            pob={isUserLoggedIn ? (chartData?.pob || activeProfile?.place || authUser?.pob || 'New Delhi, India') : 'New Delhi, India'}
             ascendantSign={chartData?.ascendant?.sign || 'Scorpio'}
             moonSign={chartData?.moonSign || 'Cancer'}
             nakshatra={chartData?.nakshatra || 'Punarvasu'}

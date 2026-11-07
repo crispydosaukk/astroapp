@@ -184,38 +184,39 @@ const PLACEHOLDERS_BY_LANG: Record<string, string> = {
 
 function getWelcomeMessage(lang: string, name: string, astroName: string = 'Acharya Devavrat') {
   const currentYear = new Date().getFullYear();
+  const safeName = (name && name.trim() && name.trim() !== 'Devotee') ? name.trim() : 'Guest';
   if (lang === 'Telugu') {
     return {
-      content: `**నమస్కారం మరియు శుభాశీస్సులు, ${name}!** 🙏\n\nనేను **${astroName}**, మీ వ్యక్తిగత వేద జ్యోతిష్య మార్గదర్శకుడిని. ${currentYear} సంవత్సరానికి సంబంధించి మీ **కుండలి, కెరీర్, వివాహం, ఆర్థిక స్థితి లేదా వేద పరిహారాల** గురించి ఏదైనా అడగండి. ఈరోజు మీకు ఎలా సహాయపడగలను?`,
+      content: `**నమస్కారం మరియు శుభాశీస్సులు, ${safeName}!** 🙏\n\nనేను **${astroName}**, మీ వ్యక్తిగత వేద జ్యోతిష్య మార్గదర్శకుడిని. ${currentYear} సంవత్సరానికి సంబంధించి మీ **కుండలి, కెరీర్, వివాహం, ఆర్థిక స్థితి లేదా వేద పరిహారాల** గురించి ఏదైనా అడగండి. ఈరోజు మీకు ఎలా సహాయపడగలను?`,
       recommendations: QUICK_PROMPTS_BY_LANG.Telugu,
     };
   }
   if (lang === 'Hindi') {
     return {
-      content: `**नमस्ते एवं आशीर्वाद, ${name}!** 🙏\n\nमैं **${astroName}** हूँ, आपका व्यक्तिगत वैदिक ज्योतिषी एवं आध्यात्मिक मार्गदर्शक। वर्ष ${currentYear} के लिए अपनी **कुंडली, करियर, विवाह, धन या वैदिक उपायों** के बारे में कोई भी प्रश्न पूछें। आज मैं आपका किस प्रकार मार्गदर्शन करूँ?`,
+      content: `**नमस्ते एवं आशीर्वाद, ${safeName}!** 🙏\n\nमैं **${astroName}** हूँ, आपका व्यक्तिगत वैदिक ज्योतिषी एवं आध्यात्मिक मार्गदर्शक। वर्ष ${currentYear} के लिए अपनी **कुंडली, करियर, विवाह, धन या वैदिक उपायों** के बारे में कोई भी प्रश्न पूछें। आज मैं आपका किस प्रकार मार्गदर्शन करूँ?`,
       recommendations: QUICK_PROMPTS_BY_LANG.Hindi,
     };
   }
   if (lang === 'Tamil') {
     return {
-      content: `**வணக்கம் மற்றும் ஆசிகள், ${name}!** 🙏\n\nநான் **${astroName}**, உங்கள் தனிப்பட்ட வேத ஜோதிடர் மற்றும் ஆன்மீக வழிகாட்டி. ${currentYear} ஆம் ஆண்டிற்கான உங்கள் **ஜாதகம், தொழில், திருமணம் அல்லது பரிகாரங்கள்** பற்றி என்னிடம் கேளுங்கள். இன்று உங்களுக்கு எவ்வாறு உதவ முடியும்?`,
+      content: `**வணக்கம் மற்றும் ஆசிகள், ${safeName}!** 🙏\n\nநான் **${astroName}**, உங்கள் தனிப்பட்ட வேத ஜோதிடர் மற்றும் ஆன்மீக வழிகாட்டி. ${currentYear} ஆம் ஆண்டிற்கான உங்கள் **ஜாதகம், தொழில், திருமணம் அல்லது பரிகாரங்கள்** பற்றி என்னிடம் கேளுங்கள். இன்று உங்களுக்கு எவ்வாறு உதவ முடியும்?`,
       recommendations: QUICK_PROMPTS_BY_LANG.Tamil,
     };
   }
   if (lang === 'Kannada') {
     return {
-      content: `**ನಮಸ್ಕಾರ ಮತ್ತು ಶುಭಾಶೀರ್ವಾದಗಳು, ${name}!** 🙏\n\nನಾನು **${astroName}**, ನಿಮ್ಮ ವೈಯಕ್ತಿಕ ವೈದಿಕ ಜ್ಯೋತಿಷಿ ಮತ್ತು ಆಧ್ಯಾತ್ಮಿಕ ಮಾರ್ಗದರ್ಶಕ. ${currentYear} ವರ್ಷಕ್ಕೆ ಸಂಬಂಧಿಸಿದ ನಿಮ್ಮ **ಕುಂಡಲಿ, ವೃತ್ತಿ, ವಿವಾಹ ಅಥವಾ ಪರಿಹಾರಗಳ** ಬಗ್ಗೆ ಕೇಳಿ. ಇಂದು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?`,
+      content: `**ನಮಸ್ಕಾರ ಮತ್ತು ಶುಭಾಶೀರ್ವಾದಗಳು, ${safeName}!** 🙏\n\nನಾನು **${astroName}**, ನಿಮ್ಮ ವೈಯಕ್ತಿಕ ವೈದಿಕ ಜ್ಯೋತಿಷಿ ಮತ್ತು ಆಧ್ಯಾತ್ಮಿಕ ಮಾರ್ಗದರ್ಶಕ. ${currentYear} ವರ್ಷಕ್ಕೆ ಸಂಬಂಧಿಸಿದ ನಿಮ್ಮ **ಕುಂಡಲಿ, ವೃತ್ತಿ, ವಿವಾಹ ಅಥವಾ ಪರಿಹಾರಗಳ** ಬಗ್ಗೆ ಕೇಳಿ. ಇಂದು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?`,
       recommendations: QUICK_PROMPTS_BY_LANG.Kannada,
     };
   }
   if (lang === 'Malayalam') {
     return {
-      content: `**നമസ്കാരം, അനുഗ്രഹങ്ങൾ, ${name}!** 🙏\n\nഞാൻ **${astroName}**, നിങ്ങളുടെ വ്യക്തിഗത വൈദിക ജ്യോതിഷിയും ആത്മീയ വഴികാട്ടിയും. ${currentYear} വർഷത്തെ നിങ്ങളുടെ **ജാതകം, തൊഴിൽ, വിവാഹം അല്ലെങ്കിൽ പരിഹാരങ്ങൾ** സംബന്ധിച്ച് എന്തും ചോദിക്കാം. ഇന്ന് ഞാൻ നിങ്ങളെ എങ്ങനെ സഹായിക്കണം?`,
+      content: `**നമസ്കാരം, അനുഗ്രഹങ്ങൾ, ${safeName}!** 🙏\n\nഞാൻ **${astroName}**, നിങ്ങളുടെ വ്യക്തിഗത വൈദിക ജ്യോതിഷിയും ആത്മീയ വഴികാട്ടിയും. ${currentYear} വർഷത്തെ നിങ്ങളുടെ **ജാതകം, തൊഴിൽ, വിവാഹം അല്ലെങ്കിൽ പരിഹാരങ്ങൾ** സംബന്ധിച്ച് എന്തും ചോദിക്കാം. ഇന്ന് ഞാൻ നിങ്ങളെ എങ്ങനെ സഹായിക്കണം?`,
       recommendations: QUICK_PROMPTS_BY_LANG.Malayalam,
     };
   }
   return {
-    content: `**Namaste and blessings, ${name}!** 🙏\n\nI am **${astroName}**, your personal Vedic Astrologer & spiritual guide. Ask me any question about your **Kundli, career, marriage, finances, planetary dashas, or daily remedies** for ${currentYear}. How may I guide your chart today?`,
+    content: `**Namaste and blessings, ${safeName}!** 🙏\n\nI am **${astroName}**, your personal Vedic Astrologer & spiritual guide. Ask me any question about your **Kundli, career, marriage, finances, planetary dashas, or daily remedies** for ${currentYear}. How may I guide your chart today?`,
     recommendations: QUICK_PROMPTS_BY_LANG.English,
   };
 }
@@ -1189,10 +1190,16 @@ export default function AiChatScreen() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const currentLang = useLanguageStore.getState().selectedLanguage || 'English';
-    const initName =
-      useBirthProfileStore.getState().activeProfile?.name?.trim() ||
-      useAuthStore.getState().user?.name?.trim() ||
-      'Devotee';
+    const isCurrentlyAuth = Boolean(
+      useAuthStore.getState().isAuthenticated &&
+      useAuthStore.getState().user &&
+      (useAuthStore.getState().user?.uid || useAuthStore.getState().user?.phone)
+    );
+    const initName = isCurrentlyAuth
+      ? (useBirthProfileStore.getState().activeProfile?.name?.trim() ||
+         useAuthStore.getState().user?.name?.trim() ||
+         'User')
+      : 'Guest';
     const initialAstro = params.astrologerName
       ? { name: params.astrologerName, id: params.astrologerId || 'ai-custom' }
       : (ASTROLOGER_PERSONAS.find((a) => a.id === params.astrologerId) || ASTROLOGER_PERSONAS[0]);
@@ -1270,15 +1277,19 @@ export default function AiChatScreen() {
           onPress: async () => {
             stopAstrologerSpeech();
             setSpeakingIndex(null);
-            const storageKey = `astroparihar_chat_messages_${selectedAstrologer.id}`;
-            await AsyncStorage.removeItem(storageKey).catch(() => {});
+            if (isAuth) {
+              const userKey = authUser?.uid || authUser?.phone || 'user';
+              await AsyncStorage.removeItem(`astroparihar_chat_messages_${userKey}_${selectedAstrologer.id}`).catch(() => {});
+            }
+            await AsyncStorage.removeItem(`astroparihar_chat_messages_${selectedAstrologer.id}`).catch(() => {});
 
-            const userName =
-              activeProfile?.name?.trim() ||
-              useBirthProfileStore.getState().activeProfile?.name?.trim() ||
-              authUser?.name?.trim() ||
-              userProfile?.name?.trim() ||
-              'Devotee';
+            const userName = isAuth
+              ? (activeProfile?.name?.trim() ||
+                 useBirthProfileStore.getState().activeProfile?.name?.trim() ||
+                 authUser?.name?.trim() ||
+                 userProfile?.name?.trim() ||
+                 'User')
+              : 'Guest';
             const welcome = getWelcomeMessage(selectedLanguage, userName, selectedAstrologer.name);
             setMessages([
               {
@@ -1323,11 +1334,17 @@ export default function AiChatScreen() {
   const loadProfiles = useBirthProfileStore((s) => s.loadProfiles);
 
   useEffect(() => {
-    loadProfiles();
-  }, []);
+    if (isAuth) {
+      loadProfiles();
+    }
+  }, [isAuth]);
 
-  // Load saved birth profile as fallback
+  // Load saved birth profile as fallback only when authenticated
   useEffect(() => {
+    if (!isAuth) {
+      setUserProfile(null);
+      return;
+    }
     AsyncStorage.getItem('astroparihar_user_birth_details').then((stored) => {
       if (stored) {
         try {
@@ -1336,9 +1353,10 @@ export default function AiChatScreen() {
         } catch {}
       }
     });
-  }, []);
+  }, [isAuth]);
 
   const effectiveUserInfo = useMemo(() => {
+    if (!isAuth) return null;
     if (activeProfile) {
       return {
         name: activeProfile.name,
@@ -1355,7 +1373,7 @@ export default function AiChatScreen() {
       };
     }
     return userProfile;
-  }, [activeProfile, userProfile]);
+  }, [isAuth, activeProfile, userProfile]);
 
   const { currencyCode, currencySymbol, formatPrice, getPromptCost, getRechargeOptions } = useCurrencyStore();
   const promptCost = getPromptCost();
@@ -1419,10 +1437,28 @@ export default function AiChatScreen() {
     }
   };
 
-  // Load saved chat history or set initial welcome message when language or astrologer changes
+  // Load saved chat history or set initial welcome message when language, astrologer or auth changes
   useEffect(() => {
     let isCancelled = false;
-    const storageKey = `astroparihar_chat_messages_${selectedAstrologer.id}`;
+
+    // When NOT authenticated, ALWAYS show fresh Guest greeting.
+    // Never show previously saved chat messages from any user session.
+    if (!isAuth) {
+      const welcome = getWelcomeMessage(selectedLanguage, 'Guest', selectedAstrologer.name);
+      setMessages([
+        {
+          isUser: false,
+          text: welcome.content,
+          time: currentTime(),
+          recommendations: welcome.recommendations,
+          modelUsed: selectedAstrologer.name,
+        },
+      ]);
+      return;
+    }
+
+    const userKey = authUser?.uid || authUser?.phone || 'user';
+    const storageKey = `astroparihar_chat_messages_${userKey}_${selectedAstrologer.id}`;
 
     AsyncStorage.getItem(storageKey).then((saved) => {
       if (isCancelled) return;
@@ -1440,7 +1476,7 @@ export default function AiChatScreen() {
         useBirthProfileStore.getState().activeProfile?.name?.trim() ||
         authUser?.name?.trim() ||
         userProfile?.name?.trim() ||
-        'Devotee';
+        'Guest';
       const welcome = getWelcomeMessage(selectedLanguage, userName, selectedAstrologer.name);
       setMessages([
         {
@@ -1471,15 +1507,17 @@ export default function AiChatScreen() {
     return () => {
       isCancelled = true;
     };
-  }, [selectedLanguage, selectedAstrologer.id, activeProfile?.name, userProfile?.name, authUser?.name]);
+  }, [selectedLanguage, selectedAstrologer.id, isAuth, activeProfile?.name, userProfile?.name, authUser?.name]);
 
   // Persist messages whenever a new message is sent or received
   useEffect(() => {
+    if (!isAuth) return;
     if (messages.length > 1 || messages.some((m) => m.isUser)) {
-      const storageKey = `astroparihar_chat_messages_${selectedAstrologer.id}`;
+      const userKey = authUser?.uid || authUser?.phone || 'user';
+      const storageKey = `astroparihar_chat_messages_${userKey}_${selectedAstrologer.id}`;
       AsyncStorage.setItem(storageKey, JSON.stringify(messages)).catch(() => {});
     }
-  }, [messages, selectedAstrologer.id]);
+  }, [messages, selectedAstrologer.id, isAuth, authUser?.uid, authUser?.phone]);
 
   const itemLayoutOffsets = useRef<{ [key: string]: number }>({});
   const lastUserQueryIndex = useRef<number>(-1);

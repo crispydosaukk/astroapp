@@ -441,6 +441,10 @@ export default function ConsultationScreen() {
 
   // Load Devotee Birth Chart for the Call Screen
   useEffect(() => {
+    if (!isAuth) {
+      setChartData(null);
+      return;
+    }
     const name = activeProfile?.name?.trim() || authUser?.name?.trim() || 'Devotee';
     const dob = activeProfile?.dob || authUser?.dob || '15/10/1995';
     const tob = activeProfile?.time || authUser?.tob || '12:00 PM';
@@ -451,7 +455,7 @@ export default function ConsultationScreen() {
         if (data) setChartData(data);
       })
       .catch(() => { });
-  }, [activeProfile, authUser]);
+  }, [isAuth, activeProfile, authUser]);
 
   const [authModalVisible, setAuthModalVisible] = useState(false);
   const [lowBalanceVisible, setLowBalanceVisible] = useState(false);
@@ -1366,7 +1370,7 @@ export default function ConsultationScreen() {
     }
   };
 
-  const devoteeName = activeProfile?.name?.trim() || authUser?.name?.trim() || 'Devotee';
+  const devoteeName = isAuth ? (activeProfile?.name?.trim() || authUser?.name?.trim() || 'Devotee') : 'Guest';
   const devoteeDob = formatDobToDDMMYYYY(activeProfile?.dob || authUser?.dob) || '15/10/1995';
   const devoteeTob = activeProfile?.time || authUser?.tob || '12:00 PM';
   const devoteePob = activeProfile?.place || authUser?.pob || 'New Delhi, India';

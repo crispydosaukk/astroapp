@@ -167,15 +167,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       pendingAuth: null,
     });
     try {
-      // Clear global active session keys so the next user doesn't inherit any data
-      await AsyncStorage.multiRemove([
-        STORAGE_USER_KEY,
-        STORAGE_TOKEN_KEY,
-        'astroparihar_wallet_balance',
-        'astroparihar_wallet_transactions',
-        'astroparihar_user_birth_details',
-        'astroparihar_cached_kundli',
-      ]);
+      try {
+        const { useBirthProfileStore } = await import('@/services/birthProfileStore');
+        await useBirthProfileStore.getState().clearProfiles();
+      } catch {}
+
+      // Clear all active user session and cached chat keys so guest mode is 100% clean
+      const allKeys = await AsyncStorage.getAllKeys();
+      const keysToRemove = allKeys.filter((k) =>
+        k.startsWith('astroparihar_chat_messages') ||
+        k.startsWith('astroparihar_birth_profiles') ||
+        k.startsWith('astroparihar_cached_kundli') ||
+        k.startsWith('astroparihar_user_birth_details') ||
+        k.startsWith('astroparihar_wallet_') ||
+        k.startsWith('astroparihar_report_draft') ||
+        k === STORAGE_USER_KEY ||
+        k === STORAGE_TOKEN_KEY
+      );
+      if (keysToRemove.length > 0) {
+        await AsyncStorage.multiRemove(keysToRemove);
+      }
     } catch {}
   },
 }));

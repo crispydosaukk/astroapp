@@ -78,6 +78,7 @@ interface BirthProfileState {
     }>
   ) => Promise<BirthProfile | null>;
   deleteProfile: (profileId: string) => Promise<void>;
+  clearProfiles: () => Promise<void>;
 }
 
 export const useBirthProfileStore = create<BirthProfileState>((set, get) => ({
@@ -85,10 +86,29 @@ export const useBirthProfileStore = create<BirthProfileState>((set, get) => ({
   activeProfile: null,
   loading: false,
 
+  clearProfiles: async () => {
+    set({ profiles: [], activeProfile: null, loading: false });
+    try {
+      await AsyncStorage.multiRemove([
+        STORAGE_PROFILES_KEY,
+        'astroparihar_user_birth_details',
+        'astroparihar_cached_kundli',
+      ]);
+    } catch {}
+  },
+
   loadProfiles: async () => {
     set({ loading: true });
     try {
       const authUser = useAuthStore.getState().user;
+      const isAuthenticated = useAuthStore.getState().isAuthenticated;
+      const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
+
+      if (!isAuth) {
+        set({ profiles: [], activeProfile: null, loading: false });
+        return [];
+      }
+
       const storageKey = getUserStorageKey(authUser);
       const stored = await AsyncStorage.getItem(storageKey);
 
