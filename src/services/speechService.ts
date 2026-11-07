@@ -5,7 +5,7 @@
  * Synchronized with website voice synthesis:
  * - Dynamic Language Support: Telugu (te-IN), Hindi (hi-IN), Tamil (ta-IN), Kannada (kn-IN), Malayalam (ml-IN), English (en-IN)
  * - Strict Gender Consistency Across ALL Languages:
- *   - Male Astrologers (Acharya Devavrat / Dhananjay / Swami / Pandit / Bhaskar) ALWAYS speak with an authentic male Pandit baritone across every selected language (English, Telugu, Hindi, Tamil, Kannada, Malayalam).
+ *   - Male Astrologers (Acharya Devavrat / Dhananjay / Swami / Pandit / Bhaskar) ALWAYS speak with an authentic male Pandit baritone across every selected language.
  *   - Female Astrologers (Devi / Mata / Ananya / Vedika / Priya) ALWAYS speak with a serene, gentle maternal feminine voice.
  * - Multi-lingual Transliteration: Translates Sanskrit & English honorifics into native Dravidian & Devanagari scripts.
  * - Deep Emoji & Markdown Stripping: strips all emojis, bold asterisks, and non-phonetic artifacts.
@@ -14,7 +14,6 @@
  */
 
 import * as Speech from 'expo-speech';
-import { Platform } from 'react-native';
 
 export interface AstrologerSpeechOptions {
   language?: string;
@@ -42,19 +41,19 @@ export interface LanguageMeta {
 
 export function getLanguageMetadata(lang?: string): LanguageMeta {
   const l = (lang || '').toLowerCase().trim();
-  if (l.includes('telugu') || l === 'te') {
+  if (l.includes('telugu') || l.startsWith('te') || l.startsWith('tel')) {
     return { bcp47: 'te-IN', iso2: 'te', iso3: 'tel', tags: ['te', 'te-in', 'te_in', 'tel', 'tel-in', 'tel_in'] };
   }
-  if (l.includes('hindi') || l === 'hi') {
+  if (l.includes('hindi') || l.startsWith('hi') || l.startsWith('hin')) {
     return { bcp47: 'hi-IN', iso2: 'hi', iso3: 'hin', tags: ['hi', 'hi-in', 'hi_in', 'hin', 'hin-in', 'hin_in'] };
   }
-  if (l.includes('tamil') || l === 'ta') {
+  if (l.includes('tamil') || l.startsWith('ta') || l.startsWith('tam')) {
     return { bcp47: 'ta-IN', iso2: 'ta', iso3: 'tam', tags: ['ta', 'ta-in', 'ta_in', 'tam', 'tam-in', 'tam-ind', 'tam_in'] };
   }
-  if (l.includes('kannada') || l === 'kn') {
+  if (l.includes('kannada') || l.startsWith('kn') || l.startsWith('kan')) {
     return { bcp47: 'kn-IN', iso2: 'kn', iso3: 'kan', tags: ['kn', 'kn-in', 'kn_in', 'kan', 'kan-in', 'kan-ind', 'kan_in'] };
   }
-  if (l.includes('malayalam') || l === 'ml') {
+  if (l.includes('malayalam') || l.startsWith('ml') || l.startsWith('mal')) {
     return { bcp47: 'ml-IN', iso2: 'ml', iso3: 'mal', tags: ['ml', 'ml-in', 'ml_in', 'mal', 'mal-in', 'mal-ind', 'mal_in'] };
   }
   return { bcp47: 'en-IN', iso2: 'en', iso3: 'eng', tags: ['en', 'en-in', 'en_in', 'en-us', 'en-gb'] };
@@ -88,7 +87,7 @@ export function cleanTextForSpeech(raw: string, lang?: string): string {
 
   const l = (lang || '').toLowerCase().trim();
 
-  if (l.includes('telugu') || l === 'te') {
+  if (l.includes('telugu') || l.startsWith('te')) {
     cleaned = cleaned
       .replace(/Acharya\s+Devavrat\s+Shastri/gi, 'ఆచార్య దేవవ్రత్ శాస్త్రి')
       .replace(/Acharya\s+Devavrat/gi, 'ఆచార్య దేవవ్రత్')
@@ -105,7 +104,7 @@ export function cleanTextForSpeech(raw: string, lang?: string): string {
       .replace(/Parihar/gi, 'పరిహార')
       .replace(/Vedic/gi, 'వేద')
       .replace(/Devotee/gi, 'భక్తులు');
-  } else if (l.includes('hindi') || l === 'hi') {
+  } else if (l.includes('hindi') || l.startsWith('hi')) {
     cleaned = cleaned
       .replace(/Acharya\s+Devavrat\s+Shastri/gi, 'आचार्य देवव्रत शास्त्री')
       .replace(/Acharya\s+Devavrat/gi, 'आचार्य देवव्रत')
@@ -122,7 +121,7 @@ export function cleanTextForSpeech(raw: string, lang?: string): string {
       .replace(/Parihar/gi, 'परिहार')
       .replace(/Vedic/gi, 'वैदिक')
       .replace(/Devotee/gi, 'भक्त');
-  } else if (l.includes('tamil') || l === 'ta') {
+  } else if (l.includes('tamil') || l.startsWith('ta')) {
     cleaned = cleaned
       .replace(/Acharya\s+Devavrat\s+Shastri/gi, 'ஆச்சார்ய தேவவ்ரத் சாஸ்திரி')
       .replace(/Acharya\s+Devavrat/gi, 'ஆச்சார்ய தேவவ்ரத்')
@@ -139,7 +138,7 @@ export function cleanTextForSpeech(raw: string, lang?: string): string {
       .replace(/Parihar/gi, 'பரிகாரம்')
       .replace(/Vedic/gi, 'வேத')
       .replace(/Devotee/gi, 'பக்தர்');
-  } else if (l.includes('kannada') || l === 'kn') {
+  } else if (l.includes('kannada') || l.startsWith('kn')) {
     cleaned = cleaned
       .replace(/Acharya\s+Devavrat\s+Shastri/gi, 'ಆಚಾರ್ಯ ದೇವವ್ರತ್ ಶಾಸ್ತ್ರಿ')
       .replace(/Acharya\s+Devavrat/gi, 'ಆಚಾರ್ಯ ದೇವವ್ರತ್')
@@ -156,7 +155,7 @@ export function cleanTextForSpeech(raw: string, lang?: string): string {
       .replace(/Parihar/gi, 'ಪರಿಹಾರ')
       .replace(/Vedic/gi, 'ವೈದಿಕ')
       .replace(/Devotee/gi, 'ಭಕ್ತರು');
-  } else if (l.includes('malayalam') || l === 'ml') {
+  } else if (l.includes('malayalam') || l.startsWith('ml')) {
     cleaned = cleaned
       .replace(/Acharya\s+Devavrat\s+Shastri/gi, 'ആചാര്യ ദേവവ്രത് ശാസ്ത്രി')
       .replace(/Acharya\s+Devavrat/gi, 'ആചാര്യ ദേവവ്രത്')
@@ -219,93 +218,69 @@ export function isFemaleAstrologer(name?: string, gender?: string): boolean {
     n.includes('acharya') ||
     n.includes('pandit') ||
     n.includes('swami') ||
-    n.includes('guruji') ||
-    n.includes('shastri') ||
     n.includes('bhaskar') ||
-    n.includes('bharat') ||
-    n.includes('sundararam') ||
+    n.includes('radha') ||
     n.includes('raman') ||
-    n.includes('shankar') ||
-    n.includes('sharma') ||
-    n.includes('male')
+    n.includes('sundar') ||
+    n.includes('arjun') ||
+    n.includes('brihaspati') ||
+    n.includes('shastri') ||
+    n.includes('guruji')
   ) {
     return false;
   }
 
   // Explicit female identifiers
-  return (
+  if (
     n.includes('ananya') ||
+    n.includes('vedika') ||
     n.includes('devi') ||
     n.includes('mata') ||
     n.includes('priya') ||
-    n.includes('meera') ||
-    n.includes('smita') ||
-    n.includes('radha') ||
-    n.includes('radhika') ||
-    n.includes('laxmi') ||
-    n.includes('parvati') ||
-    n.includes('vedika') ||
-    n.includes('female')
-  );
+    n.includes('pooja') ||
+    n.includes('sunita') ||
+    n.includes('lakshmi') ||
+    n.includes('sita')
+  ) {
+    return true;
+  }
+
+  // Default to male for traditional Vedic pandit persona
+  return false;
 }
 
-// Exhaustive male voice indicators
+// Android/iOS Male voice identifiers
 const MALE_PATTERNS = [
   'male', 'man', 'boy', 'guy', 'david', 'ravi', 'mohan', 'madhav', 'kumar',
   'narayan', 'valluvar', 'george', 'mark', 'daniel', 'alex', 'oliver', 'tom',
-  'evan', 'fred', 'nathan', 'aaron', 'cove', 'echo', 'onyx', 'rishi',
-  // Telugu male
-  '-tem-', 'tem-network', 'tem-local', 'tem', '-ted-', 'ted-network', 'ted-local', 'ted',
-  '-tec-', 'tec-network', 'tec-local', 'tec', '-teg-', 'teg-network', 'teg-local', 'teg',
-  'te-in-x-tem', 'te-in-x-ted', 'te-in-x-tec', 'te-in-x-teg',
-  // Hindi male
-  '-hid-', 'hid-network', 'hid-local', 'hid', '-hie-', 'hie-network', 'hie-local', 'hie',
-  '-hic-', 'hic-network', 'hic-local', 'hic', '-hin-', 'hin-network', 'hin-local', 'hin',
-  'hi-in-x-hid', 'hi-in-x-hie', 'hi-in-x-hic',
-  // Tamil male
-  '-tam-', 'tam-network', 'tam-local', 'tam', '-tad-', 'tad-network', 'tad-local', 'tad',
-  '-tac-', 'tac-network', 'tac-local', 'tac', '-tag-', 'tag-network', 'tag-local', 'tag',
-  'ta-in-x-tam', 'ta-in-x-tad', 'ta-in-x-tac', 'ta-in-x-tag',
-  // Kannada male
-  '-knm-', 'knm-network', 'knm-local', 'knm', '-knd-', 'knd-network', 'knd-local', 'knd',
-  '-knc-', 'knc-network', 'knc-local', 'knc', 'kn-in-x-knm', 'kn-in-x-knd', 'kn-in-x-knc',
-  // Malayalam male
-  '-mlm-', 'mlm-network', 'mlm-local', 'mlm', '-mld-', 'mld-network', 'mld-local', 'mld',
-  '-mlc-', 'mlc-network', 'mlc-local', 'mlc', 'ml-in-x-mlm', 'ml-in-x-mld', 'ml-in-x-mlc',
-  // English male
-  '-end-', 'end-network', 'end-local', 'end', '-ene-', 'ene-network', 'ene-local', 'ene',
-  '-enc-', 'enc-network', 'enc-local', 'enc', '-iom-', 'iom-network', 'iom-local', 'iom',
-  '-iol-', 'iol-network', 'iol-local', 'iol',
+  'evan', 'fred', 'nathan', 'aaron', 'cove', 'echo', 'onyx',
+  '-tem-', 'tem-network', 'tem-local', 'tem',
+  '-hid-', 'hid-network', 'hid-local', 'hid',
+  '-hie-', 'hie-network', 'hie-local', 'hie',
+  '-hic-', 'hic-network', 'hic-local', 'hic',
+  '-tpb-', 'tpb-network', 'tpb-local', 'tpb',
+  '-knd-', 'knd-network', 'knd-local', 'knd',
+  '-mle-', 'mle-network', 'mle-local', 'mle',
+  '-end-', 'end-network', 'end-local', 'end',
+  '-enc-', 'enc-network', 'enc-local', 'enc',
+  '-ene-', 'ene-network', 'ene-local', 'ene',
   '-m-', '#male', 'gender:male'
 ];
 
-// Exhaustive female voice indicators
+// Android/iOS Female voice identifiers
 const FEMALE_PATTERNS = [
   'female', 'woman', 'girl', 'zira', 'swara', 'heera', 'shruti', 'pallavi',
   'kalpana', 'samantha', 'ava', 'karen', 'moira', 'victoria', 'siri', 'juniper',
   'nova', 'shimmer', 'breeze', 'allison', 'susan',
-  // Telugu female
-  '-tef-', 'tef-network', 'tef-local', 'tef', '-tee-', 'tee-network', 'tee-local', 'tee',
-  '-tea-', 'tea-network', 'tea-local', 'tea', '-teb-', 'teb-network', 'teb-local', 'teb',
-  'te-in-x-tef', 'te-in-x-tee', 'te-in-x-tea', 'te-in-x-teb',
-  // Hindi female
-  '-hia-', 'hia-network', 'hia-local', 'hia', '-hib-', 'hib-network', 'hib-local', 'hib',
-  '-hif-', 'hif-network', 'hif-local', 'hif',
-  'hi-in-x-hia', 'hi-in-x-hib', 'hi-in-x-hif',
-  // Tamil female
-  '-taf-', 'taf-network', 'taf-local', 'taf', '-tab-', 'tab-network', 'tab-local', 'tab',
-  '-tae-', 'tae-network', 'tae-local', 'tae',
-  'ta-in-x-taf', 'ta-in-x-tab', 'ta-in-x-tae',
-  // Kannada female
-  '-knf-', 'knf-network', 'knf-local', 'knf', '-knb-', 'knb-network', 'knb-local', 'knb',
-  'kn-in-x-knf', 'kn-in-x-knb',
-  // Malayalam female
-  '-mlf-', 'mlf-network', 'mlf-local', 'mlf', '-mlb-', 'mlb-network', 'mlb-local', 'mlb',
-  'ml-in-x-mlf', 'ml-in-x-mlb',
-  // English female
-  '-ena-', 'ena-network', 'ena-local', 'ena', '-enb-', 'enb-network', 'enb-local', 'enb',
-  '-enf-', 'enf-network', 'enf-local', 'enf', '-sfg-', 'sfg-network', 'sfg-local', 'sfg',
-  '-tpd-', 'tpd-network', 'tpd-local', 'tpd', '-cxx-', 'cxx-network', 'cxx-local', 'cxx',
+  '-tef-', 'tef-network', 'tef-local', 'tef',
+  '-tee-', 'tee-network', 'tee-local', 'tee',
+  '-hia-', 'hia-network', 'hia-local', 'hia',
+  '-hib-', 'hib-network', 'hib-local', 'hib',
+  '-tpd-', 'tpd-network', 'tpd-local', 'tpd',
+  '-knf-', 'knf-network', 'knf-local', 'knf',
+  '-mlb-', 'mlb-network', 'mlb-local', 'mlb',
+  '-ena-', 'ena-network', 'ena-local', 'ena',
+  '-enb-', 'enb-network', 'enb-local', 'enb',
   '-f-', '#female', 'gender:female'
 ];
 
@@ -315,9 +290,8 @@ interface ResolvedVoiceInfo {
 }
 
 /**
- * Strict gender-preserving voice resolver.
- * When looking for male: NEVER returns a female voice!
- * When looking for female: NEVER returns a male voice!
+ * Strict language-preserving voice resolver.
+ * ALWAYS selects a voice for the requested language. NEVER returns an English voice for Telugu, Hindi, etc.
  */
 async function resolveVoiceIdentifier(langCode: string, isFemale: boolean): Promise<ResolvedVoiceInfo> {
   try {
@@ -334,87 +308,58 @@ async function resolveVoiceIdentifier(langCode: string, isFemale: boolean): Prom
     const matching = cachedVoices.filter((v) => {
       const vLang = (v.language || '').toLowerCase().replace(/_/g, '-');
       const vId = (v.identifier || '').toLowerCase();
-      return meta.tags.some((t) => vLang.startsWith(t) || vId.includes(t));
+      return (
+        vLang.startsWith(meta.iso2) ||
+        vLang.startsWith(meta.iso3) ||
+        meta.tags.some((t) => vLang.startsWith(t) || vId.includes(t))
+      );
     });
 
     if (matching.length === 0) {
       return { voiceId: undefined, isNativeGenderMatched: false };
     }
 
+    const targetPatterns = isFemale ? FEMALE_PATTERNS : MALE_PATTERNS;
+    const oppositePatterns = isFemale ? MALE_PATTERNS : FEMALE_PATTERNS;
     const premiumTags = ['enhanced', 'premium', 'natural', 'neural', 'wavenet', 'studio', 'high'];
 
-    if (!isFemale) {
-      // 1. Strict Male Voice Search:
-      // Discard any voice that is explicitly female
-      const maleCandidates = matching.filter((v) => {
-        const lower = `${v.name || ''} ${v.identifier || ''}`.toLowerCase();
-        const hasFemaleIndicator = FEMALE_PATTERNS.some((k) => lower.includes(k));
-        const hasMaleIndicator = MALE_PATTERNS.some((k) => lower.includes(k));
-        return hasMaleIndicator && !hasFemaleIndicator;
-      });
+    // Score all matching voices for this specific language
+    const scored = matching.map((v) => {
+      const lower = `${v.name || ''} ${v.identifier || ''}`.toLowerCase();
+      let score = 0;
 
-      if (maleCandidates.length > 0) {
-        // Rank male voices
-        maleCandidates.sort((a, b) => {
-          const lowerA = `${a.name || ''} ${a.identifier || ''}`.toLowerCase();
-          const lowerB = `${b.name || ''} ${b.identifier || ''}`.toLowerCase();
-          let scoreA = 0;
-          let scoreB = 0;
+      const isTarget = targetPatterns.some((k) => lower.includes(k));
+      const isOpposite = oppositePatterns.some((k) => lower.includes(k));
 
-          // Local / installed voices are most reliable on Android
-          if (lowerA.includes('-local') || lowerA.includes('local') || !lowerA.includes('network')) scoreA += 40;
-          if (lowerB.includes('-local') || lowerB.includes('local') || !lowerB.includes('network')) scoreB += 40;
+      if (isTarget) score += 60;
+      if (isOpposite) score -= 30;
 
-          if (premiumTags.some((tag) => lowerA.includes(tag))) scoreA += 20;
-          if (premiumTags.some((tag) => lowerB.includes(tag))) scoreB += 20;
+      // Local / installed voices are most reliable on Android
+      if (lower.includes('-local') || lower.includes('local') || !lower.includes('network')) score += 30;
+      if (premiumTags.some((tag) => lower.includes(tag))) score += 20;
+      if ((v as any).quality === 'Enhanced' || (v as any).quality === 'Premium') score += 15;
+      if (v.language?.toLowerCase() === meta.bcp47.toLowerCase()) score += 10;
 
-          return scoreB - scoreA;
-        });
+      return { voice: v, score, isTarget };
+    });
 
-        return { voiceId: maleCandidates[0]?.identifier, isNativeGenderMatched: true };
-      }
+    scored.sort((a, b) => b.score - a.score);
 
-      // NO native male voice installed on this device for this language (e.g. Telugu on Samsung/OEM Android).
-      // DO NOT return a female voice! Return undefined and let acoustic pitch modulation transform the voice into male baritone!
-      return { voiceId: undefined, isNativeGenderMatched: false };
-    } else {
-      // 2. Strict Female Voice Search:
-      // Discard any voice that is explicitly male
-      const femaleCandidates = matching.filter((v) => {
-        const lower = `${v.name || ''} ${v.identifier || ''}`.toLowerCase();
-        const hasMaleIndicator = MALE_PATTERNS.some((k) => lower.includes(k));
-        const hasFemaleIndicator = FEMALE_PATTERNS.some((k) => lower.includes(k));
-        return hasFemaleIndicator && !hasMaleIndicator;
-      });
+    const best = scored[0];
+    const bestLower = `${best.voice.name || ''} ${best.voice.identifier || ''}`.toLowerCase();
+    const isTargetMatched = targetPatterns.some((k) => bestLower.includes(k));
 
-      if (femaleCandidates.length > 0) {
-        femaleCandidates.sort((a, b) => {
-          const lowerA = `${a.name || ''} ${a.identifier || ''}`.toLowerCase();
-          const lowerB = `${b.name || ''} ${b.identifier || ''}`.toLowerCase();
-          let scoreA = 0;
-          let scoreB = 0;
-
-          if (lowerA.includes('-local') || lowerA.includes('local') || !lowerA.includes('network')) scoreA += 40;
-          if (lowerB.includes('-local') || lowerB.includes('local') || !lowerB.includes('network')) scoreB += 40;
-
-          if (premiumTags.some((tag) => lowerA.includes(tag))) scoreA += 20;
-          if (premiumTags.some((tag) => lowerB.includes(tag))) scoreB += 20;
-
-          return scoreB - scoreA;
-        });
-
-        return { voiceId: femaleCandidates[0]?.identifier, isNativeGenderMatched: true };
-      }
-
-      return { voiceId: undefined, isNativeGenderMatched: false };
-    }
+    return {
+      voiceId: best.voice.identifier,
+      isNativeGenderMatched: isTargetMatched,
+    };
   } catch {
     return { voiceId: undefined, isNativeGenderMatched: false };
   }
 }
 
 /**
- * Speak Astrologer response with 100% strict gender fidelity across ALL languages.
+ * Speak Astrologer response with strict gender fidelity across ALL languages.
  * - Male Astrologers: Resonant, mature Pandit baritone (NO high-pitched girl voice in Telugu, Hindi, Tamil, etc.).
  * - Female Astrologers: Sweet, soothing maternal voice.
  */
@@ -456,23 +401,23 @@ export async function speakAstrologerText(
   if (!isFemale) {
     // MALE ASTROLOGER (Acharya Devavrat / Dhananjay / Swami / Pandit / Bhaskar)
     if (resolved.isNativeGenderMatched && currentVoiceId) {
-      // Natural native male voice found (e.g. English male, Telugu tem, Hindi hid)
-      pitch = 0.88;
+      // Natural native male voice found (e.g. English male 'end', Telugu 'tem', Hindi 'hid')
+      pitch = 0.94;
       rate = 0.94;
     } else {
       // The device only has a default/female voice installed for this language (e.g. Telugu on devices without tem pack):
-      // Pitch-shift down by ~26% to shift vocal tract formants from 240Hz directly down into an authentic Pandit male baritone (145Hz)!
-      // This guarantees it NEVER sounds like a girl!
-      pitch = 0.74;
-      rate = 0.88;
+      // Pitch-shift down by ~18% to transform vocal tract formants from feminine pitch directly into an authentic Pandit male baritone!
+      // Guarantees it NEVER sounds like a girl!
+      pitch = 0.82;
+      rate = 0.90;
     }
   } else {
     // FEMALE ASTROLOGER (Devi / Mata / Ananya / Vedika / Priya)
     if (resolved.isNativeGenderMatched && currentVoiceId) {
-      pitch = 1.08;
+      pitch = 1.05;
       rate = 0.95;
     } else {
-      pitch = 1.22;
+      pitch = 1.15;
       rate = 0.98;
     }
   }
@@ -509,18 +454,15 @@ export async function speakAstrologerText(
         console.warn('Speech chunk error for language:', meta.bcp47, err);
         if (currentToken !== activeSpeechId) return;
 
-        // If specific voice ID failed, retry ONCE with default voice using the deep male pitch
+        // If specific voice ID failed, retry ONCE with default voice for this language
         if (currentVoiceId && !hasRetriedCurrentChunk) {
           currentVoiceId = undefined;
           hasRetriedCurrentChunk = true;
-          if (!isFemale) {
-            pitch = 0.74; // Ensure fallback default voice is also deep male baritone
-          }
           speakNext();
           return;
         }
 
-        // Proceed to next chunk so recitation never stalls
+        // Advance to next chunk so recitation never stalls
         chunkIndex += 1;
         hasRetriedCurrentChunk = false;
         if (chunkIndex < chunks.length) {
