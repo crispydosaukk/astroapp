@@ -123,3 +123,4 @@ export async function requestPermanentAccountDeletion(params?: {
     message: 'Your account has been permanently deleted. This phone number cannot be reused to log in.',
   };
 }
+
