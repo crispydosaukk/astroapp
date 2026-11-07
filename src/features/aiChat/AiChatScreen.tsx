@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   FlatList,
   Keyboard,
@@ -73,6 +74,7 @@ export interface ChatMessage {
     pariharProtocol?: any;
   };
   modelUsed?: string;
+  isClarification?: boolean;
 }
 
 export const LANGUAGES = [
@@ -810,7 +812,7 @@ function Bubble({
     return { opacity: fade, transform: [{ translateX: (1 - slide) * (msg.isUser ? 0.06 : -0.06) * width }] };
   });
   const bg = msg.isUser ? '#D9FDD3' : '#FFFFFF';
-  const displayedText = !msg.isUser ? stripTrailingAstrologerQuestions(msg.text, language) : msg.text;
+  const displayedText = msg.isClarification || msg.isUser ? msg.text : stripTrailingAstrologerQuestions(msg.text, language);
   const astrologerName = !msg.isUser
     ? (msg.modelUsed || 'AstroParihar AI')
         .replace(/\s*\([^)]*(?:vedika|engine|live)[^)]*\)/gi, '')
@@ -1241,6 +1243,75 @@ export default function AiChatScreen() {
     };
   }, []);
 
+  const handleResetChat = () => {
+    Alert.alert(
+      selectedLanguage === 'Telugu'
+        ? 'చాట్ రీసెట్ చేయాలా?'
+        : selectedLanguage === 'Hindi'
+        ? 'चैट रीसेट करें?'
+        : 'Reset Consultation Chat?',
+      selectedLanguage === 'Telugu'
+        ? 'ప్రస్తుత సందేశాలను తొలగించి కొత్త జ్యోతిష్య సంభాషణను ప్రారంభించాలా?'
+        : selectedLanguage === 'Hindi'
+        ? 'वर्तमान संदेशों को हटाकर नई ज्योतिषीय बातचीत शुरू करें?'
+        : 'Do you want to clear current chat messages and start a fresh astrological consultation?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: selectedLanguage === 'Telugu' ? 'రీసెట్ చేయండి' : selectedLanguage === 'Hindi' ? 'रीसेट करें' : 'Reset Chat',
+          style: 'destructive',
+          onPress: async () => {
+            stopAstrologerSpeech();
+            setSpeakingIndex(null);
+            const storageKey = `astroparihar_chat_messages_${selectedAstrologer.id}`;
+            await AsyncStorage.removeItem(storageKey).catch(() => {});
+
+            const userName =
+              activeProfile?.name?.trim() ||
+              useBirthProfileStore.getState().activeProfile?.name?.trim() ||
+              authUser?.name?.trim() ||
+              userProfile?.name?.trim() ||
+              'Devotee';
+            const welcome = getWelcomeMessage(selectedLanguage, userName, selectedAstrologer.name);
+            setMessages([
+              {
+                isUser: false,
+                text: welcome.content,
+                time: currentTime(),
+                recommendations: welcome.recommendations,
+                modelUsed: selectedAstrologer.name,
+              },
+            ]);
+
+            showSnackBar(
+              selectedLanguage === 'Telugu'
+                ? 'చాట్ విజయవంతంగా రీసెట్ చేయబడింది'
+                : selectedLanguage === 'Hindi'
+                ? 'चैट सफलतापूर्वक रीसेट कर दी गई'
+                : 'Chat has been reset successfully',
+              '#008069'
+            );
+
+            // Automatically read fresh greeting
+            setTimeout(() => {
+              if (!mounted.current) return;
+              setSpeakingIndex(0);
+              const isFemale = selectedAstrologer.gender === 'female' || isFemaleAstrologer(selectedAstrologer.name);
+              speakAstrologerText(welcome.content, {
+                language: selectedLanguage,
+                astrologerName: selectedAstrologer.name,
+                gender: isFemale ? 'female' : 'male',
+                onStart: () => { if (mounted.current) setSpeakingIndex(0); },
+                onDone: () => { if (mounted.current) setSpeakingIndex(null); },
+                onError: () => { if (mounted.current) setSpeakingIndex(null); },
+              });
+            }, 400);
+          },
+        },
+      ]
+    );
+  };
+
   const activeProfile = useBirthProfileStore((s) => s.activeProfile);
   const loadProfiles = useBirthProfileStore((s) => s.loadProfiles);
 
@@ -1475,6 +1546,7 @@ export default function AiChatScreen() {
             time: currentTime(),
             recommendations: QUICK_PROMPTS_BY_LANG[selectedLanguage] || QUICK_PROMPTS_BY_LANG.English,
             modelUsed: selectedAstrologer.name,
+            isClarification: true,
           },
         ]);
         scrollToMessageStart();
@@ -1743,36 +1815,70 @@ export default function AiChatScreen() {
               </View>
             </Pressable>
 
-            {/* Language Selector Symbol */}
+            {/* Language Selector Pill */}
             <Pressable
               testID="aiChat.langPill"
               onPress={() => setShowLanguageModal(true)}
-              style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: '#C9A84C', marginRight: 6 }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 7,
+                paddingVertical: 4.5,
+                borderRadius: 12,
+                backgroundColor: 'rgba(255,255,255,0.18)',
+                borderWidth: 1,
+                borderColor: '#C9A84C',
+                marginRight: 5,
+              }}
               accessibilityRole="button"
               accessibilityLabel="Select Language"
             >
-              <Text style={{ fontSize: 13, color: '#FFFFFF' }}>🌐</Text>
+              <AppIcon name="language" color="#FFD700" size={13} />
+              <Text style={{ marginLeft: 3, fontSize: 11, color: '#FFFFFF', fontWeight: '800' }}>
+                {selectedLanguage.substring(0, 3).toUpperCase()}
+              </Text>
+            </Pressable>
+
+            {/* Chat Reset Button */}
+            <Pressable
+              testID="aiChat.resetChat"
+              onPress={handleResetChat}
+              hitSlop={8}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 7,
+                paddingVertical: 4.5,
+                borderRadius: 12,
+                backgroundColor: 'rgba(255,255,255,0.14)',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.35)',
+                marginRight: 5,
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Reset Chat"
+            >
+              <AppIcon name="restart_alt" color="#FFFFFF" size={13} />
+              <Text style={{ marginLeft: 2.5, fontSize: 10.5, color: '#FFFFFF', fontWeight: '700' }}>
+                Reset
+              </Text>
             </Pressable>
 
             {/* Model Selector Pill */}
             <Pressable
               testID="aiChat.modelPill"
               onPress={() => setShowModelModal(true)}
-              style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 14, backgroundColor: 'rgba(201,168,76,0.25)', borderWidth: 1, borderColor: '#C9A84C' }}
+              style={{
+                paddingHorizontal: 7,
+                paddingVertical: 4.5,
+                borderRadius: 12,
+                backgroundColor: 'rgba(201,168,76,0.25)',
+                borderWidth: 1,
+                borderColor: '#C9A84C',
+              }}
             >
-              <Text style={{ fontSize: 11, color: '#C9A84C', fontWeight: '700' }}>
+              <Text style={{ fontSize: 10.5, color: '#FFD700', fontWeight: '700' }}>
                 {selectedModel === 'vedika-ai' ? '🔮 Ephemeris' : selectedModel === 'openai-gpt4o' ? '🧠 Deep AI' : '⚡ Auto'}
-              </Text>
-            </Pressable>
-
-            {/* Wallet Balance Pill */}
-            <Pressable
-              testID="aiChat.walletPill"
-              onPress={() => setShowRechargeModal(true)}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.28)', borderWidth: 1, borderColor: '#C9A84C', marginLeft: 6 }}
-            >
-              <Text style={{ fontSize: 11, color: '#FFD700', fontWeight: '800' }}>
-                💳 {formatPrice(walletBalance)}
               </Text>
             </Pressable>
           </View>

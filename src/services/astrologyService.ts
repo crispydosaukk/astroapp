@@ -589,6 +589,34 @@ export function stripTrailingAstrologerQuestions(text: string, language?: string
   if (!text) return '';
   let cleaned = text.trim();
 
+  // Never strip ChatGPT-style clarification messages, questions, or greetings
+  const lower = cleaned.toLowerCase();
+  if (
+    lower.includes('clarify') ||
+    lower.includes('do you mean') ||
+    lower.includes('are you asking') ||
+    lower.includes('are you referring') ||
+    lower.includes('what are you trying to tell me') ||
+    lower.includes('what would you like to know') ||
+    cleaned.includes('స్పష్టం') ||
+    cleaned.includes('స్పష్టత') ||
+    cleaned.includes('స్పష్టంగా') ||
+    cleaned.includes('తెలియజేయండి') ||
+    cleaned.includes('అడగండి') ||
+    cleaned.includes('స్పష్ట') ||
+    cleaned.includes('स्पष्ट करें') ||
+    cleaned.includes('स्पष्टीकरण') ||
+    cleaned.includes('स्पष्ट कर सकते हैं') ||
+    cleaned.includes('தெளிவுபடுத்த') ||
+    cleaned.includes('விளக்க முடியுமா') ||
+    cleaned.includes('ಸ್ಪಷ್ಟಪಡಿಸಬಹುದೇ') ||
+    cleaned.includes('ಸ್ಪಷ್ಟಪಡಿಸಿ') ||
+    cleaned.includes('വ്യക്തമാക്കാമോ') ||
+    cleaned.includes('വ്യക്തത')
+  ) {
+    return cleaned;
+  }
+
   const normLang =
     /telugu|^te$/i.test(language || '') ? 'Telugu' :
     /hindi|^hi$/i.test(language || '') ? 'Hindi' :
@@ -642,8 +670,12 @@ export function stripTrailingAstrologerQuestions(text: string, language?: string
   cleaned = cleaned.replace(/[—–-]\s*[^\n.!?]*[?？]\s*$/g, '').trim();
   cleaned = cleaned.replace(/[?？]\s*$/g, '.').trim();
 
-  // If text became empty or was only questions to begin with, provide auspicious response
-  if (!cleaned || cleaned.length < 20) {
+  // If text became empty or was only questions to begin with, keep the original text
+  if (!cleaned || cleaned.length < 15) {
+    if (text.trim().length > 0) {
+      // Return original message (e.g. concise clarification, greeting, or direct astrological answer)
+      return text.trim();
+    }
     if (normLang === 'Telugu') {
       cleaned = 'మీ జన్మ కుండలి ప్రకారం గ్రహాల స్థితులు పరిశీలించబడ్డాయి. ప్రస్తుత గోచారంలో బృహస్పతి అనుకూలంగా ఉండటంతో కార్యసిద్ధి, మనశ్శాంతి లభిస్తాయి. నిత్యం ఇష్టదేవతా ప్రార్థన మరియు వేద పరిహారాల ఆచరణ శ్రేయస్కరం.';
     } else if (normLang === 'Hindi') {
