@@ -4,7 +4,7 @@
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
@@ -12,7 +12,9 @@ import { ProgressRing } from '@/components/common';
 import { showSnackBar } from '@/components/overlays';
 import { Text } from '@/components/Text';
 import { IconBadge, ListTile, SettingsCard, SwitchTile, TileDivider } from '@/components/tiles';
-import { AppRoutes, pop, push } from '@/navigation/routes';
+import { AppRoutes, go, pop, push } from '@/navigation/routes';
+import { useAuthStore } from '@/features/auth/authStore';
+import { requestPermanentAccountDeletion } from '@/services/accountDeletionService';
 import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
@@ -110,7 +112,33 @@ export function PrivacyScreen() {
               titleWeight="600"
               subtitle="Permanently remove your account and all data"
               trailing="chevron"
-              onPress={() => showSnackBar('Account deletion requires contacting support for verification', '#CF4444')}
+              onPress={() => {
+                Alert.alert(
+                  'Delete Account Permanently?',
+                  'Are you sure you want to permanently delete your AstroParihar account?\n\nAll your Janam Kundli charts, consultations, wallet balance, and birth profiles will be erased forever.\n\nOnce deleted, this phone number cannot be reused to log in.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete Account',
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          await requestPermanentAccountDeletion();
+                          Alert.alert(
+                            'Account Deleted',
+                            'Your account has been deleted. You can no longer log in with this phone number.'
+                          );
+                          showSnackBar('Account deleted permanently', '#CF4444');
+                          go(AppRoutes.initial);
+                        } catch (err: any) {
+                          showSnackBar('Error deleting account: ' + err?.message, '#CF4444');
+                        }
+                      },
+                    },
+                  ],
+                  { cancelable: true }
+                );
+              }}
             />
           </SettingsCard>
         </View>

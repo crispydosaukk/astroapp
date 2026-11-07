@@ -32,6 +32,7 @@ import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, go, push } from '@/navigation/routes';
 import { fetchCalculatedKundli } from '@/services/astrologyService';
 import { useBirthProfileStore } from '@/services/birthProfileStore';
+import { requestPermanentAccountDeletion } from '@/services/accountDeletionService';
 import packageJson from '../../../package.json';
 import { useCurrencyStore } from '@/services/currencyStore';
 import { getWalletBalance, subscribeWallet } from '@/services/walletService';
@@ -681,6 +682,49 @@ export default function ProfileScreen() {
       [
         { text: config.cancelButtonText || t('profile.cancel', 'Cancel'), style: 'cancel' },
         { text: config.signOutButtonText || t('profile.signOut', 'Sign Out'), style: 'destructive', onPress: handleConfirmSignOut },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const handleDeleteAccountPress = () => {
+    Alert.alert(
+      'Delete Account Permanently?',
+      'Are you sure you want to permanently delete your AstroParihar account?\n\nAll your Janam Kundli charts, consultations, wallet balance, and birth profiles will be erased forever.\n\nOnce deleted, this phone number cannot be reused to log in.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await requestPermanentAccountDeletion({
+                phone: authUser?.phone,
+                uid: authUser?.uid,
+              });
+              setProfileData({
+                name: 'Guest',
+                email: config.guestSubtitle,
+                dob: 'Sign in to view',
+                tob: 'Sign in to view',
+                pob: 'Sign in to view',
+                zodiac: config.defaultZodiac,
+                zodiacSymbol: getZodiacSymbol(config.defaultZodiac),
+                moonSign: config.defaultMoonSign,
+                moonSymbol: getZodiacSymbol(config.defaultMoonSign),
+                nakshatra: config.defaultNakshatra,
+              });
+              Alert.alert(
+                'Account Deleted',
+                'Your account has been deleted. You can no longer log in with this phone number.'
+              );
+              showSnackBar('Account deleted permanently', '#CF4444');
+              go(AppRoutes.initial);
+            } catch (err: any) {
+              showSnackBar('Error deleting account: ' + err?.message, '#CF4444');
+            }
+          },
+        },
       ],
       { cancelable: true }
     );
@@ -1416,30 +1460,51 @@ export default function ProfileScreen() {
             );
           })}
 
-        {/* Sign Out Button (ONLY when authenticated) */}
+        {/* Account Actions: Sign Out & Delete Account (ONLY when authenticated) */}
         {isAuth && (
-          <Pressable
-            testID="profile.signOut"
-            onPress={handleSignOutPress}
-            style={{
-              marginHorizontal: 20,
-              marginTop: 4,
-              marginBottom: 16,
-              paddingVertical: 14,
-              borderRadius: 16,
-              borderWidth: 1.5,
-              borderColor: '#CF4444',
-              backgroundColor: withAlpha('#CF4444', colors.isLight ? 12 : 20),
-              flexDirection: 'row',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
-            <AppIcon name="logout_rounded" size={19} color="#CF4444" />
-            <Text style={{ marginLeft: 8, color: '#CF4444', fontSize: 15, fontWeight: '700' }}>
-              {config.signOutButtonText || t('profile.signOut', 'Sign Out')}
-            </Text>
-          </Pressable>
+          <View style={{ marginHorizontal: 20, marginTop: 4, marginBottom: 16, gap: 10 }}>
+            {/* Sign Out Button */}
+            <Pressable
+              testID="profile.signOut"
+              onPress={handleSignOutPress}
+              style={{
+                paddingVertical: 14,
+                borderRadius: 16,
+                borderWidth: 1.5,
+                borderColor: '#CF4444',
+                backgroundColor: withAlpha('#CF4444', colors.isLight ? 12 : 20),
+                flexDirection: 'row',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <AppIcon name="logout_rounded" size={19} color="#CF4444" />
+              <Text style={{ marginLeft: 8, color: '#CF4444', fontSize: 15, fontWeight: '700' }}>
+                {config.signOutButtonText || t('profile.signOut', 'Sign Out')}
+              </Text>
+            </Pressable>
+
+            {/* Delete Account Button */}
+            <Pressable
+              testID="profile.deleteAccount"
+              onPress={handleDeleteAccountPress}
+              style={{
+                paddingVertical: 12,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: withAlpha('#CF4444', 35),
+                backgroundColor: colors.isLight ? '#FFF5F5' : 'rgba(207,68,68,0.08)',
+                flexDirection: 'row',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <AppIcon name="delete_outline_rounded" size={18} color="#CF4444" />
+              <Text style={{ marginLeft: 6, color: '#CF4444', fontSize: 13.5, fontWeight: '600' }}>
+                Delete Account Permanently
+              </Text>
+            </Pressable>
+          </View>
         )}
 
         {/* Dynamic App Version & Sanskrit Tagline Footer */}

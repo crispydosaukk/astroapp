@@ -12,6 +12,7 @@ export const API_ENDPOINTS = {
   saveProfile: `${BASE_URL}/api/auth/save-profile`,
   sendOtp: `${BASE_URL}/api/auth/send-otp`,
   verifyOtp: `${BASE_URL}/api/auth/verify-otp`,
+  deleteAccount: `${BASE_URL}/api/auth/delete-account`,
   appDynamic: `${BASE_URL}/api/app-dynamic`,
   onboarding: `${BASE_URL}/api/app-dynamic/onboarding`,
   cosmicInsights: `${BASE_URL}/api/app-dynamic/cosmic-insights`,

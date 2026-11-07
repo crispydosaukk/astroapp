@@ -27,6 +27,7 @@ import { lh, Text, TextInput } from '@/components/Text';
 import { API_ENDPOINTS } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, go, pop, push } from '@/navigation/routes';
+import { isPhoneNumberDeleted, recordDeletedPhoneNumberLocally } from '@/services/accountDeletionService';
 import { argb } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 
@@ -168,6 +169,14 @@ export default function SignInScreen() {
       return;
     }
 
+    // Check if this phone number account has already been permanently deleted
+    const isDeletedLocally =
+      (await isPhoneNumberDeleted(rawNumber)) || (await isPhoneNumberDeleted(fullPhoneNumber));
+    if (isDeletedLocally) {
+      showSnackBar('This number account is already deleted. Please try with another number.', '#CF4444');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/send-otp`, {
@@ -176,6 +185,13 @@ export default function SignInScreen() {
         body: JSON.stringify({ phone: fullPhoneNumber }),
       });
       const data = await res.json();
+
+      if (res.status === 403 || data.isDeleted || (data.error && data.error.includes('already deleted'))) {
+        await recordDeletedPhoneNumberLocally(rawNumber);
+        await recordDeletedPhoneNumberLocally(fullPhoneNumber);
+        showSnackBar('This number account is already deleted. Please try with another number.', '#CF4444');
+        return;
+      }
 
       if (res.ok && data.success) {
         setStep(2);
@@ -199,6 +215,15 @@ export default function SignInScreen() {
       return;
     }
 
+    // Check if this phone number account was deleted
+    const rawNumber = phone.replace(/\D/g, '');
+    const isDeletedLocally =
+      (await isPhoneNumberDeleted(rawNumber)) || (await isPhoneNumberDeleted(fullPhoneNumber));
+    if (isDeletedLocally) {
+      showSnackBar('This number account is already deleted. Please try with another number.', '#CF4444');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/verify-otp`, {
@@ -207,6 +232,13 @@ export default function SignInScreen() {
         body: JSON.stringify({ phone: fullPhoneNumber, otp: otp.trim() }),
       });
       const data = await res.json();
+
+      if (res.status === 403 || data.isDeleted || (data.error && data.error.includes('already deleted'))) {
+        await recordDeletedPhoneNumberLocally(rawNumber);
+        await recordDeletedPhoneNumberLocally(fullPhoneNumber);
+        showSnackBar('This number account is already deleted. Please try with another number.', '#CF4444');
+        return;
+      }
 
       if (res.ok && data.success) {
         const cleanPhone = fullPhoneNumber.replace(/\D/g, '');
