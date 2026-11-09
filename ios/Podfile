@@ -20,6 +20,9 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 
 prepare_react_native_project!
 
+workspace 'AstroParihar'
+project 'AstroParihar.xcodeproj'
+
 target 'AstroParihar' do
   use_expo_modules!
 
