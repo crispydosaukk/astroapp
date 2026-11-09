@@ -11,7 +11,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.vooty.astroparihar",
+      "bundleIdentifier": "com.astroparihar.astroapp",
       "icon": "./assets/images/app_logo_emblem.png",
       "infoPlist": {
         "CFBundleDisplayName": "AstroParihar",
