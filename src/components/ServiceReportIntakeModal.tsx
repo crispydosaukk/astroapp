@@ -7,7 +7,7 @@ import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton, OutlinedButton } from '@/components/common';
 import { OutlinedField } from '@/components/fields';
 import { BottomSheet, showSnackBar } from '@/components/overlays';
-import { formatTimeOfDay, pickDate, pickTime } from '@/components/pickers';
+import { formatTimeOfDay, parseDobToDate, parseTimeToDate, pickDate, pickTime } from '@/components/pickers';
 import { Text } from '@/components/Text';
 import { useAuthStore } from '@/features/auth/authStore';
 import { useCurrencyStore } from '@/services/currencyStore';
@@ -201,7 +201,7 @@ export function ServiceReportFormBody({ config, onSuccess, onCancel, isModal }: 
 
   const handlePickDob = async () => {
     const picked = await pickDate({
-      value: new Date(1995, 9, 15),
+      value: parseDobToDate(dob),
       minimumDate: new Date(1920, 0, 1),
       maximumDate: new Date(),
     });
@@ -216,7 +216,7 @@ export function ServiceReportFormBody({ config, onSuccess, onCancel, isModal }: 
   };
 
   const handlePickTob = async () => {
-    const picked = await pickTime({ value: new Date(2000, 0, 1, 10, 30) });
+    const picked = await pickTime({ value: parseTimeToDate(tob) });
     if (picked) {
       setTob(formatTimeOfDay(picked));
     }

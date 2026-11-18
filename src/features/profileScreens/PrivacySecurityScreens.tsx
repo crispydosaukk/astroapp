@@ -1,9 +1,9 @@
 /**
  * Port of lib/presentation/profile_screens/privacy_security_screens.dart (PrivacyScreen + SecurityScreen).
- * Dynamic theme support for Light Vedic & Dark Cosmic.
+ * 100% Dynamic Content with persistent offline cache & live server sync.
  */
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar } from '@/components/AppBar';
@@ -13,8 +13,8 @@ import { showSnackBar } from '@/components/overlays';
 import { Text } from '@/components/Text';
 import { IconBadge, ListTile, SettingsCard, SwitchTile, TileDivider } from '@/components/tiles';
 import { AppRoutes, go, pop, push } from '@/navigation/routes';
-import { useAuthStore } from '@/features/auth/authStore';
 import { requestPermanentAccountDeletion } from '@/services/accountDeletionService';
+import { useSupportLegalStore } from '@/services/supportLegalStore';
 import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
@@ -28,20 +28,43 @@ export function PrivacyScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const { t } = useTranslation();
-  const [settings, setSettings] = useState<Record<string, boolean>>({
-    'Profile Visibility': true,
-    'Show Online Status': true,
-    'Allow Astrologers to View Birth Chart': true,
-    'Personalised Recommendations': true,
-    'Analytics & Improvement': false,
-    'Marketing Communications': false,
+
+  const privacy = useSupportLegalStore((s) => s.content.privacyScreen);
+  const fetchContent = useSupportLegalStore((s) => s.fetchContent);
+
+  useEffect(() => {
+    fetchContent();
+  }, [fetchContent]);
+
+  const [settings, setSettings] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    (privacy.controls || []).forEach((c) => {
+      init[c.key] = c.defaultValue;
+    });
+    return init;
   });
+
+  // Sync if new dynamic controls arrive from server
+  useEffect(() => {
+    if (privacy.controls && privacy.controls.length > 0) {
+      setSettings((prev) => {
+        const next = { ...prev };
+        privacy.controls.forEach((c) => {
+          if (next[c.key] === undefined) {
+            next[c.key] = c.defaultValue;
+          }
+        });
+        return next;
+      });
+    }
+  }, [privacy.controls]);
+
   const keys = Object.keys(settings);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="privacy.screen">
       <AppBar
-        title={t('profile.privacy', 'Privacy')}
+        title={t('profile.privacy', privacy.appBarTitle || 'Privacy')}
         onBack={pop}
         testIDPrefix="privacy"
         backgroundColor={colors.background}
@@ -61,17 +84,19 @@ export function PrivacyScreen() {
             alignItems: 'center',
           }}
         >
-          <Text style={{ fontSize: 28 }}>🔒</Text>
+          <Text style={{ fontSize: 28 }}>{privacy.bannerEmoji || '🔒'}</Text>
           <View style={{ marginLeft: 14, flex: 1 }}>
-            <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>Your Privacy Matters</Text>
+            <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>
+              {privacy.bannerTitle || 'Your Privacy Matters'}
+            </Text>
             <Text style={{ marginTop: 3, color: colors.textMuted, fontSize: 11, lineHeight: 16 }}>
-              AstroParihar keeps your birth coordinates and consultations completely encrypted and private.
+              {privacy.bannerSubtitle || 'AstroParihar keeps your birth coordinates and consultations completely encrypted and private.'}
             </Text>
           </View>
         </LinearGradient>
 
         <View>
-          <H>Privacy Controls</H>
+          <H>{privacy.controlsSectionTitle || 'Privacy Controls'}</H>
           <SettingsCard>
             {keys.map((k, i) => (
               <View key={k}>
@@ -91,31 +116,32 @@ export function PrivacyScreen() {
         </View>
 
         <View>
-          <H>Your Data</H>
+          <H>{privacy.dataSectionTitle || 'Your Data'}</H>
           <SettingsCard>
             <ListTile
               testID="privacy.downloadData"
               leading={<IconBadge icon="download_outlined" color={colors.goldAccent} />}
-              title="Download My Astrological Data"
+              title={privacy.downloadDataTitle || 'Download My Astrological Data'}
               titleColor={colors.goldAccent}
               titleWeight="600"
-              subtitle="Get an encrypted copy of all saved charts and reports"
+              subtitle={privacy.downloadDataSubtitle || 'Get an encrypted copy of all saved charts and reports'}
               trailing="chevron"
-              onPress={() => showSnackBar('Preparing your data archive... Link will be sent via email.', colors.surfaceVariant)}
+              onPress={() => showSnackBar(privacy.downloadDataMessage || 'Preparing your data archive... Link will be sent via email.', colors.surfaceVariant)}
             />
             <TileDivider />
             <ListTile
               testID="privacy.deleteAccount"
               leading={<IconBadge icon="delete_outline_rounded" color="#CF4444" />}
-              title="Delete My Account"
+              title={privacy.deleteAccountTitle || 'Delete My Account'}
               titleColor="#CF4444"
               titleWeight="600"
-              subtitle="Permanently remove your account and all data"
+              subtitle={privacy.deleteAccountSubtitle || 'Permanently remove your account and all data'}
               trailing="chevron"
               onPress={() => {
                 Alert.alert(
-                  'Delete Account Permanently?',
-                  'Are you sure you want to permanently delete your AstroParihar account?\n\nAll your Janam Kundli charts, consultations, wallet balance, and birth profiles will be erased forever.\n\nOnce deleted, this phone number cannot be reused to log in.',
+                  privacy.deleteAccountConfirmTitle || 'Delete Account Permanently?',
+                  privacy.deleteAccountConfirmMessage ||
+                    'Are you sure you want to permanently delete your AstroParihar account?\n\nAll your Janam Kundli charts, consultations, wallet balance, and birth profiles will be erased forever.\n\nOnce deleted, this phone number cannot be reused to log in.',
                   [
                     { text: 'Cancel', style: 'cancel' },
                     {
@@ -125,8 +151,8 @@ export function PrivacyScreen() {
                         try {
                           await requestPermanentAccountDeletion();
                           Alert.alert(
-                            'Account Deleted',
-                            'Your account has been deleted. You can no longer log in with this phone number.'
+                            privacy.deleteAccountSuccessTitle || 'Account Deleted',
+                            privacy.deleteAccountSuccessMessage || 'Your account has been deleted. You can no longer log in with this phone number.'
                           );
                           showSnackBar('Account deleted permanently', '#CF4444');
                           go(AppRoutes.initial);
@@ -147,7 +173,7 @@ export function PrivacyScreen() {
           <ListTile
             testID="privacy.policyLink"
             leading={<AppIcon name="policy_outlined" color={colors.goldAccent} size={20} />}
-            title="Privacy Policy"
+            title={privacy.privacyPolicyLinkTitle || 'Privacy Policy'}
             trailing="chevron"
             onPress={() => push(AppRoutes.privacyPolicyScreen)}
           />
@@ -155,7 +181,7 @@ export function PrivacyScreen() {
           <ListTile
             testID="privacy.termsLink"
             leading={<AppIcon name="gavel_outlined" color={colors.goldAccent} size={20} />}
-            title="Terms of Service"
+            title={privacy.termsLinkTitle || 'Terms of Service'}
             trailing="chevron"
             onPress={() => push(AppRoutes.termsScreen)}
           />
@@ -169,6 +195,14 @@ export function SecurityScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const { t } = useTranslation();
+
+  const sec = useSupportLegalStore((s) => s.content.securityScreen);
+  const fetchContent = useSupportLegalStore((s) => s.fetchContent);
+
+  useEffect(() => {
+    fetchContent();
+  }, [fetchContent]);
+
   const [bio, setBio] = useState(true);
   const [twoFactor, setTwoFactor] = useState(false);
   const [alerts, setAlerts] = useState(true);
@@ -176,7 +210,7 @@ export function SecurityScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="security.screen">
       <AppBar
-        title={t('profile.security', 'Security')}
+        title={t('profile.security', sec.appBarTitle || 'Security')}
         onBack={pop}
         testIDPrefix="security"
         backgroundColor={colors.background}
@@ -213,21 +247,21 @@ export function SecurityScreen() {
           </ProgressRing>
           <View style={{ marginLeft: 16, flex: 1 }}>
             <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>
-              {twoFactor ? 'Excellent Security' : 'Good Security'}
+              {twoFactor ? (sec.statusTitleHigh || 'Excellent Security') : (sec.statusTitleLow || 'Good Security')}
             </Text>
             <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 12 }}>
-              {twoFactor ? 'Your account is fully protected' : 'Enable 2FA to achieve 100% protection'}
+              {twoFactor ? (sec.statusSubtitleHigh || 'Your account is fully protected') : (sec.statusSubtitleLow || 'Enable 2FA to achieve 100% protection')}
             </Text>
           </View>
         </LinearGradient>
 
         <View>
-          <H>Authentication</H>
+          <H>{sec.sectionTitle || 'Authentication'}</H>
           <SettingsCard>
             <SwitchTile
               testID="security.biometric"
-              title="Biometric Login"
-              subtitle="Use fingerprint or Face ID"
+              title={sec.biometricTitle || 'Biometric Login'}
+              subtitle={sec.biometricSubtitle || 'Use fingerprint or Face ID'}
               value={bio}
               onChange={(v) => {
                 setBio(v);
@@ -238,8 +272,8 @@ export function SecurityScreen() {
             <TileDivider indent={16} endIndent={16} />
             <SwitchTile
               testID="security.twoFactor"
-              title="Two-Factor Authentication"
-              subtitle="Extra security via SMS/WhatsApp OTP"
+              title={sec.twoFactorTitle || 'Two-Factor Authentication'}
+              subtitle={sec.twoFactorSubtitle || 'Extra security via SMS/WhatsApp OTP'}
               value={twoFactor}
               onChange={(v) => {
                 setTwoFactor(v);
@@ -250,8 +284,8 @@ export function SecurityScreen() {
             <TileDivider indent={16} endIndent={16} />
             <SwitchTile
               testID="security.loginAlerts"
-              title="Login Alerts"
-              subtitle="Get notified of new logins"
+              title={sec.alertsTitle || 'Login Alerts'}
+              subtitle={sec.alertsSubtitle || 'Get notified of new logins'}
               value={alerts}
               onChange={setAlerts}
               secondary={<IconBadge icon="notifications_active_outlined" color="#2D9E6B" size={22} />}
@@ -283,9 +317,9 @@ export function SecurityScreen() {
         </View>
 
         <View>
-          <H>Active Sessions</H>
+          <H>{sec.sessionSectionTitle || 'Active Sessions'}</H>
           <SettingsCard>
-            {([['📱', 'Primary Mobile App', 'Current Active Device', true], ['💻', 'Web Astro Dashboard', 'Active 2h ago', false]] as const).map(([e, d, info, cur], i) => (
+            {([['📱', sec.deviceTitle || 'Primary Mobile App', sec.deviceSubtitle || 'Current Active Device', true], ['💻', 'Web Astro Dashboard', 'Active 2h ago', false]] as const).map(([e, d, info, cur], i) => (
               <View key={d}>
                 {i > 0 ? <TileDivider /> : null}
                 <ListTile

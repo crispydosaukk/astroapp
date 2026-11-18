@@ -25,7 +25,7 @@ import { ElevatedButton } from '@/components/common';
 import { BottomSheet, showSnackBar } from '@/components/overlays';
 import { FamilyProfileSwitcherModal } from '@/components/FamilyProfileSwitcherModal';
 import { LocationSearchInput } from '@/components/LocationSearchInput';
-import { formatDobToDDMMYYYY, formatTimeOfDay, parseDobToDate, pickDate, pickTime } from '@/components/pickers';
+import { formatDobToDDMMYYYY, formatTimeOfDay, parseDobToDate, parseTimeToDate, pickDate, pickTime } from '@/components/pickers';
 import { Text, TextInput } from '@/components/Text';
 import { API_ENDPOINTS } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
@@ -35,6 +35,7 @@ import { useBirthProfileStore } from '@/services/birthProfileStore';
 import { requestPermanentAccountDeletion } from '@/services/accountDeletionService';
 import packageJson from '../../../package.json';
 import { useCurrencyStore } from '@/services/currencyStore';
+import { useSupportLegalStore } from '@/services/supportLegalStore';
 import { getWalletBalance, subscribeWallet } from '@/services/walletService';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { AppLanguage, useLanguageStore, useTranslation } from '@/theme/languageStore';
@@ -396,6 +397,7 @@ export default function ProfileScreen() {
 
   // User state
   const [editSheetOpen, setEditSheetOpen] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [languageModalOpen, setLanguageModalOpen] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [reportCount, setReportCount] = useState(4);
@@ -573,6 +575,10 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     fetchDynamicProfileConfig();
+    useSupportLegalStore.getState().fetchContent();
+  }, []);
+
+  useEffect(() => {
     if (isAuthenticated) {
       loadProfiles().then(() => loadUserData()).catch(() => loadUserData());
     } else {
@@ -581,7 +587,7 @@ export default function ProfileScreen() {
     getWalletBalance().then(setWalletBalance);
     const unsub = subscribeWallet(setWalletBalance);
     return () => unsub();
-  }, [authUser, isAuthenticated, activeProfile?.id, activeProfile?.name]);
+  }, [authUser?.uid, authUser?.phone, authUser?.dob, authUser?.tob, authUser?.pob, authUser?.name, isAuthenticated, activeProfile?.id, activeProfile?.name]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -619,7 +625,7 @@ export default function ProfileScreen() {
   const handlePickEditTob = async () => {
     try {
       const chosen = await pickTime({
-        value: new Date(2000, 0, 1, 12, 0),
+        value: parseTimeToDate(editTob),
       });
       if (chosen) {
         setEditTob(formatTimeOfDay(chosen));
@@ -628,32 +634,42 @@ export default function ProfileScreen() {
   };
 
   const saveProfileEdits = async () => {
-    const formattedDob = formatDobToDDMMYYYY(editDob);
-    const updated = {
-      name: editName.trim() || profileData.name,
-      email: editEmail.trim() || profileData.email,
-      dob: formattedDob || (profileData.dob !== 'Not specified' ? profileData.dob : ''),
-      tob: editTob.trim() || (profileData.tob !== 'Not specified' ? profileData.tob : ''),
-      pob: editPob.trim() || (profileData.pob !== 'Not specified' ? profileData.pob : ''),
-    };
+    if (savingProfile) return;
+    setSavingProfile(true);
+    try {
+      const formattedDob = formatDobToDDMMYYYY(editDob);
+      const updated = {
+        name: editName.trim() || profileData.name,
+        email: editEmail.trim() || profileData.email,
+        dob: formattedDob || (profileData.dob !== 'Not specified' ? profileData.dob : ''),
+        tob: editTob.trim() || (profileData.tob !== 'Not specified' ? profileData.tob : ''),
+        pob: editPob.trim() || (profileData.pob !== 'Not specified' ? profileData.pob : ''),
+      };
 
-    await updateUserProfile(updated);
-    if (activeProfile?.id) {
-      await updateProfile(activeProfile.id, {
-        name: updated.name,
-        dob: updated.dob,
-        time: updated.tob,
-        place: updated.pob,
-      });
+      if (activeProfile?.id) {
+        await updateProfile(activeProfile.id, {
+          name: updated.name,
+          dob: updated.dob,
+          time: updated.tob,
+          place: updated.pob,
+        });
+        if (updated.email !== profileData.email) {
+          await updateUserProfile({ email: updated.email });
+        }
+      } else {
+        await updateUserProfile(updated);
+      }
+      setProfileData((prev) => ({
+        ...prev,
+        ...updated,
+      }));
+      Keyboard.dismiss();
+      setEditSheetOpen(false);
+      showSnackBar('Profile details saved successfully!', colors.surfaceVariant);
+      loadUserData();
+    } finally {
+      setSavingProfile(false);
     }
-    setProfileData((prev) => ({
-      ...prev,
-      ...updated,
-    }));
-    Keyboard.dismiss();
-    setEditSheetOpen(false);
-    showSnackBar('Profile details saved successfully!', colors.surfaceVariant);
-    loadUserData();
   };
 
   const handleConfirmSignOut = async () => {
@@ -1814,8 +1830,10 @@ export default function ProfileScreen() {
             }}
           >
             <ElevatedButton
-              label={config.editSaveButtonText || 'Save Profile Details'}
+              label={savingProfile ? 'Saving Profile...' : (config.editSaveButtonText || 'Save Profile Details')}
               onPress={saveProfileEdits}
+              disabled={savingProfile}
+              loading={savingProfile}
               radius={14}
               paddingV={14}
               fontSize={14}

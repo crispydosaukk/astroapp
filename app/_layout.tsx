@@ -16,7 +16,7 @@ import { Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppErrorBoundary } from '@/components/ErrorBoundary';
-import { SnackbarHost } from '@/components/overlays';
+import { OverlayHost, SnackbarHost } from '@/components/overlays';
 import { PickerHost } from '@/components/pickers';
 import { fontAssets } from '@/theme/fonts';
 import { useLanguageStore } from '@/theme/languageStore';
@@ -76,8 +76,9 @@ export default function RootLayout() {
             ))}
           </Stack>
         </AppErrorBoundary>
-        <SnackbarHost />
+        <OverlayHost />
         <PickerHost />
+        <SnackbarHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

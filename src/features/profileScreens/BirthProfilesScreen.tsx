@@ -9,13 +9,13 @@
  * - Dynamic Light Vedic & Dark Cosmic theming with high-contrast text
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Keyboard, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton } from '@/components/common';
 import { BottomSheet, PopupMenu, showSnackBar } from '@/components/overlays';
-import { formatTimeOfDay, pickDate, pickTime } from '@/components/pickers';
+import { formatTimeOfDay, parseDobToDate, parseTimeToDate, pickDate, pickTime } from '@/components/pickers';
 import { LocationSearchInput } from '@/components/LocationSearchInput';
 import { Text, TextInput } from '@/components/Text';
 import { AppRoutes, pop, push } from '@/navigation/routes';
@@ -120,7 +120,7 @@ export default function BirthProfilesScreen() {
 
   useEffect(() => {
     loadProfiles();
-  }, [authUser]);
+  }, [authUser?.uid, authUser?.phone, loadProfiles]);
 
   const openAddSheet = () => {
     setSheetMode('add');
@@ -148,9 +148,9 @@ export default function BirthProfilesScreen() {
 
   const handlePickDate = async () => {
     try {
-      const initialDate = formDob ? new Date(formDob) : new Date(1995, 9, 15);
+      const initialDate = parseDobToDate(formDob);
       const chosen = await pickDate({
-        value: isNaN(initialDate.getTime()) ? new Date(1995, 9, 15) : initialDate,
+        value: initialDate,
         maximumDate: new Date(),
       });
       if (chosen) {
@@ -165,7 +165,7 @@ export default function BirthProfilesScreen() {
   const handlePickTime = async () => {
     try {
       const chosen = await pickTime({
-        value: new Date(2000, 0, 1, 12, 0),
+        value: parseTimeToDate(formTime),
       });
       if (chosen) {
         setFormTime(formatTimeOfDay(chosen));
@@ -193,6 +193,7 @@ export default function BirthProfilesScreen() {
   };
 
   const handleSaveProfile = async () => {
+    if (saving) return;
     if (!formName.trim()) {
       showSnackBar('Please enter member name', '#CF4444');
       return;
@@ -202,6 +203,7 @@ export default function BirthProfilesScreen() {
       return;
     }
 
+    Keyboard.dismiss();
     setSaving(true);
     try {
       if (sheetMode === 'edit' && editingId) {
@@ -213,6 +215,7 @@ export default function BirthProfilesScreen() {
           time: formTime,
           place: formPlace.trim(),
         });
+        setSheetOpen(false);
         if (updated) {
           showSnackBar(`Updated birth details for ${updated.name}!`);
         }
@@ -226,9 +229,9 @@ export default function BirthProfilesScreen() {
           place: formPlace.trim(),
           setAsActive: false,
         });
+        setSheetOpen(false);
         showSnackBar(`Added ${created.name} (${created.type}) to your family profiles!`);
       }
-      setSheetOpen(false);
     } catch {
       showSnackBar('Could not save profile. Please try again.', '#CF4444');
     } finally {

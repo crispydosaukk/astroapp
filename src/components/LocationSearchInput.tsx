@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -58,6 +58,12 @@ export function LocationSearchInput({
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<RNTextInput>(null);
   const debounceTimer = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
 
   const searchGooglePlaces = (text: string) => {
     if (debounceTimer.current) {

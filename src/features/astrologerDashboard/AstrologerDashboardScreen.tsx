@@ -14,7 +14,6 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -26,7 +25,7 @@ import { WebView } from 'react-native-webview';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton, LinearProgress, OutlinedButton, StatusBadge, Switch } from '@/components/common';
-import { BottomSheet, Dialog, SheetContainer, showSnackBar } from '@/components/overlays';
+import { BottomSheet, Dialog, PortalOverlay, SheetContainer, showSnackBar } from '@/components/overlays';
 import { lh, Text, TextInput } from '@/components/Text';
 import { LIVE_BASE_URL } from '@/config/api';
 import { ASTRO_SESSION_KEY } from '@/features/astrologerAuth/AstrologerLoginScreen';
@@ -2041,9 +2040,8 @@ export default function AstrologerDashboardScreen() {
       {/* =====================================================================================
           FULL-SCREEN LIVE CALL SESSION + IN-CALL CUSTOMER REPORTS DRAWER (`/call/[roomID]`)
          ===================================================================================== */}
-      <Modal
+      <PortalOverlay
         visible={activeCallSession !== null}
-        animationType="slide"
         onRequestClose={() => setActiveCallSession(null)}
       >
         <SafeAreaView style={{ flex: 1, backgroundColor: '#050811' }}>
@@ -2235,7 +2233,7 @@ export default function AstrologerDashboardScreen() {
             </View>
           )}
         </SafeAreaView>
-      </Modal>
+      </PortalOverlay>
 
       {/* =====================================================================================
           IN-CALL CUSTOMER BIO & GENERATED REPORTS DRAWER (Matches `/call/[roomID]` lines 450-599)

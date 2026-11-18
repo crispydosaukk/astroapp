@@ -224,9 +224,9 @@ export const useBirthProfileStore = create<BirthProfileState>((set, get) => ({
           gender: data.gender || 'Male',
         });
         if (chart) {
-          if (chart.ascendant?.sign) calculatedZodiac = chart.ascendant.sign;
-          if (chart.moonSign) calculatedMoonSign = chart.moonSign;
-          if (chart.nakshatra) calculatedNakshatra = chart.nakshatra;
+          if (typeof chart.ascendant?.sign === 'string' && chart.ascendant.sign) calculatedZodiac = chart.ascendant.sign;
+          if (typeof chart.moonSign === 'string' && chart.moonSign) calculatedMoonSign = chart.moonSign;
+          if (typeof chart.nakshatra === 'string' && chart.nakshatra) calculatedNakshatra = chart.nakshatra;
         }
       } catch {}
     }
@@ -320,9 +320,9 @@ export const useBirthProfileStore = create<BirthProfileState>((set, get) => ({
           gender: nextGender || 'Male',
         });
         if (chart) {
-          if (chart.ascendant?.sign) nextZodiac = chart.ascendant.sign;
-          if (chart.moonSign) nextMoonSign = chart.moonSign;
-          if (chart.nakshatra) nextNakshatra = chart.nakshatra;
+          if (typeof chart.ascendant?.sign === 'string' && chart.ascendant.sign) nextZodiac = chart.ascendant.sign;
+          if (typeof chart.moonSign === 'string' && chart.moonSign) nextMoonSign = chart.moonSign;
+          if (typeof chart.nakshatra === 'string' && chart.nakshatra) nextNakshatra = chart.nakshatra;
         }
       } catch {}
     }

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -8,7 +8,7 @@ import {
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton, OutlinedButton } from '@/components/common';
 import { BottomSheet, SheetContainer, showSnackBar } from '@/components/overlays';
-import { formatDobToDDMMYYYY, formatTimeOfDay, parseDobToDate, pickDate, pickTime } from '@/components/pickers';
+import { formatDobToDDMMYYYY, formatTimeOfDay, parseDobToDate, parseTimeToDate, pickDate, pickTime } from '@/components/pickers';
 import { LocationSearchInput } from '@/components/LocationSearchInput';
 import { Text, TextInput } from '@/components/Text';
 import {
@@ -55,6 +55,12 @@ export function FamilyProfileSwitcherModal({
   const [formSetAsActive, setFormSetAsActive] = useState(true);
   const [saving, setSaving] = useState(false);
   const formScrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (!visible) {
+      setMode('list');
+    }
+  }, [visible]);
 
   const resetForm = () => {
     setFormName('');
@@ -113,7 +119,7 @@ export function FamilyProfileSwitcherModal({
   const handlePickTime = async () => {
     try {
       const chosen = await pickTime({
-        value: new Date(2000, 0, 1, 12, 0),
+        value: parseTimeToDate(formTime),
       });
       if (chosen) {
         setFormTime(formatTimeOfDay(chosen));
@@ -414,7 +420,7 @@ export function FamilyProfileSwitcherModal({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
-            style={{ flex: 1 }}
+            style={{ flexShrink: 1 }}
             contentContainerStyle={{ paddingTop: 14, paddingBottom: 40 }}
           >
             {/* Relationship Chips */}

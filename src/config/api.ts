@@ -26,6 +26,7 @@ export const API_ENDPOINTS = {
   services: `${BASE_URL}/api/app-dynamic/services`,
   remedies: `${BASE_URL}/api/app-dynamic/remedies`,
   profile: `${BASE_URL}/api/app-dynamic/profile`,
+  supportLegal: `${BASE_URL}/api/app-dynamic/support-legal`,
   astrologerSendOtp: `${BASE_URL}/api/astrologer/auth/send-otp`,
   astrologerVerifyOtp: `${BASE_URL}/api/astrologer/auth/verify-otp`,
   candidateApply: `${BASE_URL}/api/candidate/apply`,

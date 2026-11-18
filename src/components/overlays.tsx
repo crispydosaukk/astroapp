@@ -1,9 +1,23 @@
 /**
- * Modal primitives replacing Flutter's showModalBottomSheet, showDialog and ScaffoldMessenger SnackBar.
+ * Overlay primitives replacing Flutter's showModalBottomSheet, showDialog, PopupMenuButton and SnackBar.
+ * Rendered via a root OverlayHost instead of stacked RN <Modal>s to prevent iOS UIKit modal collisions and hangs.
  */
-import React, { useEffect, useState } from 'react';
-import { Dimensions, Keyboard, KeyboardAvoidingView, LayoutAnimation, Modal, Platform, Pressable, StyleProp, Text as RNText, useWindowDimensions, View, ViewStyle } from 'react-native';
-import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  Animated,
+  BackHandler,
+  Dimensions,
+  Easing,
+  Keyboard,
+  Platform,
+  Pressable,
+  StyleProp,
+  StyleSheet,
+  Text as RNText,
+  useWindowDimensions,
+  View,
+  ViewStyle,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { create } from 'zustand';
 import { AppColors } from '@/theme/colors';
@@ -14,23 +28,133 @@ import { Text } from './Text';
 
 const SCREEN_H = Dimensions.get('window').height;
 
-/* ------------------------------------------------------------------ BottomSheet */
-/**
- * showModalBottomSheet equivalent. Slides up over 250 ms (Material default), barrier tap dismisses.
- * `maxHeightRatio` mirrors isScrollControlled + constraints used in the source.
- */
-export function BottomSheet({
-  visible, onClose, children, style, maxHeightRatio = 0.9, backgroundColor = 'transparent', testID,
+/* ----------------------------------------------------------- Root Overlay Portal */
+type PortalEntry = { id: string; node: React.ReactNode };
+const portalListeners = new Set<() => void>();
+let portalEntries: PortalEntry[] = [];
+
+function notifyPortals() {
+  portalListeners.forEach((fn) => fn());
+}
+
+function upsertPortal(id: string, node: React.ReactNode) {
+  const idx = portalEntries.findIndex((e) => e.id === id);
+  if (idx >= 0) {
+    portalEntries = portalEntries.map((e, i) => (i === idx ? { id, node } : e));
+  } else {
+    portalEntries = [...portalEntries, { id, node }];
+  }
+  notifyPortals();
+}
+
+function removePortal(id: string) {
+  if (!portalEntries.some((e) => e.id === id)) return;
+  portalEntries = portalEntries.filter((e) => e.id !== id);
+  notifyPortals();
+}
+
+/** Mount once at root (after <Stack />) so all sheets, dialogs, and popup menus stack cleanly without iOS <Modal> deadlocks. */
+export function OverlayHost() {
+  const [, forceUpdate] = useState(0);
+
+  useEffect(() => {
+    const listener = () => forceUpdate((n) => n + 1);
+    portalListeners.add(listener);
+    return () => {
+      portalListeners.delete(listener);
+    };
+  }, []);
+
+  if (portalEntries.length === 0) return null;
+
+  return (
+    <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { zIndex: 1000 }]}>
+      {portalEntries.map((entry) => (
+        <React.Fragment key={entry.id}>{entry.node}</React.Fragment>
+      ))}
+    </View>
+  );
+}
+
+function PortalOverlayContent({
+  onRequestClose,
+  children,
 }: {
-  visible: boolean; onClose: () => void; children: React.ReactNode; style?: StyleProp<ViewStyle>;
-  maxHeightRatio?: number; backgroundColor?: string; testID?: string;
+  onRequestClose?: () => void;
+  children: React.ReactNode;
 }) {
-  const [mounted, setMounted] = useState(visible);
+  const onCloseRef = useRef(onRequestClose);
+  onCloseRef.current = onRequestClose;
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (onCloseRef.current) {
+        onCloseRef.current();
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, []);
+
+  return <View style={StyleSheet.absoluteFill}>{children}</View>;
+}
+
+/** Full-screen portal overlay replacing native <Modal> when sheets/dialogs need to open inside it on iOS. */
+export function PortalOverlay({
+  visible,
+  onRequestClose,
+  children,
+}: {
+  visible: boolean;
+  onRequestClose?: () => void;
+  children: React.ReactNode;
+}) {
+  const id = useId();
+
+  useEffect(() => {
+    if (visible) {
+      upsertPortal(id, <PortalOverlayContent onRequestClose={onRequestClose}>{children}</PortalOverlayContent>);
+    } else {
+      removePortal(id);
+    }
+  });
+
+  useEffect(() => () => removePortal(id), [id]);
+
+  return null;
+}
+
+/* ------------------------------------------------------------------ BottomSheet */
+type BottomSheetProps = {
+  visible: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+  maxHeightRatio?: number;
+  backgroundColor?: string;
+  testID?: string;
+};
+
+function BottomSheetContent({
+  visible,
+  onClose,
+  children,
+  style,
+  maxHeightRatio = 0.9,
+  backgroundColor = 'transparent',
+  testID,
+  onExited,
+}: BottomSheetProps & { onExited: () => void }) {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const insets = useSafeAreaInsets();
   const { height: windowH } = useWindowDimensions();
-  const y = useSharedValue(windowH || SCREEN_H);
-  const barrier = useSharedValue(0);
+  const y = useRef(new Animated.Value(windowH || SCREEN_H)).current;
+  const barrier = useRef(new Animated.Value(0)).current;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const onExitedRef = useRef(onExited);
+  onExitedRef.current = onExited;
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -49,24 +173,48 @@ export function BottomSheet({
   }, []);
 
   useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onCloseRef.current();
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible]);
+
+  useEffect(() => {
     const h = windowH || SCREEN_H;
     if (visible) {
-      setMounted(true);
-      y.value = withTiming(0, { duration: 250, easing: Easing.out(Easing.cubic) });
-      barrier.value = withTiming(1, { duration: 250 });
-    } else if (mounted) {
-      barrier.value = withTiming(0, { duration: 200 });
-      y.value = withTiming(h, { duration: 200, easing: Easing.in(Easing.cubic) }, (f) => {
-        if (f) runOnJS(setMounted)(false);
-      });
+      const anim = Animated.parallel([
+        Animated.timing(y, { toValue: 0, duration: 250, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(barrier, { toValue: 1, duration: 250, useNativeDriver: true }),
+      ]);
+      anim.start();
+      return () => anim.stop();
     }
+
+    Keyboard.dismiss();
+    let finished = false;
+    const finishExit = () => {
+      if (finished) return;
+      finished = true;
+      onExitedRef.current();
+    };
+
+    const anim = Animated.parallel([
+      Animated.timing(barrier, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(y, { toValue: h, duration: 200, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+    ]);
+    anim.start(({ finished: ok }) => {
+      if (ok) finishExit();
+    });
+    const timer = setTimeout(finishExit, 240);
+    return () => {
+      finished = true;
+      clearTimeout(timer);
+      anim.stop();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, windowH]);
-
-  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
-  const barrierStyle = useAnimatedStyle(() => ({ opacity: barrier.value }));
-
-  if (!mounted) return null;
+  }, [visible]);
 
   const currentWindowH = windowH || SCREEN_H;
   const screenH = Dimensions.get('screen').height;
@@ -75,11 +223,10 @@ export function BottomSheet({
   // Detect whether Android OS has already resized the window for the keyboard (adjustResize)
   const isAndroidWindowResized = Platform.OS === 'android' && currentWindowH < screenH - 120;
 
-  // On Android with adjustResize, window is already resized by the OS, so extra padding = 0!
-  // Only add paddingBottom if the OS did NOT resize the window.
-  const androidBottomPad = Platform.OS === 'android'
-    ? (isAndroidWindowResized ? 0 : keyboardHeight)
-    : 0;
+  // Bottom padding to lift the sheet cleanly above the keyboard without native KeyboardAvoidingView teardown issues
+  const bottomPad = Platform.OS === 'ios'
+    ? keyboardHeight
+    : (isAndroidWindowResized ? 0 : keyboardHeight);
 
   // Available height calculation:
   // If Android OS already resized the window, currentWindowH is ALREADY the space above the keyboard.
@@ -93,43 +240,64 @@ export function BottomSheet({
   const availableHeight = Math.min(Math.floor(heightAboveKeyboard * effectiveRatio), maxAvailableH);
 
   return (
-    <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <Animated.View
-          style={[
-            { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.54)' },
-            barrierStyle,
-          ]}
-        >
-          <Pressable style={{ flex: 1 }} onPress={onClose} testID={testID ? `${testID}.barrier` : undefined} />
-        </Animated.View>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{
+    <View
+      pointerEvents={visible ? 'auto' : 'none'}
+      style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end', paddingBottom: bottomPad }]}
+    >
+      <Animated.View
+        style={[
+          { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.54)', opacity: barrier },
+        ]}
+      >
+        <Pressable style={{ flex: 1 }} onPress={onClose} testID={testID ? `${testID}.barrier` : undefined} />
+      </Animated.View>
+      <Animated.View
+        testID={testID}
+        style={[
+          {
             width: '100%',
-            justifyContent: 'flex-end',
-            paddingBottom: androidBottomPad,
-          }}
-        >
-          <Animated.View
-            testID={testID}
-            style={[
-              {
-                width: '100%',
-                maxHeight: availableHeight,
-                backgroundColor,
-                overflow: 'hidden',
-              },
-              sheetStyle,
-              style,
-            ]}
-          >
-            {children}
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </View>
-    </Modal>
+            maxHeight: availableHeight,
+            backgroundColor,
+            overflow: 'hidden',
+            transform: [{ translateY: y }],
+          },
+          style,
+        ]}
+      >
+        {children}
+      </Animated.View>
+    </View>
   );
+}
+
+/**
+ * showModalBottomSheet equivalent. Slides up over 250 ms (Material default), barrier tap dismisses.
+ * `maxHeightRatio` mirrors isScrollControlled + constraints used in the source.
+ */
+export function BottomSheet(props: BottomSheetProps) {
+  const id = useId();
+  const [alive, setAlive] = useState(props.visible);
+
+  const handleExited = useCallback(() => {
+    removePortal(id);
+    setAlive(false);
+  }, [id]);
+
+  useEffect(() => {
+    if (props.visible) setAlive(true);
+  }, [props.visible]);
+
+  useEffect(() => {
+    if (props.visible || alive) {
+      upsertPortal(id, <BottomSheetContent {...props} onExited={handleExited} />);
+    } else {
+      removePortal(id);
+    }
+  });
+
+  useEffect(() => () => removePortal(id), [id]);
+
+  return null;
 }
 
 /** Standard sheet container used by most source sheets: surface, top radius 28, drag handle. */
@@ -158,27 +326,74 @@ export function SheetContainer({ children, style, handle = true, radius = 28 }: 
 }
 
 /* ----------------------------------------------------------------------- Dialog */
-/** showDialog equivalent — fades + scales in, barrier dismissible by default. */
+function DialogContent({
+  onClose,
+  children,
+  barrierDismissible = true,
+  style,
+  testID,
+}: {
+  onClose: () => void;
+  children: React.ReactNode;
+  barrierDismissible?: boolean;
+  style?: StyleProp<ViewStyle>;
+  testID?: string;
+}) {
+  const colors = useThemeColors();
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (barrierDismissible) onCloseRef.current();
+      return true;
+    });
+    return () => sub.remove();
+  }, [barrierDismissible]);
+
+  return (
+    <View
+      style={[
+        StyleSheet.absoluteFill,
+        { backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+      ]}
+    >
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={barrierDismissible ? onClose : undefined}
+      />
+      <View
+        testID={testID}
+        style={[{ width: '100%', maxWidth: 420, backgroundColor: colors.surface, borderRadius: 24, padding: 24, borderWidth: 1.5, borderColor: colors.cardBorder, elevation: 25, zIndex: 10 }, style]}
+      >
+        {children}
+      </View>
+    </View>
+  );
+}
+
+/** showDialog equivalent — barrier dismissible by default, rendered via OverlayHost. */
 export function Dialog({
   visible, onClose, children, barrierDismissible = true, style, testID,
 }: { visible: boolean; onClose: () => void; children: React.ReactNode; barrierDismissible?: boolean; style?: StyleProp<ViewStyle>; testID?: string }) {
-  const colors = useThemeColors();
-  return (
-    <Modal transparent visible={visible} animationType="fade" statusBarTranslucent onRequestClose={barrierDismissible ? onClose : () => {}}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-        <Pressable
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-          onPress={barrierDismissible ? onClose : undefined}
-        />
-        <View
-          testID={testID}
-          style={[{ width: '100%', maxWidth: 420, backgroundColor: colors.surface, borderRadius: 24, padding: 24, borderWidth: 1.5, borderColor: colors.cardBorder, elevation: 25, zIndex: 10 }, style]}
-        >
+  const id = useId();
+
+  useEffect(() => {
+    if (visible) {
+      upsertPortal(
+        id,
+        <DialogContent onClose={onClose} barrierDismissible={barrierDismissible} style={style} testID={testID}>
           {children}
-        </View>
-      </View>
-    </Modal>
-  );
+        </DialogContent>,
+      );
+    } else {
+      removePortal(id);
+    }
+  });
+
+  useEffect(() => () => removePortal(id), [id]);
+
+  return null;
 }
 
 /* --------------------------------------------------------------------- Snackbar */
@@ -204,29 +419,47 @@ export const showSnackBar = (m: string, bg?: string) => useSnackbar.getState().s
 export function SnackbarHost() {
   const { message, bg, key, hide } = useSnackbar();
   const insets = useSafeAreaInsets();
-  const o = useSharedValue(0);
+  const o = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!message) return;
-    o.value = withTiming(1, { duration: 240, easing: Easing.out(Easing.cubic) });
+    o.setValue(0);
+    const showAnim = Animated.timing(o, {
+      toValue: 1,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
+    showAnim.start();
+
+    let hideAnim: Animated.CompositeAnimation | null = null;
     const t = setTimeout(() => {
-      o.value = withTiming(0, { duration: 220, easing: Easing.in(Easing.cubic) }, (f) => {
-        if (f) runOnJS(hide)();
+      hideAnim = Animated.timing(o, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      });
+      hideAnim.start(({ finished }) => {
+        if (finished) hide();
       });
     }, 4000);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      showAnim.stop();
+      hideAnim?.stop();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  const st = useAnimatedStyle(() => ({
-    opacity: o.value,
-    transform: [
-      { translateY: (1 - o.value) * 14 },
-      { scale: 0.96 + o.value * 0.04 },
-    ],
-  }));
-
   if (!message) return null;
+
+  const translateY = o.interpolate({ inputRange: [0, 1], outputRange: [14, 0] });
+  const scale = o.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] });
+  const st = {
+    opacity: o,
+    transform: [{ translateY }, { scale }],
+  };
 
   // Determine intent (error, success, info/guest)
   const isError = bg === '#CF4444' || bg === '#EF4444' || /error|failed|invalid|declined/i.test(message);
@@ -326,41 +559,120 @@ export function useSheet<T>() {
 }
 
 /* -------------------------------------------------------------------- PopupMenu */
+function PopupMenuOverlay<T extends string>({
+  pos,
+  items,
+  menuColor,
+  testID,
+  onDismiss,
+  onSelect,
+}: {
+  pos: { x: number; y: number };
+  items: { value: T; label: string; color?: string }[];
+  menuColor?: string;
+  testID?: string;
+  onDismiss: () => void;
+  onSelect: (v: T) => void;
+}) {
+  const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
+  const { width: screenW, height: screenH } = useWindowDimensions();
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onDismissRef.current();
+      return true;
+    });
+    return () => sub.remove();
+  }, []);
+
+  const estMenuH = items.length * 48 + 16;
+  const clampedTop = Math.max(insets.top + 8, Math.min(pos.y - 40, screenH - insets.bottom - estMenuH - 8));
+
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={onDismiss} />
+      <View
+        style={{
+          position: 'absolute',
+          top: clampedTop,
+          right: Math.max(8, screenW - pos.x),
+          minWidth: 170,
+          paddingVertical: 8,
+          borderRadius: 14,
+          backgroundColor: menuColor ?? colors.surface,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+          elevation: 12,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.2,
+          shadowRadius: 12,
+        }}
+      >
+        {items.map((it) => (
+          <Pressable
+            key={it.value}
+            testID={testID ? `${testID}.${it.value}` : undefined}
+            onPress={() => onSelect(it.value)}
+            style={({ pressed }) => ({
+              paddingHorizontal: 16,
+              height: 48,
+              justifyContent: 'center',
+              backgroundColor: pressed ? 'rgba(201,168,76,0.12)' : 'transparent',
+            })}
+          >
+            <Text style={{ color: it.color ?? colors.textPrimary, fontSize: 14 }}>{it.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 /** PopupMenuButton equivalent: icon button that opens an anchored menu (Material 3 surface, radius 14). */
 export function PopupMenu<T extends string>({
   items, onSelected, icon = 'more_vert_rounded', iconColor, iconSize = 20, testID, menuColor,
 }: {
-  items: Array<{ value: T; label: string; color?: string }>; onSelected: (v: T) => void; icon?: string; iconColor?: string;
+  items: { value: T; label: string; color?: string }[]; onSelected: (v: T) => void; icon?: string; iconColor?: string;
   iconSize?: number; testID?: string; menuColor?: string;
 }) {
   const colors = useThemeColors();
+  const id = useId();
   const ref = React.useRef<View>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const open = () => ref.current?.measureInWindow((x, y, w, h) => setPos({ x: x + w, y: y + h }));
-  const screenW = Dimensions.get('window').width;
+
+  useEffect(() => {
+    if (pos) {
+      upsertPortal(
+        id,
+        <PopupMenuOverlay
+          pos={pos}
+          items={items}
+          menuColor={menuColor}
+          testID={testID}
+          onDismiss={() => setPos(null)}
+          onSelect={(v) => {
+            setPos(null);
+            removePortal(id);
+            onSelected(v);
+          }}
+        />,
+      );
+    } else {
+      removePortal(id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, pos]);
+
+  useEffect(() => () => removePortal(id), [id]);
+
   return (
-    <>
-      <Pressable ref={ref} testID={testID} onPress={open} style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}>
-        <AppIcon name={icon} color={iconColor ?? colors.textMuted} size={iconSize} />
-      </Pressable>
-      <Modal transparent visible={!!pos} animationType="fade" onRequestClose={() => setPos(null)}>
-        <Pressable style={{ flex: 1 }} onPress={() => setPos(null)}>
-          {pos ? (
-            <View style={{ position: 'absolute', top: pos.y - 40, right: Math.max(8, screenW - pos.x), minWidth: 160, paddingVertical: 8, borderRadius: 14, backgroundColor: menuColor ?? colors.surface, borderWidth: 1, borderColor: colors.cardBorder, elevation: 8, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10 }}>
-              {items.map((it) => (
-                <Pressable
-                  key={it.value}
-                  testID={testID ? `${testID}.${it.value}` : undefined}
-                  onPress={() => { setPos(null); onSelected(it.value); }}
-                  style={{ paddingHorizontal: 16, height: 48, justifyContent: 'center' }}
-                >
-                  <Text style={{ color: it.color ?? colors.textPrimary, fontSize: 14 }}>{it.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-        </Pressable>
-      </Modal>
-    </>
+    <Pressable ref={ref} testID={testID} onPress={open} style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}>
+      <AppIcon name={icon} color={iconColor ?? colors.textMuted} size={iconSize} />
+    </Pressable>
   );
 }
