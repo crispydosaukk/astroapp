@@ -35,6 +35,7 @@ import { useBirthProfileStore } from '@/services/birthProfileStore';
 import { requestPermanentAccountDeletion } from '@/services/accountDeletionService';
 import packageJson from '../../../package.json';
 import { useCurrencyStore } from '@/services/currencyStore';
+import { useNotificationStore } from '@/services/notificationStore';
 import { useSupportLegalStore } from '@/services/supportLegalStore';
 import { getWalletBalance, subscribeWallet } from '@/services/walletService';
 import { AppColors, withAlpha } from '@/theme/colors';
@@ -231,6 +232,7 @@ export const DEFAULT_PROFILE_CONFIG: DynamicProfileConfig = {
         { id: 'wallet', order: 1, labelKey: 'profile.wallet', defaultLabel: 'Wallet', subtitle: 'View balance, add funds & recharge offers', icon: 'account_balance_wallet_outlined', route: AppRoutes.walletScreen, active: true },
         { id: 'transactions', order: 2, labelKey: 'profile.transactions', defaultLabel: 'Transactions', subtitle: 'Detailed billing history & payment receipts', icon: 'receipt_long_outlined', route: AppRoutes.walletScreen, active: true },
         { id: 'paymentMethods', order: 3, labelKey: 'profile.paymentMethods', defaultLabel: 'Payment Methods', subtitle: 'UPI, Cards, Netbanking & Saved options', icon: 'credit_card_outlined', route: AppRoutes.walletScreen, active: true },
+        { id: 'notifications', order: 4, labelKey: 'profile.notifications', defaultLabel: 'Notifications', subtitle: 'Daily horoscopes, muhurat & chat alerts', icon: 'notifications_outlined', route: AppRoutes.notificationsScreen, active: true },
       ],
     },
     {
@@ -243,7 +245,8 @@ export const DEFAULT_PROFILE_CONFIG: DynamicProfileConfig = {
         { id: 'language', order: 1, labelKey: 'profile.language', defaultLabel: 'Language', subtitle: 'Choose Telugu, Hindi, English, Tamil, etc.', icon: 'translate', route: AppRoutes.languageScreen, action: 'languageModal', active: true },
         { id: 'theme', order: 2, labelKey: 'profile.theme', defaultLabel: 'Theme', subtitle: 'Switch between Light Vedic and Dark Cosmic', icon: 'palette_outlined', route: AppRoutes.themeScreen, action: 'themeToggle', active: true },
         { id: 'currency', order: 3, labelKey: 'profile.currency', defaultLabel: 'Currency', subtitle: 'Switch between ₹ INR (India) and $ USD (Abroad)', icon: 'currency_exchange', route: AppRoutes.walletScreen, action: 'currencyToggle', active: true },
-        { id: 'privacy', order: 4, labelKey: 'profile.privacy', defaultLabel: 'Privacy', subtitle: 'Manage your birth chart & account privacy', icon: 'lock_outline_rounded', route: AppRoutes.privacyScreen, active: true },
+        { id: 'notificationSettings', order: 4, labelKey: 'profile.notificationSettings', defaultLabel: 'Notification Settings', subtitle: 'Manage reminders, panchang & astro alerts', icon: 'tune_outlined', route: AppRoutes.notificationSettingsScreen, active: true },
+        { id: 'privacy', order: 5, labelKey: 'profile.privacy', defaultLabel: 'Privacy', subtitle: 'Manage your birth chart & account privacy', icon: 'lock_outline_rounded', route: AppRoutes.privacyScreen, active: true },
       ],
     },
     {
@@ -428,6 +431,65 @@ export default function ProfileScreen() {
   const [editPob, setEditPob] = useState('');
   const editScrollRef = useRef<ScrollView>(null);
 
+  const ensureNotificationItems = (sections: DynamicProfileSection[]): DynamicProfileSection[] => {
+    const hasNotif = sections.some((s) =>
+      (s.items || []).some((it) => it.id === 'notifications' || it.route === AppRoutes.notificationsScreen)
+    );
+    const hasNotifSettings = sections.some((s) =>
+      (s.items || []).some(
+        (it) => it.id === 'notificationSettings' || it.route === AppRoutes.notificationSettingsScreen
+      )
+    );
+
+    return sections.map((sec) => {
+      let items = (sec.items || []).map((it) => {
+        if (it.id === 'notifications' || it.route === AppRoutes.notificationsScreen) {
+          return { ...it, route: AppRoutes.notificationsScreen, active: true };
+        }
+        if (it.id === 'notificationSettings' || it.route === AppRoutes.notificationSettingsScreen) {
+          return { ...it, route: AppRoutes.notificationSettingsScreen, active: true };
+        }
+        return it;
+      });
+
+      if (!hasNotif && sec.id === 'my-account') {
+        items = [
+          ...items,
+          {
+            id: 'notifications',
+            order: items.length + 1,
+            labelKey: 'profile.notifications',
+            defaultLabel: 'Notifications',
+            subtitle: 'Daily horoscopes, muhurat & chat alerts',
+            icon: 'notifications_outlined',
+            route: AppRoutes.notificationsScreen,
+            active: true,
+          },
+        ];
+      }
+
+      if (!hasNotifSettings && sec.id === 'preferences') {
+        items = [
+          ...items,
+          {
+            id: 'notificationSettings',
+            order: items.length + 1,
+            labelKey: 'profile.notificationSettings',
+            defaultLabel: 'Notification Settings',
+            subtitle: 'Manage reminders, panchang & astro alerts',
+            icon: 'tune_outlined',
+            route: AppRoutes.notificationSettingsScreen,
+            active: true,
+          },
+        ];
+      }
+
+      return { ...sec, items };
+    });
+  };
+
+  const unreadNotificationsCount = useNotificationStore((s) => s.unreadCount);
+
   // 1. Fetch live dynamic profile configuration from Admin Dashboard API
   const fetchDynamicProfileConfig = async () => {
     try {
@@ -437,7 +499,11 @@ export default function ProfileScreen() {
         try {
           const parsed = JSON.parse(cached);
           if (parsed && Array.isArray(parsed.sections)) {
-            setConfig((prev) => ({ ...prev, ...parsed }));
+            setConfig((prev) => ({
+              ...prev,
+              ...parsed,
+              sections: ensureNotificationItems(parsed.sections),
+            }));
           }
         } catch {}
       }
@@ -451,8 +517,15 @@ export default function ProfileScreen() {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.config) {
-          setConfig({ ...DEFAULT_PROFILE_CONFIG, ...data.config });
-          await AsyncStorage.setItem(STORAGE_PROFILE_CONFIG_KEY, JSON.stringify(data.config));
+          const normalized = {
+            ...DEFAULT_PROFILE_CONFIG,
+            ...data.config,
+            sections: Array.isArray(data.config.sections)
+              ? ensureNotificationItems(data.config.sections)
+              : DEFAULT_PROFILE_CONFIG.sections,
+          };
+          setConfig(normalized);
+          await AsyncStorage.setItem(STORAGE_PROFILE_CONFIG_KEY, JSON.stringify(normalized));
         }
       }
     } catch {
@@ -576,6 +649,7 @@ export default function ProfileScreen() {
   useEffect(() => {
     fetchDynamicProfileConfig();
     useSupportLegalStore.getState().fetchContent();
+    useNotificationStore.getState().fetchNotifications();
   }, []);
 
   useEffect(() => {
@@ -593,6 +667,7 @@ export default function ProfileScreen() {
     setRefreshing(true);
     await Promise.all([
       fetchDynamicProfileConfig(),
+      useNotificationStore.getState().fetchNotifications(),
       loadProfiles().then(() => loadUserData()).catch(() => loadUserData()),
       getWalletBalance().then(setWalletBalance),
     ]);
@@ -799,6 +874,48 @@ export default function ProfileScreen() {
         backgroundColor={colors.background}
         backColor={colors.textPrimary}
         actions={[
+          <Pressable
+            key="profile-bell"
+            testID="profile.notificationsBell"
+            onPress={() => push(AppRoutes.notificationsScreen)}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.cardBorder,
+              marginRight: 6,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Notifications${unreadNotificationsCount > 0 ? `, ${unreadNotificationsCount} unread` : ''}`}
+          >
+            <AppIcon name="notifications_outlined" color={colors.goldAccent} size={19} />
+            {unreadNotificationsCount > 0 ? (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: -3,
+                  right: -3,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  paddingHorizontal: 3.5,
+                  backgroundColor: '#CF4444',
+                  borderWidth: 1.5,
+                  borderColor: colors.background,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '800' }}>
+                  {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>,
           {
             icon: isAuth ? 'edit_note_rounded' : 'login_rounded',
             color: colors.goldAccent,
@@ -1390,6 +1507,11 @@ export default function ProfileScreen() {
                       trailingValue = currencyCode === 'INR' ? '₹ INR' : '$ USD';
 
                     const itemDisplayLabel = it.defaultLabel || resolveLabel(it.labelKey, it.defaultLabel);
+                    const dynamicBadge =
+                      (it.id === 'notifications' || it.route === AppRoutes.notificationsScreen) &&
+                      unreadNotificationsCount > 0
+                        ? `${unreadNotificationsCount} New`
+                        : it.badge;
 
                     return (
                       <View key={it.id}>
@@ -1424,7 +1546,7 @@ export default function ProfileScreen() {
                               <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>
                                 {itemDisplayLabel}
                               </Text>
-                              {it.badge && (
+                              {dynamicBadge && (
                                 <View
                                   style={{
                                     marginLeft: 8,
@@ -1437,7 +1559,7 @@ export default function ProfileScreen() {
                                   }}
                                 >
                                   <Text style={{ color: colors.goldAccent, fontSize: 9.5, fontWeight: '700' }}>
-                                    {it.badge}
+                                    {dynamicBadge}
                                   </Text>
                                 </View>
                               )}

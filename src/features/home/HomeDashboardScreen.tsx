@@ -31,6 +31,7 @@ import {
   LiveAstrologer,
 } from '@/services/homeDataService';
 import { useLocationStore } from '@/services/locationService';
+import { useNotificationStore } from '@/services/notificationStore';
 import { useCurrencyStore } from '@/services/currencyStore';
 import { AppColors, argb, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
@@ -64,6 +65,7 @@ function HomeHeader() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const activeProfile = useBirthProfileStore((s) => s.activeProfile);
   const loadProfiles = useBirthProfileStore((s) => s.loadProfiles);
+  const unreadNotificationsCount = useNotificationStore((s) => s.unreadCount);
   const [showProfileSwitcher, setShowProfileSwitcher] = useState(false);
 
   useEffect(() => {
@@ -247,6 +249,49 @@ function HomeHeader() {
             >
               {displayCity}
             </Text>
+          </Pressable>
+
+          {/* Notifications Bell with Live Unread Badge */}
+          <Pressable
+            testID="home.notifications"
+            onPress={() => push(AppRoutes.notificationsScreen)}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 12,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: colors.isLight ? '#FFFFFF' : argb('0FFFFFFF'),
+              borderWidth: 1,
+              borderColor: colors.isLight ? 'rgba(201,168,76,0.32)' : argb('1AC9A84C'),
+              marginLeft: 6,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Notifications${unreadNotificationsCount > 0 ? `, ${unreadNotificationsCount} unread` : ''}`}
+          >
+            <AppIcon name="notifications_outlined" color={colors.goldAccent} size={19} />
+            {unreadNotificationsCount > 0 ? (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: -3,
+                  right: -3,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  paddingHorizontal: 3.5,
+                  backgroundColor: '#CF4444',
+                  borderWidth: 1.5,
+                  borderColor: colors.background,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '800' }}>
+                  {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                </Text>
+              </View>
+            ) : null}
           </Pressable>
         </View>
       </View>

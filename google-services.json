@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1002993374554",
+    "project_id": "astroparihar-85e2d",
+    "storage_bucket": "astroparihar-85e2d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1002993374554:android:f3668f2c16b01da9620f63",
+        "android_client_info": {
+          "package_name": "com.astroparihar.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxiKftiqvZIhFSO-kMTMMy4OdVOntKb5g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

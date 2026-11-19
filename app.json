@@ -21,7 +21,8 @@
         "NSPhotoLibraryUsageDescription": "AstroParihar requires photo library access to allow uploading birth charts and setting your devotee profile picture.",
         "NSSpeechRecognitionUsageDescription": "AstroParihar uses speech recognition to convert your spoken astrological queries into text in real time.",
         "UIBackgroundModes": [
-          "audio"
+          "audio",
+          "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -30,6 +31,7 @@
       "package": "com.astroparihar.app",
       "versionCode": 1,
       "edgeToEdgeEnabled": true,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/app_logo_emblem.png",
         "backgroundColor": "#080D1A"
@@ -38,7 +40,8 @@
         "CAMERA",
         "RECORD_AUDIO",
         "MODIFY_AUDIO_SETTINGS",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "POST_NOTIFICATIONS"
       ]
     },
     "web": { "bundler": "metro", "output": "single" },
@@ -46,6 +49,13 @@
       "expo-router",
       "expo-font",
       ["expo-splash-screen", { "backgroundColor": "#FAF9F6" }],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/app_logo_emblem.png",
+          "color": "#C9A84C"
+        }
+      ],
       "@react-native-community/datetimepicker",
       [
         "expo-location",
