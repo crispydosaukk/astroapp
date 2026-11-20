@@ -1,11 +1,11 @@
 /**
  * Preferences Screens: LanguageScreen & ThemeScreen.
+ * - 100% Dynamic screen copy synced live from Admin Panel (/api/app-dynamic/support-legal -> preferencesScreen).
  * - Language: Full global persistence via useLanguageStore; instant UI translation.
- * - Theme: Restricted STRICTLY to 'Dark Cosmic' and 'Light Vedic' as requested.
- *          Instant app-wide re-theming with crystal-clear contrast.
+ * - Theme: Restricted STRICTLY to 'Dark Cosmic' and 'Light Vedic'.
  */
-import React, { useState } from 'react';
-import { Dimensions, Pressable, ScrollView, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Dimensions, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedBox, AnimatedPressable } from '@/components/AnimatedBox';
 import { AppBar } from '@/components/AppBar';
@@ -14,6 +14,7 @@ import { ElevatedButton } from '@/components/common';
 import { showSnackBar } from '@/components/overlays';
 import { Text } from '@/components/Text';
 import { pop } from '@/navigation/routes';
+import { useSupportLegalStore } from '@/services/supportLegalStore';
 import { withAlpha } from '@/theme/colors';
 import { AppLanguage, useTranslation } from '@/theme/languageStore';
 import { AccentName, ThemeName, useThemeColors, useThemeStore } from '@/theme/themeStore';
@@ -31,7 +32,21 @@ export function LanguageScreen() {
   const insets = useSafeAreaInsets();
   const { selectedLanguage, setLanguage, t } = useTranslation();
   const [selected, setSelected] = useState<AppLanguage>(selectedLanguage);
+  const [refreshing, setRefreshing] = useState(false);
   const colors = useThemeColors();
+
+  const prefs = useSupportLegalStore((s) => s.content.preferencesScreen);
+  const fetchContent = useSupportLegalStore((s) => s.fetchContent);
+
+  useEffect(() => {
+    fetchContent();
+  }, [fetchContent]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchContent();
+    setRefreshing(false);
+  };
 
   const handleSelectLanguage = (lang: AppLanguage) => {
     setSelected(lang);
@@ -40,14 +55,17 @@ export function LanguageScreen() {
 
   const handleSaveLanguage = async () => {
     await setLanguage(selected);
-    showSnackBar(`${t('profile.language', 'Language')} updated to ${selected}`, colors.surfaceVariant);
+    showSnackBar(`${t('profile.language', prefs?.languageAppBarTitle || 'Language')} updated to ${selected}`, colors.surfaceVariant);
     pop();
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="language.screen">
-      <AppBar title={t('profile.language', 'Language')} onBack={pop} testIDPrefix="language" />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}>
+      <AppBar title={t('profile.language', prefs?.languageAppBarTitle || 'Language')} onBack={pop} testIDPrefix="language" />
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.goldAccent} />}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}
+      >
         <View
           style={{
             padding: 14,
@@ -61,7 +79,8 @@ export function LanguageScreen() {
         >
           <Text style={{ fontSize: 20 }}>🌐</Text>
           <Text style={{ marginLeft: 10, flex: 1, color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
-            Select your preferred language. All application navigation, profile, and astrology content will translate instantly.
+            {prefs?.languageInfoBanner ||
+              'Select your preferred language. All application navigation, profile, and astrology content will translate instantly.'}
           </Text>
         </View>
 
@@ -115,7 +134,7 @@ export function LanguageScreen() {
 
         <ElevatedButton
           testID="language.save"
-          label={t('common.save', 'Save Language')}
+          label={prefs?.languageSaveButtonText || t('common.save', 'Save Language')}
           onPress={handleSaveLanguage}
           radius={14}
           style={{ marginTop: 24 }}
@@ -124,24 +143,6 @@ export function LanguageScreen() {
     </View>
   );
 }
-
-// STRICTLY restricted to 'Light Vedic' and 'Dark Cosmic' ONLY as required
-const THEMES: { name: ThemeName; desc: string; emoji: string; preview: string; light: boolean }[] = [
-  {
-    name: 'Light Vedic',
-    desc: 'Luminous pearl white and sacred gold tones with crystal-clear readability',
-    emoji: '☀️',
-    preview: '#FAF9F6',
-    light: true,
-  },
-  {
-    name: 'Dark Cosmic',
-    desc: 'Deep cosmic space with starry depth and luminous gold accents',
-    emoji: '🌌',
-    preview: '#080D1A',
-    light: false,
-  },
-];
 
 const ACCENTS: { name: AccentName; color: string }[] = [
   { name: 'Sacred Gold', color: '#C9A84C' },
@@ -161,75 +162,114 @@ export function ThemeScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
   const [w, setW] = useState(Dimensions.get('window').width - 40);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const prefs = useSupportLegalStore((s) => s.content.preferencesScreen);
+  const fetchContent = useSupportLegalStore((s) => s.fetchContent);
+
+  useEffect(() => {
+    fetchContent();
+  }, [fetchContent]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchContent();
+    setRefreshing(false);
+  };
+
+  const themes: { name: ThemeName; displayTitle: string; desc: string; emoji: string; preview: string; light: boolean }[] = [
+    {
+      name: 'Light Vedic',
+      displayTitle: prefs?.lightVedicTitle || 'Light Vedic',
+      desc: prefs?.lightVedicDesc || 'Luminous pearl white and sacred gold tones with crystal-clear readability',
+      emoji: '☀️',
+      preview: '#FAF9F6',
+      light: true,
+    },
+    {
+      name: 'Dark Cosmic',
+      displayTitle: prefs?.darkCosmicTitle || 'Dark Cosmic',
+      desc: prefs?.darkCosmicDesc || 'Deep cosmic space with starry depth and luminous gold accents',
+      emoji: '🌌',
+      preview: '#080D1A',
+      light: false,
+    },
+  ];
+
   const cell = w > 0 ? (w - 12) / 2 : 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="theme.screen">
       <AppBar
-        title={t('profile.theme', 'Theme')}
+        title={t('profile.theme', prefs?.themeAppBarTitle || 'Theme')}
         onBack={pop}
         testIDPrefix="theme"
         backgroundColor={colors.background}
         backColor={colors.textPrimary}
       />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}>
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.goldAccent} />}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}
+      >
         <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '700' }}>
-          Select App Theme
+          {prefs?.themeHeading || 'Select App Theme'}
         </Text>
         <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 12 }}>
-          Choose between Light Vedic or Dark Cosmic. Both provide high-contrast text and optimal readability.
+          {prefs?.themeSubtitle ||
+            'Choose between Light Vedic or Dark Cosmic. Both provide high-contrast text and optimal readability.'}
         </Text>
 
         <View style={{ marginTop: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 12 }} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
-          {cell > 0 && THEMES.map((th) => {
-            const isSel = selectedTheme === th.name;
-            return (
-              <AnimatedPressable
-                key={th.name}
-                testID={`theme.option.${th.name.replace(' ', '')}`}
-                onPress={() => setTheme(th.name)}
-                duration={200}
-                style={{
-                  width: cell,
-                  minHeight: 110,
-                  padding: 14,
-                  borderRadius: 18,
-                  backgroundColor: th.preview,
-                  borderWidth: isSel ? 2.5 : 1,
-                  borderColor: isSel ? colors.goldAccent : colors.cardBorder,
-                  shadowColor: colors.goldAccent,
-                  shadowOpacity: isSel ? 0.35 : 0.05,
-                  shadowRadius: 10,
-                  elevation: isSel ? 6 : 2,
-                }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 24 }}>{th.emoji}</Text>
-                  <View style={{ flex: 1 }} />
-                  {isSel ? (
-                    <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: colors.goldAccent, alignItems: 'center', justifyContent: 'center' }}>
-                      <AppIcon name="check_rounded" color="#080D1A" size={14} />
-                    </View>
-                  ) : null}
-                </View>
-                <View style={{ marginTop: 12 }}>
-                  <Text style={{ color: th.light ? '#1A1A2E' : '#F0EAD6', fontSize: 14, fontWeight: '700' }}>
-                    {th.name}
-                  </Text>
-                  <Text numberOfLines={2} style={{ marginTop: 2, color: th.light ? '#383852' : '#A0A8C0', fontSize: 10, lineHeight: 14 }}>
-                    {th.desc}
-                  </Text>
-                </View>
-              </AnimatedPressable>
-            );
-          })}
+          {cell > 0 &&
+            themes.map((th) => {
+              const isSel = selectedTheme === th.name;
+              return (
+                <AnimatedPressable
+                  key={th.name}
+                  testID={`theme.option.${th.name.replace(' ', '')}`}
+                  onPress={() => setTheme(th.name)}
+                  duration={200}
+                  style={{
+                    width: cell,
+                    minHeight: 110,
+                    padding: 14,
+                    borderRadius: 18,
+                    backgroundColor: th.preview,
+                    borderWidth: isSel ? 2.5 : 1,
+                    borderColor: isSel ? colors.goldAccent : colors.cardBorder,
+                    shadowColor: colors.goldAccent,
+                    shadowOpacity: isSel ? 0.35 : 0.05,
+                    shadowRadius: 10,
+                    elevation: isSel ? 6 : 2,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 24 }}>{th.emoji}</Text>
+                    <View style={{ flex: 1 }} />
+                    {isSel ? (
+                      <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: colors.goldAccent, alignItems: 'center', justifyContent: 'center' }}>
+                        <AppIcon name="check_rounded" color="#080D1A" size={14} />
+                      </View>
+                    ) : null}
+                  </View>
+                  <View style={{ marginTop: 12 }}>
+                    <Text style={{ color: th.light ? '#1A1A2E' : '#F0EAD6', fontSize: 14, fontWeight: '700' }}>
+                      {th.displayTitle}
+                    </Text>
+                    <Text numberOfLines={2} style={{ marginTop: 2, color: th.light ? '#383852' : '#A0A8C0', fontSize: 10, lineHeight: 14 }}>
+                      {th.desc}
+                    </Text>
+                  </View>
+                </AnimatedPressable>
+              );
+            })}
         </View>
 
         <Text style={{ marginTop: 28, color: colors.textPrimary, fontSize: 17, fontWeight: '700' }}>
-          Accent Colour
+          {prefs?.accentHeading || 'Accent Colour'}
         </Text>
         <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 12 }}>
-          Personalise highlight badges and interactive buttons
+          {prefs?.accentSubtitle || 'Personalise highlight badges and interactive buttons'}
         </Text>
 
         <View style={{ marginTop: 14, flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
@@ -283,7 +323,7 @@ export function ThemeScreen() {
         >
           <Text style={{ fontSize: 18 }}>✨</Text>
           <Text style={{ marginLeft: 10, flex: 1, color: colors.textPrimary, fontSize: 13, fontWeight: '500' }}>
-            Theme changes apply immediately across all screens and bottom navigation.
+            {prefs?.themeFooterNote || 'Theme changes apply immediately across all screens and bottom navigation.'}
           </Text>
         </View>
       </ScrollView>

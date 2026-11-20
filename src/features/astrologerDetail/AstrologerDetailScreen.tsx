@@ -7,6 +7,7 @@
  * - Displays only real Firestore fields (bio, skills, education, certifications, learningSource,
  *   dailyHours, city, languages, experience, rating, reviews, consultations, rate)
  */
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -119,6 +120,45 @@ export default function AstrologerDetailScreen() {
 
   const insets = useSafeAreaInsets();
   const [bookmarked, setBookmarked] = useState(false);
+
+  useEffect(() => {
+    const astroId = data?.id;
+    if (!astroId) return;
+    AsyncStorage.getItem('astroparihar_saved_astrologer_ids')
+      .then((raw) => {
+        if (raw) {
+          const ids = JSON.parse(raw);
+          if (Array.isArray(ids)) setBookmarked(ids.includes(astroId));
+        }
+      })
+      .catch(() => {});
+  }, [data?.id]);
+
+  const handleToggleBookmark = async () => {
+    const astroId = data?.id;
+    if (!astroId) {
+      setBookmarked((b) => !b);
+      return;
+    }
+    try {
+      const raw = await AsyncStorage.getItem('astroparihar_saved_astrologer_ids');
+      let ids: string[] = [];
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) ids = parsed;
+      }
+      const exists = ids.includes(astroId);
+      const nextIds = exists ? ids.filter((id) => id !== astroId) : [...ids, astroId];
+      await AsyncStorage.setItem('astroparihar_saved_astrologer_ids', JSON.stringify(nextIds));
+      setBookmarked(!exists);
+      showSnackBar(
+        exists ? `Removed ${data.name} from Saved Astrologers` : `Saved ${data.name} to Saved Astrologers!`,
+        colors.surfaceVariant
+      );
+    } catch {
+      setBookmarked((b) => !b);
+    }
+  };
   const [tab, setTab] = useState(0);
   const sheet = useSheet<'Chat' | 'Call' | 'Book'>();
 
@@ -896,7 +936,7 @@ export default function AstrologerDetailScreen() {
         <View style={{ flex: 1 }} />
         <Pressable
           testID="astrologerDetail.bookmark"
-          onPress={() => setBookmarked((b) => !b)}
+          onPress={handleToggleBookmark}
           style={[{ padding: 8 }, glassBtn]}
         >
           <AppIcon

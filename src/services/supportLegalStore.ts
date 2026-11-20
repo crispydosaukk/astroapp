@@ -90,6 +90,8 @@ export interface AppPrivacyScreenContent {
   deleteAccountConfirmMessage: string;
   deleteAccountSuccessTitle: string;
   deleteAccountSuccessMessage: string;
+  cancelButtonText?: string;
+  confirmDeleteButtonText?: string;
   privacyPolicyLinkTitle: string;
   termsLinkTitle: string;
 }
@@ -107,14 +109,42 @@ export interface AppSecurityScreenContent {
   twoFactorSubtitle: string;
   alertsTitle: string;
   alertsSubtitle: string;
+  credentialsSectionTitle?: string;
+  changePasswordTitle?: string;
+  changePasswordSubtitle?: string;
+  changePasswordMessage?: string;
+  changePhoneTitle?: string;
+  changePhoneSubtitle?: string;
+  changePhoneMessage?: string;
   pinSectionTitle: string;
   changePinTitle: string;
   changePinSubtitle: string;
   sessionSectionTitle: string;
   deviceTitle: string;
   deviceSubtitle: string;
+  currentBadgeText?: string;
+  secondarySessionTitle?: string;
+  secondarySessionSubtitle?: string;
+  revokeButtonText?: string;
+  revokeMessage?: string;
   logoutOtherDevicesTitle: string;
   logoutOtherDevicesSubtitle: string;
+}
+
+export interface AppPreferencesScreenContent {
+  languageAppBarTitle: string;
+  languageInfoBanner: string;
+  languageSaveButtonText: string;
+  themeAppBarTitle: string;
+  themeHeading: string;
+  themeSubtitle: string;
+  lightVedicTitle: string;
+  lightVedicDesc: string;
+  darkCosmicTitle: string;
+  darkCosmicDesc: string;
+  accentHeading: string;
+  accentSubtitle: string;
+  themeFooterNote: string;
 }
 
 export interface AppSupportLegalContent {
@@ -124,6 +154,7 @@ export interface AppSupportLegalContent {
   privacyPolicy: AppPrivacyPolicyContent;
   privacyScreen: AppPrivacyScreenContent;
   securityScreen: AppSecurityScreenContent;
+  preferencesScreen: AppPreferencesScreenContent;
 }
 
 export const DEFAULT_SUPPORT_LEGAL_CONTENT: AppSupportLegalContent = {
@@ -448,6 +479,8 @@ export const DEFAULT_SUPPORT_LEGAL_CONTENT: AppSupportLegalContent = {
       'Are you sure you want to permanently delete your AstroParihar account?\n\nAll your Janam Kundli charts, consultations, wallet balance, and birth profiles will be erased forever.\n\nOnce deleted, this phone number cannot be reused to log in.',
     deleteAccountSuccessTitle: 'Account Deleted',
     deleteAccountSuccessMessage: 'Your account has been deleted. You can no longer log in with this phone number.',
+    cancelButtonText: 'Cancel',
+    confirmDeleteButtonText: 'Delete Account',
     privacyPolicyLinkTitle: 'Privacy Policy',
     termsLinkTitle: 'Terms of Service',
   },
@@ -461,17 +494,46 @@ export const DEFAULT_SUPPORT_LEGAL_CONTENT: AppSupportLegalContent = {
     biometricTitle: 'Biometric Login',
     biometricSubtitle: 'Use fingerprint or Face ID',
     twoFactorTitle: 'Two-Factor Authentication',
-    twoFactorSubtitle: 'Receive SMS verification on sign in',
-    alertsTitle: 'Security Alerts',
-    alertsSubtitle: 'Get notified of unusual account activity',
+    twoFactorSubtitle: 'Extra security via SMS/WhatsApp OTP',
+    alertsTitle: 'Login Alerts',
+    alertsSubtitle: 'Get notified of new logins',
+    credentialsSectionTitle: 'Account Credentials',
+    changePasswordTitle: 'Change Password',
+    changePasswordSubtitle: 'Update your master passcode',
+    changePasswordMessage: 'Passcode reset link sent to registered mobile',
+    changePhoneTitle: 'Change Mobile Number',
+    changePhoneSubtitle: 'Update linked OTP number',
+    changePhoneMessage: 'Verification OTP will be required on new phone number',
     pinSectionTitle: 'PIN Protection',
     changePinTitle: 'Change App PIN',
     changePinSubtitle: 'Update your 4-digit security code',
     sessionSectionTitle: 'Active Sessions',
-    deviceTitle: 'Current Device (iOS)',
-    deviceSubtitle: 'Signed in today',
+    deviceTitle: 'Primary Mobile App',
+    deviceSubtitle: 'Current Active Device',
+    currentBadgeText: 'Current',
+    secondarySessionTitle: 'Web Astro Dashboard',
+    secondarySessionSubtitle: 'Active 2h ago',
+    revokeButtonText: 'Revoke',
+    revokeMessage: 'Web session logged out',
     logoutOtherDevicesTitle: 'Log Out All Other Devices',
     logoutOtherDevicesSubtitle: 'Revoke access from other browsers & phones',
+  },
+  preferencesScreen: {
+    languageAppBarTitle: 'Language',
+    languageInfoBanner:
+      'Select your preferred language. All application navigation, profile, and astrology content will translate instantly.',
+    languageSaveButtonText: 'Save Language',
+    themeAppBarTitle: 'Theme',
+    themeHeading: 'Select App Theme',
+    themeSubtitle:
+      'Choose between Light Vedic or Dark Cosmic. Both provide high-contrast text and optimal readability.',
+    lightVedicTitle: 'Light Vedic',
+    lightVedicDesc: 'Luminous pearl white and sacred gold tones with crystal-clear readability',
+    darkCosmicTitle: 'Dark Cosmic',
+    darkCosmicDesc: 'Deep cosmic space with starry depth and luminous gold accents',
+    accentHeading: 'Accent Colour',
+    accentSubtitle: 'Personalise highlight badges and interactive buttons',
+    themeFooterNote: 'Theme changes apply immediately across all screens and bottom navigation.',
   },
 };
 
@@ -506,6 +568,10 @@ export const useSupportLegalStore = create<SupportLegalState>((set, get) => ({
                 privacyPolicy: { ...s.content.privacyPolicy, ...(parsed.privacyPolicy || {}) },
                 privacyScreen: { ...s.content.privacyScreen, ...(parsed.privacyScreen || {}) },
                 securityScreen: { ...s.content.securityScreen, ...(parsed.securityScreen || {}) },
+                preferencesScreen: {
+                  ...s.content.preferencesScreen,
+                  ...(parsed.preferencesScreen || {}),
+                },
               },
               hydrated: true,
             }));
@@ -533,6 +599,10 @@ export const useSupportLegalStore = create<SupportLegalState>((set, get) => ({
             privacyPolicy: { ...DEFAULT_SUPPORT_LEGAL_CONTENT.privacyPolicy, ...(c.privacyPolicy || {}) },
             privacyScreen: { ...DEFAULT_SUPPORT_LEGAL_CONTENT.privacyScreen, ...(c.privacyScreen || {}) },
             securityScreen: { ...DEFAULT_SUPPORT_LEGAL_CONTENT.securityScreen, ...(c.securityScreen || {}) },
+            preferencesScreen: {
+              ...DEFAULT_SUPPORT_LEGAL_CONTENT.preferencesScreen,
+              ...(c.preferencesScreen || {}),
+            },
           };
           set({ content: merged, loading: false, hydrated: true });
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));

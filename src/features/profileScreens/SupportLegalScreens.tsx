@@ -1,22 +1,21 @@
 /**
- * Port of lib/presentation/profile_screens/support_legal_screens.dart
- * (HelpCentreScreen, ContactSupportScreen, TermsOfServiceScreen, PrivacyPolicyScreen).
- * 100% Dynamic Content with persistent offline cache & live server sync.
+ * Support & Legal Screens — 100% Dynamic Content with offline cache,
+ * live Admin Panel sync, pull-to-refresh, interactive FAQ topic filtering,
+ * and live Firestore support ticket submission.
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { Keyboard, Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton } from '@/components/common';
 import { showSnackBar } from '@/components/overlays';
 import { lh, Text, TextInput } from '@/components/Text';
+import { API_ENDPOINTS } from '@/config/api';
+import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, pop, push } from '@/navigation/routes';
-import {
-  AppContactOption,
-  useSupportLegalStore,
-} from '@/services/supportLegalStore';
+import { AppContactOption, useSupportLegalStore } from '@/services/supportLegalStore';
 import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
@@ -39,6 +38,7 @@ export function HelpCentreScreen() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [focused, setFocused] = useState(false);
   const [gridW, setGridW] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   const help = useSupportLegalStore((s) => s.content.helpCentre);
   const fetchContent = useSupportLegalStore((s) => s.fetchContent);
@@ -46,6 +46,12 @@ export function HelpCentreScreen() {
   useEffect(() => {
     fetchContent();
   }, [fetchContent]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchContent();
+    setRefreshing(false);
+  };
 
   const cell = gridW > 0 ? (gridW - 20) / 3 : 0;
   const filtered = (help.faqs || [])
@@ -87,8 +93,22 @@ export function HelpCentreScreen() {
         backgroundColor={colors.background}
         backColor={colors.textPrimary}
       />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }} keyboardShouldPersistTaps="handled">
-        <View style={{ height: 52, borderRadius: 14, backgroundColor: colors.surface, borderWidth: focused ? 1.5 : 1, borderColor: focused ? colors.goldAccent : colors.cardBorder, flexDirection: 'row', alignItems: 'center' }}>
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.goldAccent} />}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View
+          style={{
+            height: 52,
+            borderRadius: 14,
+            backgroundColor: colors.surface,
+            borderWidth: focused ? 1.5 : 1,
+            borderColor: focused ? colors.goldAccent : colors.cardBorder,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
           <AppIcon name="search_rounded" color={colors.textMuted} style={{ marginHorizontal: 12 }} />
           <TextInput
             testID="helpCentre.search"
@@ -100,7 +120,11 @@ export function HelpCentreScreen() {
             style={{ flex: 1, fontSize: 15 }}
           />
           {query ? (
-            <Pressable testID="helpCentre.search.clear" onPress={() => setQuery('')} style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}>
+            <Pressable
+              testID="helpCentre.search.clear"
+              onPress={() => setQuery('')}
+              style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}
+            >
               <AppIcon name="clear_rounded" color={colors.textMuted} size={18} />
             </Pressable>
           ) : null}
@@ -139,10 +163,16 @@ export function HelpCentreScreen() {
               </LinearGradient>
             </Pressable>
             <H mt={20}>{help.browseTopicsTitle || 'Browse by Topic'}</H>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
+            <View
+              style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}
+              onLayout={(e) => setGridW(e.nativeEvent.layout.width)}
+            >
               {cell > 0 &&
                 (help.categories || []).map((c) => {
                   const isSelected = selectedCategory?.toLowerCase() === c.title.toLowerCase();
+                  const liveCount = (help.faqs || []).filter(
+                    (f) => f.category?.toLowerCase() === c.title.toLowerCase()
+                  ).length;
                   return (
                     <Pressable
                       key={c.title}
@@ -175,7 +205,7 @@ export function HelpCentreScreen() {
                         {c.title}
                       </Text>
                       <Text style={{ color: colors.textMuted, fontSize: 9, marginTop: 2 }}>
-                        {`${(help.faqs || []).filter((f) => f.category?.toLowerCase() === c.title.toLowerCase()).length || c.count || 0} FAQs`}
+                        {`${liveCount || c.count || 0} FAQs`}
                       </Text>
                     </Pressable>
                   );
@@ -204,8 +234,11 @@ export function HelpCentreScreen() {
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
               <AppIcon name="filter_alt_rounded" color={colors.goldAccent} size={18} />
-              <Text numberOfLines={1} style={{ marginLeft: 6, color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>
-                {`Topic: ${selectedCategory} (${filtered.length} FAQs)`}
+              <Text
+                numberOfLines={1}
+                style={{ marginLeft: 6, color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}
+              >
+                {`${selectedCategory} (${filtered.length} FAQs)`}
               </Text>
             </View>
             <Pressable
@@ -276,23 +309,40 @@ export function HelpCentreScreen() {
             </View>
           );
         })}
-        {filtered.length === 0 ? <Text testID="helpCentre.noResults" style={{ paddingVertical: 40, textAlign: 'center', color: colors.textMuted }}>{help.noResultsText || 'No results found'}</Text> : null}
+        {filtered.length === 0 ? (
+          <Text testID="helpCentre.noResults" style={{ paddingVertical: 40, textAlign: 'center', color: colors.textMuted }}>
+            {help.noResultsText || 'No results found'}
+          </Text>
+        ) : null}
       </ScrollView>
     </View>
   );
 }
 
-function FormField({ label, hint, multiline, testID }: { label: string; hint: string; multiline?: boolean; testID: string }) {
+function FormField({
+  label,
+  hint,
+  value,
+  onChangeText,
+  multiline,
+  testID,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  multiline?: boolean;
+  testID: string;
+}) {
   const colors = useThemeColors();
-  const [v, setV] = useState('');
   const [focused, setFocused] = useState(false);
   return (
     <View>
       <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>{label}</Text>
       <TextInput
         testID={testID}
-        value={v}
-        onChangeText={setV}
+        value={value}
+        onChangeText={onChangeText}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder={hint}
@@ -318,13 +368,25 @@ export function ContactSupportScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const authUser = useAuthStore((s) => s.user);
 
   const contact = useSupportLegalStore((s) => s.content.contactSupport);
   const fetchContent = useSupportLegalStore((s) => s.fetchContent);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const [subject, setSubject] = useState('');
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
   useEffect(() => {
     fetchContent();
   }, [fetchContent]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchContent();
+    setRefreshing(false);
+  };
 
   const handleContactAction = (o: AppContactOption) => {
     if (o.value) {
@@ -340,6 +402,46 @@ export function ContactSupportScreen() {
     showSnackBar(`Connecting to ${o.title}...`, colors.surfaceVariant);
   };
 
+  const handleSubmitTicket = async () => {
+    if (submitting) return;
+    if (!subject.trim() || !description.trim()) {
+      showSnackBar('Please enter both Subject and Description to submit your ticket.', '#CF4444');
+      return;
+    }
+    Keyboard.dismiss();
+    setSubmitting(true);
+    try {
+      const res = await fetch(API_ENDPOINTS.supportTickets, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: subject.trim(),
+          description: description.trim(),
+          userName: authUser?.name || 'Guest Seeker',
+          userPhone: authUser?.phone || '',
+          userEmail: authUser?.email || '',
+          userUid: authUser?.uid || '',
+          source: 'mobile-app',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        setSubject('');
+        setDescription('');
+        showSnackBar(
+          data.message || contact.ticketSuccessMessage || `Support ticket submitted! Ticket ID #${data.ticketId}`,
+          '#2D9E6B'
+        );
+      } else {
+        showSnackBar(data?.error || 'Could not submit ticket. Please try again.', '#CF4444');
+      }
+    } catch {
+      showSnackBar('Network error submitting ticket. Please try again.', '#CF4444');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="contactSupport.screen">
       <AppBar
@@ -349,7 +451,11 @@ export function ContactSupportScreen() {
         backgroundColor={colors.background}
         backColor={colors.textPrimary}
       />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.goldAccent} />}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}
+        keyboardShouldPersistTaps="handled"
+      >
         <LinearGradient
           colors={
             colors.isLight
@@ -365,7 +471,8 @@ export function ContactSupportScreen() {
             {contact.banner?.title || "We're Here to Help"}
           </Text>
           <Text style={{ marginTop: 6, color: colors.textMuted, fontSize: 12, textAlign: 'center' }}>
-            {contact.banner?.subtitle || 'Our customer care team is available 24/7 to assist you with any questions or consultations.'}
+            {contact.banner?.subtitle ||
+              'Our customer care team is available 24/7 to assist you with any questions or consultations.'}
           </Text>
           <View style={{ marginTop: 12, flexDirection: 'row', gap: 20 }}>
             {(contact.responseTimes || []).map(([l, timeStr]) => (
@@ -393,27 +500,69 @@ export function ContactSupportScreen() {
               alignItems: 'center',
             }}
           >
-            <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: withAlpha(o.color, colors.isLight ? 20 : 25), alignItems: 'center', justifyContent: 'center' }}>
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 14,
+                backgroundColor: withAlpha(o.color, colors.isLight ? 20 : 25),
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <Text style={{ fontSize: 22 }}>{o.emoji}</Text>
             </View>
             <View style={{ flex: 1, marginLeft: 14 }}>
               <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>{o.title}</Text>
               <Text style={{ color: colors.textMuted, fontSize: 11 }}>{o.desc}</Text>
             </View>
-            <View style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: withAlpha(o.color, 25), borderWidth: 1, borderColor: withAlpha(o.color, 80) }}>
+            <View
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 20,
+                backgroundColor: withAlpha(o.color, 25),
+                borderWidth: 1,
+                borderColor: withAlpha(o.color, 80),
+              }}
+            >
               <Text style={{ color: o.color, fontSize: 11, fontWeight: '700' }}>{o.action}</Text>
             </View>
           </Pressable>
         ))}
 
         <H mt={24}>{contact.ticketTitle || 'Submit a Ticket'}</H>
-        <View style={{ padding: 16, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, gap: 12 }}>
-          <FormField testID="contactSupport.subject" label={contact.ticketSubjectLabel || 'Subject'} hint={contact.ticketSubjectHint || 'Briefly describe your inquiry'} />
-          <FormField testID="contactSupport.description" label={contact.ticketDescLabel || 'Description'} hint={contact.ticketDescHint || 'Provide more details...'} multiline />
+        <View
+          style={{
+            padding: 16,
+            borderRadius: 18,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+            gap: 12,
+          }}
+        >
+          <FormField
+            testID="contactSupport.subject"
+            label={contact.ticketSubjectLabel || 'Subject'}
+            hint={contact.ticketSubjectHint || 'Briefly describe your inquiry'}
+            value={subject}
+            onChangeText={setSubject}
+          />
+          <FormField
+            testID="contactSupport.description"
+            label={contact.ticketDescLabel || 'Description'}
+            hint={contact.ticketDescHint || 'Provide more details...'}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+          />
           <ElevatedButton
             testID="contactSupport.submit"
-            label={contact.ticketButtonLabel || 'Submit Ticket'}
-            onPress={() => showSnackBar(contact.ticketSuccessMessage || 'Support ticket submitted successfully. Ticket ID #ASTRO-9281', colors.surfaceVariant)}
+            label={submitting ? 'Submitting Ticket...' : contact.ticketButtonLabel || 'Submit Ticket'}
+            onPress={handleSubmitTicket}
+            disabled={submitting}
+            loading={submitting}
             radius={12}
             paddingV={14}
             fontSize={14}
@@ -431,12 +580,16 @@ function LegalScreen({
   lastUpdated,
   sections,
   testID,
+  onRefresh,
+  refreshing,
 }: {
   title: string;
   emoji: string;
   lastUpdated?: string;
   sections: [string, string][];
   testID: string;
+  onRefresh: () => void;
+  refreshing: boolean;
 }) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -449,8 +602,21 @@ function LegalScreen({
         backgroundColor={colors.background}
         backColor={colors.textPrimary}
       />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}>
-        <View style={{ padding: 14, borderRadius: 14, backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 15), borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center' }}>
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.goldAccent} />}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}
+      >
+        <View
+          style={{
+            padding: 14,
+            borderRadius: 14,
+            backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 15),
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
           <Text style={{ fontSize: 20 }}>{emoji}</Text>
           <View style={{ marginLeft: 10 }}>
             <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>{title}</Text>
@@ -458,10 +624,10 @@ function LegalScreen({
           </View>
         </View>
         <View style={{ height: 20 }} />
-        {sections.map(([t, c]) => (
-          <View key={t} style={{ marginBottom: 20 }}>
-            <Text style={{ color: colors.goldAccent, fontSize: 14, fontWeight: '700' }}>{t}</Text>
-            <Text style={{ marginTop: 8, color: colors.textSecondary, ...lh(13, 1.6) }}>{c}</Text>
+        {sections.map(([heading, body]) => (
+          <View key={heading} style={{ marginBottom: 20 }}>
+            <Text style={{ color: colors.goldAccent, fontSize: 14, fontWeight: '700' }}>{heading}</Text>
+            <Text style={{ marginTop: 8, color: colors.textSecondary, ...lh(13, 1.6) }}>{body}</Text>
           </View>
         ))}
       </ScrollView>
@@ -473,10 +639,17 @@ export function TermsOfServiceScreen() {
   const { t } = useTranslation();
   const terms = useSupportLegalStore((s) => s.content.terms);
   const fetchContent = useSupportLegalStore((s) => s.fetchContent);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchContent();
   }, [fetchContent]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchContent();
+    setRefreshing(false);
+  };
 
   return (
     <LegalScreen
@@ -485,6 +658,8 @@ export function TermsOfServiceScreen() {
       emoji={terms.emoji || '⚖️'}
       lastUpdated={terms.lastUpdated}
       sections={terms.sections || []}
+      onRefresh={onRefresh}
+      refreshing={refreshing}
     />
   );
 }
@@ -493,10 +668,17 @@ export function PrivacyPolicyScreen() {
   const { t } = useTranslation();
   const privacyPolicy = useSupportLegalStore((s) => s.content.privacyPolicy);
   const fetchContent = useSupportLegalStore((s) => s.fetchContent);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchContent();
   }, [fetchContent]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchContent();
+    setRefreshing(false);
+  };
 
   return (
     <LegalScreen
@@ -505,6 +687,8 @@ export function PrivacyPolicyScreen() {
       emoji={privacyPolicy.emoji || '🔒'}
       lastUpdated={privacyPolicy.lastUpdated}
       sections={privacyPolicy.sections || []}
+      onRefresh={onRefresh}
+      refreshing={refreshing}
     />
   );
 }

@@ -126,14 +126,31 @@ export interface DynamicProfileConfig {
   helplineHoursPrefix?: string;
   helplineHours: string;
 
-  // Sign In / Out
+  // Sign In / Out & Delete Account
   signOutButtonText?: string;
   signOutConfirmTitle?: string;
   signOutConfirmMessage?: string;
   cancelButtonText?: string;
+  deleteAccountButtonText?: string;
+  deleteAccountConfirmTitle?: string;
+  deleteAccountConfirmMessage?: string;
+  deleteAccountSuccessTitle?: string;
+  deleteAccountSuccessMessage?: string;
+
+  // Birth Details & Guest Card Labels
+  birthDetailsCardTitle?: string;
+  birthDetailsCardSubtitle?: string;
+  editButtonLabel?: string;
+  switchProfileSuffix?: string;
+  guestCardTitle?: string;
+  guestCardSubtitle?: string;
+  guestCardNotice?: string;
+  guestCardFeatures?: string[];
+  selectLanguageTitle?: string;
 
   // Edit Profile Sheet
   editProfileTitle?: string;
+  editProfileSubtitle?: string;
   editNameLabel?: string;
   editPhoneOrEmailLabel?: string;
   editDobLabel?: string;
@@ -780,12 +797,13 @@ export default function ProfileScreen() {
 
   const handleDeleteAccountPress = () => {
     Alert.alert(
-      'Delete Account Permanently?',
-      'Are you sure you want to permanently delete your AstroParihar account?\n\nAll your Janam Kundli charts, consultations, wallet balance, and birth profiles will be erased forever.\n\nOnce deleted, this phone number cannot be reused to log in.',
+      config.deleteAccountConfirmTitle || 'Delete Account Permanently?',
+      config.deleteAccountConfirmMessage ||
+        'Are you sure you want to permanently delete your AstroParihar account?\n\nAll your Janam Kundli charts, consultations, wallet balance, and birth profiles will be erased forever.\n\nOnce deleted, this phone number cannot be reused to log in.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: config.cancelButtonText || 'Cancel', style: 'cancel' },
         {
-          text: 'Delete Account',
+          text: config.deleteAccountButtonText || 'Delete Account',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -806,10 +824,11 @@ export default function ProfileScreen() {
                 nakshatra: config.defaultNakshatra,
               });
               Alert.alert(
-                'Account Deleted',
-                'Your account has been deleted. You can no longer log in with this phone number.'
+                config.deleteAccountSuccessTitle || 'Account Deleted',
+                config.deleteAccountSuccessMessage ||
+                  'Your account has been deleted. You can no longer log in with this phone number.'
               );
-              showSnackBar('Account deleted permanently', '#CF4444');
+              showSnackBar(config.deleteAccountSuccessTitle || 'Account deleted permanently', '#CF4444');
               go(AppRoutes.initial);
             } catch (err: any) {
               showSnackBar('Error deleting account: ' + err?.message, '#CF4444');
@@ -1163,10 +1182,10 @@ export default function ProfileScreen() {
                 </View>
                 <View style={{ marginLeft: 10 }}>
                   <Text style={{ color: colors.textPrimary, fontSize: 14.5, fontWeight: '800' }}>
-                    {t('Birth Details & Location', 'Birth Details & Location')}
+                    {config.birthDetailsCardTitle || t('Birth Details & Location', 'Birth Details & Location')}
                   </Text>
                   <Text style={{ color: colors.textMuted, fontSize: 11 }}>
-                    {t('Verified Vedic Kundli Baseline', 'Verified Vedic Kundli Baseline')}
+                    {config.birthDetailsCardSubtitle || t('Verified Vedic Kundli Baseline', 'Verified Vedic Kundli Baseline')}
                   </Text>
                 </View>
               </View>
@@ -1187,7 +1206,7 @@ export default function ProfileScreen() {
               >
                 <AppIcon name="edit_rounded" size={13} color={colors.goldAccent} />
                 <Text style={{ marginLeft: 4, color: colors.goldAccent, fontSize: 11.5, fontWeight: '700' }}>
-                  {t('Edit', 'Edit')}
+                  {config.editButtonLabel || t('Edit', 'Edit')}
                 </Text>
               </Pressable>
             </View>
@@ -1404,29 +1423,36 @@ export default function ProfileScreen() {
               </View>
               <View style={{ marginLeft: 12, flex: 1 }}>
                 <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
-                  {t('Sign In to AstroParihar', 'Sign In to AstroParihar')}
+                  {config.guestCardTitle || t('Sign In to AstroParihar', 'Sign In to AstroParihar')}
                 </Text>
                 <Text style={{ marginTop: 2, color: colors.textMuted, fontSize: 12 }}>
-                  {t('Sign in to unlock your full spiritual profile', 'Sign in to unlock your full spiritual profile')}
+                  {config.guestCardSubtitle || t('Sign in to unlock your full spiritual profile', 'Sign in to unlock your full spiritual profile')}
                 </Text>
               </View>
             </View>
 
             <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 12.5, lineHeight: 18 }}>
-              {t(
-                'profile.guestSignInNotice',
-                'Sign in to access your personal Kundli, birth charts, detailed reports, daily Panchang, saved astrologers, wallet & transaction receipts.'
-              )}
+              {config.guestCardNotice ||
+                t(
+                  'profile.guestSignInNotice',
+                  'Sign in to access your personal Kundli, birth charts, detailed reports, daily Panchang, saved astrologers, wallet & transaction receipts.'
+                )}
             </Text>
 
             <View style={{ marginTop: 14, gap: 8 }}>
-              {[
-                { icon: 'auto_stories', text: 'My Kundli & Birth Chart' },
-                { icon: 'description_outlined', text: 'Kundli & Service Reports' },
-                { icon: 'calendar_today_outlined', text: 'Panchang & Auspicious Muhurat' },
-                { icon: 'star_outline', text: 'Saved Astrologers' },
-                { icon: 'account_balance_wallet_outlined', text: 'Wallet Balance & Transactions' },
-              ].map((item) => (
+              {(config.guestCardFeatures && config.guestCardFeatures.length > 0
+                ? config.guestCardFeatures.map((text, idx) => ({
+                    icon: ['auto_stories', 'description_outlined', 'calendar_today_outlined', 'star_outline', 'account_balance_wallet_outlined'][idx % 5],
+                    text,
+                  }))
+                : [
+                    { icon: 'auto_stories', text: 'My Kundli & Birth Chart' },
+                    { icon: 'description_outlined', text: 'Kundli & Service Reports' },
+                    { icon: 'calendar_today_outlined', text: 'Panchang & Auspicious Muhurat' },
+                    { icon: 'star_outline', text: 'Saved Astrologers' },
+                    { icon: 'account_balance_wallet_outlined', text: 'Wallet Balance & Transactions' },
+                  ]
+              ).map((item) => (
                 <View key={item.text} style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <AppIcon name={item.icon} size={15} color={colors.goldAccent} />
                   <Text style={{ marginLeft: 8, color: colors.textPrimary, fontSize: 12.5, fontWeight: '600' }}>
@@ -1453,7 +1479,7 @@ export default function ProfileScreen() {
             >
               <AppIcon name="login_rounded" color="#FFFFFF" size={17} />
               <Text style={{ marginLeft: 8, color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>
-                {t('Sign In / Register', 'Sign In / Register')}
+                {config.guestSignInButtonText || t('Sign In / Register', 'Sign In / Register')}
               </Text>
             </Pressable>
           </View>
@@ -1639,7 +1665,7 @@ export default function ProfileScreen() {
             >
               <AppIcon name="delete_outline_rounded" size={18} color="#CF4444" />
               <Text style={{ marginLeft: 6, color: '#CF4444', fontSize: 13.5, fontWeight: '600' }}>
-                Delete Account Permanently
+                {config.deleteAccountButtonText || 'Delete Account Permanently'}
               </Text>
             </Pressable>
           </View>
@@ -1689,7 +1715,7 @@ export default function ProfileScreen() {
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800' }}>
-                Select Language
+                {config.selectLanguageTitle || 'Select Language'}
               </Text>
               <Pressable onPress={() => setLanguageModalOpen(false)} style={{ padding: 4 }}>
                 <AppIcon name="close" color={colors.textSecondary} size={18} />
@@ -1790,7 +1816,7 @@ export default function ProfileScreen() {
                   {config.editProfileTitle || t('profile.editProfile', 'Edit Profile Details')}
                 </Text>
                 <Text style={{ color: colors.textMuted, fontSize: 11 }}>
-                  Manage personal Vedic information
+                  {config.editProfileSubtitle || 'Manage personal Vedic information'}
                 </Text>
               </View>
             </View>
