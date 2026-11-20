@@ -7,13 +7,60 @@ import { create } from 'zustand';
 import { API_ENDPOINTS } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
 
-export type NotificationCategory =
-  | 'horoscope'
-  | 'panchang'
-  | 'consultation'
-  | 'offers'
-  | 'remedies'
-  | 'system';
+export type NotificationCategory = string;
+
+export interface DynamicNotificationCategoryMeta {
+  id: string;
+  label: string;
+  emoji: string;
+  color: string;
+  description?: string;
+}
+
+export const DEFAULT_NOTIFICATION_CATEGORIES: DynamicNotificationCategoryMeta[] = [
+  {
+    id: 'horoscope',
+    label: 'Horoscope',
+    emoji: '✨',
+    color: '#9370DB',
+    description: 'Morning Rashi forecasts & planetary transits',
+  },
+  {
+    id: 'panchang',
+    label: 'Panchang',
+    emoji: '🪔',
+    color: '#E69F00',
+    description: 'Daily Tithi, Abhijit Muhurat & Rahu Kaal',
+  },
+  {
+    id: 'consultation',
+    label: 'Consultations',
+    emoji: '📞',
+    color: '#4FC3F7',
+    description: 'Astrologer availability, call & chat reminders',
+  },
+  {
+    id: 'offers',
+    label: 'Offers',
+    emoji: '🎁',
+    color: '#2D9E6B',
+    description: 'Recharge bonuses, festive discounts & receipts',
+  },
+  {
+    id: 'remedies',
+    label: 'Remedies',
+    emoji: '🕉️',
+    color: '#E86A58',
+    description: 'Ashta Parihar reminders & Kundli PDF updates',
+  },
+  {
+    id: 'system',
+    label: 'Updates',
+    emoji: '🔔',
+    color: '#C9A84C',
+    description: 'Important platform & account notices',
+  },
+];
 
 export interface AppNotificationItem {
   id: string;
@@ -44,6 +91,7 @@ export interface UserNotificationPreferences {
   quietHoursEnabled: boolean;
   quietStart: string;
   quietEnd: string;
+  [key: string]: boolean | string | undefined;
 }
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: UserNotificationPreferences = {
@@ -66,6 +114,7 @@ const STORAGE_READ_KEY = 'astroparihar_notifications_read_ids_v1';
 const STORAGE_DEL_KEY = 'astroparihar_notifications_deleted_ids_v1';
 const STORAGE_PREFS_KEY = 'astroparihar_notifications_prefs_v1';
 const STORAGE_TOKEN_KEY = 'astroparihar_push_token_v1';
+const STORAGE_CATS_KEY = 'astroparihar_notifications_categories_v1';
 
 let handlerConfigured = false;
 
@@ -116,6 +165,7 @@ function syncAppBadge(count: number) {
 
 interface NotificationStoreState {
   notifications: AppNotificationItem[];
+  categories: DynamicNotificationCategoryMeta[];
   readIds: string[];
   deletedIds: string[];
   unreadCount: number;
@@ -134,10 +184,7 @@ interface NotificationStoreState {
   markAllAsRead: () => Promise<void>;
   deleteNotification: (id: string) => Promise<void>;
   clearAll: () => Promise<void>;
-  updatePreference: <K extends keyof UserNotificationPreferences>(
-    key: K,
-    value: UserNotificationPreferences[K]
-  ) => Promise<void>;
+  updatePreference: (key: string, value: boolean | string) => Promise<void>;
   sendTestLocalNotification: (delaySeconds?: number) => Promise<boolean>;
 }
 
@@ -148,6 +195,7 @@ function computeUnread(items: AppNotificationItem[], readIds: string[]): number 
 
 export const useNotificationStore = create<NotificationStoreState>((set, get) => ({
   notifications: [],
+  categories: DEFAULT_NOTIFICATION_CATEGORIES,
   readIds: [],
   deletedIds: [],
   unreadCount: 0,
@@ -161,12 +209,13 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   hydrate: async () => {
     if (get().hydrated) return;
     try {
-      const [rawNotifs, rawRead, rawDel, rawPrefs, rawToken] = await Promise.all([
+      const [rawNotifs, rawRead, rawDel, rawPrefs, rawToken, rawCats] = await Promise.all([
         AsyncStorage.getItem(STORAGE_NOTIFS_KEY),
         AsyncStorage.getItem(STORAGE_READ_KEY),
         AsyncStorage.getItem(STORAGE_DEL_KEY),
         AsyncStorage.getItem(STORAGE_PREFS_KEY),
         AsyncStorage.getItem(STORAGE_TOKEN_KEY),
+        AsyncStorage.getItem(STORAGE_CATS_KEY),
       ]);
 
       const readIds: string[] = rawRead ? JSON.parse(rawRead) : [];
@@ -178,10 +227,17 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       const prefs: UserNotificationPreferences = rawPrefs
         ? { ...DEFAULT_NOTIFICATION_PREFERENCES, ...JSON.parse(rawPrefs) }
         : DEFAULT_NOTIFICATION_PREFERENCES;
+      const parsedCats: DynamicNotificationCategoryMeta[] = rawCats
+        ? JSON.parse(rawCats)
+        : DEFAULT_NOTIFICATION_CATEGORIES;
 
       const unreadCount = computeUnread(cachedNotifs, readIds);
       set({
         notifications: cachedNotifs,
+        categories:
+          Array.isArray(parsedCats) && parsedCats.length > 0
+            ? parsedCats
+            : DEFAULT_NOTIFICATION_CATEGORIES,
         readIds,
         deletedIds,
         unreadCount,
@@ -341,8 +397,22 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
               ? { ...get().preferences, ...data.preferences }
               : get().preferences;
 
+          const nextCategories: DynamicNotificationCategoryMeta[] =
+            Array.isArray(data.categories) && data.categories.length > 0
+              ? data.categories
+                  .filter((c: any) => c && typeof c.id === 'string' && typeof c.label === 'string')
+                  .map((c: any) => ({
+                    id: String(c.id),
+                    label: String(c.label),
+                    emoji: String(c.emoji || '🔔'),
+                    color: String(c.color || '#C9A84C'),
+                    description: typeof c.description === 'string' ? c.description : '',
+                  }))
+              : get().categories;
+
           set({
             notifications: liveItems,
+            categories: nextCategories,
             readIds: mergedRead,
             deletedIds: mergedDel,
             unreadCount,
@@ -353,6 +423,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
 
           await Promise.all([
             AsyncStorage.setItem(STORAGE_NOTIFS_KEY, JSON.stringify(liveItems)),
+            AsyncStorage.setItem(STORAGE_CATS_KEY, JSON.stringify(nextCategories)),
             AsyncStorage.setItem(STORAGE_READ_KEY, JSON.stringify(mergedRead)),
             AsyncStorage.setItem(STORAGE_DEL_KEY, JSON.stringify(mergedDel)),
             AsyncStorage.setItem(STORAGE_PREFS_KEY, JSON.stringify(nextPrefs)),

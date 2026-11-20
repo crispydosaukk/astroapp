@@ -26,6 +26,8 @@ import { IconBadge, SettingsCard, SwitchTile, TileDivider } from '@/components/t
 import { AppRoutes, pop, push } from '@/navigation/routes';
 import {
   AppNotificationItem,
+  DEFAULT_NOTIFICATION_CATEGORIES,
+  DynamicNotificationCategoryMeta,
   NotificationCategory,
   useNotificationStore,
 } from '@/services/notificationStore';
@@ -33,58 +35,46 @@ import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
 
-const CATEGORY_META: Record<
-  NotificationCategory,
-  { label: string; emoji: string; color: string; icon: string }
-> = {
-  horoscope: {
-    label: 'Horoscope',
-    emoji: '✨',
-    color: '#9370DB',
-    icon: 'auto_awesome',
-  },
-  panchang: {
-    label: 'Panchang',
-    emoji: '🪔',
-    color: '#E69F00',
-    icon: 'calendar_today_outlined',
-  },
-  consultation: {
-    label: 'Consultations',
-    emoji: '📞',
-    color: '#4FC3F7',
-    icon: 'chat_bubble_outline_rounded',
-  },
-  offers: {
-    label: 'Offers',
-    emoji: '🎁',
-    color: '#2D9E6B',
-    icon: 'local_offer_outlined',
-  },
-  remedies: {
-    label: 'Remedies',
-    emoji: '🕉️',
-    color: '#E86A58',
-    icon: 'spa_outlined',
-  },
-  system: {
-    label: 'Updates',
+const CATEGORY_ICON_MAP: Record<string, string> = {
+  horoscope: 'auto_awesome',
+  panchang: 'calendar_today_outlined',
+  consultation: 'chat_bubble_outline_rounded',
+  offers: 'local_offer_outlined',
+  remedies: 'spa_outlined',
+  system: 'shield_outlined',
+};
+
+function resolveCategoryMeta(
+  catId: NotificationCategory,
+  categories: DynamicNotificationCategoryMeta[]
+): { label: string; emoji: string; color: string; icon: string; description: string } {
+  const found =
+    categories.find((c) => c.id === catId) ||
+    DEFAULT_NOTIFICATION_CATEGORIES.find((c) => c.id === catId);
+
+  if (found) {
+    return {
+      label: found.label,
+      emoji: found.emoji || '🔔',
+      color: found.color || '#C9A84C',
+      icon: CATEGORY_ICON_MAP[found.id] || 'notifications_outlined',
+      description: found.description || `Receive ${found.label} updates & alerts`,
+    };
+  }
+
+  const prettyLabel = catId
+    ? catId
+        .replace(/[_-]+/g, ' ')
+        .replace(/\b\w/g, (m) => m.toUpperCase())
+    : 'Updates';
+  return {
+    label: prettyLabel,
     emoji: '🔔',
     color: '#C9A84C',
     icon: 'notifications_outlined',
-  },
-};
-
-const FILTER_TABS: { id: string; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'unread', label: 'Unread' },
-  { id: 'horoscope', label: 'Horoscope' },
-  { id: 'panchang', label: 'Panchang' },
-  { id: 'consultation', label: 'Consultations' },
-  { id: 'offers', label: 'Offers' },
-  { id: 'remedies', label: 'Remedies' },
-  { id: 'system', label: 'Updates' },
-];
+    description: `Receive ${prettyLabel} alerts`,
+  };
+}
 
 function formatTimeAgo(iso: string): string {
   const diff = Date.now() - Date.parse(iso);
@@ -125,6 +115,7 @@ export function NotificationsScreen() {
   const { t } = useTranslation();
 
   const notifications = useNotificationStore((s) => s.notifications);
+  const categories = useNotificationStore((s) => s.categories);
   const readIds = useNotificationStore((s) => s.readIds);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const loading = useNotificationStore((s) => s.loading);
@@ -139,6 +130,28 @@ export function NotificationsScreen() {
 
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [refreshing, setRefreshing] = useState(false);
+
+  const filterTabs = useMemo(() => {
+    const base: { id: string; label: string }[] = [
+      { id: 'all', label: 'All' },
+      { id: 'unread', label: 'Unread' },
+    ];
+    const seen = new Set(['all', 'unread']);
+    for (const cat of categories) {
+      if (!seen.has(cat.id)) {
+        seen.add(cat.id);
+        base.push({ id: cat.id, label: cat.label });
+      }
+    }
+    for (const item of notifications) {
+      if (item.category && !seen.has(item.category)) {
+        seen.add(item.category);
+        const meta = resolveCategoryMeta(item.category, categories);
+        base.push({ id: item.category, label: meta.label });
+      }
+    }
+    return base;
+  }, [categories, notifications]);
 
   useEffect(() => {
     checkPermission();
@@ -277,7 +290,7 @@ export function NotificationsScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
         >
-          {FILTER_TABS.map((tab) => {
+          {filterTabs.map((tab) => {
             const active = activeFilter === tab.id;
             const showCount = tab.id === 'unread' && unreadCount > 0;
             return (
@@ -460,7 +473,7 @@ export function NotificationsScreen() {
         {/* Notification Cards */}
         {filtered.map((item) => {
           const isUnread = !readSet.has(item.id);
-          const meta = CATEGORY_META[item.category] || CATEGORY_META.system;
+          const meta = resolveCategoryMeta(item.category, categories);
 
           return (
             <Pressable
@@ -677,10 +690,12 @@ export function NotificationSettingsScreen() {
   const { t } = useTranslation();
 
   const preferences = useNotificationStore((s) => s.preferences);
+  const categories = useNotificationStore((s) => s.categories);
   const permissionStatus = useNotificationStore((s) => s.permissionStatus);
   const expoPushToken = useNotificationStore((s) => s.expoPushToken);
   const nativePushToken = useNotificationStore((s) => s.nativePushToken);
   const checkPermission = useNotificationStore((s) => s.checkPermission);
+  const fetchNotifications = useNotificationStore((s) => s.fetchNotifications);
   const requestAndRegisterPushToken = useNotificationStore((s) => s.requestAndRegisterPushToken);
   const updatePreference = useNotificationStore((s) => s.updatePreference);
   const sendTestLocalNotification = useNotificationStore((s) => s.sendTestLocalNotification);
@@ -689,10 +704,11 @@ export function NotificationSettingsScreen() {
 
   useEffect(() => {
     checkPermission();
-  }, [checkPermission]);
+    fetchNotifications();
+  }, [checkPermission, fetchNotifications]);
 
   const handleToggle = async (
-    key: keyof typeof preferences,
+    key: string,
     value: boolean,
     label: string
   ) => {
@@ -836,63 +852,44 @@ export function NotificationSettingsScreen() {
           </SettingsCard>
         </View>
 
-        {/* Astrological Alert Categories */}
+        {/* Astrological Alert Categories (Dynamic from Admin Panel) */}
         <View style={{ opacity: preferences.enabled ? 1 : 0.55 }}>
           <SectionHeading>Astrological Alerts & Categories</SectionHeading>
           <SettingsCard>
-            <SwitchTile
-              testID="notificationSettings.horoscope"
-              title="Daily Horoscope"
-              subtitle="Morning Rashi forecasts & planetary transits"
-              value={preferences.horoscope}
-              onChange={(v) => handleToggle('horoscope', v, 'Daily Horoscope alerts')}
-              secondary={<IconBadge icon="auto_awesome" color="#9370DB" size={20} />}
-            />
-            <TileDivider indent={16} endIndent={16} />
-            <SwitchTile
-              testID="notificationSettings.panchang"
-              title="Panchang & Muhurat"
-              subtitle="Daily Tithi, Abhijit Muhurat & Rahu Kaal"
-              value={preferences.panchang}
-              onChange={(v) => handleToggle('panchang', v, 'Panchang & Muhurat alerts')}
-              secondary={<IconBadge icon="calendar_today_outlined" color="#E69F00" size={20} />}
-            />
-            <TileDivider indent={16} endIndent={16} />
-            <SwitchTile
-              testID="notificationSettings.consultation"
-              title="Consultations & Chat"
-              subtitle="Astrologer availability, call & chat reminders"
-              value={preferences.consultation}
-              onChange={(v) => handleToggle('consultation', v, 'Consultation alerts')}
-              secondary={<IconBadge icon="chat_bubble_outline_rounded" color="#4FC3F7" size={20} />}
-            />
-            <TileDivider indent={16} endIndent={16} />
-            <SwitchTile
-              testID="notificationSettings.offers"
-              title="Offers & Wallet Updates"
-              subtitle="Recharge bonuses, festive discounts & receipts"
-              value={preferences.offers}
-              onChange={(v) => handleToggle('offers', v, 'Offers & Wallet alerts')}
-              secondary={<IconBadge icon="local_offer_outlined" color="#2D9E6B" size={20} />}
-            />
-            <TileDivider indent={16} endIndent={16} />
-            <SwitchTile
-              testID="notificationSettings.remedies"
-              title="Vedic Remedies & Reports"
-              subtitle="Ashta Parihar reminders & Kundli PDF updates"
-              value={preferences.remedies}
-              onChange={(v) => handleToggle('remedies', v, 'Remedies & Reports alerts')}
-              secondary={<IconBadge icon="spa_outlined" color="#E86A58" size={20} />}
-            />
-            <TileDivider indent={16} endIndent={16} />
-            <SwitchTile
-              testID="notificationSettings.system"
-              title="Account & Security Alerts"
-              subtitle="Important platform & account notices"
-              value={preferences.system}
-              onChange={(v) => handleToggle('system', v, 'System alerts')}
-              secondary={<IconBadge icon="shield_outlined" color={colors.goldAccent} size={20} />}
-            />
+            {categories.map((cat, idx) => {
+              const meta = resolveCategoryMeta(cat.id, categories);
+              const isEnabled = preferences[cat.id] !== false;
+              return (
+                <React.Fragment key={cat.id}>
+                  {idx > 0 ? <TileDivider indent={16} endIndent={16} /> : null}
+                  <SwitchTile
+                    testID={`notificationSettings.${cat.id}`}
+                    title={meta.label}
+                    subtitle={meta.description}
+                    value={isEnabled}
+                    onChange={(v) => handleToggle(cat.id, v, `${meta.label} alerts`)}
+                    secondary={
+                      CATEGORY_ICON_MAP[cat.id] ? (
+                        <IconBadge icon={meta.icon as any} color={meta.color} size={20} />
+                      ) : (
+                        <View
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 10,
+                            backgroundColor: withAlpha(meta.color, colors.isLight ? 20 : 28),
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Text style={{ fontSize: 17 }}>{meta.emoji}</Text>
+                        </View>
+                      )
+                    }
+                  />
+                </React.Fragment>
+              );
+            })}
           </SettingsCard>
         </View>
 
