@@ -35,6 +35,7 @@ export function HelpCentreScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [focused, setFocused] = useState(false);
   const [gridW, setGridW] = useState(0);
@@ -47,8 +48,35 @@ export function HelpCentreScreen() {
   }, [fetchContent]);
 
   const cell = gridW > 0 ? (gridW - 20) / 3 : 0;
-  const filtered = (help.faqs || []).map((f, i) => ({ ...f, i })).filter((f) => !query || f.q.toLowerCase().includes(query.toLowerCase()));
-  const toggle = (i: number) => setExpanded((s) => { const n = new Set(s); if (n.has(i)) n.delete(i); else n.add(i); return n; });
+  const filtered = (help.faqs || [])
+    .map((f, i) => ({ ...f, i }))
+    .filter((f) => {
+      const matchesCategory =
+        !selectedCategory || (f.category && f.category.toLowerCase() === selectedCategory.toLowerCase());
+      const q = query.trim().toLowerCase();
+      const matchesQuery =
+        !q ||
+        f.q.toLowerCase().includes(q) ||
+        f.a.toLowerCase().includes(q) ||
+        (f.category && f.category.toLowerCase().includes(q));
+      return matchesCategory && matchesQuery;
+    });
+
+  const toggle = (i: number) =>
+    setExpanded((s) => {
+      const n = new Set(s);
+      if (n.has(i)) n.delete(i);
+      else n.add(i);
+      return n;
+    });
+
+  const handleCategoryPress = (title: string) => {
+    if (selectedCategory?.toLowerCase() === title.toLowerCase()) {
+      setSelectedCategory(null);
+    } else {
+      setSelectedCategory(title);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="helpCentre.screen">
@@ -112,27 +140,139 @@ export function HelpCentreScreen() {
             </Pressable>
             <H mt={20}>{help.browseTopicsTitle || 'Browse by Topic'}</H>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
-              {cell > 0 && (help.categories || []).map((c) => (
-                <View key={c.title} style={{ width: cell, height: cell / 1.1, borderRadius: 14, backgroundColor: withAlpha(c.color, colors.isLight ? 15 : 20), borderWidth: 1, borderColor: withAlpha(c.color, 60), alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 22 }}>{c.emoji}</Text>
-                  <Text numberOfLines={2} style={{ marginTop: 4, color: c.color, fontSize: 10, fontWeight: '700', textAlign: 'center' }}>{c.title}</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: 9 }}>{`${c.count} articles`}</Text>
-                </View>
-              ))}
+              {cell > 0 &&
+                (help.categories || []).map((c) => {
+                  const isSelected = selectedCategory?.toLowerCase() === c.title.toLowerCase();
+                  return (
+                    <Pressable
+                      key={c.title}
+                      onPress={() => handleCategoryPress(c.title)}
+                      style={{
+                        width: cell,
+                        height: cell / 1.05,
+                        borderRadius: 14,
+                        backgroundColor: isSelected
+                          ? withAlpha(c.color, colors.isLight ? 40 : 45)
+                          : withAlpha(c.color, colors.isLight ? 15 : 20),
+                        borderWidth: isSelected ? 2 : 1,
+                        borderColor: isSelected ? c.color : withAlpha(c.color, 60),
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        paddingHorizontal: 4,
+                      }}
+                    >
+                      <Text style={{ fontSize: 22 }}>{c.emoji}</Text>
+                      <Text
+                        numberOfLines={2}
+                        style={{
+                          marginTop: 4,
+                          color: isSelected ? colors.textPrimary : c.color,
+                          fontSize: 10.5,
+                          fontWeight: isSelected ? '800' : '700',
+                          textAlign: 'center',
+                        }}
+                      >
+                        {c.title}
+                      </Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 9, marginTop: 2 }}>
+                        {`${(help.faqs || []).filter((f) => f.category?.toLowerCase() === c.title.toLowerCase()).length || c.count || 0} FAQs`}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
             </View>
             <View style={{ height: 24 }} />
           </>
         ) : null}
+
         <H>{help.faqsTitle || 'Frequently Asked Questions'}</H>
+
+        {selectedCategory ? (
+          <View
+            style={{
+              marginBottom: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              borderRadius: 12,
+              backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 25),
+              borderWidth: 1,
+              borderColor: colors.goldAccent,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+              <AppIcon name="filter_alt_rounded" color={colors.goldAccent} size={18} />
+              <Text numberOfLines={1} style={{ marginLeft: 6, color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>
+                {`Topic: ${selectedCategory} (${filtered.length} FAQs)`}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setSelectedCategory(null)}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                borderRadius: 8,
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.cardBorder,
+              }}
+            >
+              <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>✕ Show All</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {filtered.map((f) => {
           const isExp = expanded.has(f.i);
           return (
-            <View key={f.i} style={{ marginBottom: 8, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: isExp ? colors.goldAccent : colors.cardBorder }}>
-              <Pressable testID={`helpCentre.faq.${f.i}`} onPress={() => toggle(f.i)} style={{ padding: 14, flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{f.q}</Text>
-                <AppIcon name={isExp ? 'keyboard_arrow_up_rounded' : 'keyboard_arrow_down_rounded'} color={colors.goldAccent} size={20} />
+            <View
+              key={f.i}
+              style={{
+                marginBottom: 8,
+                borderRadius: 14,
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: isExp ? colors.goldAccent : colors.cardBorder,
+              }}
+            >
+              <Pressable
+                testID={`helpCentre.faq.${f.i}`}
+                onPress={() => toggle(f.i)}
+                style={{ padding: 14, flexDirection: 'row', alignItems: 'flex-start' }}
+              >
+                <View style={{ flex: 1 }}>
+                  {f.category ? (
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        fontWeight: '700',
+                        color: colors.goldAccent,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {f.category}
+                    </Text>
+                  ) : null}
+                  <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600', lineHeight: 18 }}>
+                    {f.q}
+                  </Text>
+                </View>
+                <AppIcon
+                  name={isExp ? 'keyboard_arrow_up_rounded' : 'keyboard_arrow_down_rounded'}
+                  color={colors.goldAccent}
+                  size={20}
+                  style={{ marginLeft: 8, marginTop: 2 }}
+                />
               </Pressable>
-              {isExp ? <Text style={{ paddingHorizontal: 14, paddingBottom: 14, color: colors.textSecondary, ...lh(12, 1.5) }}>{f.a}</Text> : null}
+              {isExp ? (
+                <Text style={{ paddingHorizontal: 14, paddingBottom: 14, color: colors.textSecondary, ...lh(12.5, 1.6) }}>
+                  {f.a}
+                </Text>
+              ) : null}
             </View>
           );
         })}
