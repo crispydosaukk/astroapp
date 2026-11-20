@@ -33,7 +33,7 @@
       "edgeToEdgeEnabled": true,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/app_logo_emblem.png",
+        "foregroundImage": "./assets/images/app_logo_emblem_adaptive.png",
         "backgroundColor": "#080D1A"
       },
       "permissions": [
