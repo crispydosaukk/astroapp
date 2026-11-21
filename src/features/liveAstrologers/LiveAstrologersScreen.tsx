@@ -160,6 +160,8 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     semanticLabel: 'Revered Vedic Acharya with sacred saffron robes',
     category: 'Vedic',
     isAi: true,
+    voiceGender: 'male',
+    voiceId: 'ash',
     isFeatured: true,
     discount: 'Free 3 min trial',
   },
@@ -179,6 +181,8 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     semanticLabel: 'Authority on Vedic Dosh Nivaran from Ujjain',
     category: 'Remedies',
     isAi: true,
+    voiceGender: 'male',
+    voiceId: 'onyx',
     isFeatured: true,
     discount: 'Instant <1s reply',
   },
@@ -198,6 +202,8 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     semanticLabel: 'Autonomous celestial AI sage',
     category: 'Spirituality',
     isAi: true,
+    voiceGender: 'male',
+    voiceId: 'onyx',
     isFeatured: false,
     discount: 'Top Spiritual AI Seer',
   },
@@ -217,6 +223,8 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     semanticLabel: 'Warm compassionate female Vedic astrologer',
     category: 'Marriage',
     isAi: true,
+    voiceGender: 'female',
+    voiceId: 'coral',
     isFeatured: false,
     discount: '98% Compatibility Accuracy',
   },
@@ -236,6 +244,8 @@ export const AI_ASTROLOGERS_DATA: AstrologerData[] = [
     semanticLabel: 'Sharp modern Vedic astrologer in traditional attire',
     category: 'Career',
     isAi: true,
+    voiceGender: 'male',
+    voiceId: 'echo',
     isFeatured: false,
     discount: 'Promotion & Job Timing',
   },
@@ -267,6 +277,8 @@ export function AstrologerCard({ data, index }: { data: AstrologerData; index: n
         astrologerId: data.id as string,
         astrologerName: data.name,
         avatarUrl: data.imageUrl,
+        ...(data.voiceGender ? { voiceGender: data.voiceGender } : {}),
+        ...(data.voiceId ? { voiceId: data.voiceId } : {}),
       });
     } else {
       push(AppRoutes.astrologerDetailScreen, data);
@@ -585,10 +597,12 @@ function ChipGroup({
 
 function FilterSheet({
   onlineOnly,
+  astrologerType,
   onOnlineChanged,
   onClose,
 }: {
   onlineOnly: boolean;
+  astrologerType: 'real' | 'ai';
   onOnlineChanged: (v: boolean) => void;
   onClose: () => void;
 }) {
@@ -729,14 +743,18 @@ function FilterSheet({
           onSelected={setPrice}
         />
 
-        <View style={{ height: 18 }} />
-        <SectionLabel label="Gender" />
-        <ChipGroup
-          idPrefix="liveAstrologers.filter.gender"
-          options={['All', 'Male', 'Female']}
-          selected={gender}
-          onSelected={setGender}
-        />
+        {astrologerType === 'real' && (
+          <>
+            <View style={{ height: 18 }} />
+            <SectionLabel label="Gender" />
+            <ChipGroup
+              idPrefix="liveAstrologers.filter.gender"
+              options={['All', 'Male', 'Female']}
+              selected={gender}
+              onSelected={setGender}
+            />
+          </>
+        )}
 
         <View style={{ height: 18 }} />
         <SectionLabel label="Language" />
@@ -978,6 +996,8 @@ export default function LiveAstrologersScreen() {
           semanticLabel: a.semanticLabel || a.name,
           category: getCategoryForAstrologer(a.specialty),
           isAi: true,
+          voiceGender: a.voiceGender,
+          voiceId: a.voiceId,
         }));
 
         setAiAstrologers(liveMappedAi);
@@ -1158,7 +1178,12 @@ export default function LiveAstrologersScreen() {
         )}
       </View>
       <BottomSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} testID="liveAstrologers.filterSheet">
-        <FilterSheet onlineOnly={onlineOnly} onOnlineChanged={setOnlineOnly} onClose={() => setSheetOpen(false)} />
+        <FilterSheet
+          onlineOnly={onlineOnly}
+          astrologerType={astrologerType}
+          onOnlineChanged={setOnlineOnly}
+          onClose={() => setSheetOpen(false)}
+        />
       </BottomSheet>
     </SafeAreaView>
   );

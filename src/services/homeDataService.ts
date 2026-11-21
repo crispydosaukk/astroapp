@@ -27,6 +27,8 @@ export interface LiveAstrologer {
   price: number;
   isOnline: boolean;
   isAi: boolean;
+  voiceGender?: 'male' | 'female';
+  voiceId?: string;
   imageUrl: string;
   languages: string;
   semanticLabel?: string;
@@ -101,6 +103,8 @@ export const DEFAULT_AI_ASTROLOGERS: LiveAstrologer[] = [
     price: 25,
     isOnline: true,
     isAi: true,
+    voiceGender: 'male',
+    voiceId: 'ash',
     imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/acharya-devavrat.png',
     languages: 'English, Hindi, Telugu, Tamil, Kannada',
     semanticLabel: 'Revered Vedic Acharya with sacred saffron robes',
@@ -115,6 +119,8 @@ export const DEFAULT_AI_ASTROLOGERS: LiveAstrologer[] = [
     price: 25,
     isOnline: true,
     isAi: true,
+    voiceGender: 'male',
+    voiceId: 'onyx',
     imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/acharya-joshi.png',
     languages: 'Hindi, English, Marathi, Sanskrit',
     semanticLabel: 'Authority on Vedic Dosh Nivaran from Ujjain',
@@ -129,6 +135,8 @@ export const DEFAULT_AI_ASTROLOGERS: LiveAstrologer[] = [
     price: 25,
     isOnline: true,
     isAi: true,
+    voiceGender: 'female',
+    voiceId: 'coral',
     imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/astro-ananya.png',
     languages: 'English, Hindi, Telugu, Tamil',
     semanticLabel: 'Nadi & Kundli Seer, Relationship Expert',
@@ -143,6 +151,8 @@ export const DEFAULT_AI_ASTROLOGERS: LiveAstrologer[] = [
     price: 25,
     isOnline: true,
     isAi: true,
+    voiceGender: 'male',
+    voiceId: 'echo',
     imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/arjun-pandit.png',
     languages: 'English, Hindi, Gujarati, Marathi',
     semanticLabel: 'Vedic Kundli Prodigy & Financial Strategist',
@@ -157,6 +167,8 @@ export const DEFAULT_AI_ASTROLOGERS: LiveAstrologer[] = [
     price: 25,
     isOnline: true,
     isAi: true,
+    voiceGender: 'male',
+    voiceId: 'onyx',
     imageUrl: 'https://astroparihar.com/assets/images/ai-astrologers/swami-ji.png',
     languages: 'English, Hindi, Telugu, Sanskrit',
     semanticLabel: 'Elderly Indian sage with white beard and traditional orange robes',
@@ -650,7 +662,7 @@ async function fetchDirectFirestoreAiAstrologers(): Promise<LiveAstrologer[]> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4500);
     const res = await fetch(
-      `https://firestore.googleapis.com/v1/projects/astroparihar-85e2d/databases/(default)/documents/ai_astrologers?pageSize=50`,
+      `https://firestore.googleapis.com/v1/projects/astroparihar-85e2d/databases/(default)/documents/ai_astrologers?pageSize=200`,
       {
         signal: controller.signal,
         headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
@@ -690,6 +702,10 @@ async function fetchDirectFirestoreAiAstrologers(): Promise<LiveAstrologer[]> {
       const rawAvatar = f.avatar?.stringValue || '/assets/images/ai-astrologers/acharya-devavrat.png';
       const imageUrl = resolveMediaUrl(rawAvatar);
       const isOnline = f.availability?.stringValue !== 'offline';
+      const rawVoiceGender = String(f.voiceGender?.stringValue || '').toLowerCase().trim();
+      const voiceGender: 'male' | 'female' = rawVoiceGender === 'female' ? 'female' : 'male';
+      const voiceId =
+        f.voiceId?.stringValue || (voiceGender === 'female' ? 'coral' : 'ash');
 
       aiList.push({
         id: id || name.toLowerCase().replace(/\s+/g, '-'),
@@ -702,6 +718,8 @@ async function fetchDirectFirestoreAiAstrologers(): Promise<LiveAstrologer[]> {
         price: dynamicAiRate,
         isOnline,
         isAi: true,
+        voiceGender,
+        voiceId,
         imageUrl,
         languages,
         semanticLabel: `${name} - AI Vedic Astrologer`,

@@ -15,6 +15,8 @@ export interface AstrologerData {
   category?: string;
   isFeatured?: boolean;
   isAi?: boolean;
+  voiceGender?: 'male' | 'female';
+  voiceId?: string;
   discount?: string | null;
   [k: string]: unknown;
 }

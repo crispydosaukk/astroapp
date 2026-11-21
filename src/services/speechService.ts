@@ -14,11 +14,19 @@
  */
 
 import * as Speech from 'expo-speech';
+import { API_ENDPOINTS } from '@/config/api';
+import {
+  isNeuralAudioReady,
+  playNeuralAudioBase64,
+  stopNeuralAudio,
+} from '@/components/NeuralAudioHost';
 
 export interface AstrologerSpeechOptions {
   language?: string;
   astrologerName?: string;
+  astrologerId?: string;
   gender?: 'male' | 'female';
+  voiceId?: string;
   onStart?: () => void;
   onDone?: () => void;
   onError?: (error: any) => void;
@@ -417,62 +425,74 @@ async function resolveVoiceIdentifier(langCode: string, isFemale: boolean): Prom
   }
 }
 
-/**
- * Speak Astrologer response with 100% reliable voice synthesis and strict gender fidelity across ALL languages.
- * - Male Astrologers: Resonant, mature Pandit baritone (NO high-pitched girl voice in Telugu, Hindi, Tamil, Kannada, Malayalam).
- * - Female Astrologers: Sweet, soothing maternal voice.
- */
-export async function speakAstrologerText(
-  text: string,
-  options: AstrologerSpeechOptions = {}
-): Promise<void> {
-  const clean = cleanTextForSpeech(text, options.language);
-  if (!clean) {
-    options.onDone?.();
-    return;
-  }
-
-  // Invalidate any ongoing or queued speech
-  activeSpeechId += 1;
-  const currentToken = activeSpeechId;
-
-  // Safely stop existing speech only if audio is actively playing, allowing audio pipeline to flush
+async function fetchSmoothNeuralAudioChunk(params: {
+  text: string;
+  lang: string;
+  gender: 'male' | 'female';
+  voiceId?: string;
+  astrologerId?: string;
+  astrologerName?: string;
+}): Promise<string | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 9000);
   try {
-    const isSpeaking = await Speech.isSpeakingAsync().catch(() => false);
-    if (isSpeaking) {
-      await Speech.stop().catch(() => {});
-      await new Promise((resolve) => setTimeout(resolve, 70));
+    const res = await fetch(API_ENDPOINTS.tts, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: params.text,
+        lang: params.lang,
+        gender: params.gender,
+        voiceId: params.voiceId,
+        astrologerId: params.astrologerId,
+        astrologerName: params.astrologerName,
+        format: 'json',
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.success && typeof data.audioBase64 === 'string' && data.audioBase64.length > 64) {
+      return data.audioBase64;
     }
-  } catch {}
+    return null;
+  } catch {
+    clearTimeout(timeout);
+    return null;
+  }
+}
 
-  const chunks = splitIntoSpeechChunks(clean, 180);
+async function speakWithDeviceFallback(
+  textToSpeak: string,
+  currentToken: number,
+  meta: LanguageMeta,
+  isFemale: boolean,
+  options: AstrologerSpeechOptions,
+  alreadyStarted: boolean
+): Promise<void> {
+  if (currentToken !== activeSpeechId) return;
+  const chunks = splitIntoSpeechChunks(textToSpeak, 180);
   if (chunks.length === 0) {
     options.onDone?.();
     return;
   }
 
-  const meta = getLanguageMetadata(options.language);
-  const isFemale = isFemaleAstrologer(options.astrologerName, options.gender);
-
   const resolved = await resolveVoiceIdentifier(meta.bcp47, isFemale);
+  if (currentToken !== activeSpeechId) return;
   let currentVoiceId = resolved.voiceId;
 
-  // Natural Acoustic Timbre Modulation (ChatGPT-style smooth, clear human voices):
-  let pitch = 1.00;
+  let pitch = 1.0;
   let rate = 0.98;
-
   if (!isFemale) {
-    // MALE ASTROLOGER (Acharya Devavrat / Dhananjay / Swami / Pandit / Bhaskar)
     if (resolved.isNativeGenderMatched) {
       pitch = 0.96;
       rate = 0.98;
     } else {
-      // Natural, warm Pandit baritone without robotic slowdown or distortion
       pitch = 0.88;
       rate = 0.96;
     }
   } else {
-    // FEMALE ASTROLOGER (Devi / Mata / Ananya / Vedika / Priya)
     if (resolved.isNativeGenderMatched) {
       pitch = 1.02;
       rate = 0.98;
@@ -482,24 +502,23 @@ export async function speakAstrologerText(
     }
   }
 
-  options.onStart?.();
+  if (!alreadyStarted) {
+    options.onStart?.();
+  }
 
   let chunkIndex = 0;
   let hasRetriedCurrentChunk = false;
 
   const speakNext = () => {
     if (currentToken !== activeSpeechId) return;
-
     if (chunkIndex >= chunks.length) {
       options.onDone?.();
       return;
     }
 
     const chunk = chunks[chunkIndex];
-    const langToSpeak = meta.bcp47;
-
     Speech.speak(chunk, {
-      language: langToSpeak,
+      language: meta.bcp47,
       voice: currentVoiceId,
       pitch,
       rate,
@@ -510,19 +529,14 @@ export async function speakAstrologerText(
           speakNext();
         }
       },
-      onError: (err) => {
-        console.warn('Speech chunk error for language:', meta.bcp47, err);
+      onError: () => {
         if (currentToken !== activeSpeechId) return;
-
-        // If specific voice ID failed, retry ONCE with fallback default voice using the deep male pitch
         if (currentVoiceId && !hasRetriedCurrentChunk) {
           currentVoiceId = undefined;
           hasRetriedCurrentChunk = true;
           speakNext();
           return;
         }
-
-        // Advance to next chunk so recitation never stalls
         chunkIndex += 1;
         hasRetriedCurrentChunk = false;
         if (chunkIndex < chunks.length) {
@@ -549,10 +563,132 @@ export async function speakAstrologerText(
 }
 
 /**
+ * Speak Astrologer response with smooth, ChatGPT-style studio neural Male & Female voices.
+ * - Primary: Server neural voice engine (/api/tts: OpenAI ChatGPT gpt-4o-mini-tts -> Microsoft Studio Neural)
+ *   with strict Male / Female voice separation and look-ahead chunk prefetching for gapless smooth flow.
+ * - Fallback: Tuned on-device expo-speech if offline or remote audio cannot play.
+ */
+export async function speakAstrologerText(
+  text: string,
+  options: AstrologerSpeechOptions = {}
+): Promise<void> {
+  const clean = cleanTextForSpeech(text, options.language);
+  if (!clean) {
+    options.onDone?.();
+    return;
+  }
+
+  // Invalidate any ongoing or queued speech
+  activeSpeechId += 1;
+  const currentToken = activeSpeechId;
+
+  // Immediately silence both neural audio and native device speech
+  stopNeuralAudio();
+  try {
+    const isSpeaking = await Speech.isSpeakingAsync().catch(() => false);
+    if (isSpeaking) {
+      await Speech.stop().catch(() => {});
+    }
+  } catch {}
+
+  if (currentToken !== activeSpeechId) return;
+
+  const meta = getLanguageMetadata(options.language);
+  const isFemale = isFemaleAstrologer(options.astrologerName, options.gender);
+  const resolvedGender: 'male' | 'female' = isFemale ? 'female' : 'male';
+
+  // Primary Path: Smooth ChatGPT-Style Studio Neural Voice (/api/tts)
+  if (isNeuralAudioReady()) {
+    const neuralChunks = splitIntoSpeechChunks(clean, 420);
+    if (neuralChunks.length > 0) {
+      let hasNotifiedStart = false;
+
+      // Kick off chunk 0 synthesis right away
+      let nextFetchPromise: Promise<string | null> | null = fetchSmoothNeuralAudioChunk({
+        text: neuralChunks[0],
+        lang: meta.iso2,
+        gender: resolvedGender,
+        voiceId: options.voiceId,
+        astrologerId: options.astrologerId,
+        astrologerName: options.astrologerName,
+      });
+
+      for (let i = 0; i < neuralChunks.length; i++) {
+        if (currentToken !== activeSpeechId) return;
+
+        const audioBase64 = nextFetchPromise ? await nextFetchPromise : null;
+        if (currentToken !== activeSpeechId) return;
+
+        // Pre-fetch chunk i+1 in parallel while chunk i plays for seamless ChatGPT-like flow
+        if (i + 1 < neuralChunks.length) {
+          nextFetchPromise = fetchSmoothNeuralAudioChunk({
+            text: neuralChunks[i + 1],
+            lang: meta.iso2,
+            gender: resolvedGender,
+            voiceId: options.voiceId,
+            astrologerId: options.astrologerId,
+            astrologerName: options.astrologerName,
+          });
+        } else {
+          nextFetchPromise = null;
+        }
+
+        if (!audioBase64) {
+          // Smoothly finish remaining text using device fallback so speech never cuts off
+          const remaining = neuralChunks.slice(i).join(' ');
+          await speakWithDeviceFallback(
+            remaining,
+            currentToken,
+            meta,
+            isFemale,
+            options,
+            hasNotifiedStart
+          );
+          return;
+        }
+
+        const played = await playNeuralAudioBase64(audioBase64, {
+          onStart: () => {
+            if (currentToken === activeSpeechId && !hasNotifiedStart) {
+              hasNotifiedStart = true;
+              options.onStart?.();
+            }
+          },
+        });
+
+        if (currentToken !== activeSpeechId) return;
+
+        if (!played) {
+          const remaining = neuralChunks.slice(i).join(' ');
+          await speakWithDeviceFallback(
+            remaining,
+            currentToken,
+            meta,
+            isFemale,
+            options,
+            hasNotifiedStart
+          );
+          return;
+        }
+      }
+
+      if (currentToken === activeSpeechId) {
+        options.onDone?.();
+      }
+      return;
+    }
+  }
+
+  // Fallback Path: On-device tuned TTS when NeuralAudioHost is not mounted or offline
+  await speakWithDeviceFallback(clean, currentToken, meta, isFemale, options, false);
+}
+
+/**
  * Stop active speech and cancel any pending queued chunks immediately
  */
 export async function stopAstrologerSpeech(): Promise<void> {
   activeSpeechId += 1; // Invalidate current speech queue
+  stopNeuralAudio();
   try {
     await Speech.stop();
   } catch (err) {

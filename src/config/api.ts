@@ -22,6 +22,7 @@ export const API_ENDPOINTS = {
   matchKundli: `${BASE_URL}/api/app-dynamic/match-kundli`,
   panchang: `${BASE_URL}/api/app-dynamic/panchang`,
   aiChat: `${BASE_URL}/api/app-dynamic/ai-chat`,
+  tts: `${BASE_URL}/api/tts`,
   reviews: `${BASE_URL}/api/app-dynamic/reviews`,
   services: `${BASE_URL}/api/app-dynamic/services`,
   serviceDetails: `${BASE_URL}/api/app-dynamic/service-details`,

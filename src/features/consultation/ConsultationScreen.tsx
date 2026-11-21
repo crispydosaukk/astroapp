@@ -42,6 +42,7 @@ import { useAuthStore } from '@/features/auth/authStore';
 import { useBirthProfileStore } from '@/services/birthProfileStore';
 import { AppRoutes, go, push, useExtra } from '@/navigation/routes';
 import { submitConsultationReview } from '@/services/reviewService';
+import { fetchAiAstrologers } from '@/services/homeDataService';
 import { deductWalletBalance, getWalletBalance, subscribeWallet } from '@/services/walletService';
 import { generateZegoRoomId } from '@/services/zegoService';
 import { useCurrencyStore } from '@/services/currencyStore';
@@ -425,8 +426,58 @@ export default function ConsultationScreen() {
   // Unified dynamic pricing for all AI astrologers (admin controlled)
   const dynamicAiVoiceRate = useCurrencyStore((s) => s.pricingSettings.aiVoicePricePerMinute) || 25;
   const ratePerMin = isAi ? dynamicAiVoiceRate : Number(astro.price ?? 25);
-  const astroGender: 'male' | 'female' =
-    (astro as any)?.gender || (isFemaleAstrologer(astro.name) ? 'female' : 'male');
+  const initialAstroGender: 'male' | 'female' =
+    (astro as any)?.voiceGender === 'female' || (astro as any)?.gender === 'female'
+      ? 'female'
+      : (astro as any)?.voiceGender === 'male' || (astro as any)?.gender === 'male'
+      ? 'male'
+      : isFemaleAstrologer(astro.name)
+      ? 'female'
+      : 'male';
+  const [resolvedVoiceGender, setResolvedVoiceGender] = useState<'male' | 'female'>(initialAstroGender);
+  const [resolvedVoiceId, setResolvedVoiceId] = useState<string | undefined>(
+    (astro as any)?.voiceId || (initialAstroGender === 'female' ? 'coral' : 'ash')
+  );
+  const astroGenderRef = useRef<'male' | 'female'>(initialAstroGender);
+  const astroVoiceIdRef = useRef<string | undefined>(
+    (astro as any)?.voiceId || (initialAstroGender === 'female' ? 'coral' : 'ash')
+  );
+  const astroGender = resolvedVoiceGender;
+  const astroIdStr = String((astro as any)?.id || '');
+
+  useEffect(() => {
+    astroGenderRef.current = resolvedVoiceGender;
+    astroVoiceIdRef.current = resolvedVoiceId;
+  }, [resolvedVoiceGender, resolvedVoiceId]);
+
+  // Silently sync live Male/Female voice profile from Admin Dashboard / Firestore (never shown in UI)
+  useEffect(() => {
+    if (!isAi) return;
+    let cancelled = false;
+    fetchAiAstrologers()
+      .then((list) => {
+        if (cancelled || !Array.isArray(list)) return;
+        const match = list.find(
+          (a) =>
+            (astroIdStr && a.id === astroIdStr) ||
+            a.name.toLowerCase() === (astro.name || '').toLowerCase()
+        );
+        if (match) {
+          if (match.voiceGender) {
+            setResolvedVoiceGender(match.voiceGender);
+            astroGenderRef.current = match.voiceGender;
+          }
+          if (match.voiceId) {
+            setResolvedVoiceId(match.voiceId);
+            astroVoiceIdRef.current = match.voiceId;
+          }
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isAi, astroIdStr, astro.name]);
   const { formatPrice, formatRate } = useCurrencyStore();
 
   // Authentication check
@@ -849,7 +900,9 @@ export default function ConsultationScreen() {
         // 3. Audio speech starts once 5-min balance is verified (recites full greeting)
         speakAstrologerText(initialGreeting, {
           astrologerName: astro.name,
-          gender: astroGender,
+          astrologerId: astroIdStr || undefined,
+          gender: astroGenderRef.current,
+          voiceId: astroVoiceIdRef.current,
           language: selectedLanguage,
           onStart: () => { if (!callEndedRef.current) setIsAiSpeaking(true); },
           onDone: () => setIsAiSpeaking(false),
@@ -1141,7 +1194,9 @@ export default function ConsultationScreen() {
         if (isSpeakerOn && !isMuted && !callEndedRef.current) {
           speakAstrologerText(clarification.message, {
             astrologerName: astro.name,
-            gender: astroGender,
+            astrologerId: astroIdStr || undefined,
+            gender: astroGenderRef.current,
+            voiceId: astroVoiceIdRef.current,
             language: selectedLanguage,
             onStart: () => { if (!callEndedRef.current) setIsAiSpeaking(true); },
             onDone: () => setIsAiSpeaking(false),
@@ -1178,7 +1233,9 @@ export default function ConsultationScreen() {
           if (isSpeakerOn && !isMuted && !callEndedRef.current) {
             speakAstrologerText(res.reply, {
               astrologerName: astro.name,
-              gender: astroGender,
+              astrologerId: astroIdStr || undefined,
+              gender: astroGenderRef.current,
+              voiceId: astroVoiceIdRef.current,
               language: selectedLanguage,
               onStart: () => { if (!callEndedRef.current) setIsAiSpeaking(true); },
               onDone: () => setIsAiSpeaking(false),
@@ -1211,7 +1268,9 @@ export default function ConsultationScreen() {
       if (isAi && isSpeakerOn && !isMuted && !callEndedRef.current) {
         speakAstrologerText(fallbackReply, {
           astrologerName: astro.name,
-          gender: astroGender,
+          astrologerId: astroIdStr || undefined,
+          gender: astroGenderRef.current,
+          voiceId: astroVoiceIdRef.current,
           language: selectedLanguage,
           onStart: () => { if (!callEndedRef.current) setIsAiSpeaking(true); },
           onDone: () => setIsAiSpeaking(false),
@@ -1909,7 +1968,9 @@ export default function ConsultationScreen() {
                                     if (callEndedRef.current) return;
                                     speakAstrologerText(m.text, {
                                       astrologerName: astro.name,
-                                      gender: astroGender,
+                                      astrologerId: astroIdStr || undefined,
+                                      gender: astroGenderRef.current,
+                                      voiceId: astroVoiceIdRef.current,
                                       language: selectedLanguage,
                                       onStart: () => { if (!callEndedRef.current) setIsAiSpeaking(true); },
                                       onDone: () => setIsAiSpeaking(false),
@@ -2812,7 +2873,9 @@ export default function ConsultationScreen() {
                       if (isSpeakerOn && !isMuted && !callEndedRef.current) {
                         speakAstrologerText(switchMsg, {
                           astrologerName: astro.name,
-                          gender: astroGender,
+                          astrologerId: astroIdStr || undefined,
+                          gender: astroGenderRef.current,
+                          voiceId: astroVoiceIdRef.current,
                           language: lang.name,
                           onStart: () => { if (!callEndedRef.current) setIsAiSpeaking(true); },
                           onDone: () => setIsAiSpeaking(false),

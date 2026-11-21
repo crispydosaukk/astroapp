@@ -49,6 +49,7 @@ import {
   speakAstrologerText,
   stopAstrologerSpeech,
 } from '@/services/speechService';
+import { fetchAiAstrologers } from '@/services/homeDataService';
 import { analyzeQueryClarification } from './aiChatClarification';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -99,13 +100,14 @@ export const ASTROLOGER_PERSONAS: Array<{
   emoji: string;
   color: string;
   gender: 'male' | 'female';
+  voiceId: string;
 }> = [
-  { id: 'acharya-devavrat', name: 'Acharya Devavrat (AI)', title: 'Vedic Grandmaster & Dasha Guru', emoji: '🧘‍♂️', color: '#C9A84C', gender: 'male' },
-  { id: 'vedika', name: 'AstroParihar AI', title: 'Autonomous Vedic Ephemeris Engine', emoji: '🔮', color: '#9370DB', gender: 'female' },
-  { id: 'guru-brihaspati', name: 'Guru Brihaspati (AI)', title: 'Celestial Wisdom & Higher Dharma Guide', emoji: '🕉️', color: '#FF9800', gender: 'male' },
-  { id: 'astro-ananya', name: 'Astro Ananya (AI)', title: 'Nadi & Kundli Seer', emoji: '🌸', color: '#E91E63', gender: 'female' },
-  { id: 'arjun-pandit', name: 'Arjun Pandit (AI)', title: 'Vedic Kundli Prodigy', emoji: '✨', color: '#2196F3', gender: 'male' },
-  { id: 'ratna-vidya', name: 'Ratna Vidya AI', title: 'Planetary Gem Resonance Specialist', emoji: '💎', color: '#4CAF50', gender: 'female' },
+  { id: 'acharya-devavrat', name: 'Acharya Devavrat (AI)', title: 'Vedic Grandmaster & Dasha Guru', emoji: '🧘‍♂️', color: '#C9A84C', gender: 'male', voiceId: 'ash' },
+  { id: 'vedika', name: 'AstroParihar AI', title: 'Autonomous Vedic Ephemeris Engine', emoji: '🔮', color: '#9370DB', gender: 'female', voiceId: 'coral' },
+  { id: 'guru-brihaspati', name: 'Guru Brihaspati (AI)', title: 'Celestial Wisdom & Higher Dharma Guide', emoji: '🕉️', color: '#FF9800', gender: 'male', voiceId: 'onyx' },
+  { id: 'astro-ananya', name: 'Astro Ananya (AI)', title: 'Nadi & Kundli Seer', emoji: '🌸', color: '#E91E63', gender: 'female', voiceId: 'coral' },
+  { id: 'arjun-pandit', name: 'Arjun Pandit (AI)', title: 'Vedic Kundli Prodigy', emoji: '✨', color: '#2196F3', gender: 'male', voiceId: 'echo' },
+  { id: 'ratna-vidya', name: 'Ratna Vidya AI', title: 'Planetary Gem Resonance Specialist', emoji: '💎', color: '#4CAF50', gender: 'female', voiceId: 'nova' },
 ];
 
 const QUICK_PROMPTS_BY_LANG: Record<string, string[]> = {
@@ -1141,16 +1143,41 @@ export default function AiChatScreen() {
   const initialWindowH = useRef(Dimensions.get('window').height).current;
   const colors = useThemeColors();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ initialPrompt?: string; astrologerName?: string; astrologerId?: string; avatarUrl?: string }>();
+  const params = useLocalSearchParams<{
+    initialPrompt?: string;
+    astrologerName?: string;
+    astrologerId?: string;
+    avatarUrl?: string;
+    voiceGender?: string;
+    voiceId?: string;
+    gender?: string;
+  }>();
 
   const selectedLanguage = useLanguageStore((s) => s.selectedLanguage);
   const setSelectedLanguage = (lang: string) => {
     useLanguageStore.getState().setLanguage(lang as AppLanguage);
   };
   const [selectedModel, setSelectedModel] = useState<'auto' | 'vedika-ai' | 'openai-gpt4o'>('auto');
-  const [selectedAstrologer, setSelectedAstrologer] = useState<{ id: string; name: string; title: string; emoji?: string; color?: string; avatarUrl?: string; gender?: 'male' | 'female' }>(() => {
+  const [selectedAstrologer, setSelectedAstrologer] = useState<{
+    id: string;
+    name: string;
+    title: string;
+    emoji?: string;
+    color?: string;
+    avatarUrl?: string;
+    gender?: 'male' | 'female';
+    voiceId?: string;
+  }>(() => {
+    const rawParamGender = (params.voiceGender || params.gender || '').toLowerCase();
     if (params.astrologerName) {
-      const g: 'male' | 'female' = ((params as any).gender as any) || (isFemaleAstrologer(params.astrologerName) ? 'female' : 'male');
+      const g: 'male' | 'female' =
+        rawParamGender === 'female'
+          ? 'female'
+          : rawParamGender === 'male'
+          ? 'male'
+          : isFemaleAstrologer(params.astrologerName)
+          ? 'female'
+          : 'male';
       return {
         id: params.astrologerId || 'ai-custom',
         name: params.astrologerName,
@@ -1159,6 +1186,7 @@ export default function AiChatScreen() {
         color: '#C9A84C',
         avatarUrl: params.avatarUrl,
         gender: g,
+        voiceId: params.voiceId || (g === 'female' ? 'coral' : 'ash'),
       };
     }
     return ASTROLOGER_PERSONAS.find((a) => a.id === params.astrologerId) || ASTROLOGER_PERSONAS[0];
@@ -1166,7 +1194,15 @@ export default function AiChatScreen() {
 
   useEffect(() => {
     if (params.astrologerName && params.astrologerName !== selectedAstrologer.name) {
-      const g: 'male' | 'female' = ((params as any).gender as any) || (isFemaleAstrologer(params.astrologerName) ? 'female' : 'male');
+      const rawParamGender = (params.voiceGender || params.gender || '').toLowerCase();
+      const g: 'male' | 'female' =
+        rawParamGender === 'female'
+          ? 'female'
+          : rawParamGender === 'male'
+          ? 'male'
+          : isFemaleAstrologer(params.astrologerName)
+          ? 'female'
+          : 'male';
       setSelectedAstrologer({
         id: params.astrologerId || 'ai-custom',
         name: params.astrologerName,
@@ -1175,9 +1211,36 @@ export default function AiChatScreen() {
         color: '#C9A84C',
         avatarUrl: params.avatarUrl,
         gender: g,
+        voiceId: params.voiceId || (g === 'female' ? 'coral' : 'ash'),
       });
     }
-  }, [params.astrologerName, params.astrologerId, params.avatarUrl]);
+  }, [params.astrologerName, params.astrologerId, params.avatarUrl, params.voiceGender, params.voiceId, params.gender]);
+
+  // Silently sync live Male/Female voice profile from Firestore/Admin Dashboard (never shown in UI)
+  useEffect(() => {
+    let cancelled = false;
+    fetchAiAstrologers()
+      .then((list) => {
+        if (cancelled || !Array.isArray(list) || list.length === 0) return;
+        const match = list.find(
+          (a) =>
+            (selectedAstrologer.id && a.id === selectedAstrologer.id) ||
+            a.name.toLowerCase() === selectedAstrologer.name.toLowerCase()
+        );
+        if (match && (match.voiceGender || match.voiceId)) {
+          setSelectedAstrologer((prev) => {
+            const nextGender = match.voiceGender || prev.gender;
+            const nextVoiceId = match.voiceId || prev.voiceId;
+            if (prev.gender === nextGender && prev.voiceId === nextVoiceId) return prev;
+            return { ...prev, gender: nextGender, voiceId: nextVoiceId };
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAstrologer.id, selectedAstrologer.name]);
 
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showModelModal, setShowModelModal] = useState(false);
@@ -1232,11 +1295,20 @@ export default function AiChatScreen() {
     } else {
       await stopAstrologerSpeech();
       if (mounted.current) setSpeakingIndex(idx);
-      const isFemale = selectedAstrologer.gender === 'female' || isFemaleAstrologer(selectedAstrologer.name);
+      const resolvedGender: 'male' | 'female' =
+        selectedAstrologer.gender === 'female'
+          ? 'female'
+          : selectedAstrologer.gender === 'male'
+          ? 'male'
+          : isFemaleAstrologer(selectedAstrologer.name)
+          ? 'female'
+          : 'male';
       speakAstrologerText(text, {
         language: selectedLanguage,
         astrologerName: selectedAstrologer.name,
-        gender: isFemale ? 'female' : 'male',
+        astrologerId: selectedAstrologer.id,
+        gender: resolvedGender,
+        voiceId: selectedAstrologer.voiceId,
         onStart: () => {
           if (mounted.current) setSpeakingIndex(idx);
         },
@@ -1314,11 +1386,20 @@ export default function AiChatScreen() {
             setTimeout(() => {
               if (!mounted.current) return;
               setSpeakingIndex(0);
-              const isFemale = selectedAstrologer.gender === 'female' || isFemaleAstrologer(selectedAstrologer.name);
+              const resolvedGender: 'male' | 'female' =
+                selectedAstrologer.gender === 'female'
+                  ? 'female'
+                  : selectedAstrologer.gender === 'male'
+                  ? 'male'
+                  : isFemaleAstrologer(selectedAstrologer.name)
+                  ? 'female'
+                  : 'male';
               speakAstrologerText(welcome.content, {
                 language: selectedLanguage,
                 astrologerName: selectedAstrologer.name,
-                gender: isFemale ? 'female' : 'male',
+                astrologerId: selectedAstrologer.id,
+                gender: resolvedGender,
+                voiceId: selectedAstrologer.voiceId,
                 onStart: () => { if (mounted.current) setSpeakingIndex(0); },
                 onDone: () => { if (mounted.current) setSpeakingIndex(null); },
                 onError: () => { if (mounted.current) setSpeakingIndex(null); },
@@ -1492,11 +1573,20 @@ export default function AiChatScreen() {
       setTimeout(() => {
         if (!mounted.current) return;
         setSpeakingIndex(0);
-        const isFemale = selectedAstrologer.gender === 'female' || isFemaleAstrologer(selectedAstrologer.name);
+        const resolvedGender: 'male' | 'female' =
+          selectedAstrologer.gender === 'female'
+            ? 'female'
+            : selectedAstrologer.gender === 'male'
+            ? 'male'
+            : isFemaleAstrologer(selectedAstrologer.name)
+            ? 'female'
+            : 'male';
         speakAstrologerText(welcome.content, {
           language: selectedLanguage,
           astrologerName: selectedAstrologer.name,
-          gender: isFemale ? 'female' : 'male',
+          astrologerId: selectedAstrologer.id,
+          gender: resolvedGender,
+          voiceId: selectedAstrologer.voiceId,
           onStart: () => { if (mounted.current) setSpeakingIndex(0); },
           onDone: () => { if (mounted.current) setSpeakingIndex(null); },
           onError: () => { if (mounted.current) setSpeakingIndex(null); },
@@ -1597,11 +1687,20 @@ export default function AiChatScreen() {
         scrollToMessageStart();
         // Speak clarification naturally in astrologer's authentic voice
         setSpeakingIndex(msgIdx);
-        const isFemale = selectedAstrologer.gender === 'female' || isFemaleAstrologer(selectedAstrologer.name);
+        const resolvedGender: 'male' | 'female' =
+          selectedAstrologer.gender === 'female'
+            ? 'female'
+            : selectedAstrologer.gender === 'male'
+            ? 'male'
+            : isFemaleAstrologer(selectedAstrologer.name)
+            ? 'female'
+            : 'male';
         speakAstrologerText(replyText, {
           language: selectedLanguage,
           astrologerName: selectedAstrologer.name,
-          gender: isFemale ? 'female' : 'male',
+          astrologerId: selectedAstrologer.id,
+          gender: resolvedGender,
+          voiceId: selectedAstrologer.voiceId,
           onStart: () => { if (mounted.current) setSpeakingIndex(msgIdx); },
           onDone: () => { if (mounted.current) setSpeakingIndex(null); },
           onError: () => { if (mounted.current) setSpeakingIndex(null); },
@@ -1682,11 +1781,20 @@ export default function AiChatScreen() {
       // Read complete AI response in astrologer's authentic voice
       const replyMsgIdx = messages.length + 1;
       setSpeakingIndex(replyMsgIdx);
-      const isFemaleReply = selectedAstrologer.gender === 'female' || isFemaleAstrologer(selectedAstrologer.name);
+      const resolvedReplyGender: 'male' | 'female' =
+        selectedAstrologer.gender === 'female'
+          ? 'female'
+          : selectedAstrologer.gender === 'male'
+          ? 'male'
+          : isFemaleAstrologer(selectedAstrologer.name)
+          ? 'female'
+          : 'male';
       speakAstrologerText(res.reply, {
         language: selectedLanguage,
         astrologerName: selectedAstrologer.name,
-        gender: isFemaleReply ? 'female' : 'male',
+        astrologerId: selectedAstrologer.id,
+        gender: resolvedReplyGender,
+        voiceId: selectedAstrologer.voiceId,
         onStart: () => { if (mounted.current) setSpeakingIndex(replyMsgIdx); },
         onDone: () => { if (mounted.current) setSpeakingIndex(null); },
         onError: () => { if (mounted.current) setSpeakingIndex(null); },

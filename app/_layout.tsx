@@ -17,6 +17,7 @@ import { AppState, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppErrorBoundary } from '@/components/ErrorBoundary';
+import { NeuralAudioHost } from '@/components/NeuralAudioHost';
 import { OverlayHost, SnackbarHost } from '@/components/overlays';
 import { PickerHost } from '@/components/pickers';
 import { useAuthStore } from '@/features/auth/authStore';
@@ -144,6 +145,7 @@ export default function RootLayout() {
         <OverlayHost />
         <PickerHost />
         <SnackbarHost />
+        <NeuralAudioHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

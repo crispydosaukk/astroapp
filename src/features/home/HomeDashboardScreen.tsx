@@ -1338,7 +1338,14 @@ function PersonalisedRecs({
       tagBgLight: '#FFF8EE',
       tagBorderLight: 'rgba(201,168,76,0.5)',
       tagTextLight: '#7C5205',
-      onPress: () => push(AppRoutes.aiChatScreen, { astrologerId: topAi.id, astrologerName: topAi.name, avatarUrl: topAi.imageUrl }),
+      onPress: () =>
+        push(AppRoutes.aiChatScreen, {
+          astrologerId: topAi.id,
+          astrologerName: topAi.name,
+          avatarUrl: topAi.imageUrl,
+          ...(topAi.voiceGender ? { voiceGender: topAi.voiceGender } : {}),
+          ...(topAi.voiceId ? { voiceId: topAi.voiceId } : {}),
+        }),
     },
     ...(topReal
       ? [
@@ -1732,6 +1739,8 @@ function AiAstrologersCarousel({ aiAstrologers = [] }: { aiAstrologers?: LiveAst
                 astrologerId: a.id,
                 astrologerName: a.name,
                 avatarUrl: a.imageUrl,
+                ...(a.voiceGender ? { voiceGender: a.voiceGender } : {}),
+                ...(a.voiceId ? { voiceId: a.voiceId } : {}),
               });
             }}
             style={{
