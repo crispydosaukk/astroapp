@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -130,8 +131,43 @@ export default function AstrologerDashboardScreen() {
   // Sign Out & Withdraw Modals
   const [showLogoutModal, setShowLogoutModal] = useState<boolean>(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState<boolean>(false);
+  const [accountBlocked, setAccountBlocked] = useState<{
+    type: 'suspended' | 'deactivated';
+    reason: string;
+  } | null>(null);
 
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const evaluateRemoteRestriction = useCallback(async (remoteData: Record<string, any> | null) => {
+    if (!remoteData) return false;
+    const status = String(remoteData.status || remoteData.lifecycleStatus || '')
+      .toLowerCase()
+      .trim();
+    const isSuspended = Boolean(remoteData.isSuspended || status === 'suspended');
+    const isDeactivated = Boolean(
+      remoteData.isActive === false ||
+        remoteData.dashboardDisabled === true ||
+        status === 'deactivated' ||
+        status === 'inactive' ||
+        status === 'blocked'
+    );
+
+    if (isSuspended || isDeactivated) {
+      setIsOnline(false);
+      setActiveCallSession(null);
+      setAccountBlocked({
+        type: isSuspended ? 'suspended' : 'deactivated',
+        reason:
+          String(remoteData.suspensionReason || '').trim() ||
+          (isSuspended
+            ? 'Your astrologer account has been suspended by the administrator. Dashboard access is disabled.'
+            : 'Your astrologer account has been deactivated by the administrator. Dashboard access is disabled.'),
+      });
+      await AsyncStorage.removeItem(ASTRO_SESSION_KEY).catch(() => {});
+      return true;
+    }
+    return false;
+  }, []);
 
   // 1. Hydrate Astrologer Session & Fetch Real Profile from Firestore
   const loadAstrologerData = useCallback(async () => {
@@ -161,6 +197,8 @@ export default function AstrologerDashboardScreen() {
       // Fetch live profile from Firestore (`astrologers/{id}` or `candidates/{id}`)
       const remoteData = await fetchAstrologerProfileFromFirestore(targetId);
       if (remoteData) {
+        const blocked = await evaluateRemoteRestriction(remoteData);
+        if (blocked) return;
         if (remoteData.name) setAstrologerName(remoteData.name);
         if (remoteData.email) setEmail(remoteData.email);
         if (typeof remoteData.isOnline === 'boolean') setIsOnline(remoteData.isOnline);
@@ -259,15 +297,22 @@ export default function AstrologerDashboardScreen() {
   }, [loadAstrologerData]);
 
   useEffect(() => {
-    if (!currentId) return;
+    if (!currentId || accountBlocked) return;
     refreshConsultations(currentId);
-    pollTimerRef.current = setInterval(() => {
+    let tickCount = 0;
+    pollTimerRef.current = setInterval(async () => {
       refreshConsultations(currentId);
+      tickCount += 1;
+      // Check live suspension/deactivation status every ~7 seconds
+      if (tickCount % 2 === 0) {
+        const liveProfile = await fetchAstrologerProfileFromFirestore(currentId);
+        await evaluateRemoteRestriction(liveProfile);
+      }
     }, 3500);
     return () => {
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
     };
-  }, [currentId, refreshConsultations]);
+  }, [currentId, accountBlocked, refreshConsultations, evaluateRemoteRestriction]);
 
   // 3. In-Call Countdown Timer
   useEffect(() => {
@@ -581,6 +626,111 @@ export default function AstrologerDashboardScreen() {
     const s = sec % 60;
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
+
+  if (accountBlocked) {
+    const isSuspended = accountBlocked.type === 'suspended';
+    return (
+      <SafeAreaView
+        edges={['top', 'bottom']}
+        style={[
+          styles.container,
+          { backgroundColor: colors.background, justifyContent: 'center', padding: 24 },
+        ]}
+        testID="astrologerDashboard.blockedScreen"
+      >
+        <StatusBar style={colors.isLight ? 'dark' : 'light'} />
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderRadius: 24,
+            borderWidth: 1.5,
+            borderColor: 'rgba(220, 38, 38, 0.45)',
+            padding: 24,
+            alignItems: 'center',
+          }}
+        >
+          <View
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 22,
+              backgroundColor: 'rgba(220, 38, 38, 0.14)',
+              borderWidth: 1,
+              borderColor: 'rgba(220, 38, 38, 0.35)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 16,
+            }}
+          >
+            <AppIcon name="block" size={36} color="#DC2626" />
+          </View>
+          <View
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 4,
+              borderRadius: 100,
+              backgroundColor: 'rgba(220, 38, 38, 0.14)',
+              marginBottom: 10,
+            }}
+          >
+            <Text style={{ color: '#DC2626', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' }}>
+              {isSuspended ? 'Account Suspended' : 'Account Deactivated'}
+            </Text>
+          </View>
+          <Text
+            style={{
+              color: colors.textPrimary,
+              fontSize: 20,
+              fontWeight: '800',
+              textAlign: 'center',
+            }}
+          >
+            Astrologer Dashboard Disabled
+          </Text>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              textAlign: 'center',
+              marginTop: 10,
+              ...lh(13.5, 1.5),
+            }}
+          >
+            {accountBlocked.reason}
+          </Text>
+          <Text
+            style={{
+              color: colors.textMuted,
+              textAlign: 'center',
+              marginTop: 8,
+              ...lh(12, 1.45),
+            }}
+          >
+            Your profile has been hidden from the customer app and your dashboard session has been signed out until reactivated by an administrator.
+          </Text>
+
+          <View style={{ width: '100%', gap: 10, marginTop: 22 }}>
+            <ElevatedButton
+              label="Contact Admin Support"
+              icon="mail_outline"
+              onPress={() => {
+                Linking.openURL(
+                  'mailto:astropariharuk@gmail.com?subject=Astrologer%20Account%20Suspension%20Support'
+                ).catch(() => showSnackBar('Admin Email: astropariharuk@gmail.com'));
+              }}
+              paddingV={13}
+              radius={14}
+            />
+            <OutlinedButton
+              label="Return to Astrologer Login"
+              onPress={() => go(AppRoutes.astrologerLoginScreen)}
+              paddingV={12}
+              radius={14}
+            />
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView

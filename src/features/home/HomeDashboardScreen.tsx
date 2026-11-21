@@ -26,6 +26,7 @@ import {
   DynamicPromotion,
   fetchAiAstrologers,
   fetchRealAstrologers,
+  STORAGE_REAL_ASTROLOGERS_KEY,
   getDynamicCosmicInsights,
   getDynamicPromotions,
   LiveAstrologer,
@@ -2240,20 +2241,20 @@ export default function HomeDashboardScreen() {
   const [aiAstrologers, setAiAstrologers] = useState<LiveAstrologer[]>(DEFAULT_AI_ASTROLOGERS);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const loadData = async () => {
+  const loadData = async (forceFresh = false) => {
     try {
       const [realList, aiList] = await Promise.all([
-        fetchRealAstrologers(),
-        fetchAiAstrologers(),
+        fetchRealAstrologers(forceFresh),
+        fetchAiAstrologers(forceFresh),
       ]);
-      if (realList) setRealAstrologers(realList);
+      if (Array.isArray(realList)) setRealAstrologers(realList);
       if (aiList && aiList.length > 0) setAiAstrologers(aiList);
     } catch { }
   };
 
   useEffect(() => {
     // 1. Instantly load cached real astrologers from AsyncStorage for 0ms initial render
-    AsyncStorage.getItem('@astroparihar_real_astrologers_live').then((cached) => {
+    AsyncStorage.getItem(STORAGE_REAL_ASTROLOGERS_KEY).then((cached) => {
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
@@ -2264,16 +2265,16 @@ export default function HomeDashboardScreen() {
       }
     });
 
-    // 2. Fetch fresh live data and poll gently at 25s intervals to protect backend concurrency
-    loadData();
-    const poll = setInterval(loadData, 25000);
+    // 2. Fetch fresh live data and poll gently at 25s intervals
+    loadData(true);
+    const poll = setInterval(() => loadData(true), 25000);
     return () => clearInterval(poll);
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
     setRefreshKey((k) => k + 1);
-    await Promise.all([loadData(), new Promise((r) => setTimeout(r, 600))]);
+    await Promise.all([loadData(true), new Promise((r) => setTimeout(r, 600))]);
     setRefreshing(false);
   };
 

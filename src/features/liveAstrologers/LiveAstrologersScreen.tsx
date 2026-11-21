@@ -20,7 +20,11 @@ import { BottomSheet } from '@/components/overlays';
 import { Text, TextInput } from '@/components/Text';
 import { AstrologerData } from '@/data/astrologers';
 import { useAuthStore } from '@/features/auth/authStore';
-import { fetchAiAstrologers, fetchRealAstrologers } from '@/services/homeDataService';
+import {
+  fetchAiAstrologers,
+  fetchRealAstrologers,
+  STORAGE_REAL_ASTROLOGERS_KEY,
+} from '@/services/homeDataService';
 import { generateZegoRoomId } from '@/services/zegoService';
 import { AppRoutes, push } from '@/navigation/routes';
 import { useCurrencyStore } from '@/services/currencyStore';
@@ -946,14 +950,14 @@ export default function LiveAstrologersScreen() {
     }));
   };
 
-  const fetchAstrologers = async () => {
+  const fetchAstrologers = async (forceFresh = false) => {
     try {
       const [realList, aiList] = await Promise.all([
-        fetchRealAstrologers(),
-        fetchAiAstrologers(),
+        fetchRealAstrologers(forceFresh),
+        fetchAiAstrologers(forceFresh),
       ]);
 
-      if (realList && realList.length > 0) {
+      if (Array.isArray(realList)) {
         setRealAstrologers(mapRealAstrologers(realList));
       }
 
@@ -987,7 +991,7 @@ export default function LiveAstrologersScreen() {
     let isMounted = true;
 
     // 1. Immediately read cached real astrologers from AsyncStorage for instant 0ms display
-    AsyncStorage.getItem('@astroparihar_real_astrologers_live').then((cached) => {
+    AsyncStorage.getItem(STORAGE_REAL_ASTROLOGERS_KEY).then((cached) => {
       if (!isMounted || !cached) return;
       try {
         const list = JSON.parse(cached);
@@ -999,12 +1003,12 @@ export default function LiveAstrologersScreen() {
     });
 
     // 2. Fetch fresh live statuses
-    fetchAstrologers().finally(() => {
+    fetchAstrologers(true).finally(() => {
       if (isMounted) setLoading(false);
     });
 
-    // 3. Spaced polling every 25 seconds instead of 4 seconds
-    const pollInterval = setInterval(fetchAstrologers, 25000);
+    // 3. Spaced polling every 25 seconds so admin Active/Suspend/Online toggles reflect promptly
+    const pollInterval = setInterval(() => fetchAstrologers(true), 25000);
     return () => {
       isMounted = false;
       clearInterval(pollInterval);
@@ -1032,7 +1036,7 @@ export default function LiveAstrologersScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchAstrologers(), new Promise((r) => setTimeout(r, 600))]);
+    await Promise.all([fetchAstrologers(true), new Promise((r) => setTimeout(r, 600))]);
     setRefreshing(false);
   };
 

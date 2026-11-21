@@ -69,7 +69,7 @@ const COUNTRY_CODES = [
 export const ASTRO_SESSION_KEY = 'astro_verified_session';
 export const LOCAL_APPLICATIONS_KEY = 'astroparihar_local_astrologer_applications';
 
-type ErrorType = 'not_registered' | 'pending_approval' | 'rejected' | 'general' | null;
+type ErrorType = 'not_registered' | 'pending_approval' | 'rejected' | 'suspended' | 'general' | null;
 
 export default function AstrologerLoginScreen() {
   const insets = useSafeAreaInsets();
@@ -168,6 +168,13 @@ export default function AstrologerLoginScreen() {
           setErrorType('not_registered');
           setError(data.error || 'Mobile number is not registered as an astrologer on AstroParihar.');
         }
+      } else if (data.suspended === true || data.deactivated === true) {
+        setErrorType('suspended');
+        setApplicationStatus(data.suspended ? 'Suspended' : 'Deactivated');
+        setError(
+          data.error ||
+            'Your astrologer account has been suspended or deactivated by the administrator. Dashboard access is disabled.'
+        );
       } else if (data.registered === true && data.approved === false) {
         const dStatus = String(data.status || '').toLowerCase();
         if (dStatus.includes('reject') || dStatus.includes('decline')) {
@@ -284,6 +291,14 @@ export default function AstrologerLoginScreen() {
           setShowSuccessPopup(false);
           go(AppRoutes.astrologerDashboardScreen);
         }, 1600);
+      } else if (data.suspended === true || data.deactivated === true) {
+        setStep('phone');
+        setErrorType('suspended');
+        setApplicationStatus(data.suspended ? 'Suspended' : 'Deactivated');
+        setError(
+          data.error ||
+            'Your astrologer account has been suspended or deactivated by the administrator. Dashboard access is disabled.'
+        );
       } else {
         setErrorType('general');
         setError(data.error || 'Invalid OTP. Please check and try again.');
@@ -721,6 +736,84 @@ export default function AstrologerLoginScreen() {
                               }}
                             >
                               Contact Admin
+                            </Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                ) : null}
+
+                {error && errorType === 'suspended' ? (
+                  <View
+                    testID="astrologerLogin.suspendedBanner"
+                    style={[
+                      styles.statusCard,
+                      {
+                        backgroundColor: colors.isLight ? '#FEF2F2' : 'rgba(220, 38, 38, 0.16)',
+                        borderColor: colors.isLight ? '#FCA5A5' : 'rgba(220, 38, 38, 0.5)',
+                      },
+                    ]}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                      <View
+                        style={[
+                          styles.statusIconBox,
+                          {
+                            backgroundColor: colors.isLight ? '#FEE2E2' : 'rgba(220, 38, 38, 0.25)',
+                          },
+                        ]}
+                      >
+                        <AppIcon name="block" size={20} color="#DC2626" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                          <Text
+                            style={{
+                              color: colors.isLight ? '#991B1B' : '#FCA5A5',
+                              fontSize: 14,
+                              fontWeight: '800',
+                            }}
+                          >
+                            {applicationStatus === 'Deactivated'
+                              ? 'Account Deactivated by Admin'
+                              : 'Account Suspended by Admin'}
+                          </Text>
+                        </View>
+                        <Text
+                          style={{
+                            color: colors.isLight ? '#B91C1C' : '#FECACA',
+                            marginTop: 4,
+                            ...lh(12.5, 1.45),
+                          }}
+                        >
+                          {error}
+                        </Text>
+                        <View style={{ flexDirection: 'row', marginTop: 12 }}>
+                          <Pressable
+                            onPress={openContactAdmin}
+                            style={[
+                              styles.bannerSecondaryBtn,
+                              {
+                                backgroundColor: colors.surface,
+                                borderColor: colors.isLight ? '#FCA5A5' : 'rgba(252, 165, 165, 0.4)',
+                              },
+                            ]}
+                          >
+                            <AppIcon
+                              name="mail_outline"
+                              size={15}
+                              color={colors.isLight ? '#991B1B' : '#FCA5A5'}
+                            />
+                            <Text
+                              style={{
+                                color: colors.isLight ? '#991B1B' : '#FCA5A5',
+                                fontSize: 12.5,
+                                fontWeight: '700',
+                                marginLeft: 6,
+                              }}
+                            >
+                              Contact Admin Support
                             </Text>
                           </Pressable>
                         </View>
