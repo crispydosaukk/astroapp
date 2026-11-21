@@ -587,9 +587,9 @@ export async function speakAstrologerText(
   try {
     const isSpeaking = await Speech.isSpeakingAsync().catch(() => false);
     if (isSpeaking) {
-      await Speech.stop().catch(() => {});
+      await Speech.stop().catch(() => { });
     }
-  } catch {}
+  } catch { }
 
   if (currentToken !== activeSpeechId) return;
 
