@@ -34,6 +34,7 @@ import {
 import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 
 const CATEGORY_ICON_MAP: Record<string, string> = {
   horoscope: 'auto_awesome',
@@ -113,6 +114,7 @@ export function NotificationsScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const inboxMicro = useAppScreensCmsStore((s) => s.config.cmsMicroLabels.notificationsInbox);
 
   const notifications = useNotificationStore((s) => s.notifications);
   const categories = useNotificationStore((s) => s.categories);
@@ -134,8 +136,8 @@ export function NotificationsScreen() {
 
   const filterTabs = useMemo(() => {
     const base: { id: string; label: string }[] = [
-      { id: 'all', label: 'All' },
-      { id: 'unread', label: 'Unread' },
+      { id: 'all', label: inboxMicro.allTab },
+      { id: 'unread', label: inboxMicro.unreadTab },
     ];
     const seen = new Set(['all', 'unread']);
     for (const cat of categories) {
@@ -153,7 +155,7 @@ export function NotificationsScreen() {
       }
     }
     return base;
-  }, [categories, notifications]);
+  }, [categories, notifications, inboxMicro.allTab, inboxMicro.unreadTab]);
 
   useEffect(() => {
     checkPermission();
@@ -199,12 +201,12 @@ export function NotificationsScreen() {
   const handleClearAll = () => {
     if (notifications.length === 0) return;
     Alert.alert(
-      'Clear All Notifications?',
-      'This will remove all current notifications from your inbox.',
+      inboxMicro.clearDialogTitle,
+      inboxMicro.clearDialogMessage,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: inboxMicro.cancelBtn, style: 'cancel' },
         {
-          text: 'Clear All',
+          text: inboxMicro.confirmClearBtn,
           style: 'destructive',
           onPress: async () => {
             await clearAll();
@@ -242,7 +244,7 @@ export function NotificationsScreen() {
                 }}
               >
                 <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
-                  Read All
+                  {inboxMicro.readAllBtn}
                 </Text>
               </Pressable>
             ) : null}
@@ -260,7 +262,7 @@ export function NotificationsScreen() {
                 }}
               >
                 <Text style={{ color: '#CF4444', fontSize: 11, fontWeight: '700' }}>
-                  Clear
+                  {inboxMicro.clearBtn}
                 </Text>
               </Pressable>
             ) : null}
@@ -410,7 +412,7 @@ export function NotificationsScreen() {
               }}
             >
               <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>
-                {permissionStatus === 'denied' ? 'Settings' : 'Enable'}
+                {permissionStatus === 'denied' ? inboxMicro.settingsBtnLabel : inboxMicro.enableBtnLabel}
               </Text>
             </Pressable>
           </LinearGradient>
@@ -421,7 +423,7 @@ export function NotificationsScreen() {
           <View style={{ paddingVertical: 60, alignItems: 'center', gap: 10 }}>
             <ActivityIndicator size="large" color={colors.goldAccent} />
             <Text style={{ color: colors.textMuted, fontSize: 13 }}>
-              Syncing celestial alerts...
+              {inboxMicro.syncingText}
             </Text>
           </View>
         ) : null}
@@ -630,7 +632,7 @@ export function NotificationsScreen() {
                     {item.actionRoute && item.actionRoute !== AppRoutes.notificationsScreen ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Text style={{ color: colors.goldAccent, fontSize: 11.5, fontWeight: '700' }}>
-                          {item.ctaText || 'Tap to view details'}
+                          {item.ctaText || inboxMicro.tapToViewText}
                         </Text>
                         <AppIcon name="chevron_right_rounded" color={colors.goldAccent} size={15} />
                       </View>
@@ -653,7 +655,7 @@ export function NotificationsScreen() {
                       }}
                     >
                       <Text style={{ color: colors.textMuted, fontSize: 10.5, fontWeight: '600' }}>
-                        Clear
+                        {inboxMicro.clearBtn}
                       </Text>
                     </Pressable>
                   </View>
@@ -679,7 +681,7 @@ export function NotificationsScreen() {
             }}
           >
             <Text style={{ color: colors.textMuted, fontSize: 12.5, fontWeight: '600' }}>
-              Clear All Notifications
+              {inboxMicro.clearAllBtn}
             </Text>
           </Pressable>
         ) : null}
@@ -692,6 +694,7 @@ export function NotificationSettingsScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const settingsMicro = useAppScreensCmsStore((s) => s.config.cmsMicroLabels.notificationSettings);
 
   const preferences = useNotificationStore((s) => s.preferences);
   const categories = useNotificationStore((s) => s.categories);
@@ -843,7 +846,7 @@ export function NotificationSettingsScreen() {
               }}
             >
               <Text style={{ color: '#FFFFFF', fontSize: 11.5, fontWeight: '700' }}>
-                {permissionStatus === 'denied' ? 'Settings' : 'Allow'}
+                {permissionStatus === 'denied' ? settingsMicro.settingsBtnLabel : settingsMicro.allowBtnLabel}
               </Text>
             </Pressable>
           ) : null}
@@ -946,7 +949,7 @@ export function NotificationSettingsScreen() {
           <View style={{ gap: 10 }}>
             <ElevatedButton
               testID="notificationSettings.sendTest"
-              label={testing ? 'Sending Test Alert...' : settingsScreen.instantTestButtonLabel}
+              label={testing ? settingsMicro.sendingTestLabel : settingsScreen.instantTestButtonLabel}
               onPress={() => handleTestNotification(0)}
               disabled={testing}
               radius={14}

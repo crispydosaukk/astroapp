@@ -15,6 +15,7 @@ import { showSnackBar } from '@/components/overlays';
 import { Text } from '@/components/Text';
 import { pop } from '@/navigation/routes';
 import { useSupportLegalStore } from '@/services/supportLegalStore';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 import { withAlpha } from '@/theme/colors';
 import { AppLanguage, useTranslation } from '@/theme/languageStore';
 import { AccentName, ThemeName, useThemeColors, useThemeStore } from '@/theme/themeStore';
@@ -37,6 +38,10 @@ export function LanguageScreen() {
 
   const prefs = useSupportLegalStore((s) => s.content.preferencesScreen);
   const fetchContent = useSupportLegalStore((s) => s.fetchContent);
+  const cmsPrefs = useAppScreensCmsStore((s) => s.config.cmsMicroLabels.preferences);
+  const languagesList = cmsPrefs.languages && cmsPrefs.languages.length > 0
+    ? cmsPrefs.languages.map((l) => ({ name: l.name as AppLanguage, native: l.native, flag: l.flag }))
+    : LANGUAGES;
 
   useEffect(() => {
     fetchContent();
@@ -94,7 +99,7 @@ export function LanguageScreen() {
             overflow: 'hidden',
           }}
         >
-          {LANGUAGES.map((l, i) => {
+          {languagesList.map((l, i) => {
             const isSel = selected === l.name;
             return (
               <View key={l.name}>
@@ -124,7 +129,7 @@ export function LanguageScreen() {
                     <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: colors.textMuted }} />
                   )}
                 </Pressable>
-                {i < LANGUAGES.length - 1 ? (
+                {i < languagesList.length - 1 ? (
                   <View style={{ height: 1, marginLeft: 52, backgroundColor: colors.divider }} />
                 ) : null}
               </View>
@@ -166,6 +171,10 @@ export function ThemeScreen() {
 
   const prefs = useSupportLegalStore((s) => s.content.preferencesScreen);
   const fetchContent = useSupportLegalStore((s) => s.fetchContent);
+  const cmsPrefs = useAppScreensCmsStore((s) => s.config.cmsMicroLabels.preferences);
+  const accentsList = cmsPrefs.accents && cmsPrefs.accents.length > 0
+    ? cmsPrefs.accents.map((a) => ({ name: a.name as AccentName, displayName: a.displayName || a.name, color: a.color }))
+    : ACCENTS.map((a) => ({ ...a, displayName: a.name }));
 
   useEffect(() => {
     fetchContent();
@@ -273,7 +282,7 @@ export function ThemeScreen() {
         </Text>
 
         <View style={{ marginTop: 14, flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
-          {ACCENTS.map((a) => {
+          {accentsList.map((a) => {
             const isSel = selectedAccent === a.name;
             return (
               <Pressable
@@ -302,7 +311,7 @@ export function ThemeScreen() {
                   {isSel ? <AppIcon name="check_rounded" color="#FFFFFF" size={20} /> : null}
                 </AnimatedBox>
                 <Text style={{ marginTop: 6, color: isSel ? a.color : colors.textMuted, fontSize: 10, fontWeight: '600', textAlign: 'center' }}>
-                  {a.name}
+                  {a.displayName}
                 </Text>
               </Pressable>
             );

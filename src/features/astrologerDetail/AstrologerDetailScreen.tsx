@@ -31,6 +31,7 @@ import { getAstrologerReviews } from '@/services/reviewService';
 import { getWalletBalance, rechargeWallet, subscribeWallet } from '@/services/walletService';
 import { useCurrencyStore } from '@/services/currencyStore';
 import { generateZegoRoomId } from '@/services/zegoService';
+import { fillCmsTemplate, useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 import { argb, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 
@@ -113,6 +114,7 @@ function Row2({ left, right, leftColor }: { left: string; right: string; leftCol
 
 export default function AstrologerDetailScreen() {
   const colors = useThemeColors();
+  const cms = useAppScreensCmsStore((s) => s.config.astrologerDetail);
   const extra = useExtra<AstrologerData>();
   const initialData = extra ?? EMPTY_ASTROLOGER;
   const [data, setData] = useState<AstrologerData>(initialData);
@@ -403,7 +405,7 @@ export default function AstrologerDetailScreen() {
   const dynamicEducation = useMemo(() => {
     const items: Array<{ title: string; subtitle: string }> = [];
     if (data.education && String(data.education).trim()) {
-      items.push({ title: 'Education', subtitle: String(data.education).trim() });
+      items.push({ title: cms.educationLabels.education, subtitle: String(data.education).trim() });
     }
     const certs = Array.isArray(data.certifications)
       ? (data.certifications as string[])
@@ -411,13 +413,13 @@ export default function AstrologerDetailScreen() {
       ? data.certifications.split(',').map((c) => c.trim()).filter(Boolean)
       : [];
     for (const c of certs) {
-      items.push({ title: c, subtitle: 'Certification' });
+      items.push({ title: c, subtitle: cms.educationLabels.certification });
     }
     if (data.learningSource && String(data.learningSource).trim()) {
-      items.push({ title: 'Learning Source', subtitle: String(data.learningSource).trim() });
+      items.push({ title: cms.educationLabels.learningSource, subtitle: String(data.learningSource).trim() });
     }
     return items;
-  }, [data.education, data.certifications, data.learningSource]);
+  }, [data.education, data.certifications, data.learningSource, cms.educationLabels]);
 
   const ratingDistribution = useMemo(() => {
     if (reviewsList.length === 0) {
@@ -565,7 +567,7 @@ export default function AstrologerDetailScreen() {
               }}
             />
             <Text style={{ marginLeft: 6, color: isOnline ? '#3DCB7A' : '#CF4444', fontSize: 12, fontWeight: '700' }}>
-              {isOnline ? 'Online • Instant Connect' : 'Currently Offline'}
+              {isOnline ? cms.onlineBadge : cms.offlineBadge}
             </Text>
           </View>
           {data.badge ? (
@@ -624,7 +626,7 @@ export default function AstrologerDetailScreen() {
             {data.experience ? <InfoChip label={data.experience} icon="⏳" /> : null}
             {skillsList[0] ? <InfoChip label={skillsList[0]} icon="🔮" /> : null}
             {data.dailyHours ? <InfoChip label={String(data.dailyHours)} icon="🕐" /> : null}
-            <InfoChip label={isOnline ? 'Online Now' : 'Offline'} icon={isOnline ? '🟢' : '🔴'} isGreen={isOnline} />
+            <InfoChip label={isOnline ? cms.onlineChip : cms.offlineChip} icon={isOnline ? '🟢' : '🔴'} isGreen={isOnline} />
           </ScrollView>
         </View>
 
@@ -642,19 +644,19 @@ export default function AstrologerDetailScreen() {
             borderColor: colors.cardBorder,
           }}
         >
-          <StatItem value={data.rating ? String(data.rating) : '—'} label="Rating" icon="⭐" color={colors.goldAccent} />
+          <StatItem value={data.rating ? String(data.rating) : '—'} label={cms.statLabels.rating} icon="⭐" color={colors.goldAccent} />
           <StatDivider />
-          <StatItem value={String(data.reviews || '0')} label="Reviews" icon="💬" color="#4FC3F7" />
+          <StatItem value={String(data.reviews || '0')} label={cms.statLabels.reviews} icon="💬" color="#4FC3F7" />
           <StatDivider />
-          <StatItem value={String(data.consultations || '0')} label="Sessions" icon="🎯" color="#2D9E6B" />
+          <StatItem value={String(data.consultations || '0')} label={cms.statLabels.sessions} icon="🎯" color="#2D9E6B" />
           <StatDivider />
-          <StatItem value={formatRate(price)} label="Rate" icon="💎" color="#FFB347" />
+          <StatItem value={formatRate(price)} label={cms.statLabels.rate} icon="💎" color="#FFB347" />
         </View>
 
         {/* Dynamic Specialisations Chips */}
         {skillsList.length > 0 ? (
           <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
-            <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700' }}>Specialisations</Text>
+            <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700' }}>{cms.specialisationsTitle}</Text>
             <View style={{ marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {skillsList.map((s: string) => (
                 <View
@@ -688,7 +690,7 @@ export default function AstrologerDetailScreen() {
         >
           <TabBar
             testIDPrefix="astrologerDetail.tab"
-            tabs={['About', `Reviews (${reviewsList.length})`, 'Availability']}
+            tabs={[cms.tabs.about, `${cms.tabs.reviewsPrefix} (${reviewsList.length})`, cms.tabs.availability]}
             index={tab}
             onChange={setTab}
             indicatorColor={colors.goldAccent}
@@ -702,14 +704,14 @@ export default function AstrologerDetailScreen() {
           {[
             /* TAB 0: 100% LIVE FIRESTORE ABOUT, SKILLS & EDUCATION */
             <View key="about" style={{ paddingHorizontal: 20, gap: 12 }}>
-              <SectionCard title={`About ${data.name}`} emoji="📖">
+              <SectionCard title={`${cms.aboutTitlePrefix} ${data.name}`} emoji="📖">
                 <Text style={{ color: colors.textSecondary, ...lh(13, 1.6) }}>
-                  {dynamicBio || 'No bio added by the astrologer yet.'}
+                  {dynamicBio || cms.noBioText}
                 </Text>
               </SectionCard>
 
               {dynamicExpertise.length > 0 ? (
-                <SectionCard title="Areas of Expertise" emoji="🎓">
+                <SectionCard title={cms.expertiseTitle} emoji="🎓">
                   {dynamicExpertise.map((exp) => (
                     <View key={exp.name} style={{ marginBottom: 10 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -729,7 +731,7 @@ export default function AstrologerDetailScreen() {
               ) : null}
 
               {dynamicEducation.length > 0 ? (
-                <SectionCard title="Education & Credentials" emoji="🏛️">
+                <SectionCard title={cms.educationTitle} emoji="🏛️">
                   {dynamicEducation.map((item, idx) => (
                     <View key={`${item.title}_${idx}`} style={{ marginBottom: 10, flexDirection: 'row', alignItems: 'center' }}>
                       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.goldAccent }} />
@@ -765,7 +767,7 @@ export default function AstrologerDetailScreen() {
                       <AppIcon key={i} name="star_rounded" color={colors.goldAccent} size={14} />
                     ))}
                   </View>
-                  <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 11 }}>{`${reviewsList.length} reviews`}</Text>
+                  <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 11 }}>{`${reviewsList.length} ${cms.reviewsSuffix}`}</Text>
                 </View>
                 <View style={{ flex: 1, marginLeft: 20 }}>
                   {ratingDistribution.map(({ star, ratio }) => (
@@ -801,7 +803,7 @@ export default function AstrologerDetailScreen() {
                   }}
                 >
                   <Text style={{ color: colors.textMuted, fontSize: 13 }}>
-                    No customer reviews submitted yet for {data.name || 'this astrologer'}.
+                    {fillCmsTemplate(cms.emptyReviewsTemplate, { name: data.name || 'this astrologer' })}
                   </Text>
                 </View>
               ) : (
@@ -873,18 +875,18 @@ export default function AstrologerDetailScreen() {
 
             /* TAB 2: LIVE AVAILABILITY & DYNAMIC RATES */
             <View key="availability" style={{ paddingHorizontal: 20, gap: 12 }}>
-              <SectionCard title="Live Status" emoji={isOnline ? '🟢' : '🔴'}>
+              <SectionCard title={cms.liveStatusTitle} emoji={isOnline ? '🟢' : '🔴'}>
                 <Row2
-                  left="Current Availability"
-                  right={isOnline ? '🟢 Online — Ready for Calls' : '🔴 Offline — Unavailable'}
+                  left={cms.availabilityLabels.current}
+                  right={isOnline ? cms.availabilityLabels.onlineText : cms.availabilityLabels.offlineText}
                 />
-                {data.dailyHours ? <Row2 left="Daily Hours" right={String(data.dailyHours)} /> : null}
-                {data.city ? <Row2 left="Location" right={String(data.city)} /> : null}
-                {data.languages ? <Row2 left="Languages" right={String(data.languages)} /> : null}
+                {data.dailyHours ? <Row2 left={cms.availabilityLabels.dailyHours} right={String(data.dailyHours)} /> : null}
+                {data.city ? <Row2 left={cms.availabilityLabels.location} right={String(data.city)} /> : null}
+                {data.languages ? <Row2 left={cms.availabilityLabels.languages} right={String(data.languages)} /> : null}
               </SectionCard>
 
               {consultTypes.length > 0 ? (
-                <SectionCard title="Dynamic Consultation Rates" emoji="💬">
+                <SectionCard title={cms.ratesTitle} emoji="💬">
                   {consultTypes.map((c) => (
                     <Pressable
                       key={c.type}
@@ -980,13 +982,13 @@ export default function AstrologerDetailScreen() {
             <View style={{ flex: 1 }}>
               <Text style={{ color: colors.goldAccent, fontSize: 18, fontWeight: '800' }}>{formatRate(price)}</Text>
               <Text style={{ color: isOnline ? '#3DCB7A' : '#CF4444', fontSize: 11, fontWeight: '700' }}>
-                {isOnline ? '🟢 Online • Instant Connect' : '🔴 Currently Offline'}
+                {isOnline ? `🟢 ${cms.onlineBadge}` : `🔴 ${cms.offlineBadge}`}
               </Text>
             </View>
             {(
               [
-                ['Chat', 'Voice Call', 'call_rounded', false],
-                ['Book', 'Video Call', 'videocam_rounded', true],
+                ['Chat', cms.voiceCallBtn, 'call_rounded', false],
+                ['Book', cms.videoCallBtn, 'videocam_rounded', true],
               ] as const
             ).map(([t, label, icon, primary], i) => (
               <Pressable
@@ -1043,8 +1045,8 @@ export default function AstrologerDetailScreen() {
             >
               <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800' }}>
                 {isOnline
-                  ? `⚡ Start Live Consultation with ${data.name ? data.name.split(' ')[0] : 'Astrologer'}`
-                  : `🔴 ${data.name ? data.name.split(' ')[0] : 'Astrologer'} is Currently Offline`}
+                  ? `${cms.startLivePrefix} ${data.name ? data.name.split(' ')[0] : 'Astrologer'}`
+                  : `🔴 ${data.name ? data.name.split(' ')[0] : 'Astrologer'} ${cms.offlineBtnSuffix}`}
               </Text>
             </LinearGradient>
           </Pressable>
@@ -1076,22 +1078,22 @@ export default function AstrologerDetailScreen() {
             >
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.divider }} />
               <Text style={{ marginTop: 14, color: colors.textPrimary, fontSize: 18, fontWeight: '800' }}>
-                Instant 1-on-1 Consultation
+                {cms.sheet.title}
               </Text>
               <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 12.5 }}>
-                {`with ${data.name} • ${formatRate(price)}`}
+                {`${cms.sheet.withPrefix} ${data.name} • ${formatRate(price)}`}
               </Text>
 
               {/* Mode Selector */}
               <View style={{ marginTop: 16, alignSelf: 'stretch' }}>
                 <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '700', letterSpacing: 0.6, marginBottom: 8 }}>
-                  SELECT CONSULTATION MODE
+                  {cms.sheet.modeHeading}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                   {(
                     [
-                      { id: 'video', title: 'Live Video Call', sub: 'Face-to-Face HD', icon: 'videocam_rounded' },
-                      { id: 'voice', title: 'Live Voice Call', sub: 'Direct Voice Line', icon: 'call_rounded' },
+                      { id: 'video', title: cms.sheet.videoTitle, sub: cms.sheet.videoSub, icon: 'videocam_rounded' },
+                      { id: 'voice', title: cms.sheet.voiceTitle, sub: cms.sheet.voiceSub, icon: 'call_rounded' },
                     ] as const
                   ).map((m) => {
                     const active = selectedMode === m.id;
@@ -1124,9 +1126,9 @@ export default function AstrologerDetailScreen() {
               <View style={{ marginTop: 14, alignSelf: 'stretch' }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
                   <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '700', letterSpacing: 0.6 }}>
-                    SELECT INITIAL DURATION
+                    {cms.sheet.durationHeading}
                   </Text>
-                  <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '600' }}>Extendable during call</Text>
+                  <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '600' }}>{cms.sheet.extendableText}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {[5, 15, 30, 60].map((d) => {
@@ -1175,14 +1177,14 @@ export default function AstrologerDetailScreen() {
                 <View style={{ width: 1, height: 28, backgroundColor: colors.divider }} />
                 <View style={{ alignItems: 'center' }}>
                   <Text style={{ color: '#FFB347', fontSize: 14, fontWeight: '800' }}>{formatPrice(minBalance)}</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: 10.5 }}>Min 5 min</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 10.5 }}>{cms.sheet.minLabel}</Text>
                 </View>
                 <View style={{ width: 1, height: 28, backgroundColor: colors.divider }} />
                 <View style={{ alignItems: 'center' }}>
                   <Text style={{ color: isSufficient ? '#3DCB7A' : '#CF4444', fontSize: 14, fontWeight: '800' }}>
                     {formatPrice(walletBalance)}
                   </Text>
-                  <Text style={{ color: colors.textMuted, fontSize: 10.5 }}>Your Wallet</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 10.5 }}>{cms.sheet.walletLabel}</Text>
                 </View>
               </View>
 
@@ -1218,7 +1220,7 @@ export default function AstrologerDetailScreen() {
                   }}
                 >
                   <Text style={{ color: '#3DCB7A', fontSize: 12, fontWeight: '600' }}>
-                    {`✓ Sufficient balance for ~${price > 0 ? Math.floor(walletBalance / price) : 0} minutes of live consultation.`}
+                    {fillCmsTemplate(cms.sheet.sufficientTemplate, { mins: String(price > 0 ? Math.floor(walletBalance / price) : 0) })}
                   </Text>
                 </View>
               ) : (
@@ -1235,10 +1237,13 @@ export default function AstrologerDetailScreen() {
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={{ fontSize: 14 }}>⚠️</Text>
-                    <Text style={{ marginLeft: 6, color: '#CF4444', fontSize: 12, fontWeight: '700' }}>Low Wallet Balance</Text>
+                    <Text style={{ marginLeft: 6, color: '#CF4444', fontSize: 12, fontWeight: '700' }}>{cms.sheet.lowBalanceTitle}</Text>
                   </View>
                   <Text style={{ marginTop: 4, color: colors.textSecondary, fontSize: 11 }}>
-                    {`Minimum 5-minute balance (${formatPrice(minBalance)}) required to connect. Please add ${formatPrice(Math.max(0, minBalance - walletBalance))} or more.`}
+                    {fillCmsTemplate(cms.sheet.lowBalanceTemplate, {
+                      min: formatPrice(minBalance),
+                      needed: formatPrice(Math.max(0, minBalance - walletBalance)),
+                    })}
                   </Text>
 
                   <View style={{ marginTop: 10, flexDirection: 'row', gap: 8 }}>
@@ -1282,8 +1287,8 @@ export default function AstrologerDetailScreen() {
                       ) : null}
                       <Text style={{ color: colors.isLight ? '#FFFFFF' : '#080D1A', fontSize: 13, fontWeight: '800' }}>
                         {isRecharging
-                          ? 'Processing Recharge...'
-                          : `⚡ Quick Recharge ${formatPrice(Math.max(currencyCode === 'USD' ? 5 : 100, Math.ceil(minBalance - walletBalance)))} (${currencyCode === 'INR' ? 'UPI/Cards' : 'Stripe/Cards'})`}
+                          ? cms.sheet.processingRechargeLabel
+                          : `${cms.sheet.quickRechargePrefix} ${formatPrice(Math.max(currencyCode === 'USD' ? 5 : 100, Math.ceil(minBalance - walletBalance)))} (${currencyCode === 'INR' ? 'UPI/Cards' : 'Stripe/Cards'})`}
                       </Text>
                     </LinearGradient>
                   </Pressable>
@@ -1304,7 +1309,7 @@ export default function AstrologerDetailScreen() {
                     }}
                   >
                     <Text style={{ color: '#CF4444', fontSize: 14, fontWeight: '800' }}>
-                      🔴 Astrologer is Currently Offline
+                      {cms.sheet.offlineNotice}
                     </Text>
                   </View>
                 ) : !isAuth ? (
@@ -1323,7 +1328,7 @@ export default function AstrologerDetailScreen() {
                       style={{ paddingVertical: 16, alignItems: 'center' }}
                     >
                       <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800' }}>
-                        🔐 Sign In to Consult Astrologer ↗
+                        {cms.sheet.signInToConsultLabel}
                       </Text>
                     </LinearGradient>
                   </Pressable>
@@ -1336,7 +1341,7 @@ export default function AstrologerDetailScreen() {
                       style={{ paddingVertical: 16, alignItems: 'center' }}
                     >
                       <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800' }}>
-                        {`Start Live ${selectedMode === 'video' ? 'Video Call' : 'Voice Call'} Now`}
+                        {`${cms.sheet.startCallPrefix} ${selectedMode === 'video' ? cms.videoCallBtn : cms.voiceCallBtn} Now`}
                       </Text>
                     </LinearGradient>
                   </Pressable>
@@ -1350,7 +1355,7 @@ export default function AstrologerDetailScreen() {
                   style={{ paddingVertical: 10, alignItems: 'center' }}
                 >
                   <Text style={{ color: colors.textSecondary, fontSize: 12, textDecorationLine: 'underline' }}>
-                    Go to Wallet & Transaction History →
+                    {cms.sheet.goToWalletLabel}
                   </Text>
                 </Pressable>
               </View>

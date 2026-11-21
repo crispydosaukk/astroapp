@@ -55,6 +55,7 @@ import {
 } from '@/services/consultationService';
 import { fetchCalculatedKundli, KundliChartData, sendLiveAIChatMessage } from '@/services/astrologyService';
 import { VedicKundliChart } from '@/components/VedicKundliChart';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 import { generateConsultationSummaryReport } from '@/services/reportService';
 import { isFemaleAstrologer, speakAstrologerText, stopAstrologerSpeech } from '@/services/speechService';
 import { analyzeQueryClarification } from '@/features/aiChat/aiChatClarification';
@@ -419,6 +420,7 @@ const DEFAULT_KUNDLI_PLANETS = [
 
 export default function ConsultationScreen() {
   const colors = useThemeColors();
+  const cms = useAppScreensCmsStore((s) => s.config.consultation);
   const extra = useExtra<{ type?: string; astrologer?: Astro; roomID?: string }>();
   const astro = extra?.astrologer ?? DEFAULT_ASTRO;
   const isVideo = extra?.type !== 'voice';
@@ -539,7 +541,9 @@ export default function ConsultationScreen() {
   const [isWaitingAstrologer, setIsWaitingAstrologer] = useState(!isAi);
   const [acceptanceCountdown, setAcceptanceCountdown] = useState(60);
   const [connectionStatusText, setConnectionStatusText] = useState(
-    isAi ? 'Connecting to AI Astrologer...' : 'Calling Astrologer... Waiting for acceptance'
+    isAi
+      ? (cms.connectingAiText || 'Connecting to AI Astrologer...')
+      : (cms.callingAstrologerText || 'Calling Astrologer... Waiting for acceptance')
   );
 
   const insets = useSafeAreaInsets();
@@ -1534,7 +1538,7 @@ export default function ConsultationScreen() {
                     }}
                   >
                     {connected
-                      ? (isVideo ? 'Video' : 'Live')
+                      ? (isVideo ? (cms.controlLabels?.video || 'Video') : (cms.uiLabels?.liveBadge || 'Live'))
                       : (ended || callEndedRef.current ? 'Ended' : (connecting ? 'Connecting...' : 'Ready'))}
                   </Text>
                 </View>
@@ -1634,7 +1638,7 @@ export default function ConsultationScreen() {
               >
                 <AppIcon name="headset_mic_rounded" size={13} color={callTab === 'stream' ? '#0A0E1A' : '#94A3B8'} style={{ marginRight: 5 }} />
                 <Text style={{ fontSize: 11.5, fontWeight: '800', color: callTab === 'stream' ? '#0A0E1A' : '#94A3B8' }}>
-                  Voice Stream
+                  {cms.tabs?.stream || 'Voice Stream'}
                 </Text>
               </Pressable>
 
@@ -1656,7 +1660,7 @@ export default function ConsultationScreen() {
               >
                 <AppIcon name="auto_awesome" size={13} color={callTab === 'chart' ? '#0A0E1A' : '#94A3B8'} style={{ marginRight: 5 }} />
                 <Text style={{ fontSize: 11.5, fontWeight: '800', color: callTab === 'chart' ? '#0A0E1A' : '#94A3B8' }}>
-                  Birth Chart (Kundli)
+                  {cms.tabs?.chart || 'Birth Chart (Kundli)'}
                 </Text>
               </Pressable>
             </View>
@@ -1981,7 +1985,7 @@ export default function ConsultationScreen() {
                                 >
                                   <AppIcon name="volume_up_rounded" size={12} color="#FFD700" />
                                   <Text style={{ color: '#FFD700', fontSize: 9, fontWeight: '700', marginLeft: 2 }}>
-                                    {selectedLanguage === 'Telugu' ? 'వినండి' : 'Listen'}
+                                    {cms.uiLabels?.listenLabel || (selectedLanguage === 'Telugu' ? 'వినండి' : 'Listen')}
                                   </Text>
                                 </Pressable>
                               ) : null}
@@ -2191,8 +2195,8 @@ export default function ConsultationScreen() {
                   {isHoldingMic
                     ? (selectedLanguage === 'Telugu' ? 'విడువండి - పంపు' : selectedLanguage === 'Hindi' ? 'छोड़ें - पूछें' : 'Release to Send')
                     : isListening
-                      ? (selectedLanguage === 'Telugu' ? 'వింటున్నాము...' : selectedLanguage === 'Hindi' ? 'सुन रहे हैं...' : 'Listening...')
-                      : (selectedLanguage === 'Telugu' ? 'పట్టుకుని మాట్లాడండి' : selectedLanguage === 'Hindi' ? 'दबाकर बोलें' : 'Hold to Speak')}
+                      ? (cms.controlLabels?.listening || 'Listening...')
+                      : (cms.controlLabels?.holdToSpeak || 'Hold to Speak')}
                 </Text>
               </Pressable>
 
@@ -2243,7 +2247,7 @@ export default function ConsultationScreen() {
               >
                 <AppIcon name="call_end_rounded" color="#FFFFFF" size={17} style={{ marginRight: 5 }} />
                 <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }} numberOfLines={1}>
-                  {selectedLanguage === 'Telugu' ? 'ముగించు' : selectedLanguage === 'Hindi' ? 'समाप्त' : 'End'}
+                  {cms.controlLabels?.endCall || 'End'}
                 </Text>
               </Pressable>
             </View>
@@ -2349,8 +2353,8 @@ export default function ConsultationScreen() {
                       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: isKeypadActive ? '#10B981' : '#EF4444', marginRight: 6 }} />
                       <Text style={{ color: '#FFD700', fontSize: isKeypadActive ? 11 : 12, fontWeight: '700' }}>
                         {isKeypadActive
-                          ? (selectedLanguage === 'Telugu' ? '⌨️ ప్రశ్నను టైప్ చేయండి / మాట్లాడండి' : selectedLanguage === 'Hindi' ? '⌨️ प्रश्न टाइप करें / बोलें' : '⌨️ Type or speak your question...')
-                          : (selectedLanguage === 'Telugu' ? '🎙️ శ్రద్ధగా వింటున్నాము...' : selectedLanguage === 'Hindi' ? '🎙️ हम सुन रहे हैं...' : '🎙️ Listening to you speak...')}
+                          ? (cms.uiLabels?.voiceInputTitle || '⌨️ Type or speak your question...')
+                          : (cms.controlLabels?.listening || '🎙️ Listening to you speak...')}
                       </Text>
                     </View>
                   </View>
@@ -2494,11 +2498,8 @@ export default function ConsultationScreen() {
                   scrollEnabled={true}
                   textAlignVertical="top"
                   placeholder={
-                    selectedLanguage === 'Telugu'
-                      ? 'మీరు మాట్లాడుతున్నది ఇక్కడ కనిపిస్తుంది... (లేదా ఇక్కడ టైప్ చేయవచ్చు)'
-                      : selectedLanguage === 'Hindi'
-                        ? 'आप जो बोल रहे हैं वह यहाँ दिखाई देगा... (या यहाँ टाइप कर सकते हैं)'
-                        : 'Your spoken words will appear here in real-time... (or type here)'
+                    cms.uiLabels?.voiceInputPlaceholder ||
+                    'Your spoken words will appear here in real-time... (or type here)'
                   }
                   placeholderTextColor="#64748B"
                   style={{
@@ -2528,7 +2529,7 @@ export default function ConsultationScreen() {
                   }}
                 >
                   <Text style={{ color: '#E2E8F0', fontSize: 13, fontWeight: '700' }}>
-                    {selectedLanguage === 'Telugu' ? 'రద్దు చేయి' : selectedLanguage === 'Hindi' ? 'रद्द करें' : 'Cancel'}
+                    {cms.controlLabels?.close || 'Cancel'}
                   </Text>
                 </Pressable>
 
@@ -2551,11 +2552,7 @@ export default function ConsultationScreen() {
                 >
                   <AppIcon name="check_circle_rounded" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
                   <Text style={{ color: '#FFFFFF', fontSize: 13.5, fontWeight: '800' }}>
-                    {selectedLanguage === 'Telugu'
-                      ? 'ముగించు & అడగండి ✓'
-                      : selectedLanguage === 'Hindi'
-                        ? 'समाप्त करें और पूछें ✓'
-                        : 'Done Speaking — Ask ✓'}
+                    {cms.controlLabels?.send || 'Done Speaking — Ask ✓'}
                   </Text>
                 </Pressable>
               </View>
@@ -2640,8 +2637,13 @@ export default function ConsultationScreen() {
           {/* Interactive Customer Review System */}
           <View style={{ marginTop: 14, padding: 14, borderRadius: 16, backgroundColor: withAlpha(colors.goldAccent, 20), borderWidth: 1, borderColor: colors.cardBorder }}>
             <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700', textAlign: 'center' }}>
-              {reviewSubmitted ? 'Review Submitted 🙏' : 'Rate Your Consultation'}
+              {reviewSubmitted ? 'Review Submitted 🙏' : (cms.uiLabels?.reviewTitle || 'Rate Your Consultation')}
             </Text>
+            {!reviewSubmitted && cms.uiLabels?.reviewSubtitle ? (
+              <Text style={{ color: colors.textSecondary, fontSize: 11.5, textAlign: 'center', marginTop: 3 }}>
+                {cms.uiLabels.reviewSubtitle}
+              </Text>
+            ) : null}
             <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10, gap: 8 }}>
               {[1, 2, 3, 4, 5].map((s) => (
                 <Pressable key={s} onPress={() => !reviewSubmitted && setReviewRating(s)}>
@@ -2659,7 +2661,7 @@ export default function ConsultationScreen() {
                 <TextInput
                   value={reviewComment}
                   onChangeText={setReviewComment}
-                  placeholder="Share your spiritual feedback..."
+                  placeholder={cms.uiLabels?.reviewCommentPlaceholder || 'Share your spiritual feedback...'}
                   placeholderTextColor={colors.textMuted}
                   style={{
                     marginTop: 12,
@@ -2686,7 +2688,7 @@ export default function ConsultationScreen() {
                   }}
                 >
                   <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>
-                    {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
+                    {isSubmittingReview ? 'Submitting...' : (cms.uiLabels?.reviewSubmitBtn || 'Submit Review')}
                   </Text>
                 </Pressable>
               </>
@@ -2782,7 +2784,7 @@ export default function ConsultationScreen() {
             }}
           >
             <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>
-              {lastGeneratedReportId ? 'Go to Profile Reports & History →' : 'Done / Close →'}
+              {lastGeneratedReportId ? 'Go to Profile Reports & History →' : (cms.uiLabels?.reviewSkipBtn || 'Done / Close →')}
             </Text>
           </Pressable>
         </ScrollView>
@@ -2976,11 +2978,7 @@ export default function ConsultationScreen() {
                   letterSpacing: 0.3,
                 }}
               >
-                {selectedLanguage === 'Telugu'
-                  ? 'కనిష్ట బ్యాలెన్స్ అవసరం'
-                  : selectedLanguage === 'Hindi'
-                    ? 'न्यूनतम बैलेंस आवश्यक'
-                    : 'Minimum Balance Required'}
+                {cms.uiLabels?.lowBalanceTitle || 'Minimum Balance Required'}
               </Text>
 
               <Text
@@ -2992,11 +2990,7 @@ export default function ConsultationScreen() {
                   letterSpacing: 0.5,
                 }}
               >
-                {selectedLanguage === 'Telugu'
-                  ? '5 నిమిషాల సంప్రదింపు బ్యాలెన్స్'
-                  : selectedLanguage === 'Hindi'
-                    ? '5 मिनट परामर्श बैलेंस'
-                    : '5 Minutes Consultation Balance'}
+                {cms.uiLabels?.lowBalanceSubtitle || '5 Minutes Consultation Balance'}
               </Text>
             </View>
 
@@ -3014,7 +3008,7 @@ export default function ConsultationScreen() {
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ color: '#94A3B8', fontSize: 12.5, fontWeight: '600' }}>
-                  {selectedLanguage === 'Telugu' ? 'ప్రస్తుత బ్యాలెన్స్:' : selectedLanguage === 'Hindi' ? 'वर्तमान बैलेंस:' : 'Current Balance:'}
+                  {`${cms.uiLabels?.balanceLabel || 'Current Balance'}:`}
                 </Text>
                 <Text style={{ color: balance < ratePerMin ? '#EF4444' : '#F59E0B', fontSize: 13.5, fontWeight: '800' }}>
                   {formatPrice(balance)}
@@ -3082,7 +3076,7 @@ export default function ConsultationScreen() {
             >
               <AppIcon name="flash_on" color="#0A0E1A" size={18} style={{ marginRight: 6 }} />
               <Text style={{ color: '#0A0E1A', fontSize: 14, fontWeight: '800' }}>
-                {selectedLanguage === 'Telugu' ? '⚡ ఇప్పుడే రీఛార్జ్ చేయండి' : selectedLanguage === 'Hindi' ? '⚡ अभी रिचार्ज करें' : '⚡ Recharge Wallet Now'}
+                {cms.uiLabels?.lowBalanceRechargeBtn || '⚡ Recharge Wallet Now'}
               </Text>
             </Pressable>
 
@@ -3263,19 +3257,11 @@ export default function ConsultationScreen() {
             </View>
 
             <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
-              {selectedLanguage === 'Telugu'
-                ? 'కాల్ ముగించాలనుకుంటున్నారా?'
-                : selectedLanguage === 'Hindi'
-                  ? 'क्या आप परामर्श समाप्त करना चाहते हैं?'
-                  : 'End Consultation Session?'}
+              {cms.uiLabels?.endCallTitle || 'End Consultation Session?'}
             </Text>
 
             <Text style={{ color: '#CBD5E1', fontSize: 13, lineHeight: 19, textAlign: 'center', marginBottom: 20 }}>
-              {selectedLanguage === 'Telugu'
-                ? `${astroDisplayName}తో మీ లైవ్ సంప్రదింపు సెషన్ ముగుస్తుంది. మీ పూర్తి జాతక చర్చ మరియు పరిహారాల నివేదిక వెంటనే సిద్ధం చేయబడుతుంది.`
-                : selectedLanguage === 'Hindi'
-                  ? `${astroDisplayName} के साथ आपका लाइव सत्र समाप्त हो जाएगा। आपके वार्तालाप की विस्तृत वैदिक रिपोर्ट तैयार की जाएगी।`
-                  : `Are you sure you want to end your active consultation with ${astro.name}? A comprehensive Vedic summary report will be prepared for you.`}
+              {cms.uiLabels?.endCallSubtitle || `Are you sure you want to end your active consultation with ${astro.name}? A comprehensive Vedic summary report will be prepared for you.`}
             </Text>
 
             {/* 1. Primary Button: Stay in Call (Golden) */}
@@ -3299,7 +3285,7 @@ export default function ConsultationScreen() {
             >
               <AppIcon name="phone_in_talk" color="#0A0E1A" size={18} style={{ marginRight: 6 }} />
               <Text style={{ color: '#0A0E1A', fontSize: 14, fontWeight: '800' }}>
-                {selectedLanguage === 'Telugu' ? 'కాల్‌లో కొనసాగండి' : selectedLanguage === 'Hindi' ? 'कॉल जारी रखें' : 'Stay in Consultation'}
+                {cms.uiLabels?.endCallCancel || 'Stay in Consultation'}
               </Text>
             </Pressable>
 
@@ -3324,7 +3310,7 @@ export default function ConsultationScreen() {
             >
               <AppIcon name="call_end" color="#EF4444" size={17} style={{ marginRight: 6 }} />
               <Text style={{ color: '#EF4444', fontSize: 13.5, fontWeight: '800' }}>
-                {selectedLanguage === 'Telugu' ? 'అవును, ముగించండి' : selectedLanguage === 'Hindi' ? 'हाँ, समाप्त करें' : 'Yes, End Consultation'}
+                {cms.uiLabels?.endCallConfirm || 'Yes, End Consultation'}
               </Text>
             </Pressable>
           </View>

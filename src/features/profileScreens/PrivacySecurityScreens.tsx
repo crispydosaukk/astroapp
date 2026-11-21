@@ -91,7 +91,7 @@ export function PrivacyScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="privacy.screen">
       <AppBar
-        title={t('profile.privacy', privacy.appBarTitle || 'Privacy')}
+        title={privacy.appBarTitle || t('profile.privacy', 'Privacy')}
         onBack={pop}
         testIDPrefix="privacy"
         backgroundColor={colors.background}
@@ -264,7 +264,7 @@ export function SecurityScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="security.screen">
       <AppBar
-        title={t('profile.security', sec.appBarTitle || 'Security')}
+        title={sec.appBarTitle || t('profile.security', 'Security')}
         onBack={pop}
         testIDPrefix="security"
         backgroundColor={colors.background}

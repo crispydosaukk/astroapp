@@ -42,6 +42,7 @@ import {
 } from '@/services/consultationService';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 
 type MainTab = 'overview' | 'consultations' | 'earnings' | 'profile';
 type ConsultSubTab = 'requests' | 'active' | 'history';
@@ -66,6 +67,10 @@ const PRIMARY_SKILL_OPTIONS = [
 export default function AstrologerDashboardScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const cms = useAppScreensCmsStore((s) => s.config.astrologerDashboard);
+  const primarySkillOptions = cms.primarySkillOptions?.length
+    ? cms.primarySkillOptions
+    : PRIMARY_SKILL_OPTIONS;
 
   // Navigation Tabs
   const [activeTab, setActiveTab] = useState<MainTab>('overview');
@@ -674,7 +679,9 @@ export default function AstrologerDashboardScreen() {
             }}
           >
             <Text style={{ color: '#DC2626', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' }}>
-              {isSuspended ? 'Account Suspended' : 'Account Deactivated'}
+              {isSuspended
+                ? (cms.blockedSuspendedTitle || 'Account Suspended')
+                : (cms.blockedDeactivatedTitle || 'Account Deactivated')}
             </Text>
           </View>
           <Text
@@ -710,7 +717,7 @@ export default function AstrologerDashboardScreen() {
 
           <View style={{ width: '100%', gap: 10, marginTop: 22 }}>
             <ElevatedButton
-              label="Contact Admin Support"
+              label={cms.blockedContactSupportBtn || 'Contact Admin Support'}
               icon="mail_outline"
               onPress={() => {
                 Linking.openURL(
@@ -721,7 +728,7 @@ export default function AstrologerDashboardScreen() {
               radius={14}
             />
             <OutlinedButton
-              label="Return to Astrologer Login"
+              label={cms.blockedReturnLoginBtn || 'Return to Astrologer Login'}
               onPress={() => go(AppRoutes.astrologerLoginScreen)}
               paddingV={12}
               radius={14}
@@ -740,7 +747,7 @@ export default function AstrologerDashboardScreen() {
     >
       <StatusBar style={colors.isLight ? 'dark' : 'light'} />
       <AppBar
-        title="Astrologer Portal"
+        title={cms.headerTitle || 'Astrologer Portal'}
         testIDPrefix="astrologerDashboard.appBar"
         actions={[
           {
@@ -761,15 +768,15 @@ export default function AstrologerDashboardScreen() {
       >
         {(
           [
-            { id: 'overview', label: 'Overview', icon: 'dashboard', badge: 0 },
+            { id: 'overview', label: cms.mainTabs?.overview || 'Overview', icon: 'dashboard', badge: 0 },
             {
               id: 'consultations',
-              label: 'Consultations',
+              label: cms.mainTabs?.consultations || 'Consultations',
               icon: 'forum',
               badge: incomingRequests.length + activeSessions.length,
             },
-            { id: 'earnings', label: 'Earnings', icon: 'account_balance_wallet', badge: 0 },
-            { id: 'profile', label: 'Profile', icon: 'person', badge: 0 },
+            { id: 'earnings', label: cms.mainTabs?.earnings || 'Earnings', icon: 'account_balance_wallet', badge: 0 },
+            { id: 'profile', label: cms.mainTabs?.profile || 'Profile', icon: 'person', badge: 0 },
           ] as const
         ).map((tab) => {
           const isActive = activeTab === tab.id;
@@ -1004,7 +1011,7 @@ export default function AstrologerDashboardScreen() {
                     <View style={{ marginLeft: 10, flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                         <Text style={{ color: colors.textPrimary, fontSize: 13.5, fontWeight: '800' }}>
-                          Supervised Probation Active
+                          {cms.probationBannerTitle || 'Supervised Probation Active'}
                         </Text>
                         <View
                           style={{
@@ -1054,7 +1061,7 @@ export default function AstrologerDashboardScreen() {
                       marginLeft: 8,
                     }}
                   >
-                    Verified Full-Time Astrologer • Full consultation privileges active
+                    {cms.fullTimeBannerTitle || 'Verified Full-Time Astrologer • Full consultation privileges active'}
                   </Text>
                 </View>
               </View>
@@ -1078,7 +1085,7 @@ export default function AstrologerDashboardScreen() {
                     </Text>
                     <StatusBadge
                       status={isOnline ? 'online' : 'offline'}
-                      customLabel={isOnline ? 'You are Online' : 'You are Offline'}
+                      customLabel={isOnline ? (cms.onlineLabel || 'You are Online') : (cms.offlineLabel || 'You are Offline')}
                     />
                   </View>
                   <Text style={{ color: 'rgba(247,239,228,0.75)', fontSize: 12, marginTop: 4 }}>
@@ -1279,7 +1286,7 @@ export default function AstrologerDashboardScreen() {
               </View>
 
               <ElevatedButton
-                label={isSavingProfile ? 'Saving Details...' : 'Save Profile & About Details'}
+                label={isSavingProfile ? (cms.savingProfileLabel || 'Saving Details...') : (cms.saveProfileButtonLabel || 'Save Profile & About Details')}
                 loading={isSavingProfile}
                 icon="save"
                 onPress={handleSaveProfileDetails}
@@ -1317,7 +1324,9 @@ export default function AstrologerDashboardScreen() {
                       fontWeight: '700',
                     }}
                   >
-                    {showOnWebsite ? '● Active in customer directory' : '○ Hidden from customers'}
+                    {showOnWebsite
+                      ? (cms.directoryVisibleLabel || '● Active in customer directory')
+                      : (cms.directoryHiddenLabel || '○ Hidden from customers')}
                   </Text>
                 </View>
 
@@ -1499,9 +1508,9 @@ export default function AstrologerDashboardScreen() {
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {(
                 [
-                  { id: 'requests', label: 'Incoming Requests', count: incomingRequests.length },
-                  { id: 'active', label: 'Active Sessions', count: activeSessions.length },
-                  { id: 'history', label: 'History', count: historySessions.length },
+                  { id: 'requests', label: cms.consultSubTabs?.requests || 'Incoming Requests', count: incomingRequests.length },
+                  { id: 'active', label: cms.consultSubTabs?.active || 'Active Sessions', count: activeSessions.length },
+                  { id: 'history', label: cms.consultSubTabs?.history || 'History', count: historySessions.length },
                 ] as const
               ).map((st) => {
                 const active = consultSubTab === st.id;
@@ -1793,7 +1802,7 @@ export default function AstrologerDashboardScreen() {
                 ₹{totalEarnings.toLocaleString()}
               </Text>
               <ElevatedButton
-                label="Withdraw Funds"
+                label={cms.withdrawButtonLabel || 'Withdraw Funds'}
                 icon="account_balance"
                 onPress={() => setShowWithdrawModal(true)}
                 style={{ marginTop: 12 }}
@@ -2165,7 +2174,7 @@ export default function AstrologerDashboardScreen() {
               </View>
 
               <ElevatedButton
-                label={isSavingProfile ? 'Saving Changes...' : 'Save Profile Changes'}
+                label={isSavingProfile ? (cms.savingProfileLabel || 'Saving Changes...') : (cms.saveProfileButtonLabel || 'Save Profile Changes')}
                 loading={isSavingProfile}
                 icon="save"
                 onPress={handleSaveProfileDetails}
@@ -2618,7 +2627,7 @@ export default function AstrologerDashboardScreen() {
             Select Primary Skill / Specialty
           </Text>
           <ScrollView style={{ maxHeight: 340 }}>
-            {PRIMARY_SKILL_OPTIONS.map((sk) => (
+            {primarySkillOptions.map((sk) => (
               <Pressable
                 key={sk}
                 onPress={() => {
@@ -2684,7 +2693,7 @@ export default function AstrologerDashboardScreen() {
             <AppIcon name="logout_rounded" size={28} color={AppColors.error} />
           </View>
           <Text style={{ color: colors.textPrimary, fontSize: 19, fontWeight: '800' }}>
-            Confirm Sign Out
+            {cms.logoutModalTitle || 'Confirm Sign Out'}
           </Text>
           <Text
             style={{
@@ -2694,11 +2703,11 @@ export default function AstrologerDashboardScreen() {
               ...lh(13, 1.45),
             }}
           >
-            Are you sure you want to sign out of your Astrologer Dashboard? You will need to log in again to manage customer consultations.
+            {cms.logoutModalMessage || 'Are you sure you want to sign out of your Astrologer Dashboard? You will need to log in again to manage customer consultations.'}
           </Text>
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 18, width: '100%' }}>
             <OutlinedButton
-              label="Cancel"
+              label={cms.logoutCancelBtn || 'Cancel'}
               onPress={() => setShowLogoutModal(false)}
               color={colors.textSecondary}
               borderColor={colors.cardBorder}
@@ -2706,7 +2715,7 @@ export default function AstrologerDashboardScreen() {
               paddingV={13}
             />
             <ElevatedButton
-              label="Yes, Sign Out"
+              label={cms.logoutConfirmBtn || 'Yes, Sign Out'}
               bg={AppColors.error}
               onPress={confirmSignOut}
               style={{ flex: 1 }}

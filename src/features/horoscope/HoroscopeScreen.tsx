@@ -18,6 +18,7 @@ import { argb, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 import { fetchLiveHoroscopes } from '@/services/astrologyService';
 import { useAuthStore } from '@/features/auth/authStore';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 
 export const ZODIACS = [
   { sign: 'Aries', symbol: '♈', emoji: '🐏', dates: 'Mar 21 – Apr 19', element: 'Fire' },
@@ -132,14 +133,17 @@ function LuckyItem({ label, value, emoji }: { label: string; value: string; emoj
 export default function HoroscopeScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const cms = useAppScreensCmsStore((s) => s.config.horoscope);
   const authUser = useAuthStore((s) => s.user);
+  const zodiacList = cms.zodiacs && cms.zodiacs.length > 0 ? cms.zodiacs : ZODIACS;
+  const categoryList = cms.categories && cms.categories.length > 0 ? cms.categories : CATEGORIES;
   const [dateOffset, setDateOffset] = useState(0);
   const [zodiac, setZodiac] = useState(() => {
     if (authUser?.zodiac) {
-      const match = ZODIACS.find((z) => z.sign.toLowerCase() === authUser.zodiac?.toLowerCase());
+      const match = zodiacList.find((z) => z.sign.toLowerCase() === authUser.zodiac?.toLowerCase());
       if (match) return match.sign;
     }
-    return 'Aries';
+    return zodiacList[0]?.sign || 'Aries';
   });
   const [liveData, setLiveData] = useState<Record<string, HoroscopeData>>({});
   const fade = useSharedValue(0);
@@ -147,12 +151,12 @@ export default function HoroscopeScreen() {
 
   useEffect(() => {
     if (authUser?.zodiac) {
-      const match = ZODIACS.find((z) => z.sign.toLowerCase() === authUser.zodiac?.toLowerCase());
+      const match = zodiacList.find((z) => z.sign.toLowerCase() === authUser.zodiac?.toLowerCase());
       if (match) {
         setZodiac(match.sign);
       }
     }
-  }, [authUser?.zodiac]);
+  }, [authUser?.zodiac, zodiacList]);
 
   useEffect(() => {
     let isMounted = true;
@@ -182,7 +186,7 @@ export default function HoroscopeScreen() {
   };
   const changeZodiac = (sign: string) => transition(() => setZodiac(sign));
 
-  const info = ZODIACS.find((z) => z.sign === zodiac)!;
+  const info = zodiacList.find((z) => z.sign === zodiac) || zodiacList[0] || ZODIACS[0];
   const data = liveData[zodiac] ?? DATA[zodiac] ?? DATA.Aries;
   const d = new Date();
   d.setDate(d.getDate() + dateOffset);
@@ -208,15 +212,15 @@ export default function HoroscopeScreen() {
           <AppIcon name="arrow_back_ios_new_rounded" color={colors.textPrimary} size={18} />
         </Pressable>
         <View style={{ flex: 1, marginLeft: 14 }}>
-          <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800' }}>Daily Horoscope</Text>
+          <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800' }}>{cms.headerTitle}</Text>
           <Text style={{ color: colors.isLight ? '#5A6A85' : '#6B7A99', fontSize: 12 }}>
-            {authUser?.name ? `Personalised for ${authUser.name}` : 'Personalised cosmic guidance'}
+            {authUser?.name ? `${cms.personalisedPrefix} ${authUser.name}` : cms.defaultSubtitle}
           </Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 100, backgroundColor: colors.isLight ? '#FFF8EE' : argb('1AC9A84C'), borderWidth: 1, borderColor: colors.goldAccent }}>
           <Text style={{ fontSize: 12 }}>✨</Text>
           <Text style={{ marginLeft: 4, color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 11, fontWeight: '700' }}>
-            {authUser?.zodiac ? authUser.zodiac : 'Vedic'}
+            {authUser?.zodiac ? authUser.zodiac : cms.defaultBadge}
           </Text>
         </View>
       </View>
@@ -224,7 +228,7 @@ export default function HoroscopeScreen() {
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: Math.max(160, insets.bottom + 110) }}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height: 80, marginTop: 12 }} contentContainerStyle={{ gap: 10 }}>
-            {ZODIACS.map((z) => {
+            {zodiacList.map((z) => {
               const sel = zodiac === z.sign;
               return (
                 <AnimatedPressable
@@ -270,13 +274,13 @@ export default function HoroscopeScreen() {
             }}
           >
             {[
-              { label: 'Yesterday', active: dateOffset === -1, delta: -1 - dateOffset },
-              { label: 'Today', active: dateOffset === 0, delta: -dateOffset },
-              { label: 'Tomorrow', active: dateOffset === 1, delta: 1 - dateOffset },
+              { id: 'yesterday', label: cms.dateTabs.yesterday, active: dateOffset === -1, delta: -1 - dateOffset },
+              { id: 'today', label: cms.dateTabs.today, active: dateOffset === 0, delta: -dateOffset },
+              { id: 'tomorrow', label: cms.dateTabs.tomorrow, active: dateOffset === 1, delta: 1 - dateOffset },
             ].map((b) => (
               <AnimatedPressable
-                key={b.label}
-                testID={`horoscope.date.${b.label.toLowerCase()}`}
+                key={b.id}
+                testID={`horoscope.date.${b.id}`}
                 onPress={() => changeDate(b.delta)}
                 duration={200}
                 style={{
@@ -341,7 +345,7 @@ export default function HoroscopeScreen() {
               <View style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ color: colors.isLight ? '#713B32' : '#C9A84C', fontSize: 28, fontWeight: '800' }}>{`${data.overall}%`}</Text>
                 <View style={{ flex: 1, marginLeft: 10 }}>
-                  <Text style={{ color: colors.isLight ? '#5A6A85' : '#6B7A99', fontSize: 10, marginBottom: 4, fontWeight: '600' }}>Overall Score</Text>
+                  <Text style={{ color: colors.isLight ? '#5A6A85' : '#6B7A99', fontSize: 10, marginBottom: 4, fontWeight: '600' }}>{cms.overallScoreLabel}</Text>
                   <LinearProgress value={data.overall / 100} height={6} radius={4} color={colors.isLight ? '#713B32' : '#C9A84C'} backgroundColor={colors.isLight ? '#F0EBE0' : argb('1AC9A84C')} />
                 </View>
               </View>
@@ -365,15 +369,18 @@ export default function HoroscopeScreen() {
           >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ fontSize: 16 }}>🌟</Text>
-              <Text style={{ marginLeft: 8, color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 15, fontWeight: '700' }}>Daily Guidance</Text>
+              <Text style={{ marginLeft: 8, color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 15, fontWeight: '700' }}>{cms.dailyGuidanceTitle}</Text>
             </View>
             <Text style={{ marginTop: 10, color: colors.textPrimary, ...lh(13, 1.6) }}>{data.guidance}</Text>
           </View>
 
           <View style={{ marginTop: 16 }}>
-            {CATEGORIES.map((c) => (
-              <CategoryCard key={`${zodiac}-${c.key}`} emoji={c.emoji} label={c.label} score={data[c.key].score} text={data[c.key].text} color={c.color} />
-            ))}
+            {categoryList.map((c) => {
+              const catData: Cat = (data as any)[c.key] ?? data.love;
+              return (
+                <CategoryCard key={`${zodiac}-${c.key}`} emoji={c.emoji} label={c.label} score={catData.score} text={catData.text} color={c.color} />
+              );
+            })}
           </View>
 
           <View
@@ -392,12 +399,12 @@ export default function HoroscopeScreen() {
           >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ fontSize: 16 }}>🍀</Text>
-              <Text style={{ marginLeft: 8, color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 15, fontWeight: '700' }}>Lucky Details</Text>
+              <Text style={{ marginLeft: 8, color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 15, fontWeight: '700' }}>{cms.luckyDetailsTitle}</Text>
             </View>
             <View style={{ marginTop: 14, flexDirection: 'row' }}>
-              <LuckyItem label="Number" value={data.lucky_number} emoji="🔢" />
-              <LuckyItem label="Colour" value={data.lucky_color} emoji="🎨" />
-              <LuckyItem label="Day" value={data.lucky_day} emoji="📅" />
+              <LuckyItem label={cms.luckyLabels.number} value={data.lucky_number} emoji="🔢" />
+              <LuckyItem label={cms.luckyLabels.color} value={data.lucky_color} emoji="🎨" />
+              <LuckyItem label={cms.luckyLabels.day} value={data.lucky_day} emoji="📅" />
             </View>
           </View>
 
@@ -423,8 +430,8 @@ export default function HoroscopeScreen() {
               elevation: 2,
             }}
           >
-            <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '800' }}>🔮 Want deeper insights?</Text>
-            <Text style={{ marginTop: 6, textAlign: 'center', color: colors.isLight ? '#5A6A85' : '#6B7A99', ...lh(12, 1.5) }}>Ask AstroParihar AI for personalised guidance based on your birth chart</Text>
+            <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '800' }}>{cms.cta.title}</Text>
+            <Text style={{ marginTop: 6, textAlign: 'center', color: colors.isLight ? '#5A6A85' : '#6B7A99', ...lh(12, 1.5) }}>{cms.cta.subtitle}</Text>
             <View style={{ marginTop: 14, flexDirection: 'row', alignSelf: 'stretch' }}>
               <Pressable
                 testID="horoscope.askAi"
@@ -436,7 +443,7 @@ export default function HoroscopeScreen() {
                 }}
                 style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#713B32', alignItems: 'center' }}
               >
-                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>✨ Ask AI Astrologer</Text>
+                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>{cms.cta.askAiButton}</Text>
               </Pressable>
               <View style={{ width: 10 }} />
               <Pressable
@@ -452,7 +459,7 @@ export default function HoroscopeScreen() {
                   alignItems: 'center',
                 }}
               >
-                <Text style={{ color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 13, fontWeight: '700' }}>📞 Talk to Astrologer</Text>
+                <Text style={{ color: colors.isLight ? '#7C5205' : '#C9A84C', fontSize: 13, fontWeight: '700' }}>{cms.cta.talkAstrologerButton}</Text>
               </Pressable>
             </View>
           </LinearGradient>

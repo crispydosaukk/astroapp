@@ -7,6 +7,8 @@
  * identical to ChatGPT's intelligent conversational guidance.
  */
 
+import { fillCmsTemplate, useAppScreensCmsStore } from '@/services/appScreensCmsStore';
+
 export interface ClarificationResult {
   needsClarification: boolean;
   message: string;
@@ -207,6 +209,9 @@ export function analyzeQueryClarification(
  * 1. Single letter / very short query clarification (Identical to ChatGPT "A" screenshot)
  */
 function getShortLetterClarification(query: string, language: string): string {
+  const map = useAppScreensCmsStore.getState().config.aiChat.clarification.shortLetterByLang;
+  const tpl = map?.[language] || map?.English;
+  if (tpl) return fillCmsTemplate(tpl, { query });
   switch (language) {
     case 'Telugu':
       return `దయచేసి "${query}" అంటే ఏమిటో స్పష్టం చేయగలరా? మీ జన్మ కుండలి, కెరీర్, వివాహం లేదా వేద పరిహారాల గురించి ఏదైనా అడగాలనుకుంటున్నారా?`;
@@ -227,6 +232,9 @@ function getShortLetterClarification(query: string, language: string): string {
  * 2. Voice-to-text / ambiguous phrase clarification (Identical to ChatGPT "Vee see" & "Dizi ZZ" screenshot)
  */
 function getVoiceToTextClarification(query: string, language: string): string {
+  const map = useAppScreensCmsStore.getState().config.aiChat.clarification.voiceToTextByLang;
+  const tpl = map?.[language] || map?.English;
+  if (tpl) return fillCmsTemplate(tpl, { query });
   switch (language) {
     case 'Telugu':
       return `మీరు "${query}" అని ఒక పేరుగా అడుగుతున్నారా, లేదా మైక్ వాయిస్-టు-టెక్స్ట్ వల్ల అలా వచ్చిందా? దయచేసి మీ జ్యోతిష్య ప్రశ్నను మరింత స్పష్టంగా తెలియజేయండి.`;
@@ -247,6 +255,8 @@ function getVoiceToTextClarification(query: string, language: string): string {
  * 3. Pure gibberish, numbers, keyboard mash clarification
  */
 function getGibberishClarification(query: string, language: string): string {
+  const map = useAppScreensCmsStore.getState().config.aiChat.clarification.gibberishByLang;
+  if (map?.[language]) return fillCmsTemplate(map[language], { query });
   switch (language) {
     case 'Telugu':
       return `దయచేసి మీరు ఏమి అడగాలనుకుంటున్నారో స్పష్టంగా తెలియజేయండి. మీ జన్మ కుండలి, ఉద్యోగం, వివాహం లేదా గ్రహ పరిహారాల గురించి అడగండి.`;
@@ -259,7 +269,9 @@ function getGibberishClarification(query: string, language: string): string {
     case 'Malayalam':
       return `നിങ്ങൾ എന്താണ് ചോദിക്കാൻ ആഗ്രഹിക്കുന്നതെന്ന് വ്യക്തമാക്കുക. നിങ്ങളുടെ ജാതകം, ജോലി, വിവാഹം അല്ലെങ്കിൽ പരിഹാരങ്ങളെക്കുറിച്ച് ചോദിക്കൂ.`;
     default:
-      return `Could you please clarify what you are trying to ask? Please share a question about your Janam Kundli, career, marriage, or Vedic remedies.`;
+      return map?.English
+        ? fillCmsTemplate(map.English, { query })
+        : `Could you please clarify what you are trying to ask? Please share a question about your Janam Kundli, career, marriage, or Vedic remedies.`;
   }
 }
 
@@ -267,6 +279,8 @@ function getGibberishClarification(query: string, language: string): string {
  * 4. Obvious unrelated off-topic tasks clarification
  */
 function getUnrelatedClarification(query: string, language: string, astroName: string): string {
+  const map = useAppScreensCmsStore.getState().config.aiChat.clarification.unrelatedByLang;
+  if (map?.[language]) return fillCmsTemplate(map[language], { query, astroName });
   switch (language) {
     case 'Telugu':
       return `నేను మీ వేద జ్యోతిష్య మార్గదర్శకుడిని. జన్మ కుండలి, కెరీర్, వివాహం మరియు గ్రహ పరిహారాలలో నేను మీకు సహాయం చేయగలను. దయచేసి "${query}" కాకుండా మీ జ్యోతిష్యానికి సంబంధించిన ప్రశ్నను అడగండి.`;
@@ -279,7 +293,9 @@ function getUnrelatedClarification(query: string, language: string, astroName: s
     case 'Malayalam':
       return `ഞാൻ നിങ്ങളുടെ വ്യക്തിഗത വൈദിക ജ്യോതിഷിയാണ്. ജാതകം, തൊഴിൽ, വിവാഹം, പരിഹാരങ്ങൾ എന്നിവയിലാണ് ഞാൻ മാർഗ്ഗനിർദ്ദേശം നൽകുന്നത്. ദയവായി "${query}" മാറ്റി ജ്യോതിഷ സംബന്ധിയായ ചോദ്യം ചോദിക്കൂ.`;
     default:
-      return `I am your personal Vedic Astrologer specializing in Janam Kundli analysis, career, and relationships. Could you please clarify how "${query}" relates to your life or astrology consultation?`;
+      return map?.English
+        ? fillCmsTemplate(map.English, { query, astroName })
+        : `I am your personal Vedic Astrologer specializing in Janam Kundli analysis, career, and relationships. Could you please clarify how "${query}" relates to your life or astrology consultation?`;
   }
 }
 

@@ -11,6 +11,7 @@ import { Keyboard, Platform, Pressable, View } from 'react-native';
 import Animated, { Easing, interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '@/components/AppIcon';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 import { withAlpha } from '@/theme/colors';
 import { ralewayFamily } from '@/theme/fonts';
 import { useTranslation } from '@/theme/languageStore';
@@ -76,7 +77,19 @@ export function AppNavigation({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { accent, surface, textMuted, isLight } = useThemeColors();
   const { t } = useTranslation();
+  const cmsNavTabs = useAppScreensCmsStore((s) => s.config.navigation.tabs);
   const currentName = state.routes[state.index]?.name;
+
+  const dynamicSpecs: TabSpec[] = TAB_SPECS.map((base) => {
+    const match = (cmsNavTabs || []).find((c) => c.route === base.route);
+    if (!match) return base;
+    return {
+      ...base,
+      defaultLabel: match.label || base.defaultLabel,
+      icon: match.icon || base.icon,
+      activeIcon: match.activeIcon || base.activeIcon,
+    };
+  });
 
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   useEffect(() => {
@@ -118,11 +131,15 @@ export function AppNavigation({ state, navigation }: BottomTabBarProps) {
             borderColor: withAlpha(accent, 51), backgroundColor: withAlpha(surface, isLight ? 235 : 217),
           }}
         >
-          {TAB_SPECS.map((spec) => (
+          {dynamicSpecs.map((spec) => (
             <TabItem
               key={spec.route}
               spec={spec}
-              label={t(spec.labelKey, spec.defaultLabel)}
+              label={
+                spec.defaultLabel !== TAB_SPECS.find((b) => b.route === spec.route)?.defaultLabel
+                  ? spec.defaultLabel
+                  : t(spec.labelKey, spec.defaultLabel)
+              }
               active={currentName === spec.route}
               onPress={() => onTabTap(spec)}
               accent={accent}

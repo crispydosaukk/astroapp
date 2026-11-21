@@ -21,8 +21,8 @@ import {
   KundliReportItem,
 } from '@/services/reportService';
 import { withAlpha } from '@/theme/colors';
-import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 
 const DEFAULT_GUNA_DETAILS = [
   { name: 'Varna (Spiritual Ego)', score: 1, max: 1 },
@@ -38,7 +38,7 @@ const DEFAULT_GUNA_DETAILS = [
 export default function MatchReportsScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const cms = useAppScreensCmsStore((s) => s.config.matchReports);
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authUser = useAuthStore((s) => s.user);
@@ -91,14 +91,14 @@ export default function MatchReportsScreen() {
       style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, height: 40 }}
     >
       <AppIcon name="add_rounded" color={colors.goldAccent} size={20} />
-      <Text style={{ marginLeft: 6, color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>New Match</Text>
+      <Text style={{ marginLeft: 6, color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>{cms.newMatchButton}</Text>
     </Pressable>
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="matchReports.screen">
       <AppBar
-        title={t('profile.matchReports', 'Match Reports')}
+        title={cms.headerTitle}
         onBack={pop}
         testIDPrefix="matchReports"
         backgroundColor={colors.background}
@@ -122,9 +122,9 @@ export default function MatchReportsScreen() {
         >
           <Text style={{ fontSize: 26 }}>❤️</Text>
           <View style={{ marginLeft: 12, flex: 1 }}>
-            <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700' }}>Ashtakoot Kundli Matching</Text>
+            <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700' }}>{cms.heroTitle}</Text>
             <Text style={{ marginTop: 2, color: colors.textMuted, fontSize: 11, lineHeight: 16 }}>
-              Vedic 36 Guna Milan analysis for marital longevity, mental harmony, and progeny.
+              {cms.heroSubtitle}
             </Text>
           </View>
         </LinearGradient>
@@ -158,13 +158,13 @@ export default function MatchReportsScreen() {
               <AppIcon name="lock" color={colors.goldAccent} size={30} />
             </View>
             <Text style={{ marginTop: 16, color: colors.textPrimary, fontSize: 18, fontWeight: '800', textAlign: 'center' }}>
-              Please Sign In to View Match Reports
+              {cms.signInTitle}
             </Text>
             <Text style={{ marginTop: 8, color: colors.textSecondary, fontSize: 12.5, lineHeight: 18, textAlign: 'center' }}>
-              Sign in to access your saved 36-Guna Kundli compatibility reports and Ashtakoot breakdowns.
+              {cms.signInSubtitle}
             </Text>
             <ElevatedButton
-              label="Sign In to Your Account"
+              label={cms.signInButton}
               icon="login"
               onPress={() => {
                 setPostLoginRedirect({ route: '', popOnSuccess: true });
@@ -184,7 +184,7 @@ export default function MatchReportsScreen() {
           <View style={{ paddingVertical: 60, alignItems: 'center' }}>
             <ActivityIndicator size="large" color={colors.goldAccent} />
             <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 13 }}>
-              Loading your compatibility reports...
+              {cms.loadingText}
             </Text>
           </View>
         ) : reports.length === 0 ? (
@@ -201,13 +201,13 @@ export default function MatchReportsScreen() {
           >
             <Text style={{ fontSize: 42 }}>💞</Text>
             <Text style={{ marginTop: 12, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>
-              No Match Reports Generated Yet
+              {cms.emptyTitle}
             </Text>
             <Text style={{ marginTop: 6, color: colors.textSecondary, fontSize: 12.5, textAlign: 'center', lineHeight: 18 }}>
-              Enter birth details for both partners in the Match Kundli calculator to generate a 36-Guna Ashtakoot compatibility dossier.
+              {cms.emptySubtitle}
             </Text>
             <ElevatedButton
-              label="Match New Kundli ✨"
+              label={cms.emptyButton}
               onPress={() => push(AppRoutes.matchKundliScreen)}
               bg="#713B32"
               fg="#FFFFFF"
@@ -224,7 +224,7 @@ export default function MatchReportsScreen() {
             const groomName = rep.details?.groomName || rep.reportData?.groom?.name || 'Partner 1';
             const brideName = rep.details?.brideName || rep.reportData?.bride?.name || 'Partner 2';
             const score = Number(rep.details?.score ?? rep.reportData?.score ?? 30);
-            const status = score >= 28 ? 'Excellent' : score >= 18 ? 'Good' : 'Needs Remedies';
+            const status = score >= 28 ? cms.statusLabels.excellent : score >= 18 ? cms.statusLabels.good : cms.statusLabels.remedies;
             const scoreColor = score >= 28 ? '#2D9E6B' : score >= 18 ? '#D4821A' : '#CF4444';
 
             return (
@@ -300,7 +300,7 @@ export default function MatchReportsScreen() {
                 <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 14, flexDirection: 'row' }}>
                   <OutlinedButton
                     testID={`matchReports.card.${i}.details`}
-                    label="View Guna Milan"
+                    label={cms.viewGunaBtn}
                     onPress={() => setSelectedReport(rep)}
                     color={colors.textSecondary}
                     radius={12}
@@ -312,7 +312,7 @@ export default function MatchReportsScreen() {
                   <View style={{ width: 10 }} />
                   <ElevatedButton
                     testID={`matchReports.card.${i}.fullReport`}
-                    label="Share / Download"
+                    label={cms.shareDownloadBtn}
                     onPress={() => handleDownload(rep)}
                     radius={12}
                     paddingV={9}
@@ -348,7 +348,7 @@ export default function MatchReportsScreen() {
                     {`${selectedReport.details?.groomName || 'Partner 1'} & ${selectedReport.details?.brideName || 'Partner 2'}`}
                   </Text>
                   <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '700', marginTop: 2 }}>
-                    Total Match: {selectedReport.details?.score ?? 30}/36 ({selectedReport.details?.verdict || 'Auspicious Match'})
+                    {`${cms.sheet.totalMatchPrefix} ${selectedReport.details?.score ?? 30}/36 (${selectedReport.details?.verdict || 'Auspicious Match'})`}
                   </Text>
                 </View>
                 <Pressable onPress={() => setSelectedReport(null)} style={{ padding: 4 }}>
@@ -370,7 +370,7 @@ export default function MatchReportsScreen() {
               <View style={{ height: 1, backgroundColor: colors.divider, marginBottom: 14 }} />
 
               <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700', marginBottom: 8 }}>
-                Ashtakoot 8-Koota Breakdown
+                {cms.sheet.breakdownHeading}
               </Text>
 
               {(selectedReport.details?.ashtakoot || DEFAULT_GUNA_DETAILS).map((g: any) => (
@@ -381,11 +381,8 @@ export default function MatchReportsScreen() {
               ))}
 
               <View style={{ marginTop: 14, padding: 12, borderRadius: 12, backgroundColor: colors.surfaceVariant }}>
-                <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '700' }}>Prescribed Matrimonial Remedies:</Text>
-                {(selectedReport.remediesPrescribed || [
-                  'Perform Gauri-Shankar Puja before wedding muhurat',
-                  'Jointly recite Vishnu Sahasranama on Thursdays',
-                ]).map((rem, idx) => (
+                <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '700' }}>{cms.sheet.remediesHeading}</Text>
+                {(selectedReport.remediesPrescribed || cms.sheet.defaultRemedies || []).map((rem, idx) => (
                   <Text key={idx} style={{ marginTop: 4, color: colors.textSecondary, fontSize: 11.5, lineHeight: 16 }}>
                     • {rem}
                   </Text>
@@ -394,7 +391,7 @@ export default function MatchReportsScreen() {
 
               <View style={{ marginTop: 18, flexDirection: 'row', gap: 10 }}>
                 <OutlinedButton
-                  label="Close"
+                  label={cms.sheet.closeBtn}
                   onPress={() => setSelectedReport(null)}
                   color={colors.textSecondary}
                   radius={14}
@@ -402,7 +399,7 @@ export default function MatchReportsScreen() {
                   style={{ flex: 1 }}
                 />
                 <ElevatedButton
-                  label="Export / Share PDF"
+                  label={cms.sheet.exportPdfBtn}
                   icon="share_outlined"
                   onPress={() => handleDownload(selectedReport)}
                   bg="#713B32"

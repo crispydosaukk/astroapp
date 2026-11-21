@@ -19,6 +19,7 @@ import { fetchLivePanchang, PanchangLiveResult } from '@/services/astrologyServi
 import { useCurrencyStore } from '@/services/currencyStore';
 import { fetchRealAstrologers } from '@/services/homeDataService';
 import { useServiceDetailsStore } from '@/services/serviceDetailsStore';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 import { AnimatedPressable } from '@/components/AnimatedBox';
 import { AppBar } from '@/components/AppBar';
 import { AppIcon } from '@/components/AppIcon';
@@ -928,6 +929,7 @@ export function MuhuratScreen() {
   const { t } = useTranslation();
   const dynamicSvc = useDynamicService('pan-muhurat');
   const { content, refreshing, onRefresh } = useLiveServicePages();
+  const muhuratMicro = useAppScreensCmsStore((s) => s.config.cmsMicroLabels.muhurat);
   const page = content.muhurat;
   const a = page.hero.accent || dynamicSvc?.color || '#FFD700';
   const title = page.hero.title || dynamicSvc?.name || 'Muhurat';
@@ -953,11 +955,11 @@ export function MuhuratScreen() {
 
   const weekdayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const panchangRows: Array<[string, string]> = [
-    ['Tithi', livePanchang?.tithi || 'Loading...'],
-    ['Nakshatra', livePanchang?.nakshatra || 'Loading...'],
-    ['Yoga', livePanchang?.yoga || 'Loading...'],
-    ['Karana', livePanchang?.karana || 'Loading...'],
-    ['Vara', weekdayName],
+    [muhuratMicro.tithiLabel, livePanchang?.tithi || muhuratMicro.loadingText],
+    [muhuratMicro.nakshatraLabel, livePanchang?.nakshatra || muhuratMicro.loadingText],
+    [muhuratMicro.yogaLabel, livePanchang?.yoga || muhuratMicro.loadingText],
+    [muhuratMicro.karanaLabel, livePanchang?.karana || muhuratMicro.loadingText],
+    [muhuratMicro.varaLabel, weekdayName],
   ];
 
   return (
@@ -1026,20 +1028,20 @@ export function MuhuratScreen() {
         <InfoCard
           icon="wb_sunny_rounded"
           title={page.abhijitTitle || 'Abhijit Muhurat'}
-          description={`Today: ${livePanchang.abhijitMuhurat}. ${page.abhijitNote}`}
+          description={`${muhuratMicro.todayPrefix} ${livePanchang.abhijitMuhurat}. ${page.abhijitNote}`}
           accent="#2D9E6B"
         />
       ) : null}
       <InfoCard
         icon="warning_amber_rounded"
         title={page.rahuKaalTitle || 'Rahu Kaal'}
-        description={`Today: ${livePanchang?.rahuKaal || 'Calculating...'}. ${page.rahuKaalNote}`}
+        description={`${muhuratMicro.todayPrefix} ${livePanchang?.rahuKaal || muhuratMicro.calculatingText}. ${page.rahuKaalNote}`}
         accent={AppColors.error}
       />
       <InfoCard
         icon="warning_amber_rounded"
         title={page.yamagandaTitle || 'Yamaganda'}
-        description={`Today: ${livePanchang?.yamaganda || 'Calculating...'}. ${page.yamagandaNote}`}
+        description={`${muhuratMicro.todayPrefix} ${livePanchang?.yamaganda || muhuratMicro.calculatingText}. ${page.yamagandaNote}`}
         accent={AppColors.warning}
       />
     </ServiceLayout>

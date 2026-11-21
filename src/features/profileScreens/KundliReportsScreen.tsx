@@ -37,6 +37,8 @@ import {
 } from '@/data/mahadashaGuidesData';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, pop, push, useExtra } from '@/navigation/routes';
+import { API_ENDPOINTS } from '@/config/api';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 import { useCurrencyStore } from '@/services/currencyStore';
 import {
   downloadOrShareReport,
@@ -53,10 +55,12 @@ import { withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 
 const STORAGE_WALLET_BALANCE = 'astroparihar_wallet_balance';
+const STORAGE_MAHADASHA_GUIDES_CACHE = 'astroparihar_mahadasha_guides_cache_v1';
 
 export default function KundliReportsScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const cms = useAppScreensCmsStore((s) => s.config.kundliReports);
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authUser = useAuthStore((s) => s.user);
@@ -68,6 +72,7 @@ export default function KundliReportsScreen() {
   const [tab, setTab] = useState(0); // Default to 'My Generated Reports'
   const [purchasedIds, setPurchasedIds] = useState<string[]>([]);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [guidesMap, setGuidesMap] = useState<Record<string, MahadashaGuide>>(MAHADASHA_GUIDES);
 
   // User's generated reports from Firestore `service_requests`
   const [userReports, setUserReports] = useState<KundliReportItem[]>([]);
@@ -82,7 +87,56 @@ export default function KundliReportsScreen() {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [confirmingGuide, setConfirmingGuide] = useState<MahadashaGuide | null>(null);
 
-  const guidesList: MahadashaGuide[] = Object.values(MAHADASHA_GUIDES);
+  const guidesList: MahadashaGuide[] = Object.values(guidesMap);
+
+  useEffect(() => {
+    let mounted = true;
+    const hydrateGuides = (raw: Record<string, any>) => {
+      const merged: Record<string, MahadashaGuide> = { ...MAHADASHA_GUIDES };
+      Object.entries(raw || {}).forEach(([id, item]) => {
+        if (!item || typeof item !== 'object') return;
+        const base = MAHADASHA_GUIDES[id];
+        merged[id] = {
+          ...(base || {}),
+          ...item,
+          id,
+          price: typeof item.price === 'number' ? item.price : base?.price ?? 99,
+          chapters: Array.isArray(item.chapters) && item.chapters.length > 0 ? item.chapters : base?.chapters ?? [],
+          emoji: item.emoji || base?.emoji || '🛡️',
+          badge: item.badge || base?.badge || 'Vedic Guide',
+          pdfTitle: item.pdfTitle || base?.pdfTitle || `${item.title || id}.pdf`,
+          pdfUrl: item.pdfUrl || base?.pdfUrl || '',
+        } as MahadashaGuide;
+      });
+      return merged;
+    };
+
+    AsyncStorage.getItem(STORAGE_MAHADASHA_GUIDES_CACHE)
+      .then((cached) => {
+        if (cached && mounted) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed && typeof parsed === 'object') setGuidesMap(hydrateGuides(parsed));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    fetch(API_ENDPOINTS.mahadashaGuides)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (mounted && json?.success && json.guides && typeof json.guides === 'object') {
+          const next = hydrateGuides(json.guides);
+          setGuidesMap(next);
+          AsyncStorage.setItem(STORAGE_MAHADASHA_GUIDES_CACHE, JSON.stringify(json.guides)).catch(() => {});
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const loadUserDataAndPurchases = async () => {
     try {
@@ -95,7 +149,7 @@ export default function KundliReportsScreen() {
 
       // Self-healing reconciliation: If user purchased guides, ensure balance reflects deduction
       const totalPurchasedCost = bought.reduce((sum, gId) => {
-        const g = MAHADASHA_GUIDES[gId];
+        const g = guidesMap[gId] || MAHADASHA_GUIDES[gId];
         return sum + (g?.price || 0);
       }, 0);
 
@@ -276,7 +330,7 @@ export default function KundliReportsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="kundliReports.screen">
       <AppBar
-        title="Reports & Guides Vault"
+        title={cms.headerTitle}
         onBack={pop}
         testIDPrefix="kundliReports"
         backgroundColor={colors.background}
@@ -284,7 +338,7 @@ export default function KundliReportsScreen() {
         bottom={
           <TabBar
             testIDPrefix="kundliReports.tab"
-            tabs={['My Reports', 'Mahadasha Guides', 'Purchased Guides']}
+            tabs={[cms.tabs.myReports, cms.tabs.mahadashaGuides, cms.tabs.purchasedGuides]}
             index={tab}
             onChange={setTab}
             indicatorStyle="underline"
@@ -313,7 +367,7 @@ export default function KundliReportsScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <AppIcon name="account_balance_wallet_outlined" color={colors.goldAccent} size={16} />
           <Text style={{ marginLeft: 6, color: colors.textPrimary, fontSize: 12.5, fontWeight: '700' }}>
-            Wallet Balance: {formatPrice(walletBalance)}
+            {`${cms.walletBalancePrefix} ${formatPrice(walletBalance)}`}
           </Text>
         </View>
         <Pressable
@@ -327,7 +381,7 @@ export default function KundliReportsScreen() {
             borderColor: withAlpha(colors.goldAccent, 80),
           }}
         >
-          <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '800' }}>+ Add Money</Text>
+          <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '800' }}>{cms.addMoneyLabel}</Text>
         </Pressable>
       </View>
 
@@ -357,7 +411,7 @@ export default function KundliReportsScreen() {
               >
                 <AppIcon name="lock" color={colors.goldAccent} size={32} />
                 <Text style={{ marginTop: 14, color: colors.textPrimary, fontSize: 17, fontWeight: '800' }}>
-                  Please Sign In to Access Your Reports
+                  {cms.signInReportsTitle}
                 </Text>
                 <Text
                   style={{
@@ -368,10 +422,10 @@ export default function KundliReportsScreen() {
                     lineHeight: 18,
                   }}
                 >
-                  All your personalized Vedic reports, Vastu analyses, and Parihara plans generated across the website and mobile app will appear here.
+                  {cms.signInReportsSubtitle}
                 </Text>
                 <ElevatedButton
-                  label="Sign In Now"
+                  label={cms.signInButton}
                   onPress={() => push(AppRoutes.signInScreen)}
                   bg={colors.goldAccent}
                   fg="#0A0E1A"
@@ -385,7 +439,7 @@ export default function KundliReportsScreen() {
               <View style={{ paddingVertical: 60, alignItems: 'center' }}>
                 <ActivityIndicator size="large" color={colors.goldAccent} />
                 <Text style={{ marginTop: 12, color: colors.textMuted, fontSize: 13 }}>
-                  Syncing reports from AstroParihar Cloud...
+                  {cms.syncingReportsText}
                 </Text>
               </View>
             ) : userReports.length === 0 ? (
@@ -414,7 +468,7 @@ export default function KundliReportsScreen() {
                   <AppIcon name="description" color={colors.goldAccent} size={28} />
                 </View>
                 <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
-                  No Generated Reports Yet
+                  {cms.emptyReportsTitle}
                 </Text>
                 <Text
                   style={{
@@ -425,10 +479,10 @@ export default function KundliReportsScreen() {
                     lineHeight: 18,
                   }}
                 >
-                  Generate deep Vedic remedies, Vastu analysis, or personalized Parihara plans from the Services tab to view them here.
+                  {cms.emptyReportsSubtitle}
                 </Text>
                 <ElevatedButton
-                  label="Explore Vedic Services"
+                  label={cms.exploreServicesBtn}
                   onPress={() => push(AppRoutes.servicesScreen)}
                   bg={colors.goldAccent}
                   fg="#0A0E1A"
@@ -457,7 +511,7 @@ export default function KundliReportsScreen() {
                   {idx === 0 ? (
                     <View style={{ marginBottom: 10, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, backgroundColor: withAlpha(colors.goldAccent, 24), borderWidth: 1, borderColor: colors.goldAccent }}>
                       <Text style={{ color: colors.goldAccent, fontSize: 10.5, fontWeight: '800', letterSpacing: 0.5 }}>
-                        ✨ LATEST CONSULTATION REPORT
+                        {cms.latestReportBadge}
                       </Text>
                     </View>
                   ) : null}
@@ -491,7 +545,7 @@ export default function KundliReportsScreen() {
                       }}
                     >
                       <Text style={{ color: '#2E7D32', fontSize: 10, fontWeight: '700' }}>
-                        Ready
+                        {cms.readyBadge}
                       </Text>
                     </View>
                   </View>
@@ -538,7 +592,7 @@ export default function KundliReportsScreen() {
                       >
                         <AppIcon name="visibility" size={13} color="#0A0E1A" style={{ marginRight: 4 }} />
                         <Text style={{ color: '#0A0E1A', fontSize: 11, fontWeight: '800' }}>
-                          View Report
+                          {cms.viewReportBtn}
                         </Text>
                       </Pressable>
                       <Pressable
@@ -556,7 +610,7 @@ export default function KundliReportsScreen() {
                       >
                         <AppIcon name="share" size={13} color={colors.textPrimary} style={{ marginRight: 4 }} />
                         <Text style={{ color: colors.textPrimary, fontSize: 11, fontWeight: '700' }}>
-                          Share
+                          {cms.shareBtn}
                         </Text>
                       </Pressable>
                     </View>
@@ -566,7 +620,7 @@ export default function KundliReportsScreen() {
             )}
           </ScrollView>,
 
-          /* Tab 1: Official Mahadasha Guides (4) */
+          /* Tab 1: Official Mahadasha Guides */
           <ScrollView
             key="catalog"
             contentContainerStyle={{
@@ -622,7 +676,7 @@ export default function KundliReportsScreen() {
                           }}
                         >
                           <Text style={{ color: cardAccent, fontSize: 9.5, fontWeight: '800' }}>
-                            {guide.badge.toUpperCase()}
+                            {(guide.badge || '').toUpperCase()}
                           </Text>
                         </View>
                         {isBought && (
@@ -635,7 +689,7 @@ export default function KundliReportsScreen() {
                             }}
                           >
                             <Text style={{ color: '#2E7D32', fontSize: 9.5, fontWeight: '800' }}>
-                              UNLOCKED ✓
+                              {cms.unlockedBadge}
                             </Text>
                           </View>
                         )}
@@ -666,9 +720,9 @@ export default function KundliReportsScreen() {
                     }}
                   >
                     <View>
-                      <Text style={{ color: colors.textMuted, fontSize: 10.5 }}>PDF & In-App Guide</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 10.5 }}>{cms.pdfGuideLabel}</Text>
                       <Text style={{ color: colors.goldAccent, fontSize: 16, fontWeight: '900' }}>
-                        {isBought ? 'Purchased' : formatPrice(guide.price)}
+                        {isBought ? cms.purchasedLabel : formatPrice(guide.price)}
                       </Text>
                     </View>
 
@@ -676,7 +730,7 @@ export default function KundliReportsScreen() {
                       {isBought ? (
                         <>
                           <ElevatedButton
-                            label="Read Guide"
+                            label={cms.readGuideBtn}
                             onPress={() => handleOpenReader(guide)}
                             bg={colors.goldAccent}
                             fg="#0A0E1A"
@@ -686,7 +740,7 @@ export default function KundliReportsScreen() {
                             fontSize={12}
                           />
                           <OutlinedButton
-                            label="PDF"
+                            label={cms.pdfBtn}
                             onPress={() => handleDownloadPdf(guide)}
                             color={colors.goldAccent}
                             radius={100}
@@ -697,7 +751,7 @@ export default function KundliReportsScreen() {
                         </>
                       ) : (
                         <ElevatedButton
-                          label={isPurchasing ? 'Processing...' : `Unlock • ${formatPrice(guide.price)}`}
+                          label={isPurchasing ? cms.processingLabel : `${cms.unlockPrefix} ${formatPrice(guide.price)}`}
                           onPress={() => handleBuyOrUnlock(guide)}
                           bg={colors.goldAccent}
                           fg="#0A0E1A"
@@ -737,10 +791,10 @@ export default function KundliReportsScreen() {
               >
                 <AppIcon name="lock" color={colors.goldAccent} size={32} />
                 <Text style={{ marginTop: 14, color: colors.textPrimary, fontSize: 17, fontWeight: '800' }}>
-                  Please Sign In to Access Your Purchased Guides
+                  {cms.signInPurchasedTitle}
                 </Text>
                 <ElevatedButton
-                  label="Sign In Now"
+                  label={cms.signInButton}
                   onPress={() => push(AppRoutes.signInScreen)}
                   bg={colors.goldAccent}
                   fg="#0A0E1A"
@@ -764,7 +818,7 @@ export default function KundliReportsScreen() {
               >
                 <AppIcon name="menu_book" color={colors.goldAccent} size={32} />
                 <Text style={{ marginTop: 14, color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
-                  No Purchased Guides Yet
+                  {cms.emptyPurchasedTitle}
                 </Text>
                 <Text
                   style={{
@@ -775,10 +829,10 @@ export default function KundliReportsScreen() {
                     lineHeight: 18,
                   }}
                 >
-                  Unlock any Rahu or Sani Mahadasha guide from the Official Guides tab to read anytime with lifetime access.
+                  {cms.emptyPurchasedSubtitle}
                 </Text>
                 <ElevatedButton
-                  label="Explore Mahadasha Guides"
+                  label={cms.exploreGuidesBtn}
                   onPress={() => setTab(1)}
                   bg={colors.goldAccent}
                   fg="#0A0E1A"
@@ -813,7 +867,7 @@ export default function KundliReportsScreen() {
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
                           <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: '#E8F5E9' }}>
                             <Text style={{ color: '#2E7D32', fontSize: 9.5, fontWeight: '800' }}>
-                              LIFETIME ACCESS ✓
+                              {cms.lifetimeAccessBadge}
                             </Text>
                           </View>
                         </View>
@@ -835,7 +889,7 @@ export default function KundliReportsScreen() {
                       }}
                     >
                       <OutlinedButton
-                        label="Download PDF"
+                        label={cms.downloadPdfBtn}
                         onPress={() => handleDownloadPdf(guide)}
                         color={colors.goldAccent}
                         radius={100}
@@ -844,7 +898,7 @@ export default function KundliReportsScreen() {
                         fontSize={12}
                       />
                       <ElevatedButton
-                        label="Read In-App"
+                        label={cms.readInAppBtn}
                         onPress={() => handleOpenReader(guide)}
                         bg={colors.goldAccent}
                         fg="#0A0E1A"
@@ -893,7 +947,7 @@ export default function KundliReportsScreen() {
                 }}
               >
                 <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '800', letterSpacing: 0.5 }}>
-                  🕉️ OFFICIAL VEDIC MAHADASHA PROTOCOL
+                  {cms.purchaseModal.badge}
                 </Text>
               </View>
 
@@ -934,7 +988,7 @@ export default function KundliReportsScreen() {
               }}
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>Protocol Price</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>{cms.purchaseModal.priceLabel}</Text>
                 <Text style={{ color: colors.goldAccent, fontSize: 17, fontWeight: '800' }}>
                   {formatPrice(confirmingGuide.price)}
                 </Text>
@@ -943,14 +997,14 @@ export default function KundliReportsScreen() {
               <View style={{ height: 1, backgroundColor: colors.cardBorder, marginVertical: 2 }} />
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ color: colors.textMuted, fontSize: 12 }}>Current Wallet Balance</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 12 }}>{cms.purchaseModal.balanceLabel}</Text>
                 <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>
                   {formatPrice(walletBalance)}
                 </Text>
               </View>
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ color: colors.textMuted, fontSize: 12 }}>Balance After Purchase</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 12 }}>{cms.purchaseModal.afterBalanceLabel}</Text>
                 <Text
                   style={{
                     color: walletBalance >= confirmingGuide.price ? '#2D9E6B' : '#EF4444',
@@ -965,12 +1019,7 @@ export default function KundliReportsScreen() {
 
             {/* Lifetime Access Features Included */}
             <View style={{ marginBottom: 18, gap: 6 }}>
-              {[
-                '✓ Complete In-App Reader with all 4 Chapters',
-                '✓ Downloadable & Shareable High-Res PDF Guide',
-                '✓ Lifetime Access across all your devices & sessions',
-                '✓ Immediate Activation in your Purchased Guides Vault',
-              ].map((feat, fIdx) => (
+              {(cms.purchaseModal.features || []).map((feat, fIdx) => (
                 <Text key={fIdx} style={{ color: colors.textSecondary, fontSize: 11.5, lineHeight: 16 }}>
                   {feat}
                 </Text>
@@ -1003,7 +1052,7 @@ export default function KundliReportsScreen() {
                     <AppIcon name="lock_open_rounded" size={18} color="#0A0E1A" style={{ marginRight: 8 }} />
                   )}
                   <Text style={{ color: '#0A0E1A', fontSize: 14.5, fontWeight: '800' }}>
-                    {isPurchasing ? 'Unlocking Guide...' : `Confirm & Unlock • ${formatPrice(confirmingGuide.price)} ✨`}
+                    {isPurchasing ? cms.purchaseModal.unlockingLabel : `${cms.purchaseModal.confirmPrefix} ${formatPrice(confirmingGuide.price)} ✨`}
                   </Text>
                 </Pressable>
 
@@ -1015,7 +1064,7 @@ export default function KundliReportsScreen() {
                     alignItems: 'center',
                   }}
                 >
-                  <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: '600' }}>Cancel</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: '600' }}>{cms.purchaseModal.cancelLabel}</Text>
                 </Pressable>
               </View>
             ) : (
@@ -1031,7 +1080,7 @@ export default function KundliReportsScreen() {
                   }}
                 >
                   <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '700' }}>
-                    Insufficient Balance: Needs {formatPrice(confirmingGuide.price - walletBalance)} more
+                    {`${cms.purchaseModal.insufficientPrefix} ${formatPrice(confirmingGuide.price - walletBalance)} more`}
                   </Text>
                 </View>
 
@@ -1051,7 +1100,7 @@ export default function KundliReportsScreen() {
                 >
                   <AppIcon name="account_balance_wallet_rounded" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
                   <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800' }}>
-                    Recharge Wallet Now ↗
+                    {cms.purchaseModal.rechargeBtn}
                   </Text>
                 </Pressable>
 
@@ -1059,7 +1108,7 @@ export default function KundliReportsScreen() {
                   onPress={() => setConfirmingGuide(null)}
                   style={{ paddingVertical: 8, alignItems: 'center' }}
                 >
-                  <Text style={{ color: colors.textMuted, fontSize: 13 }}>Cancel</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 13 }}>{cms.purchaseModal.cancelLabel}</Text>
                 </Pressable>
               </View>
             )}
@@ -1115,7 +1164,7 @@ export default function KundliReportsScreen() {
               >
                 <AppIcon name="share" color={colors.goldAccent} size={14} />
                 <Text style={{ marginLeft: 4, color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
-                  Share PDF
+                  {cms.reportViewer.sharePdfBtn}
                 </Text>
               </Pressable>
             </View>
@@ -1145,10 +1194,10 @@ export default function KundliReportsScreen() {
                   {viewingReport.title}
                 </Text>
                 <Text style={{ color: colors.goldAccent, fontSize: 12, fontWeight: '700', marginTop: 4 }}>
-                  Verified Vedic Ephemeris Analysis
+                  {cms.reportViewer.verifiedLabel}
                 </Text>
                 <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>
-                  Generated on {viewingReport.date}
+                  {`${cms.reportViewer.generatedOnPrefix} ${viewingReport.date}`}
                 </Text>
               </View>
 
@@ -1156,7 +1205,7 @@ export default function KundliReportsScreen() {
               {viewingReport.summary ? (
                 <View style={{ marginBottom: 20 }}>
                   <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '800', letterSpacing: 0.5, marginBottom: 6 }}>
-                    EXECUTIVE SUMMARY
+                    {cms.reportViewer.summaryHeading}
                   </Text>
                   <View style={{ padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }}>
                     <Text style={{ color: colors.textPrimary, fontSize: 13.5, lineHeight: 21 }}>
@@ -1170,7 +1219,7 @@ export default function KundliReportsScreen() {
               {viewingReport.astrologicalAnalysis ? (
                 <View style={{ marginBottom: 20 }}>
                   <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '800', letterSpacing: 0.5, marginBottom: 6 }}>
-                    PLANETARY & LAGNA ANALYSIS
+                    {cms.reportViewer.analysisHeading}
                   </Text>
                   <View style={{ padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }}>
                     <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 21 }}>
@@ -1184,7 +1233,7 @@ export default function KundliReportsScreen() {
               {viewingReport.remediesPrescribed && viewingReport.remediesPrescribed.length > 0 ? (
                 <View style={{ marginBottom: 20 }}>
                   <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '800', letterSpacing: 0.5, marginBottom: 6 }}>
-                    PRESCRIBED VEDIC REMEDIES & PARIHARAS
+                    {cms.reportViewer.remediesHeading}
                   </Text>
                   <View style={{ padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }}>
                     {viewingReport.remediesPrescribed.map((rem, rIdx) => (
@@ -1200,7 +1249,7 @@ export default function KundliReportsScreen() {
               ) : null}
 
               <ElevatedButton
-                label="Close Report"
+                label={cms.reportViewer.closeBtn}
                 onPress={() => setViewingReport(null)}
                 bg={colors.goldAccent}
                 fg="#0A0E1A"
@@ -1242,7 +1291,7 @@ export default function KundliReportsScreen() {
                   {viewingGuide.title}
                 </Text>
                 <Text numberOfLines={1} style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '600' }}>
-                  Chapter {activeChapterIndex + 1} of {viewingGuide.chapters.length}
+                  {`${cms.reader.chapterPrefix} ${activeChapterIndex + 1} ${cms.reader.ofLabel} ${viewingGuide.chapters.length}`}
                 </Text>
               </View>
               <Pressable
@@ -1261,7 +1310,7 @@ export default function KundliReportsScreen() {
               >
                 <AppIcon name="download" color={colors.goldAccent} size={14} />
                 <Text style={{ marginLeft: 4, color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>
-                  PDF
+                  {cms.pdfBtn}
                 </Text>
               </Pressable>
             </View>
@@ -1301,7 +1350,7 @@ export default function KundliReportsScreen() {
                             : colors.textSecondary,
                         }}
                       >
-                        Ch. {idx + 1}
+                        {`${cms.reader.chShort} ${idx + 1}`}
                       </Text>
                     </Pressable>
                   );
@@ -1321,7 +1370,7 @@ export default function KundliReportsScreen() {
               {viewingGuide.chapters[activeChapterIndex] && (
                 <>
                   <Text style={{ color: colors.goldAccent, fontSize: 12, fontWeight: '800', letterSpacing: 0.5 }}>
-                    CHAPTER {activeChapterIndex + 1}
+                    {`${cms.reader.chapterPrefix.toUpperCase()} ${activeChapterIndex + 1}`}
                   </Text>
                   <Text style={{ marginTop: 4, color: colors.textPrimary, fontSize: 18, fontWeight: '800', lineHeight: 24 }}>
                     {viewingGuide.chapters[activeChapterIndex].title}
@@ -1366,16 +1415,16 @@ export default function KundliReportsScreen() {
                           }}
                         >
                           <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '800', marginBottom: 4 }}>
-                            🕉️ CONSECRATED SANSKRIT MANTRA
+                            {cms.reader.mantraHeading}
                           </Text>
                           <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700', fontStyle: 'italic', lineHeight: 24 }}>
                             {sec.mantra.sanskrit}
                           </Text>
                           <Text style={{ marginTop: 6, color: colors.textSecondary, fontSize: 12, lineHeight: 17 }}>
-                            Meaning: {sec.mantra.translation}
+                            {`${cms.reader.meaningPrefix} ${sec.mantra.translation}`}
                           </Text>
                           <Text style={{ marginTop: 4, color: colors.goldAccent, fontSize: 11, fontWeight: '600' }}>
-                            Instructions: {sec.mantra.instructions}
+                            {`${cms.reader.instructionsPrefix} ${sec.mantra.instructions}`}
                           </Text>
                         </View>
                       )}
@@ -1386,7 +1435,7 @@ export default function KundliReportsScreen() {
                   <View style={{ marginTop: 24, flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
                     {activeChapterIndex > 0 ? (
                       <OutlinedButton
-                        label={`← Chapter ${activeChapterIndex}`}
+                        label={`${cms.reader.prevPrefix} ${activeChapterIndex}`}
                         onPress={() => setActiveChapterIndex((p) => p - 1)}
                         color={colors.textSecondary}
                         radius={100}
@@ -1397,7 +1446,7 @@ export default function KundliReportsScreen() {
 
                     {activeChapterIndex < viewingGuide.chapters.length - 1 ? (
                       <ElevatedButton
-                        label={`Chapter ${activeChapterIndex + 2} →`}
+                        label={`${cms.reader.nextPrefix} ${activeChapterIndex + 2} →`}
                         onPress={() => setActiveChapterIndex((p) => p + 1)}
                         bg={colors.goldAccent}
                         fg="#0A0E1A"
@@ -1407,7 +1456,7 @@ export default function KundliReportsScreen() {
                       />
                     ) : (
                       <ElevatedButton
-                        label="Finish Reading ✓"
+                        label={cms.reader.finishBtn}
                         onPress={() => setIsReaderOpen(false)}
                         bg="#2D9E6B"
                         fg="#FFFFFF"

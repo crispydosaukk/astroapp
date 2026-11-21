@@ -16,8 +16,8 @@ import { AppRoutes, go, pop, push } from '@/navigation/routes';
 import { useCurrencyStore } from '@/services/currencyStore';
 import { fetchRealAstrologers, LiveAstrologer } from '@/services/homeDataService';
 import { withAlpha } from '@/theme/colors';
-import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
+import { fillCmsTemplate, useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 
 const STORAGE_SAVED_KEY = 'astroparihar_saved_astrologer_ids';
 
@@ -45,7 +45,7 @@ function SummaryChip({ value, label, color, colors }: { value: string; label: st
 export default function SavedAstrologersScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const cms = useAppScreensCmsStore((s) => s.config.savedAstrologers);
   const { formatPrice } = useCurrencyStore();
 
   const [loading, setLoading] = useState(true);
@@ -94,10 +94,10 @@ export default function SavedAstrologersScreen() {
     let nextIds: string[];
     if (isSaved) {
       nextIds = savedIds.filter((id) => id !== astrologer.id);
-      showSnackBar(`Removed ${astrologer.name} from saved astrologers`, colors.surfaceVariant);
+      showSnackBar(fillCmsTemplate(cms.removedToastTemplate, { name: astrologer.name }), colors.surfaceVariant);
     } else {
       nextIds = [...savedIds, astrologer.id];
-      showSnackBar(`Saved ${astrologer.name} to bookmarks!`, colors.surfaceVariant);
+      showSnackBar(fillCmsTemplate(cms.savedToastTemplate, { name: astrologer.name }), colors.surfaceVariant);
     }
     setSavedIds(nextIds);
     await AsyncStorage.setItem(STORAGE_SAVED_KEY, JSON.stringify(nextIds));
@@ -130,14 +130,14 @@ export default function SavedAstrologersScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="savedAstrologers.screen">
       <AppBar
-        title={t('profile.savedAstrologers', 'Saved Astrologers')}
+        title={cms.headerTitle}
         onBack={pop}
         testIDPrefix="savedAstrologers"
         backgroundColor={colors.background}
         backColor={colors.textPrimary}
         actions={[
           <Pressable key="find" testID="savedAstrologers.findMore" onPress={findMore} style={{ paddingHorizontal: 12, height: 40, justifyContent: 'center' }}>
-            <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>Find More</Text>
+            <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>{cms.findMoreLabel}</Text>
           </Pressable>,
         ]}
       />
@@ -145,7 +145,7 @@ export default function SavedAstrologersScreen() {
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={colors.goldAccent} size="large" />
-          <Text style={{ marginTop: 12, color: colors.textMuted, fontSize: 13 }}>Loading saved astrologers...</Text>
+          <Text style={{ marginTop: 12, color: colors.textMuted, fontSize: 13 }}>{cms.loadingText}</Text>
         </View>
       ) : (
         <ScrollView
@@ -153,8 +153,8 @@ export default function SavedAstrologersScreen() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}
         >
           <View style={{ flexDirection: 'row' }}>
-            <SummaryChip value={String(savedAstrologers.length)} label="Saved" color={colors.goldAccent} colors={colors} />
-            <SummaryChip value={String(savedAstrologers.filter((a) => a.isOnline).length)} label="Online Now" color="#2D9E6B" colors={colors} />
+            <SummaryChip value={String(savedAstrologers.length)} label={cms.chipSaved} color={colors.goldAccent} colors={colors} />
+            <SummaryChip value={String(savedAstrologers.filter((a) => a.isOnline).length)} label={cms.chipOnline} color="#2D9E6B" colors={colors} />
           </View>
 
           <View style={{ height: 18 }} />
@@ -176,14 +176,14 @@ export default function SavedAstrologersScreen() {
                 <AppIcon name="bookmark_border_rounded" color={colors.goldAccent} size={40} />
               </View>
               <Text style={{ marginTop: 16, color: colors.textPrimary, fontSize: 18, fontWeight: '800' }}>
-                No Saved Astrologers Yet
+                {cms.emptyTitle}
               </Text>
               <Text style={{ marginTop: 6, color: colors.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 18 }}>
-                {'Bookmark your trusted Vedic Acharyas\nfor fast 1-tap chat and live calls.'}
+                {cms.emptySubtitle}
               </Text>
               <ElevatedButton
                 testID="savedAstrologers.findAstrologers"
-                label="Browse All Astrologers"
+                label={cms.emptyButton}
                 onPress={findMore}
                 radius={100}
                 paddingV={12}
@@ -196,7 +196,7 @@ export default function SavedAstrologersScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                     <AppIcon name="stars_rounded" color={colors.goldAccent} size={18} />
                     <Text style={{ marginLeft: 6, color: colors.textPrimary, fontSize: 15, fontWeight: '700' }}>
-                      Recommended Vedic Astrologers
+                      {cms.recommendedHeading}
                     </Text>
                   </View>
                   {recommendedAstrologers.map((a, i) => (
@@ -206,6 +206,8 @@ export default function SavedAstrologersScreen() {
                       isSaved={false}
                       colors={colors}
                       formatPrice={formatPrice}
+                      chatLabel={cms.chatButton}
+                      callLabel={cms.callButton}
                       onToggleSave={() => handleToggleSave(a)}
                       onChat={() => handleStartChat(a)}
                       onCall={() => handleStartCall(a)}
@@ -223,6 +225,8 @@ export default function SavedAstrologersScreen() {
                 isSaved={true}
                 colors={colors}
                 formatPrice={formatPrice}
+                chatLabel={cms.chatButton}
+                callLabel={cms.callButton}
                 onToggleSave={() => handleToggleSave(a)}
                 onChat={() => handleStartChat(a)}
                 onCall={() => handleStartCall(a)}
@@ -241,6 +245,8 @@ function AstrologerCard({
   isSaved,
   colors,
   formatPrice,
+  chatLabel,
+  callLabel,
   onToggleSave,
   onChat,
   onCall,
@@ -250,6 +256,8 @@ function AstrologerCard({
   isSaved: boolean;
   colors: any;
   formatPrice: (inr: number, usd?: number) => string;
+  chatLabel: string;
+  callLabel: string;
   onToggleSave: () => void;
   onChat: () => void;
   onCall: () => void;
@@ -352,7 +360,7 @@ function AstrologerCard({
       <View style={{ marginTop: 14, flexDirection: 'row' }}>
         <OutlinedButton
           testID={`savedAstrologers.card.${index}.chat`}
-          label="Chat"
+          label={chatLabel}
           icon="chat_bubble_outline_rounded"
           onPress={onChat}
           color={colors.textSecondary}
@@ -365,7 +373,7 @@ function AstrologerCard({
         <View style={{ width: 10 }} />
         <ElevatedButton
           testID={`savedAstrologers.card.${index}.call`}
-          label="Call"
+          label={callLabel}
           icon="call_outlined"
           onPress={onCall}
           bg="#713B32"

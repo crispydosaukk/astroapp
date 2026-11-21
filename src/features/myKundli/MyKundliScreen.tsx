@@ -24,8 +24,12 @@ import { fetchCalculatedKundli, KundliChartData } from '@/services/astrologyServ
 import { useBirthProfileStore } from '@/services/birthProfileStore';
 import { downloadOrShareReport } from '@/services/reportService';
 import { useAuthStore } from '@/features/auth/authStore';
+import { fillCmsTemplate, useAppScreensCmsStore } from '@/services/appScreensCmsStore';
+import type { AppScreensCmsConfig } from '@/services/appScreensCmsDefaults';
 import { withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
+
+const ZODIAC_WHEEL = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
 
 type Planet = { name: string; symbol: string; sign: string; house: number; degree: string; color: string };
 
@@ -102,7 +106,7 @@ function InfoChip({ label, value, color }: { label: string; value: string; color
   );
 }
 
-function DashaRow({ label, planet, period, isCurrent, colors }: { label: string; planet: string; period: string; isCurrent: boolean; colors: any }) {
+function DashaRow({ label, planet, period, isCurrent, activeBadge, colors }: { label: string; planet: string; period: string; isCurrent: boolean; activeBadge: string; colors: any }) {
   return (
     <View style={{ marginBottom: 8, padding: 12, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', backgroundColor: isCurrent ? withAlpha(colors.goldAccent, colors.isLight ? 20 : 30) : colors.surfaceVariant, borderWidth: 1, borderColor: isCurrent ? colors.goldAccent : colors.cardBorder }}>
       <View>
@@ -112,7 +116,7 @@ function DashaRow({ label, planet, period, isCurrent, colors }: { label: string;
       <View style={{ alignItems: 'flex-end' }}>
         {isCurrent ? (
           <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: colors.goldAccent }}>
-            <Text style={{ color: '#080D1A', fontSize: 10, fontWeight: '700' }}>Active</Text>
+            <Text style={{ color: '#080D1A', fontSize: 10, fontWeight: '700' }}>{activeBadge}</Text>
           </View>
         ) : null}
         <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: isCurrent ? 4 : 0 }}>{period}</Text>
@@ -135,50 +139,57 @@ function StatusCard({ name, status, desc, borderColor, statusColor, colors }: { 
   );
 }
 
-function SectionContent({ index, chart, colors }: { index: number; chart: KundliChartData | null; colors: any }) {
+function SectionContent({ index, chart, cms, colors }: { index: number; chart: KundliChartData | null; cms: AppScreensCmsConfig['myKundli']; colors: any }) {
+  const sectionsList = cms.sections && cms.sections.length > 0 ? cms.sections : SECTIONS;
   switch (index) {
     case 0:
       return (
         <View>
           {[
-            ['Name', chart?.name || 'Seeker'],
-            ['Date of Birth', chart?.dob || 'Not specified'],
-            ['Time of Birth', chart?.tob || 'Not specified'],
-            ['Birth Place', chart?.pob || 'Not specified'],
-            ['Ascendant (Lagna)', chart?.ascendant.sign || 'Scorpio'],
-            ['Moon Sign (Rashi)', chart?.moonSign || 'Cancer'],
-            ['Nakshatra', `${chart?.nakshatra || 'Punarvasu'} (Pada ${chart?.nakshatraPada || 1})`],
-          ].map(([k, v]) => (
-            <View key={k} style={{ paddingVertical: 4, flexDirection: 'row', justifyContent: 'space-between' }}>
+            [cms.birthFieldLabels.name, chart?.name || cms.defaultDevoteeLabel],
+            [cms.birthFieldLabels.dob, chart?.dob || cms.notSpecifiedLabel],
+            [cms.birthFieldLabels.tob, chart?.tob || cms.notSpecifiedLabel],
+            [cms.birthFieldLabels.pob, chart?.pob || cms.notSpecifiedLabel],
+            [cms.birthFieldLabels.lagna, chart?.ascendant.sign || 'Scorpio'],
+            [cms.birthFieldLabels.moonSign, chart?.moonSign || 'Cancer'],
+            [cms.birthFieldLabels.nakshatra, `${chart?.nakshatra || 'Punarvasu'} (${cms.birthFieldLabels.padaLabel} ${chart?.nakshatraPada || 1})`],
+          ].map(([k, v], idx) => (
+            <View key={`${idx}-${k}`} style={{ paddingVertical: 4, flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ color: colors.textMuted, fontSize: 13 }}>{k}</Text>
               <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{v}</Text>
             </View>
           ))}
         </View>
       );
-    case 1:
+    case 1: {
+      const sign = chart?.ascendant.sign || 'Scorpio';
+      const lord = chart?.ascendant.lord || 'Mars';
       return (
         <View>
-          <InfoChip label="Lagna" value={`${chart?.ascendant.sign || 'Scorpio'} (${chart?.ascendant.degree || "12°45'"})`} color={colors.goldAccent} />
+          <InfoChip label={cms.lagnaLabels.lagna} value={`${sign} (${chart?.ascendant.degree || "12°45'"})`} color={colors.goldAccent} />
           <View style={{ height: 8 }} />
-          <InfoChip label="Lagna Lord" value={`${chart?.ascendant.lord || 'Mars'} (Governs vitality & life path)`} color="#FF6B6B" />
+          <InfoChip label={cms.lagnaLabels.lagnaLord} value={`${lord} ${cms.lagnaLabels.lordDescSuffix}`} color="#FF6B6B" />
           <Text style={{ marginTop: 10, color: colors.textSecondary, ...lh(13, 1.5) }}>
-            {`${chart?.ascendant.sign || 'Scorpio'} ascendant endows you with deep determination, strategic acumen, and keen intuition. Governed by ${chart?.ascendant.lord || 'Mars'}, you possess transformative resilience.`}
+            {fillCmsTemplate(cms.lagnaLabels.ascendantDescTemplate, { sign, lord })}
           </Text>
         </View>
       );
-    case 2:
+    }
+    case 2: {
+      const moonSign = chart?.moonSign || 'Cancer';
+      const nakshatra = chart?.nakshatra || 'Punarvasu';
       return (
         <View>
-          <InfoChip label="Moon Sign (Rashi)" value={`${chart?.moonSign || 'Cancer'}`} color={colors.goldAccent} />
+          <InfoChip label={cms.lagnaLabels.rashiLabel} value={moonSign} color={colors.goldAccent} />
           <View style={{ height: 8 }} />
-          <InfoChip label="Nakshatra" value={`${chart?.nakshatra || 'Punarvasu'} (Pada ${chart?.nakshatraPada || 1})`} color="#2D9E6B" />
+          <InfoChip label={cms.lagnaLabels.nakshatraLabel} value={`${nakshatra} (${cms.birthFieldLabels.padaLabel} ${chart?.nakshatraPada || 1})`} color="#2D9E6B" />
           <Text style={{ marginTop: 10, color: colors.textSecondary, ...lh(13, 1.5) }}>
-            {`Your Moon in ${chart?.moonSign || 'Cancer'} grants profound emotional sensitivity and intuitive wisdom. The ${chart?.nakshatra || 'Punarvasu'} nakshatra inspires continuous renewal, spiritual protection, and enduring fortune.`}
+            {fillCmsTemplate(cms.lagnaLabels.rashiDescTemplate, { moonSign, nakshatra })}
           </Text>
         </View>
       );
-    case 3:
+    }
+    case 3: {
       const planetsList = chart?.planets && chart.planets.length > 0 ? chart.planets : KUNDLI_PLANETS;
       return (
         <View>
@@ -193,52 +204,62 @@ function SectionContent({ index, chart, colors }: { index: number; chart: Kundli
           ))}
         </View>
       );
-    case 4:
+    }
+    case 4: {
+      const lagnaSign = chart?.ascendant?.sign || 'Aries';
+      const lagnaIdx = Math.max(0, ZODIAC_WHEEL.findIndex((z) => z.toLowerCase() === lagnaSign.toLowerCase()));
+      const housesToShow = cms.houseSummaryItems && cms.houseSummaryItems.length > 0
+        ? cms.houseSummaryItems
+        : [
+            { houseNumber: 1, label: '1st House', rules: 'Self, Vitality & Appearance' },
+            { houseNumber: 2, label: '2nd House', rules: 'Wealth, Family & Speech' },
+            { houseNumber: 4, label: '4th House', rules: 'Home, Mother & Happiness' },
+            { houseNumber: 7, label: '7th House', rules: 'Marriage, Partnerships & Spousal Bliss' },
+            { houseNumber: 10, label: '10th House', rules: 'Career, Profession & Social Status' },
+          ];
       return (
         <View>
-          {[
-            ['1st House', 'Self, Vitality & Appearance', chart?.ascendant.sign || 'Scorpio'],
-            ['2nd House', 'Wealth, Family & Speech', 'Sagittarius'],
-            ['4th House', 'Home, Mother & Happiness', 'Aquarius'],
-            ['7th House', 'Marriage, Partnerships & Spousal Bliss', 'Taurus'],
-            ['10th House', 'Career, Profession & Social Status', 'Leo'],
-          ].map((h) => (
-            <View key={h[0]} style={{ paddingVertical: 4, flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: withAlpha(colors.goldAccent, 20), alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ color: colors.goldAccent, fontSize: 10, fontWeight: '700' }}>{h[0].split(' ')[0]}</Text>
+          {housesToShow.map((h) => {
+            const houseNum = Number(h.houseNumber) || 1;
+            const houseSign = ZODIAC_WHEEL[(lagnaIdx + (houseNum - 1)) % 12];
+            return (
+              <View key={`${h.houseNumber}-${h.label}`} style={{ paddingVertical: 4, flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: withAlpha(colors.goldAccent, 20), alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: colors.goldAccent, fontSize: 10, fontWeight: '700' }}>{h.label.split(' ')[0]}</Text>
+                </View>
+                <View style={{ marginLeft: 10, flex: 1 }}>
+                  <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '600' }}>{h.rules}</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>{houseSign}</Text>
+                </View>
               </View>
-              <View style={{ marginLeft: 10, flex: 1 }}>
-                <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '600' }}>{h[1]}</Text>
-                <Text style={{ color: colors.textMuted, fontSize: 11 }}>{h[2]}</Text>
-              </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       );
-    case 5:
+    }
+    case 5: {
+      const mahadasha = chart?.dasha.currentMahadasha || 'Jupiter';
+      const antardasha = chart?.dasha.currentAntardasha || 'Saturn';
       return (
         <View>
-          <DashaRow label="Current Mahadasha" planet={chart?.dasha.currentMahadasha || 'Jupiter'} period="Active Major Planetary Period" isCurrent colors={colors} />
-          <DashaRow label="Current Antardasha" planet={chart?.dasha.currentAntardasha || 'Saturn'} period="Sub-Period Alignment" isCurrent={false} colors={colors} />
+          <DashaRow label={cms.dashaLabels.mahadasha} planet={mahadasha} period={cms.dashaLabels.majorDesc} isCurrent activeBadge={cms.dashaLabels.activeBadge} colors={colors} />
+          <DashaRow label={cms.dashaLabels.antardasha} planet={antardasha} period={cms.dashaLabels.subDesc} isCurrent={false} activeBadge={cms.dashaLabels.activeBadge} colors={colors} />
           <Text style={{ marginTop: 10, color: colors.textSecondary, ...lh(13, 1.5) }}>
-            {`You are currently navigating the ${chart?.dasha.currentMahadasha || 'Jupiter'} Mahadasha and ${chart?.dasha.currentAntardasha || 'Saturn'} Antardasha. This period emphasizes karmic expansion, professional milestones, and spiritual discipline.`}
+            {fillCmsTemplate(cms.dashaLabels.summaryTemplate, { mahadasha, antardasha })}
           </Text>
         </View>
       );
+    }
     case 6:
       return (
         <View>
-          {[
-            ['Saturn', 'Aquarius', 'Transiting 4th House (Kantaka Shani)', 'Discipline in domestic life'],
-            ['Jupiter', 'Taurus', 'Aspecting 1st & 9th Houses', 'Spiritual clarity & career expansion'],
-            ['Rahu-Ketu', 'Pisces-Virgo', '5th & 11th House Axis', 'Creative innovation & sudden gains'],
-          ].map(([pl, sign, house, effect]) => (
-            <View key={pl} style={{ marginBottom: 8, padding: 12, borderRadius: 12, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center' }}>
+          {(cms.currentTransits || []).map((t, idx) => (
+            <View key={`${idx}-${t.planet}`} style={{ marginBottom: 8, padding: 12, borderRadius: 12, backgroundColor: colors.surfaceVariant, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{`${pl} in ${sign}`}</Text>
-                <Text style={{ color: colors.textMuted, fontSize: 11 }}>{house}</Text>
+                <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{`${t.planet} in ${t.sign}`}</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 11 }}>{t.house}</Text>
               </View>
-              <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '700', textAlign: 'right' }}>{effect}</Text>
+              <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '700', textAlign: 'right' }}>{t.effect}</Text>
             </View>
           ))}
         </View>
@@ -247,48 +268,48 @@ function SectionContent({ index, chart, colors }: { index: number; chart: Kundli
       return (
         <View>
           <StatusCard
-            name="Mangal Dosha"
-            status={chart?.doshas.isManglik ? `Present (${chart.doshas.manglikSeverity})` : 'Not Present'}
-            desc={chart?.doshas.isManglik ? 'Mars influence observed in relationship houses. Vedic Parihar remedies pacify energy.' : 'Mars is favorably placed in your chart without adverse dosha affliction.'}
+            name={cms.doshaLabels.mangal}
+            status={chart?.doshas.isManglik ? `${cms.doshaLabels.present} (${chart.doshas.manglikSeverity})` : cms.doshaLabels.notPresent}
+            desc={chart?.doshas.isManglik ? cms.doshaLabels.mangalPresentDesc : cms.doshaLabels.mangalClearDesc}
             statusColor={chart?.doshas.isManglik ? '#D4821A' : '#2D9E6B'}
             borderColor={withAlpha(chart?.doshas.isManglik ? '#D4821A' : '#2D9E6B', 80)}
             colors={colors}
           />
           <StatusCard
-            name="Kaal Sarp Dosha"
-            status={chart?.doshas.kaalSarpPresent ? 'Present' : 'Not Present'}
-            desc={chart?.doshas.kaalSarpPresent ? 'Planetary axis enclosed between Rahu and Ketu. Mahamrityunjaya Japa pacifies this configuration.' : 'All planets are free from Rahu-Ketu enclosure; no Kaal Sarp Dosha.'}
+            name={cms.doshaLabels.kaalSarp}
+            status={chart?.doshas.kaalSarpPresent ? cms.doshaLabels.present : cms.doshaLabels.notPresent}
+            desc={chart?.doshas.kaalSarpPresent ? cms.doshaLabels.kaalSarpPresentDesc : cms.doshaLabels.kaalSarpClearDesc}
             statusColor={chart?.doshas.kaalSarpPresent ? '#D4821A' : '#2D9E6B'}
             borderColor={withAlpha(chart?.doshas.kaalSarpPresent ? '#D4821A' : '#2D9E6B', 80)}
             colors={colors}
           />
           <StatusCard
-            name="Shani Sade Sati"
-            status={chart?.doshas.sadeSatiStatus ? 'Monitored' : 'Clear'}
-            desc={chart?.doshas.sadeSatiStatus || 'Active Saturn transit observed relative to natal Moon.'}
+            name={cms.doshaLabels.sadeSati}
+            status={chart?.doshas.sadeSatiStatus ? cms.doshaLabels.monitored : cms.doshaLabels.clear}
+            desc={chart?.doshas.sadeSatiStatus || cms.doshaLabels.sadeSatiDefaultDesc}
             statusColor={colors.goldAccent}
             borderColor={withAlpha(colors.goldAccent, 80)}
             colors={colors}
           />
         </View>
       );
-    case 8:
-      const yogasList = chart?.yogas && chart.yogas.length > 0 ? chart.yogas : [
-        { name: 'Gaja Kesari Yoga', description: 'Jupiter and Moon in Kendra quadrants bestow wisdom, high reputation, and steady prosperity.', benefic: true },
-        { name: 'Budhaditya Yoga', description: 'Sun and Mercury conjunction sharpens intellect, communications, and administrative skills.', benefic: true },
-      ];
+    case 8: {
+      const yogasList = chart?.yogas && chart.yogas.length > 0 ? chart.yogas : (cms.defaultYogas || []);
       return (
         <View>
           {yogasList.map((y) => (
-            <StatusCard key={y.name} name={y.name} status={y.benefic ? 'Benefic' : 'Active'} desc={y.description} statusColor={colors.goldAccent} borderColor={colors.cardBorder} colors={colors} />
+            <StatusCard key={y.name} name={y.name} status={y.benefic ? cms.doshaLabels.beneficBadge : cms.doshaLabels.activeBadge} desc={y.description} statusColor={colors.goldAccent} borderColor={colors.cardBorder} colors={colors} />
           ))}
         </View>
       );
+    }
     default: {
-      const title = SECTIONS[index].title;
+      const title = sectionsList[index]?.title || SECTIONS[index]?.title || 'Insight';
+      const defaultKey = SECTIONS[index]?.title || title;
+      const pred = cms.genericPredictions?.[title] ?? cms.genericPredictions?.[defaultKey] ?? GENERIC[defaultKey];
       return (
         <Text style={{ color: colors.textSecondary, ...lh(13, 1.5) }}>
-          {GENERIC[title] ?? `Detailed analysis for ${title} based on your birth chart. Consult with an astrologer for personalized insights.`}
+          {pred ?? `Detailed analysis for ${title} based on your birth chart. Consult with an astrologer for personalized insights.`}
         </Text>
       );
     }
@@ -300,7 +321,7 @@ function SheetHandle({ colors }: { colors: any }) {
   return <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.textMuted }} />;
 }
 
-function PlanetDetailSheet({ planet, onClose, colors }: { planet: Planet; onClose: () => void; colors: any }) {
+function PlanetDetailSheet({ planet, onClose, cms, colors }: { planet: Planet; onClose: () => void; cms: AppScreensCmsConfig['myKundli']; colors: any }) {
   const insets = useSafeAreaInsets();
   return (
     <View style={{ padding: 24, backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderColor: colors.cardBorder }}>
@@ -314,17 +335,17 @@ function PlanetDetailSheet({ planet, onClose, colors }: { planet: Planet; onClos
       </View>
       <View style={{ marginTop: 16, marginBottom: 12, height: 1, backgroundColor: colors.divider }} />
       <Text style={{ color: colors.textSecondary, ...lh(14, 1.6) }}>
-        {PLANET_INTERP[planet.name] ?? "This planet's placement in your chart has significant influence on your life path and personality."}
+        {cms.planetInterpretations?.[planet.name] ?? PLANET_INTERP[planet.name] ?? "This planet's placement in your chart has significant influence on your life path and personality."}
       </Text>
-      <ElevatedButton testID="myKundli.planetSheet.askAi" label="Ask AI About This Planet" onPress={onClose} radius={12} fontWeight="700" fontSize={14} paddingV={10} style={{ marginTop: 20 }} />
+      <ElevatedButton testID="myKundli.planetSheet.askAi" label={cms.planetSheetAskAi} onPress={onClose} radius={12} fontWeight="700" fontSize={14} paddingV={10} style={{ marginTop: 20 }} />
       <View style={{ height: insets.bottom + 8 }} />
     </View>
   );
 }
 
-function HouseDetailSheet({ house, onClose, colors }: { house: number; onClose: () => void; colors: any }) {
+function HouseDetailSheet({ house, onClose, cms, colors }: { house: number; onClose: () => void; cms: AppScreensCmsConfig['myKundli']; colors: any }) {
   const insets = useSafeAreaInsets();
-  const info = HOUSE_INFO[house] ?? { name: `House ${house}`, rules: 'Various life areas', desc: 'This house governs important areas of your life based on its position in your birth chart.' };
+  const info = cms.houseInfo?.[String(house)] ?? HOUSE_INFO[house] ?? { name: `House ${house}`, rules: 'Various life areas', desc: 'This house governs important areas of your life based on its position in your birth chart.' };
   return (
     <View style={{ padding: 24, backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderColor: colors.cardBorder }}>
       <SheetHandle colors={colors} />
@@ -339,7 +360,7 @@ function HouseDetailSheet({ house, onClose, colors }: { house: number; onClose: 
       </View>
       <View style={{ marginTop: 16, marginBottom: 12, height: 1, backgroundColor: colors.divider }} />
       <Text style={{ color: colors.textSecondary, ...lh(14, 1.6) }}>{info.desc}</Text>
-      <ElevatedButton testID="myKundli.houseSheet.close" label="Close" onPress={onClose} radius={12} fontWeight="600" fontSize={14} paddingV={10} style={{ marginTop: 20 }} />
+      <ElevatedButton testID="myKundli.houseSheet.close" label={cms.houseSheetClose} onPress={onClose} radius={12} fontWeight="600" fontSize={14} paddingV={10} style={{ marginTop: 20 }} />
       <View style={{ height: insets.bottom + 8 }} />
     </View>
   );
@@ -349,6 +370,7 @@ function HouseDetailSheet({ house, onClose, colors }: { house: number; onClose: 
 export default function MyKundliScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const cms = useAppScreensCmsStore((s) => s.config.myKundli);
   const authUser = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const activeProfile = useBirthProfileStore((s) => s.activeProfile);
@@ -360,6 +382,7 @@ export default function MyKundliScreen() {
   const [chartData, setChartData] = useState<KundliChartData | null>(null);
   const planetSheet = useSheet<Planet>();
   const houseSheet = useSheet<number>();
+  const sectionsList = cms.sections && cms.sections.length > 0 ? cms.sections : SECTIONS;
 
   useEffect(() => {
     if (!isUserLoggedIn) {
@@ -396,29 +419,29 @@ export default function MyKundliScreen() {
 
   const handleAskAiAboutKundli = () => {
     push(AppRoutes.aiChatScreen, {
-      initialPrompt: `Namaste 🙏 Please analyze my Kundli for ${chartData?.name || 'Guest'} (Born: ${chartData?.dob || ''} at ${chartData?.tob || ''}, ${chartData?.pob || ''}). My Ascendant is ${chartData?.ascendant.sign || 'Scorpio'}, Moon in ${chartData?.moonSign || 'Cancer'} (${chartData?.nakshatra || 'Punarvasu'}). Active Mahadasha is ${chartData?.dasha.currentMahadasha || 'Jupiter'}. What are my key career & life predictions?`,
+      initialPrompt: `Namaste 🙏 Please analyze my Kundli for ${chartData?.name || cms.guestLabel} (Born: ${chartData?.dob || ''} at ${chartData?.tob || ''}, ${chartData?.pob || ''}). My Ascendant is ${chartData?.ascendant.sign || 'Scorpio'}, Moon in ${chartData?.moonSign || 'Cancer'} (${chartData?.nakshatra || 'Punarvasu'}). Active Mahadasha is ${chartData?.dasha.currentMahadasha || 'Jupiter'}. What are my key career & life predictions?`,
     });
   };
 
   const handleExportChartSummary = async () => {
     if (!isUserLoggedIn) {
       setPostLoginRedirect({ route: '', popOnSuccess: true });
-      showSnackBar('Please sign in to export or download your Vedic birth chart', '#713B32');
+      showSnackBar(cms.signInExportToast, '#713B32');
       push(AppRoutes.signInScreen);
       return;
     }
     await downloadOrShareReport({
       id: `kundli_export_${Date.now()}`,
-      title: `Janam Kundli Birth Chart — ${chartData?.name || authUser?.name || 'Seeker'}`,
+      title: `Janam Kundli Birth Chart — ${chartData?.name || authUser?.name || cms.defaultDevoteeLabel}`,
       subtitle: `${chartData?.dob || authUser?.dob || ''} • ${chartData?.pob || authUser?.pob || ''}`,
-      pages: '14 sections',
+      pages: `${sectionsList.length} sections`,
       date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       status: 'Ready',
       emoji: '🔮',
       color: '#9370DB',
       size: '1.8 MB',
       category: 'services',
-      summary: `Ascendant (Lagna): ${chartData?.ascendant.sign || 'Scorpio'} (${chartData?.ascendant.degree || "12°45'"}) | Moon Sign (Rashi): ${chartData?.moonSign || 'Cancer'} | Nakshatra: ${chartData?.nakshatra || 'Punarvasu'} (Pada ${chartData?.nakshatraPada || 1}) | Active Mahadasha: ${chartData?.dasha.currentMahadasha || 'Jupiter'}-${chartData?.dasha.currentAntardasha || 'Saturn'}.`,
+      summary: `Ascendant (Lagna): ${chartData?.ascendant.sign || 'Scorpio'} (${chartData?.ascendant.degree || "12°45'"}) | Moon Sign (Rashi): ${chartData?.moonSign || 'Cancer'} | Nakshatra: ${chartData?.nakshatra || 'Punarvasu'} (${cms.birthFieldLabels.padaLabel} ${chartData?.nakshatraPada || 1}) | Active Mahadasha: ${chartData?.dasha.currentMahadasha || 'Jupiter'}-${chartData?.dasha.currentAntardasha || 'Saturn'}.`,
       astrologicalAnalysis: activePlanets
         .map((p) => `• ${p.symbol} ${p.name}: ${p.sign} (House ${p.house}, ${p.degree})`)
         .join('\n'),
@@ -433,7 +456,7 @@ export default function MyKundliScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="myKundli.screen">
       <AppBar
-        title="My Kundli"
+        title={cms.headerTitle}
         backgroundColor={colors.background}
         backColor={colors.textPrimary}
         leading={<BoxBackButton testID="myKundli.back" onPress={() => router.back()} />}
@@ -479,21 +502,21 @@ export default function MyKundliScreen() {
           </View>
           <View style={{ flex: 1, marginLeft: 16 }}>
             <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700', marginBottom: 4 }}>
-              {isUserLoggedIn ? (chartData?.name || activeProfile?.name || authUser?.name || 'Devotee') : 'Guest'}
+              {isUserLoggedIn ? (chartData?.name || activeProfile?.name || authUser?.name || cms.defaultDevoteeLabel) : cms.guestLabel}
             </Text>
             {[
-              ['📅', isUserLoggedIn ? (chartData?.dob || activeProfile?.dob || authUser?.dob || 'Not specified') : 'Sign in to view'],
-              ['⏰', isUserLoggedIn ? (chartData?.tob || activeProfile?.time || authUser?.tob || 'Not specified') : 'Sign in to view'],
-              ['📍', isUserLoggedIn ? (chartData?.pob || activeProfile?.place || authUser?.pob || 'Not specified') : 'Sign in to view'],
+              ['📅', isUserLoggedIn ? (chartData?.dob || activeProfile?.dob || authUser?.dob || cms.notSpecifiedLabel) : cms.signInToViewLabel],
+              ['⏰', isUserLoggedIn ? (chartData?.tob || activeProfile?.time || authUser?.tob || cms.notSpecifiedLabel) : cms.signInToViewLabel],
+              ['📍', isUserLoggedIn ? (chartData?.pob || activeProfile?.place || authUser?.pob || cms.notSpecifiedLabel) : cms.signInToViewLabel],
             ].map(([e, tText]) => (
-              <View key={tText} style={{ marginTop: 2, flexDirection: 'row', alignItems: 'center' }}>
+              <View key={e} style={{ marginTop: 2, flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 11 }}>{e}</Text>
                 <Text style={{ marginLeft: 4, color: colors.textSecondary, fontSize: 12 }}>{tText}</Text>
               </View>
             ))}
           </View>
           <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: withAlpha(colors.goldAccent, 25), borderWidth: 1, borderColor: colors.cardBorder }}>
-            <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>Vedic Verified</Text>
+            <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>{cms.verifiedBadge}</Text>
           </View>
         </LinearGradient>
 
@@ -501,7 +524,7 @@ export default function MyKundliScreen() {
         <Animated.View style={[{ marginHorizontal: 16, marginVertical: 8, alignItems: 'center' }, chartStyle]}>
           <VedicKundliChart
             chartData={chartData}
-            devoteeName={isUserLoggedIn ? (chartData?.name || activeProfile?.name || authUser?.name || 'Devotee') : 'Guest'}
+            devoteeName={isUserLoggedIn ? (chartData?.name || activeProfile?.name || authUser?.name || cms.defaultDevoteeLabel) : cms.guestLabel}
             dob={isUserLoggedIn ? (chartData?.dob || activeProfile?.dob || authUser?.dob || '1995-10-15') : '1995-10-15'}
             tob={isUserLoggedIn ? (chartData?.tob || activeProfile?.time || authUser?.tob || '12:00 PM') : '12:00 PM'}
             pob={isUserLoggedIn ? (chartData?.pob || activeProfile?.place || authUser?.pob || 'New Delhi, India') : 'New Delhi, India'}
@@ -546,19 +569,19 @@ export default function MyKundliScreen() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ fontSize: 20 }}>🤖</Text>
-            <Text style={{ marginLeft: 8, color: colors.textPrimary, fontSize: 15, fontWeight: '700' }}>Ask AstroParihar AI</Text>
+            <Text style={{ marginLeft: 8, color: colors.textPrimary, fontSize: 15, fontWeight: '700' }}>{cms.aiCardTitle}</Text>
           </View>
           <Text style={{ marginTop: 8, color: colors.textSecondary, fontSize: 13, fontStyle: 'italic' }}>
-            {`"How does my ${chartData?.dasha.currentMahadasha || 'Jupiter'} Mahadasha affect my career in 2027?"`}
+            {fillCmsTemplate(cms.aiCardPromptTemplate, { mahadasha: chartData?.dasha.currentMahadasha || 'Jupiter' })}
           </Text>
-          <ElevatedButton testID="myKundli.askAi" label="Ask AI About My Kundli" onPress={handleAskAiAboutKundli} radius={12} paddingV={12} fontSize={14} style={{ marginTop: 12 }} />
+          <ElevatedButton testID="myKundli.askAi" label={cms.aiCardButton} onPress={handleAskAiAboutKundli} radius={12} paddingV={12} fontSize={14} style={{ marginTop: 12 }} />
         </LinearGradient>
 
         {/* sections */}
-        {SECTIONS.map((s, i) => {
+        {sectionsList.map((s, i) => {
           const isExp = expanded.has(i);
           return (
-            <Animated.View key={s.title} layout={EXPAND_LAYOUT} style={{ marginHorizontal: 20, marginVertical: 4, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, overflow: 'hidden' }}>
+            <Animated.View key={`${i}-${s.title}`} layout={EXPAND_LAYOUT} style={{ marginHorizontal: 20, marginVertical: 4, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder, overflow: 'hidden' }}>
               <Pressable testID={`myKundli.section.${i}`} onPress={() => toggle(i)} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, minHeight: 56 }}>
                 <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: withAlpha(colors.goldAccent, 20), alignItems: 'center', justifyContent: 'center' }}>
                   <AppIcon name={s.icon} color={colors.goldAccent} size={18} />
@@ -567,7 +590,7 @@ export default function MyKundliScreen() {
                 <AppIcon name={isExp ? 'keyboard_arrow_up_rounded' : 'keyboard_arrow_down_rounded'} color={colors.textMuted} />
               </Pressable>
               <Expandable expanded={isExp} style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-                <SectionContent index={i} chart={chartData} colors={colors} />
+                <SectionContent index={i} chart={chartData} cms={cms} colors={colors} />
               </Expandable>
             </Animated.View>
           );
@@ -577,10 +600,10 @@ export default function MyKundliScreen() {
       </ScrollView>
 
       <BottomSheet visible={planetSheet.visible} onClose={planetSheet.close} testID="myKundli.planetSheet">
-        {planetSheet.value ? <PlanetDetailSheet planet={planetSheet.value} onClose={planetSheet.close} colors={colors} /> : null}
+        {planetSheet.value ? <PlanetDetailSheet planet={planetSheet.value} onClose={planetSheet.close} cms={cms} colors={colors} /> : null}
       </BottomSheet>
       <BottomSheet visible={houseSheet.visible} onClose={houseSheet.close} testID="myKundli.houseSheet">
-        {houseSheet.value != null ? <HouseDetailSheet house={houseSheet.value} onClose={houseSheet.close} colors={colors} /> : null}
+        {houseSheet.value != null ? <HouseDetailSheet house={houseSheet.value} onClose={houseSheet.close} cms={cms} colors={colors} /> : null}
       </BottomSheet>
     </View>
   );

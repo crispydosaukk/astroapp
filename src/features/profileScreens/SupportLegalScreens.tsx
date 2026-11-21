@@ -16,6 +16,7 @@ import { API_ENDPOINTS } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, pop, push } from '@/navigation/routes';
 import { AppContactOption, useSupportLegalStore } from '@/services/supportLegalStore';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
@@ -42,6 +43,7 @@ export function HelpCentreScreen() {
 
   const help = useSupportLegalStore((s) => s.content.helpCentre);
   const fetchContent = useSupportLegalStore((s) => s.fetchContent);
+  const helpMicro = useAppScreensCmsStore((s) => s.config.cmsMicroLabels.helpCentre);
 
   useEffect(() => {
     fetchContent();
@@ -205,7 +207,7 @@ export function HelpCentreScreen() {
                         {c.title}
                       </Text>
                       <Text style={{ color: colors.textMuted, fontSize: 9, marginTop: 2 }}>
-                        {`${liveCount || c.count || 0} FAQs`}
+                        {`${liveCount || c.count || 0} ${helpMicro.faqsSuffix}`}
                       </Text>
                     </Pressable>
                   );
@@ -238,7 +240,7 @@ export function HelpCentreScreen() {
                 numberOfLines={1}
                 style={{ marginLeft: 6, color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}
               >
-                {`${selectedCategory} (${filtered.length} FAQs)`}
+                {`${selectedCategory} (${filtered.length} ${helpMicro.faqsSuffix})`}
               </Text>
             </View>
             <Pressable
@@ -252,7 +254,7 @@ export function HelpCentreScreen() {
                 borderColor: colors.cardBorder,
               }}
             >
-              <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>✕ Show All</Text>
+              <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '700' }}>{helpMicro.showAllLabel}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -372,6 +374,7 @@ export function ContactSupportScreen() {
 
   const contact = useSupportLegalStore((s) => s.content.contactSupport);
   const fetchContent = useSupportLegalStore((s) => s.fetchContent);
+  const contactMicro = useAppScreensCmsStore((s) => s.config.cmsMicroLabels.contactSupport);
 
   const [refreshing, setRefreshing] = useState(false);
   const [subject, setSubject] = useState('');
@@ -405,7 +408,7 @@ export function ContactSupportScreen() {
   const handleSubmitTicket = async () => {
     if (submitting) return;
     if (!subject.trim() || !description.trim()) {
-      showSnackBar('Please enter both Subject and Description to submit your ticket.', '#CF4444');
+      showSnackBar(contactMicro.validationToast, '#CF4444');
       return;
     }
     Keyboard.dismiss();
@@ -559,7 +562,7 @@ export function ContactSupportScreen() {
           />
           <ElevatedButton
             testID="contactSupport.submit"
-            label={submitting ? 'Submitting Ticket...' : contact.ticketButtonLabel || 'Submit Ticket'}
+            label={submitting ? contactMicro.submittingLabel : contact.ticketButtonLabel || 'Submit Ticket'}
             onPress={handleSubmitTicket}
             disabled={submitting}
             loading={submitting}

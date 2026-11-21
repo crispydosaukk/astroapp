@@ -28,8 +28,8 @@ import {
   KundliReportItem,
 } from '@/services/reportService';
 import { withAlpha } from '@/theme/colors';
-import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 
 export interface ConsultationItem {
   id: string;
@@ -195,7 +195,7 @@ function StatSection({ title, items, colors }: { title: string; items: { label: 
 export default function ConsultationHistoryScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const cms = useAppScreensCmsStore((s) => s.config.consultationHistory);
   const [tab, setTab] = useState(0);
   const formatPrice = useCurrencyStore((s) => s.formatPrice);
 
@@ -221,118 +221,27 @@ export default function ConsultationHistoryScreen() {
       }
 
       // 2. Fetch local consultations from AsyncStorage ('astroparihar_consultation_history')
+      // Purge any legacy hardcoded dummy records if previously cached.
       let localConsultations: any[] = [];
       try {
         const stored = await AsyncStorage.getItem('astroparihar_consultation_history');
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed)) {
-            localConsultations = parsed;
+            const LEGACY_DUMMY_IDS = new Set([
+              'ai_call_1793772282718_op6unll',
+              'ai_chat_1793774888904_remedies',
+            ]);
+            const cleaned = parsed.filter((c) => !LEGACY_DUMMY_IDS.has(String(c?.id || '')));
+            localConsultations = cleaned;
+            if (cleaned.length !== parsed.length) {
+              AsyncStorage.setItem('astroparihar_consultation_history', JSON.stringify(cleaned)).catch(() => {});
+            }
           }
         }
       } catch {}
 
-      // 3. Guarantee recent sessions from today (04 Nov 2026) are present:
-      // (a) Live Voice Call with Acharya Devavrat (AI)
-      const hasRecentCall = [...localConsultations, ...remoteConsultations].some(
-        (c) => c.id?.includes('1793772282718') || c.roomID?.includes('1793772282718')
-      );
-      if (!hasRecentCall) {
-        const recentConsultId = 'ai_call_1793772282718_op6unll';
-        localConsultations.unshift({
-          id: recentConsultId,
-          astrologerName: 'Acharya Devavrat (AI)',
-          type: 'Voice Call',
-          topic: 'Vedic Kundli & Live Voice Consultation',
-          date: '04 Nov 2026, 11:52',
-          createdAt: '2026-11-04T06:22:00.000Z',
-          duration: '4 min',
-          durationMinutes: 4,
-          amount: 0.30,
-          rawAmount: 0.30,
-          price: 0.30,
-          rating: 5,
-          status: 'completed',
-          source: 'ai',
-          emoji: '🤖',
-          color: '#81C784',
-          roomID: recentConsultId,
-          reportId: `rep_consult_${recentConsultId}`,
-        });
-        generateConsultationSummaryReport(
-          {
-            consultationId: recentConsultId,
-            astrologerName: 'Acharya Devavrat (AI)',
-            serviceType: 'Voice Call',
-            durationText: '4 min',
-            durationMinutes: 4,
-            amountCharged: 0.30,
-            devoteeName: authUser?.name || 'Devotee',
-            devoteeDob: authUser?.dob || '15/10/1995',
-            devoteeTob: authUser?.tob || '12:00 PM',
-            devoteePob: authUser?.pob || 'New Delhi, India',
-            devoteeLagna: 'Scorpio',
-            devoteeRashi: 'Sagittarius (Dhanu)',
-            devoteeNakshatra: 'Ardra (Pada 2)',
-            chatSummary: 'Devotee: Birth chart explain please\n\nAcharya Devavrat (AI): I can see your chart clearly! With Lagna in Scorpio & Jupiter in Sagittarius, your 9th house is highly auspicious right now.',
-            primaryConcern: 'Birth chart & Parihar guidance',
-          },
-          uid || phone
-        ).catch(() => {});
-      }
-
-      // (b) AI Chat Session with Acharya Devavrat (AI)
-      const hasRecentAiChat = [...localConsultations, ...remoteConsultations].some(
-        (c) => c.id?.includes('ai_chat_1793774888904') || (c.type === 'AI Chat' && (c.date?.includes('04 Nov 2026') || c.createdAt?.includes('2026-11-04')))
-      );
-      if (!hasRecentAiChat) {
-        const aiChatConsultId = 'ai_chat_1793774888904_remedies';
-        localConsultations.unshift({
-          id: aiChatConsultId,
-          astrologerName: 'Acharya Devavrat (AI)',
-          type: 'AI Chat',
-          topic: 'Vedic Remedies, Gemstone & Rudraksha Guidance',
-          date: '04 Nov 2026, 12:15',
-          createdAt: '2026-11-04T06:45:00.000Z',
-          duration: '10 min',
-          durationMinutes: 10,
-          amount: 0,
-          rawAmount: 0,
-          price: 0,
-          rating: 5,
-          status: 'completed',
-          source: 'ai',
-          emoji: '🤖',
-          color: '#81C784',
-          roomID: aiChatConsultId,
-          reportId: `rep_consult_${aiChatConsultId}`,
-        });
-        generateConsultationSummaryReport(
-          {
-            consultationId: aiChatConsultId,
-            astrologerName: 'Acharya Devavrat (AI)',
-            serviceType: 'AI Chat',
-            durationText: '10 min',
-            durationMinutes: 10,
-            amountCharged: 0,
-            devoteeName: authUser?.name || 'Devotee',
-            devoteeDob: authUser?.dob || '15/10/1995',
-            devoteeTob: authUser?.tob || '12:00 PM',
-            devoteePob: authUser?.pob || 'New Delhi, India',
-            devoteeLagna: 'Scorpio',
-            devoteeRashi: 'Sagittarius (Dhanu)',
-            devoteeNakshatra: 'Ardra (Pada 2)',
-            chatSummary: 'Devotee: Gemstone & Rudraksha parihar for my Kundli\n\nAcharya Devavrat (AI): Based on your Scorpio Lagna and Sagittarius Moon sign, Jupiter in the 9th house is your prime benefic. An unheated Yellow Sapphire (Pukhraj) or 5-Mukhi Rudraksha worn in gold on Thursday elevates spiritual peace and professional success.',
-            primaryConcern: 'Vedic Remedies, Gemstone & Rudraksha Guidance',
-          },
-          uid || phone
-        ).catch(() => {});
-      }
-
-      // Persist merged local items so they're immediately cached
-      AsyncStorage.setItem('astroparihar_consultation_history', JSON.stringify(localConsultations)).catch(() => {});
-
-      // 4. Merge both sources, deduplicate by ID, sort by date descending
+      // 3. Merge both sources, deduplicate by ID, sort by date descending
       const combined = [...localConsultations, ...remoteConsultations];
       const seen = new Set<string>();
       const unique = combined.filter((item) => {
@@ -462,10 +371,14 @@ export default function ConsultationHistoryScreen() {
     'AI Chat': consultations.filter((c) => c.type === 'AI Chat').length,
   };
 
+  const inquiryLabels = cms.analytics.inquiryLabels && cms.analytics.inquiryLabels.length >= 4
+    ? cms.analytics.inquiryLabels
+    : ['Career & Job', 'Marriage & Love', 'Dosha & Parihar', 'Health & Wealth'];
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="consultationHistory.screen">
       <AppBar
-        title={t('profile.consultationHistory', 'Consultation History')}
+        title={cms.headerTitle}
         onBack={pop}
         testIDPrefix="consultationHistory"
         backgroundColor={colors.background}
@@ -473,7 +386,7 @@ export default function ConsultationHistoryScreen() {
         bottom={
           <TabBar
             testIDPrefix="consultationHistory.tab"
-            tabs={['All Sessions', 'Analytics']}
+            tabs={[cms.tabs.allSessions, cms.tabs.analytics]}
             index={tab}
             onChange={setTab}
             indicatorStyle="underline"
@@ -496,9 +409,9 @@ export default function ConsultationHistoryScreen() {
           >
             {/* Live Metrics Cards */}
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              <SummaryCard value={String(totalSessions)} label="Sessions" color={colors.goldAccent} colors={colors} />
-              <SummaryCard value={talkTimeStr} label="Talk Time" color="#4FC3F7" colors={colors} />
-              <SummaryCard value={formatPrice(totalSpent)} label="Total Spent" color="#CF4444" colors={colors} />
+              <SummaryCard value={String(totalSessions)} label={cms.summaryLabels.sessions} color={colors.goldAccent} colors={colors} />
+              <SummaryCard value={talkTimeStr} label={cms.summaryLabels.talkTime} color="#4FC3F7" colors={colors} />
+              <SummaryCard value={formatPrice(totalSpent)} label={cms.summaryLabels.totalSpent} color="#CF4444" colors={colors} />
             </View>
 
             <View style={{ height: 18 }} />
@@ -507,7 +420,7 @@ export default function ConsultationHistoryScreen() {
               <View style={{ paddingVertical: 60, alignItems: 'center' }}>
                 <ActivityIndicator size="large" color={colors.goldAccent} />
                 <Text style={{ marginTop: 14, color: colors.textMuted, fontSize: 13, fontWeight: '600' }}>
-                  Syncing Consultations from AstroParihar Cloud...
+                  {cms.syncingText}
                 </Text>
               </View>
             ) : !isAuthenticated ? (
@@ -524,10 +437,10 @@ export default function ConsultationHistoryScreen() {
               >
                 <AppIcon name="lock_outline" size={40} color={colors.goldAccent} />
                 <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '800', marginTop: 12 }}>
-                  Sign In Required
+                  {cms.signInTitle}
                 </Text>
                 <Text style={{ color: colors.textMuted, fontSize: 12, textAlign: 'center', marginTop: 6, lineHeight: 18 }}>
-                  Please sign in to view your verified consultation logs, voice calls, chats, and AI consultations.
+                  {cms.signInSubtitle}
                 </Text>
                 <Pressable
                   onPress={() => push(AppRoutes.signInScreen)}
@@ -540,7 +453,7 @@ export default function ConsultationHistoryScreen() {
                   }}
                 >
                   <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
-                    Sign In to AstroParihar
+                    {cms.signInButton}
                   </Text>
                 </Pressable>
               </View>
@@ -570,10 +483,10 @@ export default function ConsultationHistoryScreen() {
                   <AppIcon name="history" size={28} color={colors.goldAccent} />
                 </View>
                 <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
-                  No Consultations Found
+                  {cms.emptyTitle}
                 </Text>
                 <Text style={{ color: colors.textMuted, fontSize: 12, textAlign: 'center', marginTop: 6, lineHeight: 18 }}>
-                  You have not conducted any consultations yet. Connect with our expert Vedic Astrologers or consult Acharya Devavrat (AI).
+                  {cms.emptySubtitle}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
                   <Pressable
@@ -586,7 +499,7 @@ export default function ConsultationHistoryScreen() {
                     }}
                   >
                     <Text style={{ color: '#0A0E1A', fontSize: 12, fontWeight: '700' }}>
-                      Talk to Astrologer
+                      {cms.talkAstrologerBtn}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -601,7 +514,7 @@ export default function ConsultationHistoryScreen() {
                     }}
                   >
                     <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '700' }}>
-                      Try AI Astrologer
+                      {cms.tryAiBtn}
                     </Text>
                   </Pressable>
                 </View>
@@ -651,14 +564,14 @@ export default function ConsultationHistoryScreen() {
 
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={{ color: colors.goldAccent, fontSize: 15, fontWeight: '800' }}>
-                        {c.rawAmount > 0 ? formatPrice(c.rawAmount) : 'Free'}
+                        {c.rawAmount > 0 ? formatPrice(c.rawAmount) : cms.freeLabel}
                       </Text>
                       <Text style={{ color: colors.textMuted, fontSize: 11 }}>{c.duration}</Text>
                     </View>
                   </View>
 
                   <View style={{ marginTop: 10, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.surfaceVariant }}>
-                    <Text numberOfLines={2} style={{ color: colors.textSecondary, fontSize: 11 }}>{`Topic: ${c.topic}`}</Text>
+                    <Text numberOfLines={2} style={{ color: colors.textSecondary, fontSize: 11 }}>{`${cms.topicPrefix} ${c.topic}`}</Text>
                   </View>
 
                   <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
@@ -685,7 +598,7 @@ export default function ConsultationHistoryScreen() {
                     >
                       <AppIcon name="description" color={colors.goldAccent} size={13} style={{ marginRight: 4 }} />
                       <Text style={{ color: colors.goldAccent, fontSize: 11, fontWeight: '800' }}>
-                        View Report
+                        {cms.viewReportBtn}
                       </Text>
                     </Pressable>
 
@@ -700,7 +613,7 @@ export default function ConsultationHistoryScreen() {
                       }}
                     >
                       <Text style={{ color: '#0A0E1A', fontSize: 11, fontWeight: '800' }}>
-                        {c.source === 'ai' ? 'Consult AI' : t('common.bookAgain', 'Book Again')}
+                        {c.source === 'ai' ? cms.consultAiBtn : cms.bookAgainBtn}
                       </Text>
                     </Pressable>
                   </View>
@@ -712,22 +625,22 @@ export default function ConsultationHistoryScreen() {
           /* Tab 1: Stats & Analytics */
           <ScrollView key="stats" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90), gap: 20 }}>
             <StatSection
-              title="Consultation Modes"
+              title={cms.analytics.modesTitle}
               items={[
-                { label: 'Chat', count: modeCounts['Chat'], color: '#9370DB' },
-                { label: 'Voice Call', count: modeCounts['Voice Call'], color: '#4FC3F7' },
-                { label: 'Video Call', count: modeCounts['Video Call'], color: '#FF6B6B' },
-                { label: 'AI Chat', count: modeCounts['AI Chat'], color: '#81C784' },
+                { label: cms.analytics.modeLabels.chat, count: modeCounts['Chat'], color: '#9370DB' },
+                { label: cms.analytics.modeLabels.voice, count: modeCounts['Voice Call'], color: '#4FC3F7' },
+                { label: cms.analytics.modeLabels.video, count: modeCounts['Video Call'], color: '#FF6B6B' },
+                { label: cms.analytics.modeLabels.aiChat, count: modeCounts['AI Chat'], color: '#81C784' },
               ]}
               colors={colors}
             />
             <StatSection
-              title="Key Life Inquiries"
+              title={cms.analytics.inquiriesTitle}
               items={[
-                { label: 'Career & Job', count: Math.max(1, Math.round(totalSessions * 0.4)), color: colors.goldAccent },
-                { label: 'Marriage & Love', count: Math.max(1, Math.round(totalSessions * 0.3)), color: '#FF6B6B' },
-                { label: 'Dosha & Parihar', count: Math.max(1, Math.round(totalSessions * 0.2)), color: '#81C784' },
-                { label: 'Health & Wealth', count: Math.max(1, Math.round(totalSessions * 0.1)), color: '#FFB347' },
+                { label: inquiryLabels[0], count: totalSessions > 0 ? Math.max(1, Math.round(totalSessions * 0.4)) : 0, color: colors.goldAccent },
+                { label: inquiryLabels[1], count: totalSessions > 0 ? Math.max(1, Math.round(totalSessions * 0.3)) : 0, color: '#FF6B6B' },
+                { label: inquiryLabels[2], count: totalSessions > 0 ? Math.max(1, Math.round(totalSessions * 0.2)) : 0, color: '#81C784' },
+                { label: inquiryLabels[3], count: totalSessions > 0 ? Math.max(1, Math.round(totalSessions * 0.1)) : 0, color: '#FFB347' },
               ]}
               colors={colors}
             />
@@ -739,7 +652,7 @@ export default function ConsultationHistoryScreen() {
       <Modal visible={Boolean(viewingReport)} animationType="slide" onRequestClose={() => setViewingReport(null)}>
         <View style={{ flex: 1, backgroundColor: colors.background }}>
           <AppBar
-            title="Consultation Summary Report"
+            title={cms.reportModal.title}
             onBack={() => setViewingReport(null)}
             backgroundColor={colors.background}
             backColor={colors.textPrimary}
@@ -785,7 +698,7 @@ export default function ConsultationHistoryScreen() {
                         {viewingReport.date}
                       </Text>
                       <View style={{ paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 6, backgroundColor: '#E8F5E9' }}>
-                        <Text style={{ color: '#2E7D32', fontSize: 10, fontWeight: '700' }}>Verified Ready</Text>
+                        <Text style={{ color: '#2E7D32', fontSize: 10, fontWeight: '700' }}>{cms.reportModal.verifiedBadge}</Text>
                       </View>
                     </View>
                   </View>
@@ -797,7 +710,7 @@ export default function ConsultationHistoryScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                   <AppIcon name="auto_awesome" size={16} color={colors.goldAccent} style={{ marginRight: 6 }} />
                   <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '800' }}>
-                    EXECUTIVE ASTROLOGICAL SUMMARY
+                    {cms.reportModal.summaryHeading}
                   </Text>
                 </View>
                 <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 20 }}>
@@ -811,7 +724,7 @@ export default function ConsultationHistoryScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                     <AppIcon name="stars" size={16} color="#4FC3F7" style={{ marginRight: 6 }} />
                     <Text style={{ color: '#4FC3F7', fontSize: 13, fontWeight: '800' }}>
-                      COSMIC DIAGNOSIS & PLANETARY SYNTHESIS
+                      {cms.reportModal.diagnosisHeading}
                     </Text>
                   </View>
                   <Text style={{ color: colors.textSecondary, fontSize: 12.5, lineHeight: 19 }}>
@@ -826,7 +739,7 @@ export default function ConsultationHistoryScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
                     <AppIcon name="spa" size={16} color="#81C784" style={{ marginRight: 6 }} />
                     <Text style={{ color: '#81C784', fontSize: 13, fontWeight: '800' }}>
-                      PRESCRIBED VEDIC PARIHARAM & REMEDIES
+                      {cms.reportModal.remediesHeading}
                     </Text>
                   </View>
                   {viewingReport.remediesPrescribed.map((rem, rIdx) => (
@@ -861,7 +774,7 @@ export default function ConsultationHistoryScreen() {
                 >
                   <AppIcon name="folder_open" size={16} color="#0A0E1A" style={{ marginRight: 6 }} />
                   <Text style={{ color: '#0A0E1A', fontSize: 13, fontWeight: '800' }}>
-                    Open in My Reports
+                    {cms.reportModal.openReportsBtn}
                   </Text>
                 </Pressable>
 
@@ -881,7 +794,7 @@ export default function ConsultationHistoryScreen() {
                 >
                   <AppIcon name="share" size={16} color={colors.goldAccent} style={{ marginRight: 6 }} />
                   <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '800' }}>
-                    Share PDF
+                    {cms.reportModal.sharePdfBtn}
                   </Text>
                 </Pressable>
               </View>

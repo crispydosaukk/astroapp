@@ -26,6 +26,7 @@ import { calculateLiveKundliMatch, KundliMatchResult } from '@/services/astrolog
 import { generateKundliMatchReport } from '@/services/reportService';
 import { AppRoutes, push } from '@/navigation/routes';
 import { useAuthStore } from '@/features/auth/authStore';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 
 const GUNA_MILAN = [
   { name: 'Varna', score: 1, max: 1, status: 'Compatible', desc: 'Spiritual compatibility and ego levels are well matched.' },
@@ -116,6 +117,7 @@ function PersonCard({
   badge?: string;
 }) {
   const colors = useThemeColors();
+  const cms = useAppScreensCmsStore((s) => s.config.matchKundli);
 
   const onPickDate = async () => {
     const picked = await pickDate({
@@ -155,16 +157,16 @@ function PersonCard({
         ) : null}
       </View>
       <View style={{ height: 16 }} />
-      <OutlinedField testID={testID} label="Full Name" icon="person_outline" value={name} onChangeText={setName} />
+      <OutlinedField testID={testID} label={cms.fullNameLabel} icon="person_outline" value={name} onChangeText={setName} />
       <View style={{ marginTop: 12, flexDirection: 'row' }}>
-        <PickerField label="Date of Birth" value={dob} icon="calendar_today_outlined" onPress={onPickDate} style={{ flex: 1 }} />
+        <PickerField label={cms.dobLabel} value={dob} icon="calendar_today_outlined" onPress={onPickDate} style={{ flex: 1 }} />
         <View style={{ width: 12 }} />
-        <PickerField label="Time of Birth" value={tob} icon="access_time_outlined" onPress={onPickTime} style={{ flex: 1 }} />
+        <PickerField label={cms.tobLabel} value={tob} icon="access_time_outlined" onPress={onPickTime} style={{ flex: 1 }} />
       </View>
       <View style={{ marginTop: 12 }}>
         <LocationSearchInput
-          label="Birth Place (City, State, Country)"
-          placeholder="Enter birth place (e.g. Mumbai)"
+          label={cms.birthPlaceLabel}
+          placeholder={cms.birthPlacePlaceholder}
           value={pob}
           onChangeText={setPob}
         />
@@ -195,6 +197,7 @@ function RotatingStar() {
 export default function MatchKundliScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const cms = useAppScreensCmsStore((s) => s.config.matchKundli);
   const [showResults, setShowResults] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -222,7 +225,7 @@ export default function MatchKundliScreen() {
 
   const calculate = async () => {
     if (!p1.trim() || !p2.trim()) {
-      showSnackBar('Please enter names for both partners', '#CF4444');
+      showSnackBar(cms.validationToast, '#CF4444');
       return;
     }
     setIsCalculating(true);
@@ -250,8 +253,8 @@ export default function MatchKundliScreen() {
   const scoreValue = targetScore * Curves.easeOutCubic(scoreCtl.value);
   const score = Math.round(scoreValue);
   const ringColor = score >= 28 ? AppColors.success : score >= 18 ? colors.goldAccent : AppColors.warning;
-  const verdictTitle = score >= 28 ? 'Excellent Match ✨' : score >= 18 ? 'Good Match 👍' : 'Requires Remedies ⚠️';
-  const verdictDesc = matchResult?.verdict || 'A score above 28 indicates an excellent match. This couple shares strong spiritual, emotional, and practical compatibility.';
+  const verdictTitle = score >= 28 ? cms.verdicts.excellent : score >= 18 ? cms.verdicts.good : cms.verdicts.remedies;
+  const verdictDesc = matchResult?.verdict || cms.verdicts.defaultDesc;
   const gunas = matchResult?.ashtakoot && matchResult.ashtakoot.length > 0 ? matchResult.ashtakoot : GUNA_MILAN;
   const areas = matchResult?.areas && matchResult.areas.length > 0 ? matchResult.areas : AREAS;
 
@@ -259,7 +262,7 @@ export default function MatchKundliScreen() {
     const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
     if (!isUserLoggedIn) {
       setPostLoginRedirect({ route: '', popOnSuccess: true });
-      showSnackBar('Please sign in to save and download your compatibility report', '#713B32');
+      showSnackBar(cms.signInReportToast, '#713B32');
       push(AppRoutes.signInScreen);
       return;
     }
@@ -286,7 +289,7 @@ export default function MatchKundliScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="matchKundli.screen">
       <AppBar
-        title={showResults ? 'Compatibility Results' : 'Match Kundli'}
+        title={showResults ? cms.headerTitleResults : cms.headerTitleForm}
         backgroundColor={colors.background}
         backColor={colors.textPrimary}
         leading={<BoxBackButton testID="matchKundli.back" onPress={onBack} />}
@@ -304,13 +307,13 @@ export default function MatchKundliScreen() {
               end={{ x: 1, y: 1 }}
               style={{ marginHorizontal: 20, marginTop: 8, marginBottom: 20, padding: 20, borderRadius: 20, borderWidth: 1, borderColor: colors.cardBorder, alignItems: 'center' }}
             >
-              <Text style={{ fontSize: 40 }}>❤️</Text>
-              <Text style={{ marginTop: 12, color: colors.textPrimary, fontSize: 22, fontWeight: '700', textAlign: 'center' }}>Match Your Kundli</Text>
-              <Text style={{ marginTop: 8, color: colors.textSecondary, textAlign: 'center', ...lh(13, 1.5) }}>Discover compatibility using traditional Vedic astrology and the ancient science of Guna Milan.</Text>
+              <Text style={{ fontSize: 40 }}>{cms.heroEmoji}</Text>
+              <Text style={{ marginTop: 12, color: colors.textPrimary, fontSize: 22, fontWeight: '700', textAlign: 'center' }}>{cms.heroTitle}</Text>
+              <Text style={{ marginTop: 8, color: colors.textSecondary, textAlign: 'center', ...lh(13, 1.5) }}>{cms.heroSubtitle}</Text>
             </LinearGradient>
             <PersonCard
               testID="matchKundli.p1Name"
-              title={authUser?.name ? `${authUser.name} (You)` : 'Person 1 (Self)'}
+              title={authUser?.name ? `${authUser.name} ${cms.p1YouSuffix}` : cms.p1DefaultTitle}
               name={p1}
               setName={setP1}
               emoji="👰"
@@ -321,14 +324,14 @@ export default function MatchKundliScreen() {
               setTob={setP1Tob}
               pob={p1Pob}
               setPob={setP1Pob}
-              badge={authUser ? 'Auto-Fetched' : undefined}
+              badge={authUser ? cms.autoFetchedBadge : undefined}
             />
             <View style={{ alignSelf: 'center', marginVertical: 12, width: 40, height: 40, borderRadius: 20, backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 30), borderWidth: 1, borderColor: colors.cardBorder, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 18 }}>💞</Text>
             </View>
             <PersonCard
               testID="matchKundli.p2Name"
-              title="Person 2 (Partner)"
+              title={cms.p2Title}
               name={p2}
               setName={setP2}
               emoji="🤵"
@@ -344,12 +347,12 @@ export default function MatchKundliScreen() {
               {isCalculating ? (
                 <View testID="matchKundli.calculating" style={{ borderRadius: 16, paddingVertical: 16, backgroundColor: withAlpha(colors.textPrimary, 25), flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
                   <RotatingStar />
-                  <Text style={{ marginLeft: 12, color: colors.textPrimary, fontSize: 15, fontWeight: '600' }}>Calculating Compatibility...</Text>
+                  <Text style={{ marginLeft: 12, color: colors.textPrimary, fontSize: 15, fontWeight: '600' }}>{cms.calculatingLabel}</Text>
                 </View>
               ) : (
                 <ElevatedButton
                   testID="matchKundli.calculate"
-                  label="Calculate Compatibility ✨"
+                  label={cms.calculateButton}
                   onPress={calculate}
                   radius={100}
                   bg="#713B32"
@@ -364,7 +367,7 @@ export default function MatchKundliScreen() {
               <MiniProfile emoji="👰" name={p1} color="#FF6B6B" />
               <View style={{ flex: 1, alignItems: 'center' }}>
                 <Text style={{ fontSize: 24 }}>💞</Text>
-                <Text style={{ color: colors.textMuted, fontSize: 11 }}>Compatibility</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 11 }}>{cms.compatibilityLabel}</Text>
               </View>
               <MiniProfile emoji="🤵" name={p2} color="#4FC3F7" />
             </View>
@@ -379,7 +382,7 @@ export default function MatchKundliScreen() {
               end={{ x: 1, y: 1 }}
               style={{ marginHorizontal: 20, marginVertical: 8, padding: 24, borderRadius: 20, borderWidth: 1, borderColor: colors.cardBorder, alignItems: 'center' }}
             >
-              <Text style={{ color: colors.textSecondary, fontSize: 14 }}>Your Compatibility Score</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 14 }}>{cms.scoreHeading}</Text>
               <View style={{ marginTop: 20 }} testID="matchKundli.score">
                 <ProgressRing value={scoreValue / 36} size={140} strokeWidth={10} color={ringColor} backgroundColor={colors.surfaceVariant}>
                   <Text style={{ color: colors.textPrimary, fontSize: 40, fontWeight: '800' }}>{String(score)}</Text>
@@ -393,7 +396,7 @@ export default function MatchKundliScreen() {
             </LinearGradient>
 
             <View style={{ marginHorizontal: 20, marginVertical: 8 }}>
-              <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700', marginBottom: 12 }}>Guna Milan (36 Points)</Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700', marginBottom: 12 }}>{cms.gunaMilanHeading}</Text>
               {gunas.map((g) => {
                 const ratio = g.max > 0 ? g.score / g.max : 1;
                 const sc = ratio >= 0.8 ? AppColors.success : ratio >= 0.6 ? colors.goldAccent : AppColors.warning;
@@ -416,7 +419,7 @@ export default function MatchKundliScreen() {
             </View>
 
             <View style={{ marginHorizontal: 20, marginVertical: 8 }}>
-              <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700', marginBottom: 12 }}>Compatibility Areas</Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700', marginBottom: 12 }}>{cms.areasHeading}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 }}>
                 {areas.map((a) => (
                   <View key={a.title} style={{ width: '48%', aspectRatio: 1.4, padding: 14, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: withAlpha(a.color, colors.isLight ? 50 : 60), justifyContent: 'space-between' }}>
@@ -434,7 +437,7 @@ export default function MatchKundliScreen() {
             <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
               <ElevatedButton
                 testID="matchKundli.detailedReport"
-                label={isGeneratingReport ? 'Generating Report...' : 'Generate Detailed Compatibility Report'}
+                label={isGeneratingReport ? cms.generatingReportBtn : cms.generateReportBtn}
                 icon={isGeneratingReport ? undefined : 'description_outlined'}
                 disabled={isGeneratingReport}
                 onPress={handleGenerateReport}
@@ -448,7 +451,7 @@ export default function MatchKundliScreen() {
               />
               <OutlinedButton
                 testID="matchKundli.askAi"
-                label="🤖 Ask AI About This Match"
+                label={cms.askAiBtn}
                 onPress={() => {
                   push(AppRoutes.aiChatScreen, {
                     astrologerId: 'vedika',

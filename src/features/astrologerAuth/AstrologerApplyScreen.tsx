@@ -58,6 +58,7 @@ import { AppRoutes, go, pop, useExtra } from '@/navigation/routes';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { AppLanguage, useLanguageStore } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 
 const PHONE_CODES = [
   { code: '+91', label: '🇮🇳 +91 (India)' },
@@ -122,6 +123,16 @@ type UploadTarget = 'aadhaar' | 'pan' | 'supporting' | null;
 export default function AstrologerApplyScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const cms = useAppScreensCmsStore((s) => s.config.astrologerApply);
+  const phoneCodes = cms.phoneCodes?.length ? cms.phoneCodes : PHONE_CODES;
+  const strongestAreas = cms.strongestAreas?.length ? cms.strongestAreas : STRONGEST_AREAS;
+  const specialisations = cms.specialisations?.length ? cms.specialisations : SPECIALISATION_OPTIONS;
+  const consultationLanguages = cms.consultationLanguages?.length
+    ? cms.consultationLanguages
+    : CONSULTATION_LANGUAGE_OPTIONS;
+  const supportingDocCategories = cms.supportingDocCategories?.length
+    ? cms.supportingDocCategories
+    : SUPPORTING_DOC_CATEGORIES;
   const extra = useExtra<{ phone?: string }>();
 
   // Language & Step State (Synced two-way with global useLanguageStore)
@@ -981,7 +992,7 @@ export default function AstrologerApplyScreen() {
     >
       <StatusBar style={colors.isLight ? 'dark' : 'light'} />
       <AppBar
-        title="Astrologer Application"
+        title={cms.appBarTitle || 'Astrologer Application'}
         onBack={pop}
         testIDPrefix="astrologerApply.appBar"
         actions={[
@@ -1056,10 +1067,10 @@ export default function AstrologerApplyScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: colors.textPrimary, fontSize: 13.5, fontWeight: '800' }}>
-                Astrologer Onboarding Application
+                {cms.appBarTitle || 'Astrologer Onboarding Application'}
               </Text>
               <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 2 }}>
-                1-Step direct credential submission & administrative approval
+                {cms.heroSubtitle || '1-Step direct credential submission & administrative approval'}
               </Text>
             </View>
           </View>
@@ -1099,7 +1110,7 @@ export default function AstrologerApplyScreen() {
                     {t.proctorActive}
                   </Text>
                   <Text style={{ color: 'rgba(255,255,255,0.68)', fontSize: 10.5, marginTop: 1 }}>
-                    App switching, copy-paste & external help are strictly monitored
+                    {cms.proctorBannerText || 'App switching, copy-paste & external help are strictly monitored'}
                   </Text>
                 </View>
               </View>
@@ -1162,7 +1173,7 @@ export default function AstrologerApplyScreen() {
                   textAlign: 'center',
                 }}
               >
-                Assessment Terminated Due to Malpractice
+                {cms.proctorDisqualifiedTitle || 'Assessment Terminated Due to Malpractice'}
               </Text>
               <Text
                 style={{
@@ -1172,7 +1183,7 @@ export default function AstrologerApplyScreen() {
                   ...lh(13, 1.5),
                 }}
               >
-                Our AI Proctoring system recorded 3 integrity violations during your live assessment. AstroParihar maintains strict ethical standards for all panel astrologers.
+                {cms.proctorDisqualifiedMessage || 'Our AI Proctoring system recorded 3 integrity violations during your live assessment. AstroParihar maintains strict ethical standards for all panel astrologers.'}
               </Text>
               <ElevatedButton
                 label="Return to Astrologer Portal"
@@ -2069,7 +2080,7 @@ export default function AstrologerApplyScreen() {
 
               <ElevatedButton
                 testID="astrologerApply.step1ContinueBtn"
-                label={submittingFinal ? 'Submitting Application...' : 'Submit Application for Verification'}
+                label={submittingFinal ? 'Submitting Application...' : (cms.submitButtonLabel || 'Submit Application for Verification')}
                 onPress={handleStep1Submit}
                 loading={submittingFinal}
                 disabled={submittingFinal}
@@ -3422,7 +3433,7 @@ export default function AstrologerApplyScreen() {
       >
         <SheetContainer style={{ padding: 20 }}>
           <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800', marginBottom: 12 }}>
-            {t.langSelectLabel}
+            {cms.languageSheetTitle || t.langSelectLabel}
           </Text>
           {LANGUAGE_OPTIONS.map((lang) => (
             <Pressable
@@ -3461,7 +3472,7 @@ export default function AstrologerApplyScreen() {
             Select all astrological disciplines you practice:
           </Text>
           <ScrollView style={{ maxHeight: 340 }}>
-            {SPECIALISATION_OPTIONS.map((spec) => {
+            {specialisations.map((spec) => {
               const checked = selectedSpecs.includes(spec);
               return (
                 <Pressable
@@ -3516,7 +3527,7 @@ export default function AstrologerApplyScreen() {
             Select all languages in which you can consult with clients:
           </Text>
           <ScrollView style={{ maxHeight: 340 }}>
-            {CONSULTATION_LANGUAGE_OPTIONS.map((lang) => {
+            {consultationLanguages.map((lang) => {
               const checked = selectedLangs.includes(lang);
               return (
                 <Pressable
@@ -3567,7 +3578,7 @@ export default function AstrologerApplyScreen() {
           <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800', marginBottom: 12 }}>
             Strongest Consultation Area
           </Text>
-          {STRONGEST_AREAS.map((area) => (
+          {strongestAreas.map((area) => (
             <Pressable
               key={area}
               onPress={() => {
@@ -3596,7 +3607,7 @@ export default function AstrologerApplyScreen() {
           <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800', marginBottom: 12 }}>
             Supporting Document Category
           </Text>
-          {SUPPORTING_DOC_CATEGORIES.map((cat) => (
+          {supportingDocCategories.map((cat) => (
             <Pressable
               key={cat}
               onPress={() => {
@@ -3625,7 +3636,7 @@ export default function AstrologerApplyScreen() {
           <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '800', marginBottom: 12 }}>
             Select Country Code
           </Text>
-          {PHONE_CODES.map((c) => (
+          {phoneCodes.map((c) => (
             <Pressable
               key={c.code}
               onPress={() => {

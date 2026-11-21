@@ -26,6 +26,7 @@ import { useAuthStore } from '@/features/auth/authStore';
 import { AppColors, withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 import { fetchLiveRemedies } from '@/services/astrologyService';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 
 const STORAGE_REMEDIES_CACHE = 'astroparihar_dynamic_remedies_cache';
 
@@ -35,6 +36,7 @@ export const openRemedy = (r: Remedy) => push(AppRoutes.remedyDetailScreen, r);
 export default function RemediesScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const cms = useAppScreensCmsStore((s) => s.config.remedies);
   const authUser = useAuthStore((s) => s.user);
   const pulse = useSharedValue(0.95);
   const [w, setW] = useState(Dimensions.get('window').width - 40);
@@ -103,6 +105,7 @@ export default function RemediesScreen() {
 
         let activeItems: any[] = [];
         let ashtaDirections: any[] = [];
+        let remedyProfiles: any[] = [];
 
         if (res && res.ok) {
           const data = await res.json();
@@ -118,12 +121,13 @@ export default function RemediesScreen() {
 
         if (remRes && remRes.ok) {
           const rData = await remRes.json();
-          if (rData && rData.success && Array.isArray(rData.ashtaDirections)) {
-            ashtaDirections = rData.ashtaDirections;
+          if (rData && rData.success) {
+            if (Array.isArray(rData.ashtaDirections)) ashtaDirections = rData.ashtaDirections;
+            if (Array.isArray(rData.remedyProfiles)) remedyProfiles = rData.remedyProfiles;
           }
         }
 
-        if (activeItems.length > 0 || ashtaDirections.length > 0) {
+        if (activeItems.length > 0 || ashtaDirections.length > 0 || remedyProfiles.length > 0) {
           const hydrated: Remedy[] = REMEDIES.map((base) => {
             const match = activeItems.find(
               (ai: any) =>
@@ -136,14 +140,23 @@ export default function RemediesScreen() {
               (ad: any) => ad.direction?.toLowerCase().includes(base.direction.toLowerCase())
             );
 
+            const profileMatch = remedyProfiles.find(
+              (rp: any) =>
+                rp.name?.toLowerCase().includes(base.name.toLowerCase().split(' ')[0]) ||
+                rp.key?.toLowerCase().includes(base.name.toLowerCase().split(' ')[0]) ||
+                rp.direction?.toLowerCase() === base.direction.toLowerCase()
+            );
+
             return {
               ...base,
-              name: match?.name || base.name,
-              sanskrit: match?.sanskrit || base.sanskrit,
-              desc: match?.desc || dirMatch?.purpose || base.desc,
-              mantra: match?.mantra || base.mantra,
-              directionHindi: match?.directionHindi || base.directionHindi,
-              color: match?.color || base.color,
+              name: profileMatch?.name || match?.name || base.name,
+              emoji: profileMatch?.emoji || match?.emoji || base.emoji,
+              sanskrit: profileMatch?.sanskrit || match?.sanskrit || base.sanskrit,
+              desc: profileMatch?.desc || match?.desc || dirMatch?.purpose || base.desc,
+              mantra: profileMatch?.mantra || match?.mantra || base.mantra,
+              direction: profileMatch?.direction || match?.direction || base.direction,
+              directionHindi: profileMatch?.directionHindi || match?.directionHindi || base.directionHindi,
+              color: profileMatch?.color || match?.color || base.color,
             };
           });
 
@@ -199,7 +212,7 @@ export default function RemediesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="remedies.screen">
       <AppBar
-        title="Sacred Vedic Remedies"
+        title={cms.headerTitle}
         backgroundColor={colors.background}
         backColor={colors.textPrimary}
         leading={<BoxBackButton testID="remedies.back" onPress={() => router.back()} />}
@@ -252,7 +265,7 @@ export default function RemediesScreen() {
           <View style={{ flex: 1, marginRight: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ color: colors.goldAccent, fontSize: 10.5, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                {authUser?.name ? `Personalised for ${authUser.name}` : 'Sacred Remedies'}
+                {authUser?.name ? `${cms.topPersonalisedPrefix} ${authUser.name}` : cms.topBadgeDefault}
               </Text>
               {authUser?.zodiac ? (
                 <Text style={{ color: colors.textMuted, fontSize: 10.5, fontWeight: '600', marginLeft: 4 }}>
@@ -261,7 +274,7 @@ export default function RemediesScreen() {
               ) : null}
             </View>
             <Text style={{ color: colors.textPrimary, fontSize: 12.5, fontWeight: '700', marginTop: 1 }}>
-              Ashta-Digbandhana Remedies
+              {cms.topTitle}
             </Text>
           </View>
 
@@ -285,7 +298,7 @@ export default function RemediesScreen() {
             })}
           >
             <Text style={{ color: '#0A0E1A', fontSize: 11.5, fontWeight: '800', marginRight: 3 }}>
-              Explore
+              {cms.exploreButton}
             </Text>
             <AppIcon name="auto_awesome" size={13} color="#0A0E1A" />
           </Pressable>
@@ -294,10 +307,10 @@ export default function RemediesScreen() {
         <View style={{ marginHorizontal: 16, marginTop: 4, marginBottom: 8, alignItems: 'center' }}>
           <View style={{ width: '100%', marginBottom: 4 }}>
             <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
-              Ashta-Digbandhana
+              {cms.wheelTitle}
             </Text>
             <Text style={{ color: colors.textMuted, fontSize: 11.5, marginTop: 1 }}>
-              The 8 Sacred Directions of Vedic Remedies
+              {cms.wheelSubtitle}
             </Text>
           </View>
 
@@ -379,13 +392,13 @@ export default function RemediesScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
             <AppIcon name="touch_app" size={14} color={colors.goldAccent} style={{ marginRight: 5 }} />
             <Text style={{ color: colors.textMuted, fontSize: 12, textAlign: 'center', fontWeight: '600' }}>
-              Tap wheel to consult AI or explore each remedy below
+              {cms.wheelTapHint}
             </Text>
           </View>
         </View>
 
         <View style={{ marginHorizontal: 20, marginTop: 16, marginBottom: 8 }}>
-          <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>All Remedies</Text>
+          <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>{cms.allRemediesTitle}</Text>
           <View
             style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}
             onLayout={(e) => {
@@ -450,95 +463,62 @@ export default function RemediesScreen() {
         {/* Comprehensive Vedic Remedies Principles & Knowledge Section */}
         <View style={{ marginHorizontal: 20, marginTop: 24, marginBottom: 12 }}>
           <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>
-            Sacred Ashta Parihar Principles
+            {cms.principlesTitle}
           </Text>
           <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
-            Ancient Vedic sciences for mitigating planetary doshas & karmic debts
+            {cms.principlesSubtitle}
           </Text>
 
-          {/* Principle 1: Ashta-Digbandhana */}
-          <View
-            style={{
-              marginTop: 14,
-              padding: 16,
-              borderRadius: 18,
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              shadowColor: '#000',
-              shadowOpacity: colors.isLight ? 0.03 : 0.15,
-              shadowRadius: 6,
-              elevation: 2,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <View
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 25 : 35),
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 10,
-                }}
-              >
-                <Text style={{ fontSize: 16 }}>🛡️</Text>
+          {(cms.principlesCards || []).map((card, idx) => (
+            <View
+              key={`${idx}-${card.title}`}
+              style={{
+                marginTop: idx === 0 ? 14 : 12,
+                padding: 16,
+                borderRadius: 18,
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.cardBorder,
+                shadowColor: '#000',
+                shadowOpacity: colors.isLight ? 0.03 : 0.15,
+                shadowRadius: 6,
+                elevation: 2,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    backgroundColor: withAlpha(card.accentColor || colors.goldAccent, colors.isLight ? 25 : 35),
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 10,
+                  }}
+                >
+                  <Text style={{ fontSize: 16 }}>{card.emoji}</Text>
+                </View>
+                <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700', flex: 1 }}>
+                  {card.title}
+                </Text>
               </View>
-              <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700', flex: 1 }}>
-                The 8-Fold Shield (Ashta-Digbandhana)
-              </Text>
+              {card.body ? (
+                <Text style={{ color: colors.textSecondary, fontSize: 12.5, lineHeight: 18 }}>
+                  {card.body}
+                </Text>
+              ) : null}
+              {card.bullets && card.bullets.length > 0 ? (
+                <View style={{ gap: 6, marginTop: card.body ? 8 : 4 }}>
+                  {card.bullets.map((b, bIdx) => (
+                    <Text key={bIdx} style={{ color: colors.textSecondary, fontSize: 12 }}>
+                      • <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{b.boldPrefix}</Text> {b.text}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
             </View>
-            <Text style={{ color: colors.textSecondary, fontSize: 12.5, lineHeight: 18 }}>
-              Each of the 8 directions is governed by an Ashta-Dikpala and corresponding planetary vibrations. By harmonizing Mantras (North), Yantras (North-East), Homa (East), Upasana (South-East), Ratna (South), Rudraksha (South-West), Vastu (West), and Dāna (North-West), a protective spiritual shield is established around your auric field.
-            </Text>
-          </View>
-
-          {/* Principle 2: Sādhana & Timing Rules */}
-          <View
-            style={{
-              marginTop: 12,
-              padding: 16,
-              borderRadius: 18,
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              shadowColor: '#000',
-              shadowOpacity: colors.isLight ? 0.03 : 0.15,
-              shadowRadius: 6,
-              elevation: 2,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <View
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  backgroundColor: withAlpha('#81C784', colors.isLight ? 25 : 35),
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 10,
-                }}
-              >
-                <Text style={{ fontSize: 16 }}>🪔</Text>
-              </View>
-              <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700', flex: 1 }}>
-                Rules of Effective Remedy Practice
-              </Text>
-            </View>
-            <View style={{ gap: 6, marginTop: 4 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                • <Text style={{ fontWeight: '700', color: colors.textPrimary }}>Brahma Muhurta:</Text> Chanting & meditation between 4:00 AM – 6:00 AM yields 100x spiritual efficacy.
-              </Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                • <Text style={{ fontWeight: '700', color: colors.textPrimary }}>Sattvic Mindset:</Text> Maintain dietary purity and observe non-violence during remedy cycles.
-              </Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                • <Text style={{ fontWeight: '700', color: colors.textPrimary }}>Sankalpa:</Text> Clear, heartfelt intention dedicated to the divine ensures karmic dissipation.
-              </Text>
-            </View>
-          </View>
+          ))}
 
           {/* Quick Consultation CTA */}
           <LinearGradient
@@ -562,10 +542,10 @@ export default function RemediesScreen() {
           >
             <View style={{ flex: 1, marginRight: 12 }}>
               <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '800' }}>
-                Need Custom Prescription?
+                {cms.customCtaTitle}
               </Text>
               <Text style={{ color: colors.textSecondary, fontSize: 11.5, marginTop: 2 }}>
-                Get an astrologer to analyze your Mahadasha, Dasha Sandhi & doshas.
+                {cms.customCtaSubtitle}
               </Text>
             </View>
             <Pressable
@@ -584,7 +564,7 @@ export default function RemediesScreen() {
               })}
             >
               <Text style={{ color: '#0A0E1A', fontSize: 12, fontWeight: '800' }}>
-                Consult Now
+                {cms.customCtaButton}
               </Text>
             </Pressable>
           </LinearGradient>

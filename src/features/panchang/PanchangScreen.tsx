@@ -21,6 +21,7 @@ import { fetchLivePanchang, PanchangLiveResult } from '@/services/astrologyServi
 import { generatePanchangReport } from '@/services/reportService';
 import { AppRoutes, push } from '@/navigation/routes';
 import { useAuthStore } from '@/features/auth/authStore';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 
 const PANCHANG = [
   { label: 'Tithi', value: 'Chaturdashi (14th)', sub: 'Krishna Paksha', icon: 'nights_stay_outlined', color: '#9370DB' },
@@ -60,6 +61,7 @@ const SectionTitle = ({ children, color }: { children: string; color: string }) 
 export default function PanchangScreen() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const cms = useAppScreensCmsStore((s) => s.config.panchang);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [dateOffset, setDateOffset] = useState(0);
   const [w, setW] = useState(Dimensions.get('window').width - 40);
@@ -69,14 +71,14 @@ export default function PanchangScreen() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const setPostLoginRedirect = useAuthStore((s) => s.setPostLoginRedirect);
   const isUserLoggedIn = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
-  const [locationName, setLocationName] = useState(authUser?.pob || 'New Delhi, India');
+  const [locationName, setLocationName] = useState(authUser?.pob || cms.defaultLocation);
 
   useEffect(() => {
     let isMounted = true;
     const load = async () => {
       try {
         const loc = await AsyncStorage.getItem('astroparihar_user_location');
-        const effectiveLoc = loc || authUser?.pob || 'New Delhi, India';
+        const effectiveLoc = loc || authUser?.pob || cms.defaultLocation;
         if (isMounted) setLocationName(effectiveLoc);
         const yyyy = selectedDate.getFullYear();
         const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
@@ -90,12 +92,13 @@ export default function PanchangScreen() {
     };
     load();
     return () => { isMounted = false; };
-  }, [selectedDate, authUser?.pob]);
+  }, [selectedDate, authUser?.pob, cms.defaultLocation]);
 
   const dateLabel =
-    dateOffset === 0 ? 'Today' : dateOffset === -1 ? 'Yesterday' : dateOffset === 1 ? 'Tomorrow'
+    dateOffset === 0 ? cms.dateLabels.today : dateOffset === -1 ? cms.dateLabels.yesterday : dateOffset === 1 ? cms.dateLabels.tomorrow
       : `${selectedDate.getDate()}/${selectedDate.getMonth() + 1}/${selectedDate.getFullYear()}`;
   const formattedDate = `${DAYS[selectedDate.getDay()]}, ${selectedDate.getDate()} ${MONTHS[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
+  const vikramYear = cms.vikramSamvatOverrideYear?.trim() || String(selectedDate.getFullYear() + 57);
 
   const changeDate = (delta: number) => {
     const off = dateOffset + delta;
@@ -114,32 +117,47 @@ export default function PanchangScreen() {
   const cellW = Math.max(140, (w - 12) / 2);
 
   const dynamicPanchang = panchangData ? [
-    { label: 'Tithi', value: panchangData.tithi, sub: panchangData.tithiSub || 'Vedic Lunar Day', icon: 'nights_stay_outlined', color: '#9370DB' },
-    { label: 'Nakshatra', value: panchangData.nakshatra, sub: panchangData.nakshatraSub || 'Lunar Mansion', icon: 'star_outline', color: '#FFD700' },
-    { label: 'Yoga', value: panchangData.yoga, sub: panchangData.yogaSub || 'Auspicious Period', icon: 'self_improvement', color: '#81C784' },
-    { label: 'Karana', value: panchangData.karana, sub: panchangData.karanaSub || 'Half-Tithi Cycle', icon: 'schedule', color: '#FF8A65' },
-  ] : PANCHANG;
+    { key: 'tithi', label: cms.cardLabels.tithi, value: panchangData.tithi, sub: panchangData.tithiSub || 'Vedic Lunar Day', icon: 'nights_stay_outlined', color: '#9370DB' },
+    { key: 'nakshatra', label: cms.cardLabels.nakshatra, value: panchangData.nakshatra, sub: panchangData.nakshatraSub || 'Lunar Mansion', icon: 'star_outline', color: '#FFD700' },
+    { key: 'yoga', label: cms.cardLabels.yoga, value: panchangData.yoga, sub: panchangData.yogaSub || 'Auspicious Period', icon: 'self_improvement', color: '#81C784' },
+    { key: 'karana', label: cms.cardLabels.karana, value: panchangData.karana, sub: panchangData.karanaSub || 'Half-Tithi Cycle', icon: 'schedule', color: '#FF8A65' },
+  ] : [
+    { key: 'tithi', ...PANCHANG[0], label: cms.cardLabels.tithi },
+    { key: 'nakshatra', ...PANCHANG[1], label: cms.cardLabels.nakshatra },
+    { key: 'yoga', ...PANCHANG[2], label: cms.cardLabels.yoga },
+    { key: 'karana', ...PANCHANG[3], label: cms.cardLabels.karana },
+  ];
 
   const dynamicSunMoon = panchangData ? [
-    { label: 'Sunrise', value: panchangData.sunrise, icon: 'wb_sunny_outlined', color: '#FFB347' },
-    { label: 'Sunset', value: panchangData.sunset, icon: 'wb_twilight', color: '#FF6B6B' },
-    { label: 'Moonrise', value: panchangData.moonrise, icon: 'nights_stay_outlined', color: '#E0E0E0' },
-    { label: 'Moonset', value: panchangData.moonset, icon: 'bedtime_outlined', color: '#9370DB' },
-  ] : SUN_MOON;
+    { key: 'sunrise', label: cms.cardLabels.sunrise, value: panchangData.sunrise, icon: 'wb_sunny_outlined', color: '#FFB347' },
+    { key: 'sunset', label: cms.cardLabels.sunset, value: panchangData.sunset, icon: 'wb_twilight', color: '#FF6B6B' },
+    { key: 'moonrise', label: cms.cardLabels.moonrise, value: panchangData.moonrise, icon: 'nights_stay_outlined', color: '#E0E0E0' },
+    { key: 'moonset', label: cms.cardLabels.moonset, value: panchangData.moonset, icon: 'bedtime_outlined', color: '#9370DB' },
+  ] : [
+    { key: 'sunrise', ...SUN_MOON[0], label: cms.cardLabels.sunrise },
+    { key: 'sunset', ...SUN_MOON[1], label: cms.cardLabels.sunset },
+    { key: 'moonrise', ...SUN_MOON[2], label: cms.cardLabels.moonrise },
+    { key: 'moonset', ...SUN_MOON[3], label: cms.cardLabels.moonset },
+  ];
 
   const dynamicTimes = panchangData ? [
-    { label: 'Rahu Kaal', value: panchangData.rahuKaal, icon: 'block', color: '#CF4444' },
-    { label: 'Yamaganda', value: panchangData.yamaganda, icon: 'warning_amber_rounded', color: '#D4821A' },
-    { label: 'Gulika Kaal', value: panchangData.gulikaKaal, icon: 'remove_circle_outline', color: '#FF8A65' },
-    { label: 'Abhijit Muhurat', value: panchangData.abhijitMuhurat, icon: 'star_outline', color: '#81C784' },
-  ] : TIMES;
+    { key: 'rahu', label: cms.cardLabels.rahuKaal, value: panchangData.rahuKaal, icon: 'block', color: '#CF4444', isGood: false },
+    { key: 'yamaganda', label: cms.cardLabels.yamaganda, value: panchangData.yamaganda, icon: 'warning_amber_rounded', color: '#D4821A', isGood: false },
+    { key: 'gulika', label: cms.cardLabels.gulikaKaal, value: panchangData.gulikaKaal, icon: 'remove_circle_outline', color: '#FF8A65', isGood: false },
+    { key: 'abhijit', label: cms.cardLabels.abhijitMuhurat, value: panchangData.abhijitMuhurat, icon: 'star_outline', color: '#81C784', isGood: true },
+  ] : [
+    { key: 'rahu', ...TIMES[0], label: cms.cardLabels.rahuKaal, isGood: false },
+    { key: 'yamaganda', ...TIMES[1], label: cms.cardLabels.yamaganda, isGood: false },
+    { key: 'gulika', ...TIMES[2], label: cms.cardLabels.gulikaKaal, isGood: false },
+    { key: 'abhijit', ...TIMES[3], label: cms.cardLabels.abhijitMuhurat, isGood: true },
+  ];
 
   const dynamicChoghadiya = (panchangData?.choghadiya && panchangData.choghadiya.length > 0) ? panchangData.choghadiya : CHOGHADIYA;
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `🕉️ Vedic Panchang (${formattedDate}) - ${locationName}\n• Tithi: ${dynamicPanchang[0].value}\n• Nakshatra: ${dynamicPanchang[1].value}\n• Abhijit Muhurat: ${dynamicTimes[3].value}\n• Rahu Kaal: ${dynamicTimes[0].value}\n\nShared via AstroParihar App ✨`,
+        message: `🕉️ Vedic Panchang (${formattedDate}) - ${locationName}\n• ${cms.cardLabels.tithi}: ${dynamicPanchang[0].value}\n• ${cms.cardLabels.nakshatra}: ${dynamicPanchang[1].value}\n• ${cms.cardLabels.abhijitMuhurat}: ${dynamicTimes[3].value}\n• ${cms.cardLabels.rahuKaal}: ${dynamicTimes[0].value}\n\nShared via AstroParihar App ✨`,
       });
     } catch {}
   };
@@ -147,7 +165,7 @@ export default function PanchangScreen() {
   const handleGenerateReport = async () => {
     if (!isUserLoggedIn) {
       setPostLoginRedirect({ route: '', popOnSuccess: true });
-      showSnackBar('Please sign in to generate and save your Panchang report', '#713B32');
+      showSnackBar(cms.signInToast, '#713B32');
       push(AppRoutes.signInScreen);
       return;
     }
@@ -172,7 +190,7 @@ export default function PanchangScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="panchang.screen">
       <AppBar
-        title="Panchang"
+        title={cms.headerTitle}
         backgroundColor={colors.background}
         backColor={colors.textPrimary}
         leading={<BoxBackButton testID="panchang.back" onPress={() => router.back()} />}
@@ -207,18 +225,18 @@ export default function PanchangScreen() {
         >
           <Text style={{ fontSize: 28 }}>🕉️</Text>
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '600' }}>Vikram Samvat 2081 • Vedic Calendar</Text>
+            <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '600' }}>{`${cms.vikramSamvatPrefix} ${vikramYear} • ${cms.calendarSubtitle}`}</Text>
             <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>{dynamicPanchang[0]?.value || 'Shukla Paksha'}</Text>
-            <Text style={{ color: colors.textMuted, fontSize: 11 }}>{locationName} • IST (UTC+5:30)</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 11 }}>{`${locationName} • ${cms.timezoneLabel}`}</Text>
           </View>
         </LinearGradient>
 
         <View style={{ marginHorizontal: 20, marginTop: 12, marginBottom: 8 }}>
-          <SectionTitle color={colors.textPrimary}>Panchang Details</SectionTitle>
+          <SectionTitle color={colors.textPrimary}>{cms.sections.detailsTitle}</SectionTitle>
           <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 12 }} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
             {dynamicPanchang.map((p) => (
               <View
-                key={p.label}
+                key={p.key}
                 style={{
                   width: cellW,
                   minHeight: 110,
@@ -246,11 +264,11 @@ export default function PanchangScreen() {
         </View>
 
         <View style={{ marginHorizontal: 20, marginVertical: 8 }}>
-          <SectionTitle color={colors.textPrimary}>Sun &amp; Moon Timings</SectionTitle>
+          <SectionTitle color={colors.textPrimary}>{cms.sections.sunMoonTitle}</SectionTitle>
           <View style={{ marginTop: 12, flexDirection: 'row' }}>
             {dynamicSunMoon.map((s) => (
               <View
-                key={s.label}
+                key={s.key}
                 style={{
                   flex: 1,
                   marginRight: 8,
@@ -271,13 +289,13 @@ export default function PanchangScreen() {
         </View>
 
         <View style={{ marginHorizontal: 20, marginVertical: 8 }}>
-          <SectionTitle color={colors.textPrimary}>Auspicious &amp; Inauspicious Times</SectionTitle>
+          <SectionTitle color={colors.textPrimary}>{cms.sections.timesTitle}</SectionTitle>
           <View style={{ height: 12 }} />
           {dynamicTimes.map((t) => {
-            const isGood = t.label === 'Abhijit Muhurat';
+            const isGood = t.isGood;
             return (
               <View
-                key={t.label}
+                key={t.key}
                 style={{
                   marginBottom: 8,
                   padding: 14,
@@ -297,7 +315,7 @@ export default function PanchangScreen() {
                   <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t.value}</Text>
                 </View>
                 <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, backgroundColor: withAlpha(t.color, colors.isLight ? 20 : 30) }}>
-                  <Text style={{ color: t.color, fontSize: 10, fontWeight: '600' }}>{isGood ? 'Auspicious' : 'Avoid'}</Text>
+                  <Text style={{ color: t.color, fontSize: 10, fontWeight: '600' }}>{isGood ? cms.badges.auspicious : cms.badges.avoid}</Text>
                 </View>
               </View>
             );
@@ -305,8 +323,8 @@ export default function PanchangScreen() {
         </View>
 
         <View style={{ marginHorizontal: 20, marginVertical: 8 }}>
-          <SectionTitle color={colors.textPrimary}>Today&apos;s Choghadiya</SectionTitle>
-          <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 12 }}>Day Choghadiya (Sunrise to Sunset)</Text>
+          <SectionTitle color={colors.textPrimary}>{cms.sections.choghadiyaTitle}</SectionTitle>
+          <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 12 }}>{cms.sections.choghadiyaSubtitle}</Text>
           <View style={{ height: 12 }} />
           {dynamicChoghadiya.map((c, i) => {
             const color = c.type === 'Very Auspicious' ? colors.goldAccent : c.good ? AppColors.success : AppColors.error;
@@ -344,10 +362,10 @@ export default function PanchangScreen() {
             testID="panchang.generateReport"
             label={
               isGeneratingReport
-                ? 'Generating Almanac...'
+                ? cms.buttons.generating
                 : !isUserLoggedIn
-                ? '🔒 Sign In to Generate Panchang Report'
-                : 'Generate Panchang & Muhurat Report'
+                ? cms.buttons.signInToGenerate
+                : cms.buttons.generateReport
             }
             icon={isGeneratingReport ? undefined : 'description_outlined'}
             disabled={isGeneratingReport}
@@ -361,7 +379,7 @@ export default function PanchangScreen() {
           />
           <OutlinedButton
             testID="panchang.share"
-            label="Share Today's Panchang"
+            label={cms.buttons.sharePanchang}
             icon="share_outlined"
             color={colors.accent}
             borderColor={colors.accent}

@@ -51,6 +51,7 @@ import {
 } from '@/services/speechService';
 import { fetchAiAstrologers } from '@/services/homeDataService';
 import { analyzeQueryClarification } from './aiChatClarification';
+import { fillCmsTemplate, useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -187,6 +188,17 @@ const PLACEHOLDERS_BY_LANG: Record<string, string> = {
 function getWelcomeMessage(lang: string, name: string, astroName: string = 'Acharya Devavrat') {
   const currentYear = new Date().getFullYear();
   const safeName = (name && name.trim() && name.trim() !== 'Devotee') ? name.trim() : 'Guest';
+  const cms = useAppScreensCmsStore.getState().config.aiChat;
+  const cmsRecs = cms.quickPromptsByLang?.[lang]?.length
+    ? cms.quickPromptsByLang[lang]
+    : (QUICK_PROMPTS_BY_LANG[lang] || QUICK_PROMPTS_BY_LANG.English);
+  const cmsTemplate = cms.welcomeTemplatesByLang?.[lang] || cms.welcomeTemplatesByLang?.English;
+  if (cmsTemplate) {
+    return {
+      content: fillCmsTemplate(cmsTemplate, { name: safeName, astroName, year: String(currentYear) }),
+      recommendations: cmsRecs,
+    };
+  }
   if (lang === 'Telugu') {
     return {
       content: `**నమస్కారం మరియు శుభాశీస్సులు, ${safeName}!** 🙏\n\nనేను **${astroName}**, మీ వ్యక్తిగత వేద జ్యోతిష్య మార్గదర్శకుడిని. ${currentYear} సంవత్సరానికి సంబంధించి మీ **కుండలి, కెరీర్, వివాహం, ఆర్థిక స్థితి లేదా వేద పరిహారాల** గురించి ఏదైనా అడగండి. ఈరోజు మీకు ఎలా సహాయపడగలను?`,
@@ -351,11 +363,14 @@ function WhatsAppBackground() {
 
 function TypingIndicator({ language = 'English', astrologerName = 'Astrologer' }: { language?: string; astrologerName?: string }) {
   const ctl = useController({ duration: 900, repeat: true, autoStart: true });
-  const tipText = language === 'Telugu' || language === 'te'
-    ? 'మీ జన్మ కుండలి మరియు గ్రహ గోచారాలను విశ్లేషిస్తున్నారు...'
-    : language === 'Hindi' || language === 'hi'
-      ? 'आपकी जन्म कुंडली और ग्रह गोचर का विश्लेषण हो रहा है...'
-      : 'Analyzing your Janam Kundli & planetary transits...';
+  const cms = useAppScreensCmsStore((s) => s.config.aiChat);
+  const tipText =
+    cms.typingTipByLang?.[language] ||
+    (language === 'Telugu' || language === 'te'
+      ? 'మీ జన్మ కుండలి మరియు గ్రహ గోచారాలను విశ్లేషిస్తున్నారు...'
+      : language === 'Hindi' || language === 'hi'
+        ? 'आपकी जन्म कुंडली और ग्रह गोचर का विश्लेषण हो रहा है...'
+        : 'Analyzing your Janam Kundli & planetary transits...');
 
   return (
     <View style={{ paddingBottom: 8, paddingLeft: 4, flexDirection: 'row', alignItems: 'flex-start' }} testID="aiChat.typing">
@@ -718,6 +733,7 @@ export function localizeAstrologicalString(text: string, lang: string): string {
 
 function StructuredAnalysisCard({ structured, language }: { structured: ChatMessage['structured']; language: string }) {
   const [expanded, setExpanded] = useState(false);
+  const cms = useAppScreensCmsStore((s) => s.config.aiChat);
   if (!structured) return null;
 
   const normLang =
@@ -727,7 +743,10 @@ function StructuredAnalysisCard({ structured, language }: { structured: ChatMess
     /kannada|^kn$/i.test(language || '') ? 'Kannada' :
     /malayalam|^ml$/i.test(language || '') ? 'Malayalam' : 'English';
 
-  const cardLabels = STRUCTURED_CARD_STRINGS[normLang] || STRUCTURED_CARD_STRINGS.English;
+  const cardLabels =
+    cms.structuredCardStringsByLang?.[normLang] ||
+    STRUCTURED_CARD_STRINGS[normLang] ||
+    STRUCTURED_CARD_STRINGS.English;
   const timingWindowText = structured.timingWindow ? localizeAstrologicalString(structured.timingWindow, normLang) : null;
   const conclusionText = structured.conclusion ? localizeAstrologicalString(structured.conclusion, normLang) : null;
   const activeDashaText = structured.diagnosis?.activeDasha ? localizeAstrologicalString(structured.diagnosis.activeDasha, normLang) : null;
@@ -804,6 +823,8 @@ function Bubble({
   language?: string;
 }) {
   const { width } = useWindowDimensions();
+  const cmsAudio = useAppScreensCmsStore((s) => s.config.aiChat.audioLabelByLang);
+  const audioLabels = cmsAudio?.[language] || AUDIO_LABEL_BY_LANG[language] || AUDIO_LABEL_BY_LANG.English;
   const p = useSharedValue(0);
   useEffect(() => {
     p.value = withDelay(Math.min(180, Math.max(0, index * 25)), withTiming(1, { duration: 280 }));
@@ -904,7 +925,7 @@ function Bubble({
                     fontWeight: '700',
                   }}
                 >
-                  {isSpeaking ? (AUDIO_LABEL_BY_LANG[language]?.stop || 'Stop') : (AUDIO_LABEL_BY_LANG[language]?.listen || 'Listen')}
+                  {isSpeaking ? (audioLabels?.stop || 'Stop') : (audioLabels?.listen || 'Listen')}
                 </Text>
               </Pressable>
             </View>
@@ -1143,6 +1164,9 @@ export default function AiChatScreen() {
   const initialWindowH = useRef(Dimensions.get('window').height).current;
   const colors = useThemeColors();
   const { t } = useTranslation();
+  const cms = useAppScreensCmsStore((s) => s.config.aiChat);
+  const activeLanguages = cms.languages?.length ? cms.languages : LANGUAGES;
+  const activeAiModels = cms.aiModels?.length ? cms.aiModels : AI_MODELS;
   const params = useLocalSearchParams<{
     initialPrompt?: string;
     astrologerName?: string;
@@ -1331,20 +1355,12 @@ export default function AiChatScreen() {
 
   const handleResetChat = () => {
     Alert.alert(
-      selectedLanguage === 'Telugu'
-        ? 'చాట్ రీసెట్ చేయాలా?'
-        : selectedLanguage === 'Hindi'
-        ? 'चैट रीसेट करें?'
-        : 'Reset Consultation Chat?',
-      selectedLanguage === 'Telugu'
-        ? 'ప్రస్తుత సందేశాలను తొలగించి కొత్త జ్యోతిష్య సంభాషణను ప్రారంభించాలా?'
-        : selectedLanguage === 'Hindi'
-        ? 'वर्तमान संदेशों को हटाकर नई ज्योतिषीय बातचीत शुरू करें?'
-        : 'Do you want to clear current chat messages and start a fresh astrological consultation?',
+      cms.uiLabels?.clearChatTitle || 'Reset Consultation Chat?',
+      cms.uiLabels?.clearChatMessage || 'Do you want to clear current chat messages and start a fresh astrological consultation?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: cms.uiLabels?.cancelLabel || 'Cancel', style: 'cancel' },
         {
-          text: selectedLanguage === 'Telugu' ? 'రీసెట్ చేయండి' : selectedLanguage === 'Hindi' ? 'रीसेट करें' : 'Reset Chat',
+          text: cms.uiLabels?.clearLabel || 'Reset Chat',
           style: 'destructive',
           onPress: async () => {
             stopAstrologerSpeech();
@@ -1679,7 +1695,10 @@ export default function AiChatScreen() {
             isUser: false,
             text: replyText,
             time: currentTime(),
-            recommendations: QUICK_PROMPTS_BY_LANG[selectedLanguage] || QUICK_PROMPTS_BY_LANG.English,
+            recommendations:
+              cms.quickPromptsByLang?.[selectedLanguage]?.length
+                ? cms.quickPromptsByLang[selectedLanguage]
+                : (QUICK_PROMPTS_BY_LANG[selectedLanguage] || QUICK_PROMPTS_BY_LANG.English),
             modelUsed: selectedAstrologer.name,
             isClarification: true,
           },
@@ -1869,7 +1888,10 @@ export default function AiChatScreen() {
           isUser: false,
           text: useLanguageStore.getState().translateText('The celestial transits are moving into harmony. May Lord Shiva and the planetary deities grant peace, clarity, and auspicious fortune to your inquiries.'),
           time: currentTime(),
-          recommendations: QUICK_PROMPTS_BY_LANG[selectedLanguage] || QUICK_PROMPTS_BY_LANG.English,
+          recommendations:
+            cms.quickPromptsByLang?.[selectedLanguage]?.length
+              ? cms.quickPromptsByLang[selectedLanguage]
+              : (QUICK_PROMPTS_BY_LANG[selectedLanguage] || QUICK_PROMPTS_BY_LANG.English),
         },
       ]);
       scrollToMessageStart();
@@ -1922,7 +1944,10 @@ export default function AiChatScreen() {
     else go(AppRoutes.homeDashboardScreen);
   };
 
-  const currentPlaceholder = PLACEHOLDERS_BY_LANG[selectedLanguage] || PLACEHOLDERS_BY_LANG.English;
+  const currentPlaceholder =
+    cms.placeholdersByLang?.[selectedLanguage] ||
+    PLACEHOLDERS_BY_LANG[selectedLanguage] ||
+    PLACEHOLDERS_BY_LANG.English;
   const listData: (ChatMessage | 'typing')[] = isTyping ? [...messages, 'typing'] : messages;
 
   return (
@@ -1966,7 +1991,7 @@ export default function AiChatScreen() {
                   {selectedAstrologer.name}
                 </Text>
                 <Text numberOfLines={1} ellipsizeMode="tail" style={{ color: '#B2DFDB', fontSize: 10 }}>
-                  {SUBTITLE_BY_LANG[selectedLanguage] || 'Online • Certified Vedic AI Astrologer'}
+                  {cms.subtitleByLang?.[selectedLanguage] || SUBTITLE_BY_LANG[selectedLanguage] || 'Online • Certified Vedic AI Astrologer'}
                 </Text>
               </View>
             </Pressable>
@@ -2055,7 +2080,7 @@ export default function AiChatScreen() {
               <AppIcon name="account_balance_wallet" size={14} color="#8B1A1A" />
             </View>
             <Text style={{ color: '#6B5E55', fontSize: 12, fontWeight: '500' }}>
-              {BALANCE_LABEL_BY_LANG[selectedLanguage] || 'Balance: '}
+              {cms.balanceLabelByLang?.[selectedLanguage] || BALANCE_LABEL_BY_LANG[selectedLanguage] || 'Balance: '}
             </Text>
             <Text
               style={{
@@ -2082,8 +2107,12 @@ export default function AiChatScreen() {
             >
               <Text style={{ fontSize: 11, fontWeight: '700', color: freeChatsRemaining > 0 ? '#137333' : '#C9A84C' }}>
                 {freeChatsRemaining > 0
-                  ? (FREE_PROMPTS_LABEL[selectedLanguage] ? FREE_PROMPTS_LABEL[selectedLanguage](freeChatsRemaining) : `⚡ ${freeChatsRemaining} Free Prompts`)
-                  : (PROMPT_COST_LABEL[selectedLanguage] ? PROMPT_COST_LABEL[selectedLanguage](promptCost.label) : `⚡ ${promptCost.label} / prompt`)}
+                  ? (cms.freePromptsSuffixByLang?.[selectedLanguage]
+                      ? `⚡ ${freeChatsRemaining} ${cms.freePromptsSuffixByLang[selectedLanguage]}`
+                      : (FREE_PROMPTS_LABEL[selectedLanguage] ? FREE_PROMPTS_LABEL[selectedLanguage](freeChatsRemaining) : `⚡ ${freeChatsRemaining} Free Prompts`))
+                  : (cms.promptCostSuffixByLang?.[selectedLanguage]
+                      ? `⚡ ${promptCost.label} ${cms.promptCostSuffixByLang[selectedLanguage]}`
+                      : (PROMPT_COST_LABEL[selectedLanguage] ? PROMPT_COST_LABEL[selectedLanguage](promptCost.label) : `⚡ ${promptCost.label} / prompt`))}
               </Text>
             </View>
             <Pressable
@@ -2100,7 +2129,7 @@ export default function AiChatScreen() {
               }}
             >
               <Text style={{ color: '#008069', fontSize: 11, fontWeight: '700' }}>
-                {RECHARGE_LABEL_BY_LANG[selectedLanguage] || '+ Recharge ↗'}
+                {cms.rechargeLabelByLang?.[selectedLanguage] || RECHARGE_LABEL_BY_LANG[selectedLanguage] || '+ Recharge ↗'}
               </Text>
             </Pressable>
           </View>
@@ -2232,10 +2261,10 @@ export default function AiChatScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: '#8B1A1A', fontSize: 13, fontWeight: '800' }}>
-                  Sign In Required to Consult
+                  {cms.uiLabels?.signInModalTitle || 'Sign In Required to Consult'}
                 </Text>
                 <Text style={{ color: '#5A4A3A', fontSize: 11, marginTop: 2 }}>
-                  Please sign in or register to chat with AI Astrologers. First 5 questions are 100% Free!
+                  {cms.uiLabels?.signInModalSubtitle || 'Please sign in or register to chat with AI Astrologers. First 5 questions are 100% Free!'}
                 </Text>
               </View>
             </View>
@@ -2252,7 +2281,7 @@ export default function AiChatScreen() {
               }}
             >
               <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
-                🔐 Sign In / Register Now ↗
+                {`🔐 ${cms.uiLabels?.signInModalButton || 'Sign In / Register Now ↗'}`}
               </Text>
             </Pressable>
           </View>
@@ -2272,10 +2301,10 @@ export default function AiChatScreen() {
               <AppIcon name="warning_amber_rounded" size={17} color="#E53E3E" style={{ marginRight: 6, marginTop: 1 }} />
               <View style={{ flex: 1 }}>
                 <Text style={{ color: '#C53030', fontSize: 12, fontWeight: '700' }}>
-                  Low Wallet Balance (Available: {formatPrice(walletBalance)})
+                  {`${cms.uiLabels?.rechargeModalTitle || 'Low Wallet Balance'} (${formatPrice(walletBalance)})`}
                 </Text>
                 <Text style={{ color: '#9B2C2C', fontSize: 11, marginTop: 1 }}>
-                  Each prompt requires {promptCost.label}. Please recharge your wallet to continue chatting.
+                  {cms.uiLabels?.rechargeModalSubtitle || `Each prompt requires ${promptCost.label}. Please recharge your wallet to continue chatting.`}
                 </Text>
               </View>
             </View>
@@ -2292,7 +2321,7 @@ export default function AiChatScreen() {
               }}
             >
               <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>
-                ⚡ Recharge Wallet Now
+                {`⚡ ${cms.uiLabels?.rechargeModalButton || 'Recharge Wallet Now'}`}
               </Text>
             </Pressable>
           </View>
@@ -2381,7 +2410,7 @@ export default function AiChatScreen() {
                     onChangeText={setInput}
                     multiline
                     numberOfLines={4}
-                    placeholder={!isAuth ? (AUTH_PLACEHOLDER[selectedLanguage] || 'Sign in to ask questions...') : currentPlaceholder}
+                    placeholder={!isAuth ? (cms.authPlaceholderByLang?.[selectedLanguage] || AUTH_PLACEHOLDER[selectedLanguage] || 'Sign in to ask questions...') : currentPlaceholder}
                     placeholderTextColor="#8A8A8A"
                     editable={isAuth}
                     onFocus={() => {
@@ -2448,7 +2477,7 @@ export default function AiChatScreen() {
         <Pressable onPress={() => setShowLanguageModal(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', padding: 24 }}>
           <View style={{ backgroundColor: colors.isLight ? '#FFFFFF' : '#0D1B2A', borderRadius: 24, padding: 22, borderWidth: 1.5, borderColor: '#C9A84C' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <Text style={{ color: colors.isLight ? '#1F1535' : '#FFFFFF', fontSize: 18, fontWeight: '800' }}>🌐 {t('Select Astrology Language', 'Select Astrology Language')}</Text>
+              <Text style={{ color: colors.isLight ? '#1F1535' : '#FFFFFF', fontSize: 18, fontWeight: '800' }}>🌐 {cms.uiLabels?.selectLanguageTitle || 'Select Astrology Language'}</Text>
               <Pressable onPress={() => setShowLanguageModal(false)} style={{ padding: 4 }}>
                 <AppIcon name="close" color={colors.isLight ? '#5A6A85' : '#A0A8C0'} size={22} />
               </Pressable>
@@ -2456,7 +2485,7 @@ export default function AiChatScreen() {
             <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 12.5, marginBottom: 14, lineHeight: 18 }}>
               {t('Choose your preferred language for horoscope readings and AI consultations.', 'Choose your preferred language for horoscope readings and AI consultations.')}
             </Text>
-            {LANGUAGES.map((lang) => {
+            {activeLanguages.map((lang) => {
               const isSel = selectedLanguage === lang.code;
               return (
                 <Pressable
@@ -2494,7 +2523,7 @@ export default function AiChatScreen() {
         <Pressable onPress={() => setShowModelModal(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', padding: 20 }}>
           <View style={{ backgroundColor: colors.isLight ? '#FFFFFF' : '#0D1B2A', borderRadius: 24, padding: 20, borderWidth: 1.5, borderColor: '#C9A84C', maxHeight: '85%' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <Text style={{ color: colors.isLight ? '#1F1535' : '#FFFFFF', fontSize: 18, fontWeight: '800' }}>🔮 {t('Vedic Engine & Astrologer', 'Vedic Engine & Astrologer')}</Text>
+              <Text style={{ color: colors.isLight ? '#1F1535' : '#FFFFFF', fontSize: 18, fontWeight: '800' }}>🔮 {cms.uiLabels?.selectModelTitle || 'Vedic Engine & Astrologer'}</Text>
               <Pressable onPress={() => setShowModelModal(false)} style={{ padding: 4 }}>
                 <AppIcon name="close" color={colors.isLight ? '#5A6A85' : '#A0A8C0'} size={22} />
               </Pressable>
@@ -2505,7 +2534,7 @@ export default function AiChatScreen() {
               <Text style={{ color: '#C9A84C', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
                 {t('AI Calculation Engine', 'AI Calculation Engine')}
               </Text>
-              {AI_MODELS.map((m) => {
+              {activeAiModels.map((m) => {
                 const isSel = selectedModel === m.id;
                 return (
                   <Pressable
@@ -2602,8 +2631,8 @@ export default function AiChatScreen() {
                     <Text style={{ fontSize: 18 }}>⚡</Text>
                   </View>
                   <View>
-                    <Text style={{ color: colors.isLight ? '#1F1535' : '#FFFFFF', fontSize: 18, fontWeight: '800' }}>{t('Recharge Wallet', 'Recharge Wallet')}</Text>
-                    <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 11 }}>{t('Instant credit for AI & Astrologer Consultations', 'Instant credit for AI & Astrologer Consultations')}</Text>
+                    <Text style={{ color: colors.isLight ? '#1F1535' : '#FFFFFF', fontSize: 18, fontWeight: '800' }}>{cms.uiLabels?.rechargeModalTitle || 'Recharge Wallet'}</Text>
+                    <Text style={{ color: colors.isLight ? '#5A6A85' : '#A0A8C0', fontSize: 11 }}>{cms.uiLabels?.rechargeModalSubtitle || 'Instant credit for AI & Astrologer Consultations'}</Text>
                   </View>
                 </View>
                 <Pressable onPress={() => setShowRechargeModal(false)} style={{ padding: 4 }}>
@@ -2776,7 +2805,7 @@ export default function AiChatScreen() {
                 }}
               >
                 <Text style={{ color: '#080D1A', fontSize: 15, fontWeight: '800' }}>
-                  {isRecharging ? t('Processing Secure Payment...', 'Processing Secure Payment...') : `${t('Pay & Recharge', 'Pay & Recharge')} ${activeRecharge.amount}`}
+                  {isRecharging ? t('Processing Secure Payment...', 'Processing Secure Payment...') : `${cms.uiLabels?.rechargeModalButton || 'Pay & Recharge'} ${activeRecharge.amount}`}
                 </Text>
               </Pressable>
 
@@ -2839,7 +2868,7 @@ export default function AiChatScreen() {
                   letterSpacing: 0.3,
                 }}
               >
-                {t('Sign In to Consult', 'Sign In to Consult')}
+                {cms.uiLabels?.signInModalTitle || 'Sign In to Consult'}
               </Text>
               <Text
                 style={{
@@ -2850,10 +2879,7 @@ export default function AiChatScreen() {
                   lineHeight: 20,
                 }}
               >
-                {t(
-                  `Please sign in to your AstroParihar account to consult with AI Astrologers. Your first 5 consultation prompts are 100% Free!`,
-                  `Please sign in to your AstroParihar account to consult with AI Astrologers. Your first 5 consultation prompts are 100% Free!`
-                )}
+                {cms.uiLabels?.signInModalSubtitle || 'Please sign in to your AstroParihar account to consult with AI Astrologers. Your first 5 consultation prompts are 100% Free!'}
               </Text>
             </View>
 
@@ -2876,7 +2902,7 @@ export default function AiChatScreen() {
               }}
             >
               <Text style={{ color: '#080D1A', fontSize: 15, fontWeight: '800' }}>
-                {t('Sign In / Register Now ↗', 'Sign In / Register Now ↗')}
+                {cms.uiLabels?.signInModalButton || 'Sign In / Register Now ↗'}
               </Text>
             </Pressable>
 
@@ -2885,7 +2911,7 @@ export default function AiChatScreen() {
               style={{ marginTop: 12, alignItems: 'center', paddingVertical: 6 }}
             >
               <Text style={{ color: colors.isLight ? '#718096' : '#94A3B8', fontSize: 13.5, fontWeight: '600' }}>
-                {t('Maybe Later', 'Maybe Later')}
+                {cms.uiLabels?.cancelLabel || 'Maybe Later'}
               </Text>
             </Pressable>
           </Pressable>

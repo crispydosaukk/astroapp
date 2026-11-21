@@ -31,6 +31,7 @@ import {
   YANTRAS,
 } from '@/data/remedies';
 import { AppRoutes, push, useExtra } from '@/navigation/routes';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 import { withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 
@@ -158,6 +159,7 @@ function SectionCard({
 function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: any }) {
   const [gridW, setGridW] = useState(0);
   const colors = useThemeColors();
+  const headers = useAppScreensCmsStore((s) => s.config.remedies.detailHeaders);
 
   const lower = (name || '').toLowerCase();
   let targetCase = name;
@@ -173,11 +175,15 @@ function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: an
   switch (targetCase) {
     case 'Mantra': {
       const liveMantras: any[] = dynamicData?.mantras ? Object.values(dynamicData.mantras) : [];
+      const navagrahaList: any[] =
+        Array.isArray(dynamicData?.navagrahaMantras) && dynamicData.navagrahaMantras.length > 0
+          ? dynamicData.navagrahaMantras
+          : MANTRAS;
       return (
         <View>
           {liveMantras.length > 0 ? (
             <View style={{ marginBottom: 14 }}>
-              <Heading text="Sacred Maha Mantras (Live Shlokas)" icon="🕉️" />
+              <Heading text={headers.liveMantras} icon="🕉️" />
               {liveMantras.map((m: any, idx: number) => (
                 <Card key={m.id || idx} padding={16} mb={10}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -239,9 +245,9 @@ function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: an
             </View>
           ) : null}
 
-          <Heading text="Navagraha Sacred Japa Mantras" icon="✨" />
-          {MANTRAS.map((m) => (
-            <Card key={m.planet}>
+          <Heading text={headers.navagrahaMantras} icon="✨" />
+          {navagrahaList.map((m: any, idx: number) => (
+            <Card key={m.planet || idx}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>
                   {m.planet}
@@ -268,12 +274,16 @@ function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: an
       );
     }
 
-    case 'Yantra':
+    case 'Yantra': {
+      const yantrasList: any[] =
+        Array.isArray(dynamicData?.yantras) && dynamicData.yantras.length > 0
+          ? dynamicData.yantras
+          : YANTRAS;
       return (
         <View>
-          <Heading text="Popular Sacred Yantras" icon="⬡" />
-          {YANTRAS.map((y) => (
-            <Card key={y.name} padding={14} style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Heading text={headers.yantras} icon="⬡" />
+          {yantrasList.map((y: any, idx: number) => (
+            <Card key={y.name || idx} padding={14} style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View
                 style={{
                   width: 44,
@@ -301,14 +311,19 @@ function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: an
           ))}
         </View>
       );
+    }
 
     case 'Homa': {
       const liveHomams: any[] = dynamicData?.homams ? Object.values(dynamicData.homams) : [];
+      const classicalList: any[] =
+        Array.isArray(dynamicData?.classicalHomams) && dynamicData.classicalHomams.length > 0
+          ? dynamicData.classicalHomams
+          : HOMAS;
       return (
         <View>
           {liveHomams.length > 0 ? (
             <View style={{ marginBottom: 14 }}>
-              <Heading text="Prescribed Sacred Homams (Live)" icon="🔥" />
+              <Heading text={headers.liveHomams} icon="🔥" />
               {liveHomams.map((h: any, idx: number) => (
                 <Card key={h.id || idx} padding={16} mb={12}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -370,9 +385,9 @@ function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: an
             </View>
           ) : null}
 
-          <Heading text="Classical Sacred Homams" icon="🔥" />
-          {HOMAS.map((h) => (
-            <Card key={h.name} padding={14} style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Heading text={headers.classicalHomams} icon="🔥" />
+          {classicalList.map((h: any, idx: number) => (
+            <Card key={h.name || idx} padding={14} style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View
                 style={{
                   width: 44,
@@ -407,17 +422,21 @@ function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: an
 
     case 'Devata': {
       const cw = gridW > 0 ? (gridW - 10) / 2 : 0;
+      const deitiesList: any[] =
+        Array.isArray(dynamicData?.deities) && dynamicData.deities.length > 0
+          ? dynamicData.deities
+          : DEITIES;
       return (
         <View>
-          <Heading text="Personal Ishta Deities" icon="🪔" />
+          <Heading text={headers.ishtaDeities} icon="🪔" />
           <View
             style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}
             onLayout={(e) => setGridW(e.nativeEvent.layout.width)}
           >
             {cw > 0 &&
-              DEITIES.map((d) => (
+              deitiesList.map((d: any, idx: number) => (
                 <View
-                  key={d.name}
+                  key={d.name || idx}
                   style={{
                     width: cw,
                     height: 110,
@@ -452,10 +471,14 @@ function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: an
       );
     }
 
-    case 'Gemstones':
+    case 'Gemstones': {
+      const gemsList: any[] =
+        Array.isArray(dynamicData?.gems) && dynamicData.gems.length > 0
+          ? dynamicData.gems
+          : GEMS;
       return (
         <View>
-          <Heading text="Navagraha Gemstone Therapy" icon="💎" />
+          <Heading text={headers.gemstones} icon="💎" />
           <View
             style={{
               padding: 12,
@@ -467,11 +490,11 @@ function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: an
             }}
           >
             <Text style={{ color: colors.textPrimary, fontSize: 11.5, lineHeight: 16, fontWeight: '500' }}>
-              ⚠️ Gemstone recommendations are chart-specific. Always consult an astrologer before wearing.
+              {headers.gemstoneWarning}
             </Text>
           </View>
-          {GEMS.map((g) => (
-            <Card key={g.planet} style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {gemsList.map((g: any, idx: number) => (
+            <Card key={g.planet || idx} style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View
                 style={{
                   width: 44,
@@ -499,13 +522,18 @@ function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: an
           ))}
         </View>
       );
+    }
 
-    case 'Rudraksha':
+    case 'Rudraksha': {
+      const mukhisList: any[] =
+        Array.isArray(dynamicData?.mukhis) && dynamicData.mukhis.length > 0
+          ? dynamicData.mukhis
+          : MUKHIS;
       return (
         <View>
-          <Heading text="Sacred Mukhi Rudrakshas" icon="📿" />
-          {MUKHIS.map((m) => (
-            <Card key={m.mukhi}>
+          <Heading text={headers.rudraksha} icon="📿" />
+          {mukhisList.map((m: any, idx: number) => (
+            <Card key={m.mukhi || idx}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>
                   {`${m.mukhi} Mukhi Rudraksha`}
@@ -526,14 +554,18 @@ function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: an
           ))}
         </View>
       );
+    }
 
     case 'Vastu': {
-      const liveDirections: any[] = Array.isArray(dynamicData?.ashtaDirections)
-        ? dynamicData.ashtaDirections
-        : [];
+      const liveDirections: any[] =
+        Array.isArray(dynamicData?.ashtaDirections) && dynamicData.ashtaDirections.length > 0
+          ? dynamicData.ashtaDirections
+          : Array.isArray(dynamicData?.vastuDirections) && dynamicData.vastuDirections.length > 0
+          ? dynamicData.vastuDirections
+          : [];
       return (
         <View>
-          <Heading text="8-Directional Vastu Science (Ashta-Digbandhana)" icon="🏛️" />
+          <Heading text={headers.vastu} icon="🏛️" />
           {(liveDirections.length > 0 ? liveDirections : VASTU_DIRECTIONS).map((d: any, idx: number) => {
             const dirLabel = d.direction || d.dir || `Direction ${idx + 1}`;
             const deityLabel = d.deity || '';
@@ -578,7 +610,7 @@ function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: an
                 {remedyAction ? (
                   <View style={{ marginTop: 8, padding: 8, borderRadius: 10, backgroundColor: withAlpha(colors.goldAccent, 10) }}>
                     <Text style={{ color: colors.goldAccent, fontSize: 10.5, fontWeight: '700', textTransform: 'uppercase' }}>
-                      Prescribed Parihar
+                      {headers.prescribedParihar}
                     </Text>
                     <Text style={{ color: colors.textPrimary, fontSize: 12, marginTop: 2, fontWeight: '600' }}>
                       {remedyAction}
@@ -598,12 +630,16 @@ function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: an
       );
     }
 
-    case 'Dāna & Seva':
+    case 'Dāna & Seva': {
+      const charitiesList: any[] =
+        Array.isArray(dynamicData?.charities) && dynamicData.charities.length > 0
+          ? dynamicData.charities
+          : CHARITIES;
       return (
         <View>
-          <Heading text="Vedic Planetary Charity Guide" icon="🤲" />
-          {CHARITIES.map((c) => (
-            <Card key={c.planet}>
+          <Heading text={headers.charity} icon="🤲" />
+          {charitiesList.map((c: any, idx: number) => (
+            <Card key={c.planet || idx}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>
                   {c.planet}
@@ -620,6 +656,7 @@ function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: an
           ))}
         </View>
       );
+    }
 
     default:
       return null;
@@ -632,6 +669,7 @@ function SpecificContent({ name, dynamicData }: { name: string; dynamicData?: an
  */
 function MandalaProtocolCard({ protocol }: { protocol: any }) {
   const colors = useThemeColors();
+  const headers = useAppScreensCmsStore((s) => s.config.remedies.detailHeaders);
   if (!protocol) return null;
 
   return (
@@ -659,7 +697,7 @@ function MandalaProtocolCard({ protocol }: { protocol: any }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
           <Text style={{ fontSize: 20, marginRight: 8 }}>📜</Text>
           <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '800' }}>
-            {protocol.title || '48-Day Sacred Mandala Parihar Protocol'}
+            {protocol.title || headers.mandalaDefaultTitle}
           </Text>
         </View>
         <Chip label={`${protocol.totalDays || 48} Days`} />
@@ -778,7 +816,16 @@ export default function RemedyDetailScreen() {
     };
   }, []);
 
-  // Match live remedy metadata from backend cat-remedies items if available
+  // Match live remedy metadata from backend remedyProfiles or cat-remedies items if available
+  const headers = useAppScreensCmsStore((s) => s.config.remedies.detailHeaders);
+  const liveProfile = Array.isArray(dynamicPayload?.remedyProfiles)
+    ? dynamicPayload.remedyProfiles.find(
+        (rp: any) =>
+          rp.name?.toLowerCase().includes(name.toLowerCase().split(' ')[0]) ||
+          rp.key?.toLowerCase().includes(name.toLowerCase().split(' ')[0]) ||
+          rp.direction?.toLowerCase() === remedy.direction?.toLowerCase()
+      )
+    : null;
   const liveRemedyItem = dynamicPayload?.categoryRemedies?.items?.find(
     (it: any) =>
       it.name?.toLowerCase().includes(name.toLowerCase().split(' ')[0]) ||
@@ -786,14 +833,21 @@ export default function RemedyDetailScreen() {
       it.direction?.toLowerCase() === remedy.direction?.toLowerCase()
   );
 
-  const displayName = liveRemedyItem?.name || name;
-  const displaySanskrit = liveRemedyItem?.sanskrit || remedy.sanskrit;
-  const displayDesc = liveRemedyItem?.desc || remedy.desc;
-  const displayMantra = liveRemedyItem?.mantra || remedy.mantra;
-  const displayDirection = liveRemedyItem?.direction || remedy.direction;
-  const displayDirectionHindi = liveRemedyItem?.directionHindi || remedy.directionHindi;
+  const displayName = liveProfile?.name || liveRemedyItem?.name || name;
+  const displaySanskrit = liveProfile?.sanskrit || liveRemedyItem?.sanskrit || remedy.sanskrit;
+  const displayDesc = liveProfile?.desc || liveRemedyItem?.desc || remedy.desc;
+  const displayMantra = liveProfile?.mantra || liveRemedyItem?.mantra || remedy.mantra;
+  const displayDirection = liveProfile?.direction || liveRemedyItem?.direction || remedy.direction;
+  const displayDirectionHindi = liveProfile?.directionHindi || liveRemedyItem?.directionHindi || remedy.directionHindi;
 
-  const data = getRemedyData(name);
+  const baseData = getRemedyData(name);
+  const data = {
+    shortDesc: liveProfile?.shortDesc || baseData.shortDesc,
+    whyHelp: liveProfile?.whyHelp || baseData.whyHelp,
+    benefits: Array.isArray(liveProfile?.benefits) && liveProfile.benefits.length > 0 ? liveProfile.benefits : baseData.benefits,
+    howItWorks: liveProfile?.howItWorks || baseData.howItWorks,
+    suitableFor: liveProfile?.suitableFor || baseData.suitableFor,
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="remedyDetail.screen">
@@ -910,7 +964,7 @@ export default function RemedyDetailScreen() {
         {/* Informational Cards Section */}
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
           <SectionCard
-            title="Why This Remedy May Help"
+            title={headers.whyHelp}
             content={data.whyHelp}
             icon="psychology"
           />
@@ -944,11 +998,11 @@ export default function RemedyDetailScreen() {
                 <AppIcon name="verified" color={colors.goldAccent} size={15} />
               </View>
               <Text style={{ color: colors.textPrimary, fontSize: 14.5, fontWeight: '700' }}>
-                Core Spiritual Benefits
+                {headers.coreBenefits}
               </Text>
             </View>
 
-            {data.benefits.map((b, i) => (
+            {data.benefits.map((b: string, i: number) => (
               <View
                 key={i}
                 style={{
@@ -966,13 +1020,13 @@ export default function RemedyDetailScreen() {
           </View>
 
           <SectionCard
-            title="How It Works in Vedic Science"
+            title={headers.howItWorks}
             content={data.howItWorks}
             icon="science"
           />
 
           <SectionCard
-            title="Who It Is Suitable For"
+            title={headers.suitableFor}
             content={data.suitableFor}
             icon="group"
           />
@@ -988,7 +1042,7 @@ export default function RemedyDetailScreen() {
         <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 8 }}>
           <ElevatedButton
             testID="remedyDetail.askAi"
-            label="🤖 Ask AI Astrologer About This Remedy"
+            label={headers.askAiButton}
             onPress={() =>
               push(AppRoutes.aiChatScreen, {
                 astrologerId: 'vedika',
@@ -1005,7 +1059,7 @@ export default function RemedyDetailScreen() {
           <View style={{ marginTop: 10 }}>
             <OutlinedButton
               testID="remedyDetail.astrologer"
-              label="👨‍🔮 Consult Live Astrologer"
+              label={headers.consultAstrologerButton}
               onPress={() => push(AppRoutes.liveAstrologersScreen)}
               radius={100}
               paddingV={13}

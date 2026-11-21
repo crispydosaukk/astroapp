@@ -10,10 +10,10 @@ import { TabBar, TabPager } from '@/components/Tabs';
 import { Text } from '@/components/Text';
 import { AppRoutes, go, pop } from '@/navigation/routes';
 import { withAlpha } from '@/theme/colors';
-import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
 import { useAuthStore } from '@/features/auth/authStore';
 import { useCurrencyStore } from '@/services/currencyStore';
+import { fillCmsTemplate, useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 import {
   getWalletBalance,
   getWalletTransactions,
@@ -97,7 +97,7 @@ function formatTransactionAmount(
 export default function WalletScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const cms = useAppScreensCmsStore((s) => s.config.wallet);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authUser = useAuthStore((s) => s.user);
   const isAuth = Boolean(isAuthenticated && authUser && (authUser.uid || authUser.phone));
@@ -215,10 +215,14 @@ export default function WalletScreen() {
 
   const cell = gridW > 0 ? (gridW - 20) / 3 : 0;
 
+  const paymentMethodsList = currencyCode === 'INR' ? cms.paymentMethodsInr : cms.paymentMethodsUsd;
+  const checkoutMethodsList = currencyCode === 'INR' ? cms.checkoutSheet.methodsInr : cms.checkoutSheet.methodsUsd;
+  const addMoneyLabel = fillCmsTemplate(cms.addButtonTemplate, { amount: activeOption.amount });
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="wallet.screen">
       <AppBar
-        title={t('profile.wallet', 'Wallet')}
+        title={cms.headerTitle}
         onBack={pop}
         testIDPrefix="wallet"
         backgroundColor={colors.background}
@@ -226,7 +230,7 @@ export default function WalletScreen() {
         bottom={
           <TabBar
             testIDPrefix="wallet.tab"
-            tabs={['Wallet', 'Transactions']}
+            tabs={[cms.tabs.wallet, cms.tabs.transactions]}
             index={tab}
             onChange={setTab}
             indicatorStyle="underline"
@@ -289,7 +293,7 @@ export default function WalletScreen() {
                       color: currencyCode === 'INR' ? '#080D1A' : colors.textMuted,
                     }}
                   >
-                    ₹ INR (India)
+                    {cms.inrPillLabel}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -308,25 +312,25 @@ export default function WalletScreen() {
                       color: currencyCode === 'USD' ? '#080D1A' : colors.textMuted,
                     }}
                   >
-                    $ USD (Abroad)
+                    {cms.usdPillLabel}
                   </Text>
                 </Pressable>
               </View>
 
-              <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>Available Balance</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>{cms.availableBalanceLabel}</Text>
               <Text testID="wallet.balance" style={{ marginTop: 8, color: colors.goldAccent, fontSize: 44, fontWeight: '800' }}>
                 {formatPrice(balance)}
               </Text>
               <View style={{ marginTop: 16, alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center' }}>
-                <WalletStat value={totalAddedDisplay} label="Total Added" colors={colors} />
+                <WalletStat value={totalAddedDisplay} label={cms.statLabels.totalAdded} colors={colors} />
                 <View style={{ width: 1, height: 30, backgroundColor: colors.divider }} />
-                <WalletStat value={totalSpentDisplay} label="Total Spent" colors={colors} />
+                <WalletStat value={totalSpentDisplay} label={cms.statLabels.totalSpent} colors={colors} />
                 <View style={{ width: 1, height: 30, backgroundColor: colors.divider }} />
-                <WalletStat value={`${currencySymbol}0`} label="Bonus Earned" colors={colors} />
+                <WalletStat value={`${currencySymbol}0`} label={cms.statLabels.bonusEarned} colors={colors} />
               </View>
             </LinearGradient>
 
-            <Text style={{ marginTop: 22, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Add Money</Text>
+            <Text style={{ marginTop: 22, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>{cms.addMoneyHeading}</Text>
             <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 10 }} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
               {cell > 0 && rechargeOptions.map((o, idx) => {
                 const sel = selectedIdx === idx;
@@ -354,33 +358,22 @@ export default function WalletScreen() {
             </View>
             <ElevatedButton
               testID="wallet.addMoney"
-              label={isProcessing ? 'Processing Payment...' : `Add ${activeOption.amount} to Wallet`}
+              label={isProcessing ? cms.processingLabel : addMoneyLabel}
               onPress={() => setSheet(true)}
               radius={14}
               style={{ marginTop: 16 }}
             />
 
-            <Text style={{ marginTop: 22, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Payment Methods</Text>
+            <Text style={{ marginTop: 22, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>{cms.paymentMethodsHeading}</Text>
             <View style={{ marginTop: 12, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }}>
-              {(currencyCode === 'INR'
-                ? [
-                    ['📱', 'UPI (Google Pay, PhonePe, Paytm)', 'Instant recharge via any UPI app', 'UPI'],
-                    ['💳', 'Credit / Debit Card', 'Visa, Mastercard, RuPay', 'Card'],
-                    ['🏦', 'Net Banking', 'All major Indian banks supported', 'Net Banking'],
-                  ]
-                : [
-                    ['💳', 'Credit / Debit Card (Stripe)', 'Visa, Mastercard, American Express', 'Card'],
-                    ['🌐', 'PayPal / Apple Pay / Google Pay', 'Instant global checkout', 'Digital Wallet'],
-                    ['🏦', 'International Bank Transfer', 'Direct international wire', 'Wire'],
-                  ]
-              ).map(([e, titleText, s, method], i) => (
-                <Pressable key={titleText} onPress={() => setSheet(true)}>
+              {(paymentMethodsList || []).map((pm, i) => (
+                <Pressable key={`${i}-${pm.title}`} onPress={() => setSheet(true)}>
                   {i > 0 ? <View style={{ height: 1, marginLeft: 60, backgroundColor: colors.divider }} /> : null}
                   <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, minHeight: 64 }}>
-                    <Text style={{ fontSize: 22 }}>{e}</Text>
+                    <Text style={{ fontSize: 22 }}>{pm.emoji}</Text>
                     <View style={{ flex: 1, marginLeft: 16 }}>
-                      <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{titleText}</Text>
-                      <Text style={{ color: colors.textMuted, fontSize: 11 }}>{s}</Text>
+                      <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{pm.title}</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 11 }}>{pm.subtitle}</Text>
                     </View>
                     <AppIcon name="chevron_right_rounded" color={colors.textMuted} size={18} />
                   </View>
@@ -388,41 +381,51 @@ export default function WalletScreen() {
               ))}
             </View>
 
-            <View style={{ marginTop: 20, padding: 16, borderRadius: 18, backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 15), borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ fontSize: 28 }}>🎟️</Text>
-              <View style={{ flex: 1, marginLeft: 14 }}>
-                <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>Have a Coupon?</Text>
-                <Text style={{ color: colors.textMuted, fontSize: 11 }}>Use code ASTRO50 for extra bonus</Text>
+            {cms.couponCard.enabled !== false ? (
+              <View style={{ marginTop: 20, padding: 16, borderRadius: 18, backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 20 : 15), borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ fontSize: 28 }}>{cms.couponCard.emoji}</Text>
+                <View style={{ flex: 1, marginLeft: 14 }}>
+                  <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>{cms.couponCard.title}</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>{cms.couponCard.subtitle}</Text>
+                </View>
+                <Pressable
+                  testID="wallet.coupon.apply"
+                  onPress={() =>
+                    showSnackBar(
+                      fillCmsTemplate(cms.couponCard.appliedToastTemplate, {
+                        code: cms.couponCard.code,
+                        bonus: formatPrice(Number(cms.couponCard.bonusInr) || 50),
+                      }),
+                      colors.surfaceVariant
+                    )
+                  }
+                  style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+                >
+                  <Text style={{ color: colors.goldAccent, fontWeight: '700', fontSize: 14 }}>{cms.couponCard.buttonLabel}</Text>
+                </Pressable>
               </View>
-              <Pressable
-                testID="wallet.coupon.apply"
-                onPress={() => showSnackBar(`Coupon ASTRO50 applied! ${formatPrice(50)} extra bonus on next recharge`, colors.surfaceVariant)}
-                style={{ paddingHorizontal: 12, paddingVertical: 8 }}
-              >
-                <Text style={{ color: colors.goldAccent, fontWeight: '700', fontSize: 14 }}>Apply</Text>
-              </Pressable>
-            </View>
+            ) : null}
           </ScrollView>,
 
           <ScrollView key="tx" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: Math.max(150, insets.bottom + 90) }}>
             <View style={{ flexDirection: 'row', gap: 12 }}>
               {[
-                ['Total Added', totalAddedDisplay, '#2D9E6B'],
-                ['Total Spent', totalSpentDisplay, '#CF4444'],
-              ].map(([l, v, c]) => (
-                <View key={l} style={{ flex: 1, padding: 16, borderRadius: 16, backgroundColor: withAlpha(c, colors.isLight ? 15 : 20), borderWidth: 1, borderColor: withAlpha(c, 60) }}>
+                [cms.statLabels.totalAdded, totalAddedDisplay, '#2D9E6B'],
+                [cms.statLabels.totalSpent, totalSpentDisplay, '#CF4444'],
+              ].map(([l, v, c], idx) => (
+                <View key={`${idx}-${l}`} style={{ flex: 1, padding: 16, borderRadius: 16, backgroundColor: withAlpha(c, colors.isLight ? 15 : 20), borderWidth: 1, borderColor: withAlpha(c, 60) }}>
                   <Text style={{ color: colors.textMuted, fontSize: 11 }}>{l}</Text>
                   <Text style={{ marginTop: 4, color: c, fontSize: 19, fontWeight: '800' }}>{v}</Text>
                 </View>
               ))}
             </View>
-            <Text style={{ marginTop: 20, marginBottom: 12, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>Recent Transactions</Text>
+            <Text style={{ marginTop: 20, marginBottom: 12, color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>{cms.recentTransactionsHeading}</Text>
             {transactions.length === 0 ? (
               <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 36, paddingHorizontal: 20, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.cardBorder }}>
                 <Text style={{ fontSize: 32, marginBottom: 10 }}>📜</Text>
-                <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700' }}>No Transactions Yet</Text>
+                <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700' }}>{cms.emptyTxTitle}</Text>
                 <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
-                  {isAuth ? 'Your recharge and consultation billing records will show here.' : 'Sign in to access your wallet transactions and history.'}
+                  {isAuth ? cms.emptyTxAuthSubtitle : cms.emptyTxGuestSubtitle}
                 </Text>
               </View>
             ) : (
@@ -500,7 +503,7 @@ export default function WalletScreen() {
                           marginTop: 2,
                         }}
                       >
-                        {credit ? 'Credited' : 'Debited'}
+                        {credit ? cms.creditedLabel : cms.debitedLabel}
                       </Text>
                     </View>
                   </View>
@@ -516,31 +519,20 @@ export default function WalletScreen() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <View>
               <Text style={{ color: colors.textMuted, fontSize: 12 }}>
-                {currencyCode === 'INR' ? 'Razorpay Secure Checkout' : 'Stripe Global Checkout'}
+                {currencyCode === 'INR' ? cms.checkoutSheet.inrGatewayLabel : cms.checkoutSheet.usdGatewayLabel}
               </Text>
               <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800' }}>
-                {`Add ${activeOption.amount} to Wallet`}
+                {addMoneyLabel}
               </Text>
             </View>
             <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: 'rgba(57,181,74,0.15)', borderWidth: 1, borderColor: '#39B54A' }}>
-              <Text style={{ color: '#39B54A', fontSize: 11, fontWeight: '700' }}>🔒 256-Bit SSL</Text>
+              <Text style={{ color: '#39B54A', fontSize: 11, fontWeight: '700' }}>{cms.checkoutSheet.sslBadge}</Text>
             </View>
           </View>
 
-          {(currencyCode === 'INR'
-            ? [
-                { label: '📱 Google Pay / PhonePe / Paytm (UPI)', method: 'UPI' },
-                { label: '💳 Credit / Debit Card (Visa, RuPay)', method: 'Card' },
-                { label: '🏦 Net Banking (SBI, HDFC, ICICI, Axis)', method: 'Net Banking' },
-              ]
-            : [
-                { label: '💳 Credit / Debit Card (Visa, Master, Amex)', method: 'Card' },
-                { label: '🌐 PayPal / Apple Pay / Google Pay', method: 'Digital Wallet' },
-                { label: '🏦 International Wire Transfer', method: 'Wire' },
-              ]
-          ).map((m, i) => (
+          {(checkoutMethodsList || []).map((m, i) => (
             <Pressable
-              key={m.method}
+              key={`${i}-${m.method}`}
               testID={`wallet.paymentSheet.method.${i}`}
               onPress={() => handleRecharge(m.method)}
               style={{

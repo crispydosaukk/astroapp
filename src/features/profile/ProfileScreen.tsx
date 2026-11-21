@@ -420,8 +420,8 @@ export default function ProfileScreen() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [languageModalOpen, setLanguageModalOpen] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
-  const [reportCount, setReportCount] = useState(4);
-  const [consultationCount, setConsultationCount] = useState(2);
+  const [reportCount, setReportCount] = useState(0);
+  const [consultationCount, setConsultationCount] = useState(0);
 
   const [profileData, setProfileData] = useState({
     name: currentUserName,
@@ -1015,12 +1015,12 @@ export default function ProfileScreen() {
 
           <Pressable onPress={isAuth ? openEditModal : () => go(AppRoutes.signInScreen)}>
             <Text style={{ marginTop: 12, color: colors.textPrimary, fontSize: 21, fontWeight: '800' }}>
-              {isAuth ? profileData.name : t('Guest Seeker', 'Guest Seeker')}
+              {isAuth ? profileData.name : (config.welcomeGuestText || t('Guest Seeker', 'Guest Seeker'))}
             </Text>
           </Pressable>
 
           <Text style={{ marginTop: 2, color: colors.textMuted, fontSize: 13, textAlign: 'center' }}>
-            {isAuth ? profileData.email : t('Sign in to access your sacred astrology profile', 'Sign in to access your sacred astrology profile')}
+            {isAuth ? profileData.email : (config.guestSubtitle || t('Sign in to access your sacred astrology profile', 'Sign in to access your sacred astrology profile'))}
           </Text>
 
           {isAuth && (
@@ -1047,7 +1047,7 @@ export default function ProfileScreen() {
                   marginLeft: 6,
                 }}
               >
-                {activeProfile?.type || 'Myself'} • Switch Profile
+                {`${activeProfile?.type || 'Myself'} • ${config.switchProfileSuffix || 'Switch Profile'}`}
               </Text>
               <AppIcon name="arrow_drop_down" size={16} color={colors.goldAccent} />
             </Pressable>

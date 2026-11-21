@@ -30,6 +30,8 @@ export const API_ENDPOINTS = {
   profile: `${BASE_URL}/api/app-dynamic/profile`,
   supportLegal: `${BASE_URL}/api/app-dynamic/support-legal`,
   supportTickets: `${BASE_URL}/api/app-dynamic/support-tickets`,
+  screensConfig: `${BASE_URL}/api/app-dynamic/screens-config`,
+  mahadashaGuides: `${BASE_URL}/api/app-dynamic/mahadasha-guides`,
   notifications: `${BASE_URL}/api/app-dynamic/notifications`,
   registerPushToken: `${BASE_URL}/api/app-dynamic/notifications/register-token`,
   notificationPreferences: `${BASE_URL}/api/app-dynamic/notifications/preferences`,

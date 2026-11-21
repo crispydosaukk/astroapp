@@ -15,6 +15,7 @@ import { lh, Text } from '@/components/Text';
 import { API_ENDPOINTS, resolveMediaUrl } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, go } from '@/navigation/routes';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 import { withAlpha } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 
@@ -178,6 +179,7 @@ export default function OnboardingScreen() {
   };
 
   const setOnboardingCompleted = useAuthStore((s) => s.setOnboardingCompleted);
+  const onboardingCms = useAppScreensCmsStore((s) => s.config.onboarding);
 
   const nextPage = () => {
     if (currentPage < slides.length - 1) {
@@ -220,7 +222,11 @@ export default function OnboardingScreen() {
           </View>
           <ElevatedButton
             testID="onboarding.next"
-            label={currentPage < slides.length - 1 ? 'Continue' : 'Get Started'}
+            label={
+              currentPage < slides.length - 1
+                ? onboardingCms.continueButton
+                : onboardingCms.getStartedButton
+            }
             onPress={nextPage}
             style={{ marginTop: 24, alignSelf: 'stretch' }}
             paddingV={18}
@@ -234,9 +240,9 @@ export default function OnboardingScreen() {
             style={{ marginTop: 16, alignItems: 'center' }}
           >
             <Text style={{ fontSize: 14, color: colors.textMuted }}>
-              Already have an account?{' '}
+              {onboardingCms.alreadyHaveAccountText}{' '}
               <Text style={{ color: colors.goldAccent, fontWeight: '700', textDecorationLine: 'underline', fontSize: 14 }}>
-                Sign In
+                {onboardingCms.signInLinkText}
               </Text>
             </Text>
           </Pressable>

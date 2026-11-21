@@ -24,10 +24,11 @@ import { AppIcon } from '@/components/AppIcon';
 import { ElevatedButton } from '@/components/common';
 import { showSnackBar } from '@/components/overlays';
 import { lh, Text, TextInput } from '@/components/Text';
-import { API_ENDPOINTS } from '@/config/api';
+import { API_ENDPOINTS, resolveMediaUrl } from '@/config/api';
 import { useAuthStore } from '@/features/auth/authStore';
 import { AppRoutes, go, pop, push } from '@/navigation/routes';
 import { isPhoneNumberDeleted, recordDeletedPhoneNumberLocally } from '@/services/accountDeletionService';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 import { argb } from '@/theme/colors';
 import { useThemeColors } from '@/theme/themeStore';
 
@@ -87,6 +88,8 @@ export default function SignInScreen() {
   const colors = useThemeColors();
   const setUser = useAuthStore((s) => s.setUser);
   const setPendingAuth = useAuthStore((s) => s.setPendingAuth);
+  const signInCms = useAppScreensCmsStore((s) => s.config.signIn);
+  const countryList = signInCms.countryCodes?.length ? signInCms.countryCodes : COUNTRY_CODES;
 
   const navigateAfterLogin = () => {
     const redirect = useAuthStore.getState().postLoginRedirect;
@@ -165,7 +168,7 @@ export default function SignInScreen() {
   const handleSendOTP = async () => {
     const rawNumber = phone.replace(/\D/g, '');
     if (rawNumber.length < 8) {
-      showSnackBar('Please enter a valid mobile number', '#CF4444');
+      showSnackBar(signInCms.invalidPhoneToast || 'Please enter a valid mobile number', '#CF4444');
       return;
     }
 
@@ -173,7 +176,7 @@ export default function SignInScreen() {
     const isDeletedLocally =
       (await isPhoneNumberDeleted(rawNumber)) || (await isPhoneNumberDeleted(fullPhoneNumber));
     if (isDeletedLocally) {
-      showSnackBar('This number account is already deleted. Please try with another number.', '#CF4444');
+      showSnackBar(signInCms.deletedAccountToast, '#CF4444');
       return;
     }
 
@@ -189,13 +192,13 @@ export default function SignInScreen() {
       if (res.status === 403 || data.isDeleted || (data.error && data.error.includes('already deleted'))) {
         await recordDeletedPhoneNumberLocally(rawNumber);
         await recordDeletedPhoneNumberLocally(fullPhoneNumber);
-        showSnackBar('This number account is already deleted. Please try with another number.', '#CF4444');
+        showSnackBar(signInCms.deletedAccountToast, '#CF4444');
         return;
       }
 
       if (res.ok && data.success) {
         setStep(2);
-        showSnackBar(data.isTest ? 'OTP sent (Dev OTP: 1234)' : 'OTP sent successfully to your mobile!');
+        showSnackBar(data.isTest ? 'OTP sent (Dev OTP: 1234)' : signInCms.otpSentToast);
       } else {
         showSnackBar(data.error || 'Failed to send OTP. Please check number.', '#CF4444');
       }
@@ -255,7 +258,7 @@ export default function SignInScreen() {
             isNewUser: true,
             token: data.token,
           });
-          showSnackBar('Mobile verified! Set up your cosmic birth profile.');
+          showSnackBar(signInCms.verifiedNewUserToast);
           go(AppRoutes.birthProfileSetupScreen);
         } else {
           // Existing user (found in backend or saved on device)
@@ -266,11 +269,11 @@ export default function SignInScreen() {
             ...(data.user || {}),
           };
           await setUser(mergedUser, data.token || `session_${mergedUser.uid}`);
-          showSnackBar(`Welcome back, ${mergedUser.name || 'Seeker'}!`);
+          showSnackBar(`${signInCms.welcomeBackPrefix} ${mergedUser.name || 'Seeker'}!`);
           navigateAfterLogin();
         }
       } else {
-        showSnackBar(data.error || 'Invalid OTP code. Try again.', '#CF4444');
+        showSnackBar(data.error || signInCms.otpInvalidToast, '#CF4444');
       }
     } catch (err: any) {
       console.warn('Verify OTP fallback:', err.message);
@@ -327,7 +330,11 @@ export default function SignInScreen() {
           <View style={{ alignItems: 'center', marginBottom: 28 }}>
             <View style={{ width: Math.min(width * 0.7, 260), height: Math.min(width * 0.7, 260) * 0.5 }}>
               <Image
-                source={require('@/../assets/images/app_logo.png')}
+                source={
+                  signInCms.logoImageUrl
+                    ? { uri: resolveMediaUrl(signInCms.logoImageUrl) }
+                    : require('@/../assets/images/app_logo.png')
+                }
                 style={{ width: '100%', height: '100%' }}
                 contentFit="contain"
                 accessibilityLabel="AstroParihar Logo"
@@ -342,10 +349,10 @@ export default function SignInScreen() {
               <>
                 <View style={{ marginBottom: 20 }}>
                   <Text style={{ color: colors.textPrimary, fontWeight: '800', ...lh(22, 1.2) }}>
-                    Sign In or Register
+                    {signInCms.title}
                   </Text>
                   <Text style={{ color: colors.textSecondary, marginTop: 6, ...lh(13, 1.4) }}>
-                    Enter your mobile number to receive a secure SMS verification code.
+                    {signInCms.subtitle}
                   </Text>
                 </View>
 
@@ -366,7 +373,7 @@ export default function SignInScreen() {
                     testID="signIn.phoneInput"
                     value={phone}
                     onChangeText={setPhone}
-                    placeholder="Enter mobile number"
+                    placeholder={signInCms.phonePlaceholder}
                     placeholderTextColor={colors.textMuted}
                     keyboardType="phone-pad"
                     maxLength={14}
@@ -391,7 +398,7 @@ export default function SignInScreen() {
                       <TextInput
                         value={countrySearch}
                         onChangeText={setCountrySearch}
-                        placeholder="Search country or code..."
+                        placeholder={signInCms.countrySearchPlaceholder}
                         placeholderTextColor={colors.textMuted}
                         style={{
                           flex: 1,
@@ -408,7 +415,7 @@ export default function SignInScreen() {
                       ) : null}
                     </View>
                     <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
-                      {COUNTRY_CODES.filter((item) => {
+                      {countryList.filter((item) => {
                         if (!countrySearch.trim()) return true;
                         const q = countrySearch.trim().toLowerCase();
                         return (
@@ -440,7 +447,7 @@ export default function SignInScreen() {
 
                 <ElevatedButton
                   testID="signIn.sendOtpButton"
-                  label={loading ? 'Sending Code...' : 'Get Verification Code'}
+                  label={loading ? signInCms.sendingOtpLabel : signInCms.sendOtpLabel}
                   onPress={handleSendOTP}
                   disabled={loading}
                   style={{ marginTop: 22 }}
@@ -453,7 +460,7 @@ export default function SignInScreen() {
                 <Pressable
                   testID="signIn.guestButton"
                   onPress={() => {
-                    showSnackBar('Exploring AstroParihar as Guest');
+                    showSnackBar(signInCms.guestToast);
                     go(AppRoutes.homeDashboardScreen);
                   }}
                   style={{
@@ -468,7 +475,7 @@ export default function SignInScreen() {
                   }}
                 >
                   <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>
-                    Continue as Guest →
+                    {signInCms.guestButtonLabel}
                   </Text>
                 </Pressable>
 
@@ -492,7 +499,7 @@ export default function SignInScreen() {
                       marginHorizontal: 10,
                     }}
                   >
-                    Astrologer Partner Portal
+                    {signInCms.astrologerDividerTitle}
                   </Text>
                   <View style={{ flex: 1, height: 1, backgroundColor: colors.divider }} />
                 </View>
@@ -523,7 +530,7 @@ export default function SignInScreen() {
                       marginLeft: 8,
                     }}
                   >
-                    Astrologer Sign In
+                    {signInCms.astrologerLoginButton}
                   </Text>
                   <AppIcon
                     name="arrow_forward_ios_rounded"
@@ -544,7 +551,7 @@ export default function SignInScreen() {
                   }}
                 >
                   <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
-                    Not a registered astrologer yet?{' '}
+                    {signInCms.notRegisteredPrompt}{' '}
                     <Text
                       style={{
                         color: colors.goldAccent,
@@ -552,27 +559,27 @@ export default function SignInScreen() {
                         textDecorationLine: 'underline',
                       }}
                     >
-                      Apply to Join Panel →
+                      {signInCms.applyLinkLabel}
                     </Text>
                   </Text>
                 </Pressable>
 
                 <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 16, ...lh(11, 1.4) }}>
-                  By continuing, you agree to AstroParihar&apos;s{' '}
+                  {signInCms.consentPrefix}{' '}
                   <Text
                     testID="signIn.termsLink"
                     onPress={openTerms}
                     style={{ color: colors.goldAccent, fontWeight: '700', textDecorationLine: 'underline' }}
                   >
-                    Terms of Service
+                    {signInCms.termsLabel}
                   </Text>{' '}
-                  and{' '}
+                  {signInCms.consentAnd}{' '}
                   <Text
                     testID="signIn.privacyLink"
                     onPress={openPrivacy}
                     style={{ color: colors.goldAccent, fontWeight: '700', textDecorationLine: 'underline' }}
                   >
-                    Privacy Policy
+                    {signInCms.privacyLabel}
                   </Text>
                   .
                 </Text>
@@ -582,15 +589,16 @@ export default function SignInScreen() {
               <>
                 <View style={{ marginBottom: 20 }}>
                   <Text style={{ color: colors.textPrimary, fontWeight: '800', ...lh(22, 1.2) }}>
-                    Verify Code
+                    {signInCms.verifyTitle}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}>
                     <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-                      Code sent to <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{fullPhoneNumber}</Text>
+                      {signInCms.codeSentPrefix}{' '}
+                      <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{fullPhoneNumber}</Text>
                     </Text>
                     <Pressable onPress={() => setStep(1)} style={{ marginLeft: 8 }}>
                       <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' }}>
-                        Edit
+                        {signInCms.editLabel}
                       </Text>
                     </Pressable>
                   </View>
@@ -602,7 +610,7 @@ export default function SignInScreen() {
                     testID="signIn.otpInput"
                     value={otp}
                     onChangeText={setOtp}
-                    placeholder="• • • •"
+                    placeholder={signInCms.otpPlaceholder}
                     placeholderTextColor={colors.textMuted}
                     keyboardType="number-pad"
                     maxLength={6}
@@ -614,18 +622,20 @@ export default function SignInScreen() {
                 {/* Resend Controls */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
                   <Text style={{ color: colors.textMuted, fontSize: 12 }}>
-                    {canResend ? "Didn't receive code?" : `Resend in ${countdown}s`}
+                    {canResend ? signInCms.didNotReceiveText : `${signInCms.resendCountdownPrefix} ${countdown}s`}
                   </Text>
                   {canResend && (
                     <Pressable onPress={handleSendOTP} disabled={loading}>
-                      <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>Resend OTP</Text>
+                      <Text style={{ color: colors.goldAccent, fontSize: 13, fontWeight: '700' }}>
+                        {signInCms.resendOtpLabel}
+                      </Text>
                     </Pressable>
                   )}
                 </View>
 
                 <ElevatedButton
                   testID="signIn.verifyOtpButton"
-                  label={loading ? 'Verifying...' : 'Verify & Continue'}
+                  label={loading ? signInCms.verifyingLabel : signInCms.verifyButtonLabel}
                   onPress={handleVerifyOTP}
                   disabled={loading}
                   style={{ marginTop: 22 }}
@@ -638,25 +648,27 @@ export default function SignInScreen() {
                   onPress={() => setStep(1)}
                   style={{ marginTop: 14, alignSelf: 'center', padding: 4 }}
                 >
-                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Use different phone number</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+                    {signInCms.useDifferentNumberLabel}
+                  </Text>
                 </Pressable>
 
                 <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 16, ...lh(11, 1.4) }}>
-                  By continuing, you agree to AstroParihar&apos;s{' '}
+                  {signInCms.consentPrefix}{' '}
                   <Text
                     testID="signIn.otpTermsLink"
                     onPress={openTerms}
                     style={{ color: colors.goldAccent, fontWeight: '700', textDecorationLine: 'underline' }}
                   >
-                    Terms of Service
+                    {signInCms.termsLabel}
                   </Text>{' '}
-                  and{' '}
+                  {signInCms.consentAnd}{' '}
                   <Text
                     testID="signIn.otpPrivacyLink"
                     onPress={openPrivacy}
                     style={{ color: colors.goldAccent, fontWeight: '700', textDecorationLine: 'underline' }}
                   >
-                    Privacy Policy
+                    {signInCms.privacyLabel}
                   </Text>
                   .
                 </Text>

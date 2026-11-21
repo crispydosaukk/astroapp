@@ -26,6 +26,7 @@ import {
   configureForegroundNotificationHandler,
   useNotificationStore,
 } from '@/services/notificationStore';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 import { fontAssets } from '@/theme/fonts';
 import { useLanguageStore } from '@/theme/languageStore';
 import { useThemeColors, useThemeStore } from '@/theme/themeStore';
@@ -59,6 +60,8 @@ export default function RootLayout() {
     configureForegroundNotificationHandler();
     useNotificationStore.getState().hydrate();
     useNotificationStore.getState().fetchNotifications();
+    useAppScreensCmsStore.getState().hydrate();
+    useAppScreensCmsStore.getState().fetchConfig();
     if (Platform.OS !== 'web') {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
     }
@@ -78,6 +81,7 @@ export default function RootLayout() {
     const appStateSub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         useNotificationStore.getState().fetchNotifications();
+        useAppScreensCmsStore.getState().fetchConfig();
       }
     });
 

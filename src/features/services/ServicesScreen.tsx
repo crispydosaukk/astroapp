@@ -30,6 +30,7 @@ import { BottomSheet } from '@/components/overlays';
 import { Text } from '@/components/Text';
 import { API_ENDPOINTS } from '@/config/api';
 import { AppRoutes, push } from '@/navigation/routes';
+import { fillCmsTemplate, useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 import { withAlpha } from '@/theme/colors';
 import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
@@ -838,9 +839,11 @@ export default function ServicesScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadCategories();
+    await Promise.all([loadCategories(), useAppScreensCmsStore.getState().fetchConfig(true)]);
     setRefreshing(false);
   }, [loadCategories]);
+
+  const servicesCms = useAppScreensCmsStore((s) => s.config.services);
 
   // Flat list of all items for global search
   const searchedItems = useMemo(() => {
@@ -859,7 +862,7 @@ export default function ServicesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="services.screen">
       <AppBar
-        title={t('nav.services', 'Services')}
+        title={servicesCms.headerTitle || t('nav.services', 'Services')}
         backgroundColor={colors.background}
         backColor={colors.textPrimary}
         actions={[
@@ -912,7 +915,7 @@ export default function ServicesScreen() {
           >
             <AppIcon name="search_rounded" color={colors.goldAccent} size={18} />
             <TextInput
-              placeholder={t('Search services...', 'Search services (Kundli, Remedies, Horoscope...)')}
+              placeholder={servicesCms.searchPlaceholder}
               placeholderTextColor={colors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -938,13 +941,19 @@ export default function ServicesScreen() {
             /* Search Results: 2-column grid of matching individual services */
             <View>
               <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textMuted, marginBottom: 12 }}>
-                Found {searchedItems.length} matching services for &quot;{searchQuery}&quot;
+                {fillCmsTemplate(servicesCms.searchFoundTemplate, {
+                  count: searchedItems.length,
+                  query: searchQuery,
+                })}
               </Text>
               {searchedItems.length === 0 ? (
                 <View style={{ paddingVertical: 40, alignItems: 'center' }}>
                   <AppIcon name="search_off" color={colors.textMuted} size={42} />
                   <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>
-                    No services found matching &quot;{searchQuery}&quot;
+                    {servicesCms.searchEmptyTitle}
+                  </Text>
+                  <Text style={{ marginTop: 4, color: colors.textMuted, fontSize: 12, textAlign: 'center' }}>
+                    {servicesCms.searchEmptySubtitle}
                   </Text>
                 </View>
               ) : (
@@ -1017,10 +1026,10 @@ export default function ServicesScreen() {
             <View>
               <View style={{ marginBottom: 14 }}>
                 <Text style={{ fontSize: 18, fontWeight: '800', color: colors.textPrimary }}>
-                  Vedic Services & Sacred Solutions
+                  {servicesCms.heading}
                 </Text>
                 <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
-                  Tap any category to view and launch individual Vedic services
+                  {servicesCms.subtitle}
                 </Text>
               </View>
 
@@ -1125,7 +1134,7 @@ export default function ServicesScreen() {
                             {/* Bottom: Item Count CTA */}
                             <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                               <Text style={{ color: colors.goldAccent, fontSize: 10.5, fontWeight: '700' }}>
-                                {cat.items.length} {cat.tabLabel || 'Services'}
+                                {cat.items.length} {cat.tabLabel || servicesCms.fallbackTabLabel}
                               </Text>
                               <AppIcon name="arrow_forward_ios_rounded" color={colors.goldAccent} size={10} />
                             </View>

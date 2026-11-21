@@ -26,8 +26,8 @@ import {
   useBirthProfileStore,
 } from '@/services/birthProfileStore';
 import { withAlpha } from '@/theme/colors';
-import { useTranslation } from '@/theme/languageStore';
 import { useThemeColors } from '@/theme/themeStore';
+import { useAppScreensCmsStore } from '@/services/appScreensCmsStore';
 
 const POPULAR_CITIES = [
   'New Delhi, India',
@@ -93,7 +93,7 @@ function AstroChip({
 export default function BirthProfilesScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const cms = useAppScreensCmsStore((s) => s.config.birthProfiles);
   const authUser = useAuthStore((s) => s.user);
 
   const profiles = useBirthProfileStore((s) => s.profiles);
@@ -242,7 +242,7 @@ export default function BirthProfilesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="birthProfiles.screen">
       <AppBar
-        title={t('profile.birthProfiles', 'Birth Profiles')}
+        title={cms.headerTitle}
         onBack={pop}
         testIDPrefix="birthProfiles"
         backgroundColor={colors.background}
@@ -271,7 +271,7 @@ export default function BirthProfilesScreen() {
         >
           <Text style={{ fontSize: 20 }}>✨</Text>
           <Text style={{ marginLeft: 10, flex: 1, color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
-            Manage family birth charts. Switching the active profile recalibrates your Kundli, daily horoscope, and remedies across the entire app.
+            {cms.infoBanner}
           </Text>
         </View>
 
@@ -279,7 +279,7 @@ export default function BirthProfilesScreen() {
 
         {profiles.length === 0 ? (
           <Text testID="birthProfiles.empty" style={{ color: colors.textMuted, textAlign: 'center', marginVertical: 32 }}>
-            No birth profiles yet. Add one below!
+            {cms.emptyText}
           </Text>
         ) : null}
 
@@ -330,7 +330,7 @@ export default function BirthProfilesScreen() {
                         borderColor: colors.goldAccent,
                       }}
                     >
-                      <Text style={{ color: colors.goldAccent, fontSize: 10, fontWeight: '700' }}>Active</Text>
+                      <Text style={{ color: colors.goldAccent, fontSize: 10, fontWeight: '700' }}>{cms.activeBadge}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -352,9 +352,9 @@ export default function BirthProfilesScreen() {
                 testID={`birthProfiles.card.${i}.menu`}
                 onSelected={(v) => onMenu(i, v)}
                 items={[
-                  { value: 'set_active', label: 'Set as Active Chart' },
-                  { value: 'edit', label: 'Edit Profile' },
-                  { value: 'delete', label: 'Delete', color: '#CF4444' },
+                  { value: 'set_active', label: cms.menuLabels.setActive },
+                  { value: 'edit', label: cms.menuLabels.edit },
+                  { value: 'delete', label: cms.menuLabels.delete, color: '#CF4444' },
                 ]}
               />
             </View>
@@ -362,17 +362,17 @@ export default function BirthProfilesScreen() {
             <View style={{ height: 1, backgroundColor: colors.divider }} />
 
             <View style={{ padding: 14, gap: 8 }}>
-              <DetailRow emoji="📅" label="Date of Birth" value={p.dob} colors={colors} />
-              <DetailRow emoji="⏰" label="Birth Time" value={p.time} colors={colors} />
-              <DetailRow emoji="📍" label="Birth Place" value={p.place} colors={colors} />
+              <DetailRow emoji="📅" label={cms.fieldLabels.dob} value={p.dob} colors={colors} />
+              <DetailRow emoji="⏰" label={cms.fieldLabels.time} value={p.time} colors={colors} />
+              <DetailRow emoji="📍" label={cms.fieldLabels.place} value={p.place} colors={colors} />
             </View>
 
             <View style={{ height: 1, backgroundColor: colors.divider }} />
 
             {/* Astro Chips: 2 equal-width columns that fit 100% of card width */}
             <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8, flexDirection: 'row', gap: 8 }}>
-              <AstroChip symbol="♈" value={p.sign || p.zodiac || 'Rashi'} label="Rashi" colors={colors} style={{ flex: 1 }} />
-              <AstroChip symbol="⭐" value={p.nakshatra || 'Nakshatra'} label="Nakshatra" colors={colors} style={{ flex: 1 }} />
+              <AstroChip symbol="♈" value={p.sign || p.zodiac || cms.fieldLabels.rashi} label={cms.fieldLabels.rashi} colors={colors} style={{ flex: 1 }} />
+              <AstroChip symbol="⭐" value={p.nakshatra || cms.fieldLabels.nakshatra} label={cms.fieldLabels.nakshatra} colors={colors} style={{ flex: 1 }} />
             </View>
 
             {/* Prominent Action Button: View Kundli Chart */}
@@ -400,7 +400,7 @@ export default function BirthProfilesScreen() {
               >
                 <AppIcon name="auto_awesome" size={15} color={colors.goldAccent} style={{ marginRight: 6 }} />
                 <Text style={{ color: colors.goldAccent, fontSize: 12.5, fontWeight: '800' }}>
-                  {t('profile.myKundli', 'View Kundli Chart')}
+                  {cms.fieldLabels.viewKundli}
                 </Text>
                 <AppIcon name="arrow_forward_ios_rounded" size={10} color={colors.goldAccent} style={{ marginLeft: 6 }} />
               </Pressable>
@@ -426,7 +426,7 @@ export default function BirthProfilesScreen() {
         >
           <AppIcon name="add_circle_outline_rounded" color={colors.goldAccent} size={22} />
           <Text style={{ marginLeft: 10, color: colors.goldAccent, fontSize: 15, fontWeight: '700' }}>
-            Add Family Birth Profile
+            {cms.fieldLabels.addProfileBtn}
           </Text>
         </Pressable>
       </ScrollView>
@@ -474,10 +474,10 @@ export default function BirthProfilesScreen() {
               </View>
               <View>
                 <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '800' }}>
-                  {sheetMode === 'add' ? 'Add Family Birth Chart' : 'Edit Birth Profile'}
+                  {sheetMode === 'add' ? cms.sheet.addTitle : cms.sheet.editTitle}
                 </Text>
                 <Text style={{ color: colors.textMuted, fontSize: 11 }}>
-                  Sacred Vedic kundli details
+                  {cms.sheet.subtitle}
                 </Text>
               </View>
             </View>
@@ -501,7 +501,7 @@ export default function BirthProfilesScreen() {
           >
             {/* Relationship */}
             <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
-              Relationship
+              {cms.sheet.relationshipLabel}
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
               {PROFILE_RELATION_TYPES.map((r) => {
@@ -544,7 +544,7 @@ export default function BirthProfilesScreen() {
 
             {/* Full Name Input */}
             <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
-              Full Name <Text style={{ color: colors.goldAccent }}>*</Text>
+              {cms.sheet.fullNameLabel} <Text style={{ color: colors.goldAccent }}>*</Text>
             </Text>
             <View
               style={{
@@ -561,7 +561,7 @@ export default function BirthProfilesScreen() {
             >
               <AppIcon name="person_outline" size={20} color={colors.goldAccent} style={{ marginRight: 8 }} />
               <TextInput
-                placeholder="e.g. Rahul Sharma"
+                placeholder={cms.sheet.fullNamePlaceholder}
                 value={formName}
                 onChangeText={setFormName}
                 placeholderTextColor={colors.textMuted}
@@ -584,7 +584,7 @@ export default function BirthProfilesScreen() {
             <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
-                  Birth Date <Text style={{ color: colors.goldAccent }}>*</Text>
+                  {cms.sheet.dobLabel} <Text style={{ color: colors.goldAccent }}>*</Text>
                 </Text>
                 <Pressable
                   onPress={handlePickDate}
@@ -601,14 +601,14 @@ export default function BirthProfilesScreen() {
                 >
                   <AppIcon name="calendar_today" size={17} color={colors.goldAccent} style={{ marginRight: 8 }} />
                   <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700', flex: 1 }}>
-                    {formDob || 'Select Date'}
+                    {formDob || cms.sheet.dobPlaceholder}
                   </Text>
                 </Pressable>
               </View>
 
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
-                  Birth Time <Text style={{ color: colors.goldAccent }}>*</Text>
+                  {cms.sheet.timeLabel} <Text style={{ color: colors.goldAccent }}>*</Text>
                 </Text>
                 <Pressable
                   onPress={handlePickTime}
@@ -625,7 +625,7 @@ export default function BirthProfilesScreen() {
                 >
                   <AppIcon name="schedule" size={17} color={colors.goldAccent} style={{ marginRight: 8 }} />
                   <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700', flex: 1 }}>
-                    {formTime || 'Select Time'}
+                    {formTime || cms.sheet.timePlaceholder}
                   </Text>
                 </Pressable>
               </View>
@@ -636,8 +636,8 @@ export default function BirthProfilesScreen() {
               value={formPlace}
               onChangeText={setFormPlace}
               required
-              label="Birth Place (City, State, Country)"
-              placeholder="Enter birth place (e.g. Hyderabad, Guntur)"
+              label={cms.sheet.placeLabel}
+              placeholder={cms.sheet.placePlaceholder}
             />
           </ScrollView>
 
@@ -653,7 +653,7 @@ export default function BirthProfilesScreen() {
             }}
           >
             <ElevatedButton
-              label={saving ? 'Calculating Chart...' : sheetMode === 'add' ? 'Save Birth Profile' : 'Update Profile Details'}
+              label={saving ? cms.sheet.savingLabel : sheetMode === 'add' ? cms.sheet.saveBtn : cms.sheet.updateBtn}
               onPress={handleSaveProfile}
               disabled={saving}
               loading={saving}
