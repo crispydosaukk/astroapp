@@ -132,10 +132,10 @@ export default function OnboardingScreen() {
             if (Array.isArray(parsed) && parsed.length > 0) {
               setSlides(parsed);
             }
-          } catch {}
+          } catch { }
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     // Fetch dynamic slides from Admin Dashboard API
     const controller = new AbortController();
@@ -160,7 +160,7 @@ export default function OnboardingScreen() {
 
           if (activeSlides.length > 0) {
             setSlides(activeSlides);
-            AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeSlides)).catch(() => {});
+            AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeSlides)).catch(() => { });
           }
         }
       })
