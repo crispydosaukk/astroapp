@@ -116,6 +116,7 @@ export function NotificationsScreen() {
 
   const notifications = useNotificationStore((s) => s.notifications);
   const categories = useNotificationStore((s) => s.categories);
+  const settingsScreen = useNotificationStore((s) => s.settingsScreen);
   const readIds = useNotificationStore((s) => s.readIds);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const loading = useNotificationStore((s) => s.loading);
@@ -138,6 +139,7 @@ export function NotificationsScreen() {
     ];
     const seen = new Set(['all', 'unread']);
     for (const cat of categories) {
+      if (cat.active === false) continue;
       if (!seen.has(cat.id)) {
         seen.add(cat.id);
         base.push({ id: cat.id, label: cat.label });
@@ -216,7 +218,7 @@ export function NotificationsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="notifications.screen">
       <AppBar
-        title={t('profile.notifications', 'Notifications')}
+        title={settingsScreen.inboxScreenTitle || t('profile.notifications', 'Notifications')}
         onBack={pop}
         testIDPrefix="notifications"
         backgroundColor={colors.background}
@@ -391,10 +393,10 @@ export function NotificationsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '700' }}>
-                Enable Live Push Alerts
+                {settingsScreen.enablePushBannerTitle}
               </Text>
               <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>
-                Receive daily horoscope, auspicious Muhurat & live consultation reminders.
+                {settingsScreen.enablePushBannerSubtitle}
               </Text>
             </View>
             <Pressable
@@ -452,7 +454,9 @@ export function NotificationsScreen() {
               <AppIcon name="notifications_none_rounded" color={colors.goldAccent} size={30} />
             </View>
             <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>
-              {activeFilter === 'unread' ? 'You are all caught up!' : 'No Notifications Yet'}
+              {activeFilter === 'unread'
+                ? settingsScreen.emptyUnreadTitle
+                : settingsScreen.emptyAllTitle}
             </Text>
             <Text
               style={{
@@ -464,8 +468,8 @@ export function NotificationsScreen() {
               }}
             >
               {activeFilter === 'unread'
-                ? 'All your cosmic updates and reminders have been read.'
-                : 'Daily horoscopes, Panchang timings, consultation alerts, and special offers from AstroParihar will appear here.'}
+                ? settingsScreen.emptyUnreadSubtitle
+                : settingsScreen.emptyAllSubtitle}
             </Text>
           </View>
         ) : null}
@@ -691,6 +695,7 @@ export function NotificationSettingsScreen() {
 
   const preferences = useNotificationStore((s) => s.preferences);
   const categories = useNotificationStore((s) => s.categories);
+  const settingsScreen = useNotificationStore((s) => s.settingsScreen);
   const permissionStatus = useNotificationStore((s) => s.permissionStatus);
   const expoPushToken = useNotificationStore((s) => s.expoPushToken);
   const nativePushToken = useNotificationStore((s) => s.nativePushToken);
@@ -751,11 +756,18 @@ export function NotificationSettingsScreen() {
   };
 
   const pushEnabled = permissionStatus === 'granted';
+  const visibleCategories = useMemo(
+    () => categories.filter((c) => c.active !== false),
+    [categories]
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} testID="notificationSettings.screen">
       <AppBar
-        title={t('profile.notificationSettings', 'Notification Settings')}
+        title={
+          settingsScreen.settingsScreenTitle ||
+          t('profile.notificationSettings', 'Notification Settings')
+        }
         onBack={pop}
         testIDPrefix="notificationSettings"
         backgroundColor={colors.background}
@@ -809,14 +821,14 @@ export function NotificationSettingsScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }}>
-              {pushEnabled ? 'Push Notifications Active' : 'Push Notifications Off'}
+              {pushEnabled ? settingsScreen.statusActiveTitle : settingsScreen.statusOffTitle}
             </Text>
             <Text style={{ marginTop: 3, color: colors.textMuted, fontSize: 11.5, lineHeight: 16 }}>
               {pushEnabled
                 ? expoPushToken || nativePushToken
-                  ? 'Device registered for live AstroParihar push & in-app alerts.'
-                  : 'Permission granted. Alerts will appear live on this device.'
-                : 'Allow notifications to receive auspicious timings & astrologer alerts.'}
+                  ? settingsScreen.statusActiveSubtitle
+                  : settingsScreen.statusGrantedFallbackSubtitle
+                : settingsScreen.statusOffSubtitle}
             </Text>
           </View>
           {!pushEnabled && Platform.OS !== 'web' ? (
@@ -839,14 +851,14 @@ export function NotificationSettingsScreen() {
 
         {/* Master Switch */}
         <View>
-          <SectionHeading>Master Control</SectionHeading>
+          <SectionHeading>{settingsScreen.masterSectionHeading}</SectionHeading>
           <SettingsCard>
             <SwitchTile
               testID="notificationSettings.master"
-              title="All Notifications"
-              subtitle="Pause or resume all AstroParihar alerts"
+              title={settingsScreen.masterToggleTitle}
+              subtitle={settingsScreen.masterToggleSubtitle}
               value={preferences.enabled}
-              onChange={(v) => handleToggle('enabled', v, 'All notifications')}
+              onChange={(v) => handleToggle('enabled', v, settingsScreen.masterToggleTitle)}
               secondary={<IconBadge icon="notifications_outlined" color={colors.goldAccent} size={20} />}
             />
           </SettingsCard>
@@ -854,11 +866,14 @@ export function NotificationSettingsScreen() {
 
         {/* Astrological Alert Categories (Dynamic from Admin Panel) */}
         <View style={{ opacity: preferences.enabled ? 1 : 0.55 }}>
-          <SectionHeading>Astrological Alerts & Categories</SectionHeading>
+          <SectionHeading>{settingsScreen.categoriesSectionHeading}</SectionHeading>
           <SettingsCard>
-            {categories.map((cat, idx) => {
+            {visibleCategories.map((cat, idx) => {
               const meta = resolveCategoryMeta(cat.id, categories);
-              const isEnabled = preferences[cat.id] !== false;
+              const isEnabled =
+                preferences[cat.id] !== undefined
+                  ? Boolean(preferences[cat.id])
+                  : cat.defaultEnabled !== false;
               return (
                 <React.Fragment key={cat.id}>
                   {idx > 0 ? <TileDivider indent={16} endIndent={16} /> : null}
@@ -895,68 +910,70 @@ export function NotificationSettingsScreen() {
 
         {/* Sound & Quiet Hours */}
         <View>
-          <SectionHeading>Delivery Preferences</SectionHeading>
+          <SectionHeading>{settingsScreen.deliverySectionHeading}</SectionHeading>
           <SettingsCard>
             <SwitchTile
               testID="notificationSettings.sound"
-              title="Notification Sound"
-              subtitle="Play alert tone when notifications arrive"
+              title={settingsScreen.soundTitle}
+              subtitle={settingsScreen.soundSubtitle}
               value={preferences.sound}
-              onChange={(v) => handleToggle('sound', v, 'Notification sound')}
+              onChange={(v) => handleToggle('sound', v, settingsScreen.soundTitle)}
               secondary={<IconBadge icon="volume_up_outlined" color={colors.goldAccent} size={20} />}
             />
             <TileDivider indent={16} endIndent={16} />
             <SwitchTile
               testID="notificationSettings.vibration"
-              title="Vibration"
-              subtitle="Vibrate device on incoming alerts"
+              title={settingsScreen.vibrationTitle}
+              subtitle={settingsScreen.vibrationSubtitle}
               value={preferences.vibration}
-              onChange={(v) => handleToggle('vibration', v, 'Vibration')}
+              onChange={(v) => handleToggle('vibration', v, settingsScreen.vibrationTitle)}
               secondary={<IconBadge icon="vibration" color="#4FC3F7" size={20} />}
             />
             <TileDivider indent={16} endIndent={16} />
             <SwitchTile
               testID="notificationSettings.quietHours"
-              title="Quiet Hours (10:00 PM – 7:00 AM)"
-              subtitle="Silence non-urgent alerts during night rest"
+              title={settingsScreen.quietHoursTitle}
+              subtitle={settingsScreen.quietHoursSubtitle}
               value={preferences.quietHoursEnabled}
-              onChange={(v) => handleToggle('quietHoursEnabled', v, 'Quiet Hours')}
+              onChange={(v) => handleToggle('quietHoursEnabled', v, settingsScreen.quietHoursTitle)}
               secondary={<IconBadge icon="bedtime_outlined" color="#9370DB" size={20} />}
             />
           </SettingsCard>
         </View>
 
         {/* Test Notification Buttons */}
-        <View style={{ gap: 10 }}>
-          <ElevatedButton
-            testID="notificationSettings.sendTest"
-            label={testing ? 'Sending Test Alert...' : 'Send Instant Test Banner'}
-            onPress={() => handleTestNotification(0)}
-            disabled={testing}
-            radius={14}
-            paddingV={15}
-            fontSize={14}
-            fontWeight="700"
-          />
-          <Pressable
-            testID="notificationSettings.sendLockScreenTest"
-            onPress={() => handleTestNotification(5)}
-            disabled={testing}
-            style={{
-              paddingVertical: 13,
-              borderRadius: 14,
-              borderWidth: 1.2,
-              borderColor: withAlpha(colors.goldAccent, 95),
-              backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 16 : 22),
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ color: colors.goldAccent, fontSize: 13.5, fontWeight: '700' }}>
-              Test Lock-Screen Push (Arrives in 5s — Lock Phone)
-            </Text>
-          </Pressable>
-        </View>
+        {settingsScreen.showTestButtons ? (
+          <View style={{ gap: 10 }}>
+            <ElevatedButton
+              testID="notificationSettings.sendTest"
+              label={testing ? 'Sending Test Alert...' : settingsScreen.instantTestButtonLabel}
+              onPress={() => handleTestNotification(0)}
+              disabled={testing}
+              radius={14}
+              paddingV={15}
+              fontSize={14}
+              fontWeight="700"
+            />
+            <Pressable
+              testID="notificationSettings.sendLockScreenTest"
+              onPress={() => handleTestNotification(5)}
+              disabled={testing}
+              style={{
+                paddingVertical: 13,
+                borderRadius: 14,
+                borderWidth: 1.2,
+                borderColor: withAlpha(colors.goldAccent, 95),
+                backgroundColor: withAlpha(colors.goldAccent, colors.isLight ? 16 : 22),
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ color: colors.goldAccent, fontSize: 13.5, fontWeight: '700' }}>
+                {settingsScreen.lockScreenTestButtonLabel}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
       </ScrollView>
     </View>
   );

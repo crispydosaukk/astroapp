@@ -15,50 +15,136 @@ export interface DynamicNotificationCategoryMeta {
   emoji: string;
   color: string;
   description?: string;
+  active?: boolean;
+  defaultEnabled?: boolean;
 }
+
+export interface AppNotificationSettingsScreenConfig {
+  inboxScreenTitle: string;
+  settingsScreenTitle: string;
+  statusActiveTitle: string;
+  statusActiveSubtitle: string;
+  statusGrantedFallbackSubtitle: string;
+  statusOffTitle: string;
+  statusOffSubtitle: string;
+  masterSectionHeading: string;
+  masterToggleTitle: string;
+  masterToggleSubtitle: string;
+  categoriesSectionHeading: string;
+  deliverySectionHeading: string;
+  soundTitle: string;
+  soundSubtitle: string;
+  defaultSoundEnabled: boolean;
+  vibrationTitle: string;
+  vibrationSubtitle: string;
+  defaultVibrationEnabled: boolean;
+  quietHoursTitle: string;
+  quietHoursSubtitle: string;
+  defaultQuietHoursEnabled: boolean;
+  quietHoursStart: string;
+  quietHoursEnd: string;
+  showTestButtons: boolean;
+  instantTestButtonLabel: string;
+  lockScreenTestButtonLabel: string;
+  enablePushBannerTitle: string;
+  enablePushBannerSubtitle: string;
+  emptyAllTitle: string;
+  emptyAllSubtitle: string;
+  emptyUnreadTitle: string;
+  emptyUnreadSubtitle: string;
+}
+
+export const DEFAULT_NOTIFICATION_SETTINGS_SCREEN: AppNotificationSettingsScreenConfig = {
+  inboxScreenTitle: 'Notifications',
+  settingsScreenTitle: 'Notification Settings',
+  statusActiveTitle: 'Push Notifications Active',
+  statusActiveSubtitle: 'Device registered for live AstroParihar push & in-app alerts.',
+  statusGrantedFallbackSubtitle: 'Permission granted. Alerts will appear live on this device.',
+  statusOffTitle: 'Push Notifications Off',
+  statusOffSubtitle: 'Allow notifications to receive auspicious timings & astrologer alerts.',
+  masterSectionHeading: 'Master Control',
+  masterToggleTitle: 'All Notifications',
+  masterToggleSubtitle: 'Pause or resume all AstroParihar alerts',
+  categoriesSectionHeading: 'Astrological Alerts & Categories',
+  deliverySectionHeading: 'Delivery Preferences',
+  soundTitle: 'Notification Sound',
+  soundSubtitle: 'Play alert tone when notifications arrive',
+  defaultSoundEnabled: true,
+  vibrationTitle: 'Vibration',
+  vibrationSubtitle: 'Vibrate device on incoming alerts',
+  defaultVibrationEnabled: true,
+  quietHoursTitle: 'Quiet Hours (10:00 PM – 7:00 AM)',
+  quietHoursSubtitle: 'Silence non-urgent alerts during night rest',
+  defaultQuietHoursEnabled: false,
+  quietHoursStart: '22:00',
+  quietHoursEnd: '07:00',
+  showTestButtons: true,
+  instantTestButtonLabel: 'Send Instant Test Banner',
+  lockScreenTestButtonLabel: 'Test Lock-Screen Push (Arrives in 5s — Lock Phone)',
+  enablePushBannerTitle: 'Enable Live Push Alerts',
+  enablePushBannerSubtitle:
+    'Receive daily horoscope, auspicious Muhurat & live consultation reminders.',
+  emptyAllTitle: 'No Notifications Yet',
+  emptyAllSubtitle:
+    'Daily horoscopes, Panchang timings, consultation alerts, and special offers from AstroParihar will appear here.',
+  emptyUnreadTitle: 'You are all caught up!',
+  emptyUnreadSubtitle: 'All your cosmic updates and reminders have been read.',
+};
 
 export const DEFAULT_NOTIFICATION_CATEGORIES: DynamicNotificationCategoryMeta[] = [
   {
     id: 'horoscope',
-    label: 'Horoscope',
+    label: 'Daily Horoscope',
     emoji: '✨',
     color: '#9370DB',
     description: 'Morning Rashi forecasts & planetary transits',
+    active: true,
+    defaultEnabled: true,
   },
   {
     id: 'panchang',
-    label: 'Panchang',
+    label: 'Panchang & Muhurat',
     emoji: '🪔',
     color: '#E69F00',
     description: 'Daily Tithi, Abhijit Muhurat & Rahu Kaal',
+    active: true,
+    defaultEnabled: true,
   },
   {
     id: 'consultation',
-    label: 'Consultations',
+    label: 'Consultations & Chat',
     emoji: '📞',
     color: '#4FC3F7',
     description: 'Astrologer availability, call & chat reminders',
+    active: true,
+    defaultEnabled: true,
   },
   {
     id: 'offers',
-    label: 'Offers',
+    label: 'Offers & Wallet Updates',
     emoji: '🎁',
     color: '#2D9E6B',
     description: 'Recharge bonuses, festive discounts & receipts',
+    active: true,
+    defaultEnabled: true,
   },
   {
     id: 'remedies',
-    label: 'Remedies',
+    label: 'Vedic Remedies & Reports',
     emoji: '🕉️',
     color: '#E86A58',
     description: 'Ashta Parihar reminders & Kundli PDF updates',
+    active: true,
+    defaultEnabled: true,
   },
   {
     id: 'system',
-    label: 'Updates',
+    label: 'Account & Security Alerts',
     emoji: '🔔',
     color: '#C9A84C',
     description: 'Important platform & account notices',
+    active: true,
+    defaultEnabled: true,
   },
 ];
 
@@ -115,6 +201,7 @@ const STORAGE_DEL_KEY = 'astroparihar_notifications_deleted_ids_v1';
 const STORAGE_PREFS_KEY = 'astroparihar_notifications_prefs_v1';
 const STORAGE_TOKEN_KEY = 'astroparihar_push_token_v1';
 const STORAGE_CATS_KEY = 'astroparihar_notifications_categories_v1';
+const STORAGE_SETTINGS_UI_KEY = 'astroparihar_notifications_settings_ui_v1';
 
 let handlerConfigured = false;
 
@@ -166,6 +253,7 @@ function syncAppBadge(count: number) {
 interface NotificationStoreState {
   notifications: AppNotificationItem[];
   categories: DynamicNotificationCategoryMeta[];
+  settingsScreen: AppNotificationSettingsScreenConfig;
   readIds: string[];
   deletedIds: string[];
   unreadCount: number;
@@ -196,6 +284,7 @@ function computeUnread(items: AppNotificationItem[], readIds: string[]): number 
 export const useNotificationStore = create<NotificationStoreState>((set, get) => ({
   notifications: [],
   categories: DEFAULT_NOTIFICATION_CATEGORIES,
+  settingsScreen: DEFAULT_NOTIFICATION_SETTINGS_SCREEN,
   readIds: [],
   deletedIds: [],
   unreadCount: 0,
@@ -209,14 +298,16 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   hydrate: async () => {
     if (get().hydrated) return;
     try {
-      const [rawNotifs, rawRead, rawDel, rawPrefs, rawToken, rawCats] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_NOTIFS_KEY),
-        AsyncStorage.getItem(STORAGE_READ_KEY),
-        AsyncStorage.getItem(STORAGE_DEL_KEY),
-        AsyncStorage.getItem(STORAGE_PREFS_KEY),
-        AsyncStorage.getItem(STORAGE_TOKEN_KEY),
-        AsyncStorage.getItem(STORAGE_CATS_KEY),
-      ]);
+      const [rawNotifs, rawRead, rawDel, rawPrefs, rawToken, rawCats, rawSettingsUi] =
+        await Promise.all([
+          AsyncStorage.getItem(STORAGE_NOTIFS_KEY),
+          AsyncStorage.getItem(STORAGE_READ_KEY),
+          AsyncStorage.getItem(STORAGE_DEL_KEY),
+          AsyncStorage.getItem(STORAGE_PREFS_KEY),
+          AsyncStorage.getItem(STORAGE_TOKEN_KEY),
+          AsyncStorage.getItem(STORAGE_CATS_KEY),
+          AsyncStorage.getItem(STORAGE_SETTINGS_UI_KEY),
+        ]);
 
       const readIds: string[] = rawRead ? JSON.parse(rawRead) : [];
       const deletedIds: string[] = rawDel ? JSON.parse(rawDel) : [];
@@ -230,6 +321,9 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       const parsedCats: DynamicNotificationCategoryMeta[] = rawCats
         ? JSON.parse(rawCats)
         : DEFAULT_NOTIFICATION_CATEGORIES;
+      const parsedSettingsUi: AppNotificationSettingsScreenConfig = rawSettingsUi
+        ? { ...DEFAULT_NOTIFICATION_SETTINGS_SCREEN, ...JSON.parse(rawSettingsUi) }
+        : DEFAULT_NOTIFICATION_SETTINGS_SCREEN;
 
       const unreadCount = computeUnread(cachedNotifs, readIds);
       set({
@@ -238,6 +332,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
           Array.isArray(parsedCats) && parsedCats.length > 0
             ? parsedCats
             : DEFAULT_NOTIFICATION_CATEGORIES,
+        settingsScreen: parsedSettingsUi,
         readIds,
         deletedIds,
         unreadCount,
@@ -407,12 +502,20 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
                     emoji: String(c.emoji || '🔔'),
                     color: String(c.color || '#C9A84C'),
                     description: typeof c.description === 'string' ? c.description : '',
+                    active: c.active !== false,
+                    defaultEnabled: c.defaultEnabled !== false,
                   }))
               : get().categories;
+
+          const nextSettingsScreen: AppNotificationSettingsScreenConfig =
+            data.settingsScreen && typeof data.settingsScreen === 'object'
+              ? { ...DEFAULT_NOTIFICATION_SETTINGS_SCREEN, ...data.settingsScreen }
+              : get().settingsScreen;
 
           set({
             notifications: liveItems,
             categories: nextCategories,
+            settingsScreen: nextSettingsScreen,
             readIds: mergedRead,
             deletedIds: mergedDel,
             unreadCount,
@@ -424,6 +527,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
           await Promise.all([
             AsyncStorage.setItem(STORAGE_NOTIFS_KEY, JSON.stringify(liveItems)),
             AsyncStorage.setItem(STORAGE_CATS_KEY, JSON.stringify(nextCategories)),
+            AsyncStorage.setItem(STORAGE_SETTINGS_UI_KEY, JSON.stringify(nextSettingsScreen)),
             AsyncStorage.setItem(STORAGE_READ_KEY, JSON.stringify(mergedRead)),
             AsyncStorage.setItem(STORAGE_DEL_KEY, JSON.stringify(mergedDel)),
             AsyncStorage.setItem(STORAGE_PREFS_KEY, JSON.stringify(nextPrefs)),
